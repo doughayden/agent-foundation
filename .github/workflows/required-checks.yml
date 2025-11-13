@@ -1,0 +1,52 @@
+name: Required Checks
+
+on:
+  pull_request:
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5  # Typical run: <1 min (path filtering). 5 min is generous buffer
+    outputs:
+      code-changed: ${{ steps.changes.outputs.code }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            code:
+              - '**.py'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.github/workflows/code-quality.yml'
+              - '.github/workflows/required-checks.yml'
+
+  code-quality:
+    needs: check-changes
+    if: needs.check-changes.outputs.code-changed == 'true'
+    uses: ./.github/workflows/code-quality.yml
+
+  # Always runs, required in branch protection
+  required-status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5  # Typical run: <1 min (status check). 5 min is generous buffer
+    needs: [check-changes, code-quality]
+    if: always()
+    steps:
+      - name: Check required status
+        run: |
+          if [[ "${{ needs.check-changes.outputs.code-changed }}" == "true" ]]; then
+            if [[ "${{ needs.code-quality.result }}" == "success" ]]; then
+              echo "✅ Code quality and tests passed"
+            else
+              echo "❌ Code quality and tests failed"
+              exit 1
+            fi
+          else
+            echo "⏭️ Code quality and tests skipped - no relevant files changed"
+          fi
