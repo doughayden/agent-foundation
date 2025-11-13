@@ -1,7 +1,7 @@
 # adk-docker-uv
 
-<!-- ![Build](https://github.com/onix-net/digital-co-worker/actions/workflows/docker-build-push.yml/badge.svg)
-![CI](https://github.com/onix-net/digital-co-worker/actions/workflows/code-quality.yml/badge.svg) -->
+![Build](https://github.com/doughayden/adk-docker-uv/actions/workflows/docker-build-push.yml/badge.svg)
+![CI](https://github.com/doughayden/adk-docker-uv/actions/workflows/code-quality.yml/badge.svg)
 
 ADK on Docker, optimized with uv
 
