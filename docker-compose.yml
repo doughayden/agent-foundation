@@ -1,0 +1,40 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: adk-docker-uv:latest
+    container_name: adk-docker-uv
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Mount local data directory for development
+      - ./data:/app/data:ro
+      # Mount local log directory for development
+      - ./.log:/app/.log
+      # Mount Application Default Credentials for local development
+      # Windows users: Replace ${HOME} with Windows path, e.g.:
+      #   C:\Users\YourUsername\AppData\Roaming\gcloud\application_default_credentials.json:/gcloud/application_default_credentials.json:ro
+      - ${HOME}/.config/gcloud/application_default_credentials.json:/gcloud/application_default_credentials.json:ro
+    environment:
+      # Use mounted Application Default Credentials
+      GOOGLE_APPLICATION_CREDENTIALS: "/gcloud/application_default_credentials.json"
+
+    # Watch configuration for hot reloading
+    develop:
+      watch:
+        # Sync Python source files for instant updates (uvicorn auto-reloads)
+        - action: sync
+          path: ./src
+          target: /app/src
+
+        # Rebuild when dependencies change
+        - action: rebuild
+          path: ./pyproject.toml
+
+        - action: rebuild
+          path: ./uv.lock
+
+    restart: unless-stopped
