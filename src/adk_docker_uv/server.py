@@ -13,7 +13,7 @@ from .utils import parse_json_list_env, setup_file_logging
 # Load environment variables
 load_dotenv(override=True)
 
-AGENT_DIR = str(Path.cwd() / "src")
+AGENT_DIR = str(Path(__file__).parent.parent)
 AGENT_ENGINE_URI = os.getenv("AGENT_ENGINE_URI")
 ARTIFACT_SERVICE_URI = os.getenv("ARTIFACT_SERVICE_URI")
 ALLOWED_ORIGINS = parse_json_list_env(

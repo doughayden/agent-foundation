@@ -24,7 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Health endpoint response from `{"status": "healthy"}` to `{"status": "ok"}`
 - Simplified development.md with project-specific examples (removed outdated CSV/document examples)
 - Moved project structure documentation from README.md to development.md only
-- AGENT_DIR in server.py to use `Path.cwd() / "src"`
 
 ## [0.1.0] - 2025-11-12
 
