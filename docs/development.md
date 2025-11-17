@@ -21,7 +21,7 @@ uv run init_template.py
 ```
 
 This script:
-- Renames the package from `adk_docker_uv` to match your repository name
+- Renames the package to match your repository name
 - Updates all configuration, documentation, and test files
 - Resets `CHANGELOG.md` with a fresh template
 - Regenerates the UV lockfile
