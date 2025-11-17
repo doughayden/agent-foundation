@@ -95,11 +95,6 @@ develop:
 
 ## File Locations
 
-### Data
-- **Host:** `./data/` (read-only mount, if applicable)
-- **Container:** `/app/data`
-- **Contains:** Application data files
-
 ### Logs
 - **Host:** `./.log/` (read-write mount)
 - **Container:** `/app/.log`

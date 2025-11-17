@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     image: adk-docker-uv:latest
-    container_name: adk-docker-uv
+    container_name: adk-docker-uv-local
     ports:
       # Bind to localhost only for security (prevents external network access)
       # To allow access from other machines, change to "8000:8000" (not recommended for development with sensitive data)

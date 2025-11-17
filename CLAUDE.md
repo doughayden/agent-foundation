@@ -86,7 +86,7 @@ uv run pytest tests/test_context.py::test_load_success -v
 
 ### ADK Agent Structure
 
-The agent is configured in `src/adk_docker_uv/agent/agent.py`:
+The agent is configured in `src/adk_docker_uv/agent.py`:
 
 ```
 root_agent (LlmAgent)
@@ -99,7 +99,7 @@ root_agent (LlmAgent)
 - **agent.py**: LlmAgent configuration with callbacks
 - **tools.py**: Custom tools for the agent
 - **callbacks.py**: Lifecycle callbacks for logging and memory persistence (all return `None`)
-- **prompt.py**: Agent instructions and descriptions
+- **prompt.py**: Agent instructions and descriptions (includes InstructionProvider pattern)
 - **server.py**: FastAPI server with ADK integration
 - **utils/env_parser.py**: Environment variable parsing utilities with validation
 
@@ -172,7 +172,7 @@ See `docs/dockerfile-strategy.md` for detailed rationale.
 ### Testing
 
 **Requirements:**
-- 100% coverage on all production code (excludes: `server.py`, `agent/agent.py`, `agent/prompt.py`)
+- 100% coverage on all production code (excludes: `server.py`, `agent.py`)
 - Tests organized by feature in separate files
 - Shared fixtures in `conftest.py` (reusable, eliminates patching in individual tests)
 - Duck-typed mocks that satisfy ADK protocols
@@ -264,7 +264,7 @@ GitHub Actions workflows in `.github/workflows/`:
 
 ### Adding Custom Tools
 
-Create tools in `src/adk_docker_uv/agent/tools.py` and register in `agent.py`:
+Create tools in `src/adk_docker_uv/tools.py` and register in `agent.py`:
 
 ```python
 from google.adk.tools import Tool
@@ -285,6 +285,16 @@ The project uses callback pattern for cross-cutting concerns:
 - `add_session_to_memory`: Automatic session persistence to memory service
 
 All callbacks in this project return `None` and are non-intrusive (they only observe, not modify the agent flow).
+
+### InstructionProvider Pattern
+
+Uses ADK's InstructionProvider pattern for dynamic instruction generation at request time (enables current dates, session-aware customization).
+
+**Signature:** `def instruction_provider(ctx: ReadonlyContext) -> str`
+- Pass function reference to `LlmAgent(global_instruction=func)`, not a call
+- `ctx` provides: `state` (read-only session), `agent_name`, `invocation_id`, `user_content`, `session`
+
+**Testing:** Use `MockReadonlyContext` from `tests/conftest.py`. See `prompt.py` and `test_prompt.py` for examples.
 
 ### Environment Variable Parsing
 

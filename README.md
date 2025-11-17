@@ -50,18 +50,7 @@ A production-ready template for deploying Google ADK (Agent Development Kit) age
 
 ## Documentation
 
-- **[Development](docs/development.md)** - Code quality, testing, and dependencies
+- **[Development](docs/development.md)** - Code quality, testing, dependencies, and project structure
 - **[Docker Compose Workflow](docs/docker-compose-workflow.md)** - Local development with hot reloading
 - **[Dockerfile Strategy](docs/dockerfile-strategy.md)** - Multi-stage build architecture and rationale
 - **[GitHub Docker Workflow](docs/github-docker-setup.md)** - CI/CD setup for automated Docker builds
-
-## Project Structure
-
-```
-src/adk_docker_uv/
-  agent/            # ADK integration (project-specific)
-  server.py         # FastAPI development server
-data/               # Placeholder for data
-docs/               # Documentation
-tests/              # Test suite
-```

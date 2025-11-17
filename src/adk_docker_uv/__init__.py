@@ -1,1 +1,5 @@
-"""Package root."""
+"""Agent implementation public package interface."""
+
+from .agent import root_agent
+
+__all__ = ["root_agent"]

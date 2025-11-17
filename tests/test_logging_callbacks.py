@@ -17,7 +17,7 @@ from conftest import (
     MockToolContext,
 )
 
-from adk_docker_uv.agent.callbacks import LoggingCallbacks
+from adk_docker_uv.callbacks import LoggingCallbacks
 
 # Note: Custom mock classes (conftest.py) use duck typing to match ADK interfaces.
 # Type ignore comments suppress Pylance warnings (expects nominal types) while
@@ -41,7 +41,7 @@ class TestLoggerInjection:
         callbacks = LoggingCallbacks()
 
         assert callbacks.logger is not None
-        assert callbacks.logger.name == "adk_docker_uv.agent.callbacks"
+        assert callbacks.logger.name == "adk_docker_uv.callbacks"
 
     def test_logging_callbacks_custom_logger(
         self, custom_logger: logging.Logger

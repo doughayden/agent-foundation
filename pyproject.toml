@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.13,<3.14"
 dependencies = [
+    # Pin ADK to test releases before locking upgrades
     "google-adk==1.18.0",
     "pydantic>=2.11.0,<3.0.0",
     "python-dotenv>=1.0.0,<2.0.0",
@@ -84,8 +85,7 @@ source = ["src"]
 branch = true
 omit = [
     "src/adk_docker_uv/server.py",
-    "src/adk_docker_uv/agent/agent.py",
-    "src/adk_docker_uv/agent/prompt.py",
+    "src/adk_docker_uv/agent.py",
 ]
 
 [tool.coverage.report]

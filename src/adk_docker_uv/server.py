@@ -8,14 +8,15 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from google.adk.cli.fast_api import get_fast_api_app
 
-from adk_docker_uv.utils import parse_json_list_env
+from .utils import parse_json_list_env, setup_file_logging
 
 # Load environment variables
 load_dotenv(override=True)
 
-AGENT_DIR = str(Path(__file__).parent.parent)
-
-# Create FastAPI app at module level for uvicorn import
+# AGENT_DIR: Configurable via env var for flexibility across environments
+# Default: Use file-relative path (works in editable installs, Docker, and CI)
+# Override: Set AGENT_DIR env var for custom deployments
+AGENT_DIR = os.getenv("AGENT_DIR", str(Path(__file__).parent.parent))
 AGENT_ENGINE_URI = os.getenv("AGENT_ENGINE_URI")
 ARTIFACT_SERVICE_URI = os.getenv("ARTIFACT_SERVICE_URI")
 ALLOWED_ORIGINS = parse_json_list_env(
@@ -41,7 +42,7 @@ async def health() -> dict[str, str]:
     Returns:
         dict with status key indicating service health
     """
-    return {"status": "healthy"}
+    return {"status": "ok"}
 
 
 def main() -> None:
@@ -57,6 +58,7 @@ def main() -> None:
     allowing interactive agent testing.
 
     Environment Variables:
+        AGENT_DIR: Path to agent source directory (default: auto-detect from __file__)
         LOG_LEVEL: Logging verbosity (DEBUG, INFO, WARNING, ERROR)
         SERVE_WEB_INTERFACE: Whether to serve the web interface (true/false)
         AGENT_ENGINE_URI: Agent Engine instance for session and memory
@@ -64,11 +66,7 @@ def main() -> None:
         ALLOWED_ORIGINS: JSON array string of allowed CORS origins
         HOST: Server host (default: localhost, set to 0.0.0.0 for containers)
         PORT: Server port (default: 8000)
-        DATA_PATH: Path to data directory (default: data)
     """
-    from adk_docker_uv.utils.log_config import setup_file_logging
-
-    # Setup observability for local development
     setup_file_logging(log_level=os.getenv("LOG_LEVEL", "INFO"))
 
     uvicorn.run(
@@ -76,6 +74,8 @@ def main() -> None:
         host=os.getenv("HOST", "localhost"),
         port=int(os.getenv("PORT", 8000)),
     )
+
+    return
 
 
 if __name__ == "__main__":

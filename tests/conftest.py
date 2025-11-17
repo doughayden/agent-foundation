@@ -211,6 +211,62 @@ class MockBaseTool:
         self.name = name
 
 
+class MockReadonlyContext:
+    """Mock ReadonlyContext for testing InstructionProvider functions.
+
+    Provides read-only access to invocation metadata and session state,
+    matching the interface of google.adk.agents.readonly_context.ReadonlyContext.
+    """
+
+    def __init__(
+        self,
+        agent_name: str = "test_agent",
+        invocation_id: str = "test-inv-readonly",
+        state: dict[str, Any] | None = None,
+        user_content: MockContent | None = None,
+        session: MockSession | None = None,
+    ) -> None:
+        """Initialize mock readonly context.
+
+        Args:
+            agent_name: Name of the agent.
+            invocation_id: ID of the current invocation.
+            state: Session state dictionary (read-only).
+            user_content: Optional user content that started the invocation.
+            session: Optional session object.
+        """
+        self._agent_name = agent_name
+        self._invocation_id = invocation_id
+        self._state = state if state is not None else {}
+        self._user_content = user_content
+        self._session = session if session is not None else MockSession()
+
+    @property
+    def agent_name(self) -> str:
+        """The name of the agent that is currently running."""
+        return self._agent_name
+
+    @property
+    def invocation_id(self) -> str:
+        """The current invocation id."""
+        return self._invocation_id
+
+    @property
+    def state(self) -> dict[str, Any]:
+        """The state of the current session (read-only)."""
+        return self._state.copy()  # Return a copy to enforce read-only
+
+    @property
+    def user_content(self) -> MockContent | None:
+        """The user content that started this invocation."""
+        return self._user_content
+
+    @property
+    def session(self) -> MockSession:
+        """The current session for this invocation."""
+        return self._session
+
+
 # Fixtures for ADK callback testing
 @pytest.fixture
 def mock_state() -> MockState:
@@ -328,3 +384,13 @@ def mock_memory_callback_context_no_service() -> MockMemoryCallbackContext:
 def mock_memory_callback_context_no_invocation() -> MockMemoryCallbackContext:
     """Create a mock memory callback context without invocation context."""
     return MockMemoryCallbackContext(invocation_context=None)
+
+
+@pytest.fixture
+def mock_readonly_context() -> MockReadonlyContext:
+    """Create a mock readonly context for InstructionProvider testing."""
+    return MockReadonlyContext(
+        agent_name="instruction_test_agent",
+        invocation_id="readonly-inv-123",
+        state={"user_tier": "premium", "language": "en"},
+    )

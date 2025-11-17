@@ -74,10 +74,10 @@ uv run pytest -v
 uv run pytest --cov --cov-report=term-missing
 
 # Run specific test file
-uv run pytest tests/test_context.py -v
+uv run pytest tests/test_integration.py -v
 
 # Run specific test
-uv run pytest tests/test_context.py::test_load_success -v
+uv run pytest tests/test_integration.py::test_agent_uses_instruction_provider_callable -v
 ```
 
 ## Code Quality Standards
@@ -90,8 +90,8 @@ uv run pytest tests/test_context.py::test_load_success -v
 
 Example:
 ```python
-async def load_documents(user: User, filter: list[str] | None = None) -> list[Document]:
-    """Load documents with full type safety."""
+def example_tool(tool_context: ToolContext) -> dict[str, Any]:
+    """Example tool with full type safety."""
     ...
 ```
 
@@ -111,15 +111,15 @@ Example:
 from pathlib import Path
 
 # Good
-csv_path = Path("data/users.csv")
-if csv_path.exists():
-    data = csv_path.read_text()
+log_path = Path(".log/app.log")
+if log_path.exists():
+    content = log_path.read_text()
 
 # Bad - will be flagged by ruff
 import os
-if os.path.exists("data/users.csv"):
-    with open("data/users.csv") as f:
-        data = f.read()
+if os.path.exists(".log/app.log"):
+    with open(".log/app.log") as f:
+        content = f.read()
 ```
 
 ### Docstrings
@@ -130,17 +130,16 @@ if os.path.exists("data/users.csv"):
 
 Example:
 ```python
-async def get_user(self, user_id: str) -> User:
-    """Fetch user from CSV by user ID.
+def example_tool(tool_context: ToolContext) -> dict[str, Any]:
+    """Example tool that logs a success message.
+
+    This is a placeholder example tool. Replace with actual implementation.
 
     Args:
-        user_id: Unique user identifier to look up.
+        tool_context: ADK ToolContext with access to session state
 
     Returns:
-        User object with id, name, and location_ids.
-
-    Raises:
-        ValueError: If user_id is not found in CSV.
+        A dictionary with status and message about the logging operation.
     """
     ...
 ```
@@ -186,62 +185,24 @@ The project uses PEP 735 dependency groups (via `uv`):
 ```
 adk-docker-uv/
   src/adk_docker_uv/
-    agent/                # ADK agent implementation
-      agent.py              # LlmAgent configuration
-      callbacks.py          # Agent callbacks
-      prompt.py             # Agent prompts
-      tools.py              # Custom tools
+    agent.py              # LlmAgent configuration
+    callbacks.py          # Agent callbacks
+    prompt.py             # Agent prompts
+    tools.py              # Custom tools
     server.py             # FastAPI development server
     utils/                # Utilities
+      env_parser.py         # Environment variable parsing
       log_config.py         # Logging configuration
   tests/                  # Test suite
+    conftest.py             # Shared fixtures
+    test_integration.py     # Integration tests
+    test_*.py               # Unit tests
   docs/                   # Documentation
   .env.example            # Environment template
   pyproject.toml          # Project configuration
   CLAUDE.md               # Project instructions
   README.md               # Main documentation
 ```
-
-## Environment Variables
-
-### Required (for agent/server)
-
-Choose ONE authentication method:
-
-**Option 1: Gemini Developer API**
-```bash
-GOOGLE_API_KEY=your_api_key_here
-```
-
-**Option 2: Vertex AI**
-```bash
-GOOGLE_CLOUD_PROJECT=your-project-id
-GOOGLE_CLOUD_LOCATION=us-central1
-```
-
-### Optional
-
-```bash
-# Enable web UI (default: false)
-SERVE_WEB_INTERFACE=true
-
-# Logging level (default: INFO)
-LOG_LEVEL=DEBUG
-
-# Add project-specific variables as needed
-```
-
-## Contributing
-
-When making changes:
-
-1. **Run all code quality checks** before committing
-2. **Maintain 100% test coverage** on new code
-3. **Update documentation** to reflect changes
-4. **Follow existing patterns** for consistency
-5. **Use async/await** for I/O operations
-6. **Add type hints** to all functions
-7. **Write comprehensive docstrings**
 
 ## CI/CD
 
@@ -288,10 +249,10 @@ The project uses structured logging with rotating file handler:
 **Custom logger**:
 ```python
 import logging
-from adk_docker_uv.utils.log_config import setup_logging
+from adk_docker_uv.utils import setup_file_logging
 
 # Setup logging with custom level
-setup_logging(log_level=logging.DEBUG)
+setup_file_logging(log_level="DEBUG")
 
 # Get logger
 logger = logging.getLogger(__name__)

@@ -59,8 +59,5 @@ build/
 .DS_Store
 Thumbs.db
 
-# Data directory (provided via volume mount)
-data/
-
 # Scripts not needed in production
 tests/

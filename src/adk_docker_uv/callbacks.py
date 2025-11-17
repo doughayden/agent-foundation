@@ -1,8 +1,8 @@
-"""Agent lifecycle callback functions for monitoring, context loading, and memory.
+"""Agent lifecycle callback functions for monitoring and memory.
 
 This module provides callback functions that execute at various stages of the
-agent lifecycle. These callbacks enable comprehensive logging, automatic context
-loading, and session memory persistence.
+agent lifecycle. These callbacks enable comprehensive logging and session
+memory persistence.
 """
 
 import logging
@@ -28,13 +28,8 @@ async def add_session_to_memory(callback_context: CallbackContext) -> None:
     """
     # TODO: use a public attribute (instead of _invocation_context) when available
     logger.debug("*** Started add_session_to_memory callback ***")
-    if (
-        hasattr(callback_context, "_invocation_context")
-        and callback_context._invocation_context  # pyright: ignore[reportPrivateUsage]
-    ):
-        invocation_context = (
-            callback_context._invocation_context  # pyright: ignore[reportPrivateUsage]
-        )
+    invocation_context = getattr(callback_context, "_invocation_context", None)  # pyright: ignore[reportPrivateUsage]
+    if invocation_context:
         if invocation_context.memory_service:
             logger.debug(
                 "Adding session to memory using "
@@ -58,7 +53,7 @@ class LoggingCallbacks:
     """Provides comprehensive logging callbacks for ADK agent lifecycle events.
 
     This class groups all agent lifecycle callback methods together and supports
-    logger injection following the project's strategy pattern. All callbacks are
+    logger injection following the strategy pattern. All callbacks are
     non-intrusive and return None.
 
     Attributes:

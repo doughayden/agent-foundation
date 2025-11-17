@@ -264,7 +264,7 @@ COPY --from=builder --chown=app:app /app .
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
-    DATA_PATH=/app/data \
+    AGENT_DIR=/app/src \
     HOST=0.0.0.0
 ```
 **What:** Configure runtime environment
@@ -275,8 +275,42 @@ ENV VIRTUAL_ENV=/app/.venv \
 | `VIRTUAL_ENV=/app/.venv` | Tell Python which venv to use |
 | `PATH="/app/.venv/bin:$PATH"` | Make venv binaries available (python, uvicorn) |
 | `PYTHONUNBUFFERED=1` | Don't buffer stdout/stderr (better logs in Docker) |
-| `DATA_PATH=/app/data` | Default data directory (overridable) |
 | `HOST=0.0.0.0` | Explicitly bind all interfaces for containers (server.py defaults to localhost) |
+| `AGENT_DIR=/app/src` | Override agent directory path for ADK (see AGENT_DIR section below) |
+
+---
+
+### AGENT_DIR Configuration
+
+**The Problem:**
+
+When the package is installed in **non-editable mode** (Docker), the source code is copied to the virtual environment's site-packages:
+- Local (editable): `Path(__file__)` → `/path/to/project/src/adk_docker_uv/server.py`
+- Docker (non-editable): `Path(__file__)` → `/app/.venv/lib/python3.13/site-packages/adk_docker_uv/server.py`
+
+Using `Path(__file__).parent.parent` for `AGENT_DIR`:
+- Local: Resolves to `/path/to/project/src/` ✅ Correct (contains only adk_docker_uv/)
+- Docker: Resolves to `/app/.venv/lib/python3.13/site-packages/` ❌ Wrong (contains all packages)
+
+This causes the ADK web UI to show all installed packages (.dist-info directories) instead of just our agent.
+
+**The Solution:**
+
+```python
+# In server.py - configurable with smart default
+AGENT_DIR = os.getenv("AGENT_DIR", str(Path(__file__).parent.parent))
+```
+
+```dockerfile
+# In Dockerfile - override for Docker environment
+ENV AGENT_DIR=/app/src
+```
+
+**Why this works:**
+- Local dev: No `AGENT_DIR` env var → uses `Path(__file__).parent.parent` → `/path/to/project/src/` ✅
+- Docker: `AGENT_DIR=/app/src` env var set → overrides default → `/app/src/` ✅
+- Both point to directory containing only the agent source code
+- Configurable via environment variable for other deployment scenarios
 
 ---
 

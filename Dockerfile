@@ -49,7 +49,7 @@ COPY --from=builder --chown=app:app /app .
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
-    DATA_PATH=/app/data \
+    AGENT_DIR=/app/src \
     HOST=0.0.0.0
 
 # Switch to non-root user

@@ -7,7 +7,7 @@ import pytest
 # Import mock classes from conftest
 from conftest import MockState, MockToolContext
 
-from adk_docker_uv.agent.tools import example_tool
+from adk_docker_uv.tools import example_tool
 
 
 class TestExampleTool:
