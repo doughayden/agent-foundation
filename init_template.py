@@ -473,7 +473,7 @@ def print_summary(config: TemplateConfig, dry_run: bool = False) -> None:
     print(f"  • Repo name: {ORIGINAL_REPO_NAME} → {config.repo_name}")
     print(f"  • GitHub owner: {ORIGINAL_GITHUB_OWNER} → {config.github_owner}")
     if config.github_user:
-        print(f"  • GitHub user: {ORIGINAL_GITHUB_OWNER} → {config.github_user}")
+        print(f"  • CODEOWNERS: @{ORIGINAL_GITHUB_OWNER} → @{config.github_user}")
     print(f"  • Directory: src/{ORIGINAL_PACKAGE_NAME}/ → src/{config.package_name}/")
     print("  • Updated configuration and test files")
     print("  • Updated GitHub Actions badge URLs")
