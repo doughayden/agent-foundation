@@ -24,7 +24,7 @@ uv run init_template.py --dry-run  # Preview changes
 uv run init_template.py            # Apply changes
 ```
 
-Script renames package, updates config/docs, updates GitHub Actions badges, resets version to 0.1.0, resets changelog. Creates audit log at `init_template_results.md` (gitignored).
+Script renames package, updates config/docs, updates GitHub Actions badges, updates CODEOWNERS with your GitHub username (requires `gh` CLI), resets version to 0.1.0, resets changelog. Creates audit log at `init_template_results.md` (gitignored).
 
 ### Running Locally
 

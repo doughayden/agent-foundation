@@ -16,6 +16,8 @@ uv run init_template.py
 
 This renames the package, updates configuration files, and resets the changelog. Review changes with `git status`, then commit.
 
+**Note:** The script uses `gh` CLI to detect your GitHub username for CODEOWNERS. Install with `brew install gh` (macOS) or see [GitHub CLI docs](https://cli.github.com/). If unavailable, CODEOWNERS will not be updated (script continues with a warning).
+
 ## Quickstart
 
 **1. Authentication** (one-time setup):
