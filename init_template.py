@@ -460,9 +460,9 @@ def main() -> NoReturn:
 
         # Define replacements
         replacements = {
+            f"https://github.com/{ORIGINAL_GITHUB_OWNER}/{ORIGINAL_REPO_NAME}/": f"https://github.com/{config.github_owner}/{config.repo_name}/",
             ORIGINAL_PACKAGE_NAME: config.package_name,
             ORIGINAL_REPO_NAME: config.repo_name,
-            f"https://github.com/{ORIGINAL_GITHUB_OWNER}/{ORIGINAL_REPO_NAME}/": f"https://github.com/{config.github_owner}/{config.repo_name}/",
         }
 
         # Files to update (paths relative to repo root)
