@@ -13,6 +13,7 @@ from .utils import parse_json_list_env, setup_file_logging
 # Load environment variables
 load_dotenv(override=True)
 
+# Use .resolve() to handle symlinks and ensure absolute path across environments
 AGENT_DIR = os.getenv("AGENT_DIR", str(Path(__file__).resolve().parent.parent))
 AGENT_ENGINE_URI = os.getenv("AGENT_ENGINE_URI")
 ARTIFACT_SERVICE_URI = os.getenv("ARTIFACT_SERVICE_URI")

@@ -8,16 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- CODEOWNERS file with automatic username replacement during init
+- CODEOWNERS file with fresh template replacement during init
 - Init script now updates GitHub Actions badge URLs to point to new repository
 - Init script now resets version to 0.1.0 in pyproject.toml
-- Init script detects authenticated GitHub user via gh CLI for CODEOWNERS
+- Init script replaces CODEOWNERS with fresh template (no external dependencies required)
 
 ### Changed
 - Init script now removes template author from pyproject.toml (developers no longer inherit template author info)
 - Refactored GitHub info parsing to use tuples directly (removed dict conversion step)
 - Made `github_owner` required in TemplateConfig (parsing is all-or-nothing)
 - Improved agent directory discovery in server.py with file-based path resolution (using `.resolve()` for absolute paths and symlink resolution) and environment variable override
+- CODEOWNERS replacement approach: complete file replacement instead of pattern-based substitution (safer, simpler, works with org-owned templates)
 
 ## [0.2.0] - 2025-11-17
 
