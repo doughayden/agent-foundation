@@ -36,7 +36,7 @@ See [ADK docs](https://google.github.io/adk-docs/get-started/quickstart/#set-up-
 **Option A: Direct (uv)**
 ```bash
 uv run server
-# Server runs on http://localhost:8000 (API-only by default)
+# Server runs on http://127.0.0.1:8000 (API-only by default)
 # Set SERVE_WEB_INTERFACE=true in .env to enable the web UI
 ```
 

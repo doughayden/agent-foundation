@@ -14,22 +14,22 @@ class TestParseJsonListEnv:
     def test_parse_valid_json_list_from_env(self) -> None:
         """Test parsing valid JSON list from environment variable."""
         with patch.dict(os.environ, {"TEST_ORIGINS": '["https://example.com"]'}):
-            result = parse_json_list_env("TEST_ORIGINS", '["http://localhost"]')
+            result = parse_json_list_env("TEST_ORIGINS", '["http://127.0.0.1"]')
             assert result == ["https://example.com"]
 
     def test_parse_uses_default_when_env_not_set(self) -> None:
         """Test that default is used when environment variable not set."""
         with patch.dict(os.environ, {}, clear=True):
-            result = parse_json_list_env("MISSING_VAR", '["http://localhost"]')
-            assert result == ["http://localhost"]
+            result = parse_json_list_env("MISSING_VAR", '["http://127.0.0.1"]')
+            assert result == ["http://127.0.0.1"]
 
     def test_parse_falls_back_on_invalid_json(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Test fallback to default on invalid JSON."""
         with patch.dict(os.environ, {"BAD_JSON": "not valid json"}):
-            result = parse_json_list_env("BAD_JSON", '["http://localhost"]')
-            assert result == ["http://localhost"]
+            result = parse_json_list_env("BAD_JSON", '["http://127.0.0.1"]')
+            assert result == ["http://127.0.0.1"]
 
             # Verify warning was printed
             captured = capsys.readouterr()
@@ -41,8 +41,8 @@ class TestParseJsonListEnv:
     ) -> None:
         """Test fallback to default when JSON is not a list."""
         with patch.dict(os.environ, {"NOT_LIST": '{"key": "value"}'}):
-            result = parse_json_list_env("NOT_LIST", '["http://localhost"]')
-            assert result == ["http://localhost"]
+            result = parse_json_list_env("NOT_LIST", '["http://127.0.0.1"]')
+            assert result == ["http://127.0.0.1"]
 
             # Verify warning was printed
             captured = capsys.readouterr()
@@ -68,12 +68,12 @@ class TestParseJsonListEnv:
     def test_parse_complex_list(self) -> None:
         """Test parsing complex JSON list with multiple origins."""
         origins = (
-            '["http://localhost", "https://example.com", "http://192.168.1.1:3000"]'
+            '["http://127.0.0.1", "https://example.com", "http://192.168.1.1:3000"]'
         )
         with patch.dict(os.environ, {"COMPLEX_ORIGINS": origins}):
-            result = parse_json_list_env("COMPLEX_ORIGINS", '["http://localhost"]')
+            result = parse_json_list_env("COMPLEX_ORIGINS", '["http://127.0.0.1"]')
             assert result == [
-                "http://localhost",
+                "http://127.0.0.1",
                 "https://example.com",
                 "http://192.168.1.1:3000",
             ]

@@ -20,9 +20,10 @@ AGENT_ENGINE_URI = f"agentengine://{AGENT_ENGINE}" if AGENT_ENGINE else None
 ARTIFACT_SERVICE_URI = os.getenv("ARTIFACT_SERVICE_URI")
 ALLOWED_ORIGINS = parse_json_list_env(
     env_key="ALLOWED_ORIGINS",
-    default='["http://localhost", "http://localhost:8000"]',
+    default='["http://127.0.0.1", "http://127.0.0.1:8000"]',
 )
 SERVE_WEB_INTERFACE = os.getenv("SERVE_WEB_INTERFACE", "false").lower() == "true"
+RELOAD_AGENTS = os.getenv("RELOAD_AGENTS", "false").lower() == "true"
 
 app: FastAPI = get_fast_api_app(
     agents_dir=AGENT_DIR,
@@ -31,6 +32,7 @@ app: FastAPI = get_fast_api_app(
     memory_service_uri=AGENT_ENGINE_URI,
     allow_origins=ALLOWED_ORIGINS,
     web=SERVE_WEB_INTERFACE,
+    reload_agents=RELOAD_AGENTS,
 )
 
 
@@ -60,10 +62,11 @@ def main() -> None:
         AGENT_DIR: Path to agent source directory (default: auto-detect from __file__)
         LOG_LEVEL: Logging verbosity (DEBUG, INFO, WARNING, ERROR)
         SERVE_WEB_INTERFACE: Whether to serve the web interface (true/false)
+        RELOAD_AGENTS: Whether to reload agents on file changes (true/false)
         AGENT_ENGINE: Agent Engine instance for session and memory
         ARTIFACT_SERVICE_URI: GCS bucket for artifact storage
         ALLOWED_ORIGINS: JSON array string of allowed CORS origins
-        HOST: Server host (default: localhost, set to 0.0.0.0 for containers)
+        HOST: Server host (default: 127.0.0.1, set to 0.0.0.0 for containers)
         PORT: Server port (default: 8000)
     """
     # Use /tmp for logs in Cloud Run (read-only filesystem), .log for local dev
@@ -72,7 +75,7 @@ def main() -> None:
 
     uvicorn.run(
         app,
-        host=os.getenv("HOST", "localhost"),
+        host=os.getenv("HOST", "127.0.0.1"),
         port=int(os.getenv("PORT", 8000)),
     )
 

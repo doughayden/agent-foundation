@@ -46,11 +46,15 @@ WORKDIR /app
 COPY --from=builder --chown=app:app /app .
 
 # Set environment to use virtual environment
+# AGENT_DIR=/app/src: Use source code instead of installed package (.venv)
+# HOST=0.0.0.0: Bind to all interfaces for container networking
+# PORT=8000: Explicitly set for consistent deployment
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     AGENT_DIR=/app/src \
-    HOST=0.0.0.0
+    HOST=0.0.0.0 \
+    PORT=8000
 
 # Switch to non-root user
 USER app

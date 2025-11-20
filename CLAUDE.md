@@ -66,7 +66,7 @@ cp .env.example .env
 #   - GOOGLE_API_KEY for Gemini Developer API
 #   - GOOGLE_CLOUD_PROJECT + GOOGLE_CLOUD_LOCATION for Vertex AI
 
-# Run server (default: API-only at http://localhost:8000)
+# Run server (default: API-only at http://127.0.0.1:8000)
 uv run server
 
 # Enable web UI (set SERVE_WEB_INTERFACE=true in .env)
@@ -251,9 +251,9 @@ SERVE_WEB_INTERFACE=true
 # Logging level (default: INFO)
 LOG_LEVEL=DEBUG
 
-# Server configuration (defaults: HOST=localhost, PORT=8000)
+# Server configuration (defaults: HOST=127.0.0.1, PORT=8000)
 # Note: Dockerfile overrides HOST=0.0.0.0 for container networking
-HOST=localhost
+HOST=127.0.0.1
 PORT=8000
 
 # Override default agent model (default: gemini-2.5-flash)
@@ -269,7 +269,7 @@ ARTIFACT_SERVICE_URI=gs://your-artifact-storage-bucket
 # CORS allowed origins (JSON array string)
 # Parsed with validation and fallback to localhost defaults
 # Invalid JSON falls back to default with warning
-ALLOWED_ORIGINS='["https://your-domain.com", "http://localhost:3000"]'
+ALLOWED_ORIGINS='["https://your-domain.com", "http://127.0.0.1:3000"]'
 ```
 
 ## Dependency Management
@@ -429,7 +429,7 @@ from adk_docker_uv.utils import parse_json_list_env
 # Parses JSON array with validation and fallback
 origins = parse_json_list_env(
     env_key="ALLOWED_ORIGINS",
-    default='["http://localhost"]',
+    default='["http://127.0.0.1"]',
 )
 ```
 
