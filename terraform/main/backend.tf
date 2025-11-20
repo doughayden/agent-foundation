@@ -1,4 +1,4 @@
-# Using local state during initial development. Migrate to GCS backend for production.
+# Using local state during initial development and will to GCS backend for production
 # terraform {
 #   backend "gcs" {
 #     # bucket = "terraform-state-your-project-id"

@@ -3,8 +3,9 @@ data "dotenv" "adk" {
 }
 
 data "terraform_remote_state" "main" {
+  # Using local state during initial development and will to GCS backend for production
   backend   = "local"
-  workspace = "sandbox"
+  workspace = terraform.workspace
 }
 
 # Get required Terraform variables from the project .env file unless explicitly passes as a root module input
