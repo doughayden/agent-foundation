@@ -15,7 +15,8 @@ load_dotenv(override=True)
 
 # Use .resolve() to handle symlinks and ensure absolute path across environments
 AGENT_DIR = os.getenv("AGENT_DIR", str(Path(__file__).resolve().parent.parent))
-AGENT_ENGINE_URI = os.getenv("AGENT_ENGINE_URI")
+AGENT_ENGINE = os.getenv("AGENT_ENGINE")
+AGENT_ENGINE_URI = f"agentengine://{AGENT_ENGINE}" if AGENT_ENGINE else None
 ARTIFACT_SERVICE_URI = os.getenv("ARTIFACT_SERVICE_URI")
 ALLOWED_ORIGINS = parse_json_list_env(
     env_key="ALLOWED_ORIGINS",
@@ -59,7 +60,7 @@ def main() -> None:
         AGENT_DIR: Path to agent source directory (default: auto-detect from __file__)
         LOG_LEVEL: Logging verbosity (DEBUG, INFO, WARNING, ERROR)
         SERVE_WEB_INTERFACE: Whether to serve the web interface (true/false)
-        AGENT_ENGINE_URI: Agent Engine instance for session and memory
+        AGENT_ENGINE: Agent Engine instance for session and memory
         ARTIFACT_SERVICE_URI: GCS bucket for artifact storage
         ALLOWED_ORIGINS: JSON array string of allowed CORS origins
         HOST: Server host (default: localhost, set to 0.0.0.0 for containers)

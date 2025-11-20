@@ -40,8 +40,8 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v3
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Configure Docker for Artifact Registry
         run: |
@@ -51,7 +51,7 @@ jobs:
         id: meta
         run: |
           # Generate image tags
-          REGISTRY="${{ vars.ARTIFACT_REGISTRY_URL }}"
+          REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
           IMAGE_NAME="${{ vars.IMAGE_NAME }}"
           SHA_SHORT=$(git rev-parse --short HEAD)
 
@@ -74,8 +74,8 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=registry,ref=${{ vars.ARTIFACT_REGISTRY_URL }}/${{ vars.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ vars.ARTIFACT_REGISTRY_URL }}/${{ vars.IMAGE_NAME }}:buildcache,mode=max
+          cache-from: type=registry,ref=${{ vars.ARTIFACT_REGISTRY_URI }}/${{ vars.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ vars.ARTIFACT_REGISTRY_URI }}/${{ vars.IMAGE_NAME }}:buildcache,mode=max
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -88,4 +88,4 @@ jobs:
           echo "📦 Image tags:"
           echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' | sed 's/^/  - /'
           echo ""
-          echo "🔗 Artifact Registry URL: ${{ vars.ARTIFACT_REGISTRY_URL }}"
+          echo "🔗 Artifact Registry URI: ${{ vars.ARTIFACT_REGISTRY_URI }}"
