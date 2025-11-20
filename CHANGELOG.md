@@ -11,12 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CODEOWNERS file with fresh template replacement during init
 - Init script now updates GitHub Actions badge URLs to point to new repository
 - Init script now resets version to 0.1.0 in pyproject.toml
+- Terraform infrastructure-as-code for GCP and GitHub configuration
+- `terraform/bootstrap/` module for initial infrastructure (Workload Identity Federation, Artifact Registry, Reasoning Engine)
+- `terraform/main/` module for Cloud Run deployment
+- Automated GitHub Actions Variables creation via Terraform
+- Artifact Registry cleanup policies (age-based deletion with version count protection and buildcache exemption)
+- Required Terraform configuration entries in `.env.example` (AGENT_NAME, GITHUB_REPO_NAME, GITHUB_REPO_OWNER)
 
 ### Changed
 - Init script now removes template author from pyproject.toml (developers no longer inherit template author info)
 - Refactored GitHub info parsing to use tuples directly (removed dict conversion step)
 - Made `github_owner` required in TemplateConfig (parsing is all-or-nothing)
 - Improved agent directory discovery in server.py with file-based path resolution (using `.resolve()` for absolute paths and symlink resolution) and environment variable override
+- GitHub Actions workflows now use Variables instead of Secrets for non-sensitive identifiers (GCP_PROJECT_ID, GCP_WORKLOAD_IDENTITY_PROVIDER)
+- Renamed `ARTIFACT_REGISTRY_URL` to `ARTIFACT_REGISTRY_URI` for accuracy
+- Simplified `AGENT_ENGINE_URI` to `AGENT_ENGINE` (URI prefix `agentengine://` now added in code)
 
 ## [0.2.0] - 2025-11-17
 
