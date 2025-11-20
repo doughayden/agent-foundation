@@ -48,7 +48,7 @@ resource "google_project_iam_member" "github" {
 resource "google_artifact_registry_repository" "cloud_run" {
   repository_id          = local.agent_name
   format                 = "DOCKER"
-  description            = "${local.agent_name} Cloud Run Docker repository"
+  description            = "Cloud Run Docker repository: ${local.agent_name}"
   cleanup_policy_dry_run = false
 
   # Delete untagged images (intermediate layers when tags are reused)

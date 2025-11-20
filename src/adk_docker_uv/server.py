@@ -66,7 +66,9 @@ def main() -> None:
         HOST: Server host (default: localhost, set to 0.0.0.0 for containers)
         PORT: Server port (default: 8000)
     """
-    setup_file_logging(log_level=os.getenv("LOG_LEVEL", "INFO"))
+    # Use /tmp for logs in Cloud Run (read-only filesystem), .log for local dev
+    log_dir = "/tmp" if os.getenv("K_SERVICE") else ".log"  # noqa: S108
+    setup_file_logging(log_level=os.getenv("LOG_LEVEL", "INFO"), log_dir=log_dir)
 
     uvicorn.run(
         app,

@@ -54,6 +54,11 @@ resource "google_cloud_run_v2_service" "app" {
     containers {
       image = var.docker_image
 
+      ports {
+        name           = "http1"
+        container_port = 8000
+      }
+
       resources {
         limits = {
           cpu    = "1"
@@ -69,7 +74,7 @@ resource "google_cloud_run_v2_service" "app" {
         period_seconds    = 180
         failure_threshold = 1
         tcp_socket {
-          port = 8080
+          port = 8000
         }
       }
 
