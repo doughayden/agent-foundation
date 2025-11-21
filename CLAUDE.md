@@ -354,11 +354,11 @@ The project includes two Terraform modules for infrastructure management:
 **Key features:**
 - Environment variables sourced from `.env`
 - Request-based billing (cpu_idle = true)
-- Configurable scaling (min/max instances)
+- Service-level scaling configuration with max instances (100) and configurable min instances
 - Health probes with TCP socket check on port 8000
 - Production safety: `RELOAD_AGENTS` explicitly set to false
 
-**Required variable:** `docker_image` - Image URI from Artifact Registry (typically set via CI/CD or command line)
+**Optional variable:** `docker_image` - Image URI from Artifact Registry (nullable with default for infrastructure-only applies)
 
 ### Terraform Naming Conventions
 
@@ -384,9 +384,11 @@ terraform -chdir=terraform/main plan -var="docker_image=<registry-uri>/<image>:t
 terraform -chdir=terraform/main apply -var="docker_image=<registry-uri>/<image>:tag"
 ```
 
-**Current workspaces:** Both `bootstrap` and `main` modules use `sandbox` workspace.
+**Current workspaces:** Both `bootstrap` and `main` modules use `sandbox` workspace (example only - use any workspace name).
 
-**State management:** Backend configs are commented out by default. For production, uncomment `backend.tf` and configure GCS bucket for state storage.
+**Docker image recycling pattern:** The `main` module reads its own prior state (`data.terraform_remote_state.main`) to "recycle" the `docker_image` value from the last deployment. This allows infrastructure-only updates (scaling, env vars) without requiring the image URI to be passed explicitly. The `docker_image` variable uses `coalesce()` to fall back to the previous deployment's image if not provided.
+
+**State management:** Backend configs are commented out by default (uses local state). For production, uncomment `backend.tf` and configure GCS bucket for state storage. When switching to GCS backend, also update the `data.terraform_remote_state.main` backend configuration to match.
 
 ## Project-Specific Patterns
 
