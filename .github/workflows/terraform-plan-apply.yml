@@ -11,7 +11,7 @@ on:
         description: 'Terraform workspace'
         required: false
         type: string
-        default: 'sandbox'
+        default: 'default'
       terraform_action:
         description: 'Terraform action (plan or apply)'
         required: false
@@ -27,8 +27,8 @@ on:
         description: 'Terraform workspace'
         required: true
         type: choice
-        options: [sandbox, staging, production]
-        default: 'sandbox'
+        options: [default, dev, stage, prod]
+        default: 'default'
       terraform_action:
         description: 'Terraform action'
         required: true
@@ -137,7 +137,8 @@ jobs:
                 success: '✅',
                 failure: '❌',
                 skipped: '⏭️',
-                cancelled: '🚫'
+                cancelled: '🚫',
+                timed_out: '⏱️'
               };
               return icons[outcome] || '❓';
             };

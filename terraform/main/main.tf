@@ -28,7 +28,7 @@ locals {
     ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS = coalesce(var.adk_suppress_experimental_feature_warnings, "TRUE")
     AGENT_ENGINE                               = coalesce(var.agent_engine, google_vertex_ai_reasoning_engine.session_and_memory.id)
     AGENT_NAME                                 = var.agent_name
-    ALLOW_ORIGINS                              = coalesce(var.allow_origins, jsonencode(["http://127.0.0.1"]))
+    ALLOW_ORIGINS                              = coalesce(var.allow_origins, jsonencode(["http://127.0.0.1", "http://127.0.0.1:8000"]))
     ARTIFACT_SERVICE_URI                       = coalesce(var.artifact_service_uri, google_storage_bucket.artifact_service.url)
     GOOGLE_CLOUD_LOCATION                      = var.location
     GOOGLE_CLOUD_PROJECT                       = var.project

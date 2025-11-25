@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Reusable CI/CD workflow pattern with three workflows: `ci-cd.yml` (orchestrator), `docker-build.yml` (multi-arch builds), `terraform-plan-apply.yml` (infrastructure deployment)
+- Smart image tagging strategy: PRs tagged as `pr-{number}-{sha}`, main branch tagged as `{sha}`, `latest`, and `{version}` (if git tag exists)
+- PR automation with Terraform plan posted as comment on pull requests
+- Workspace-based Terraform deployment supporting environment isolation (default/dev/stage/prod)
+- GCS bucket for main module's remote state created by bootstrap module
+- Vertex AI Reasoning Engine provisioning in main Terraform module for session/memory persistence
+- GCS bucket for artifact storage in main Terraform module
+- Docker image recycling pattern with nullable `docker_image` variable for infrastructure-only updates
+- `docs/cicd-setup.md` documenting complete CI/CD workflow automation
+- `docs/terraform-infrastructure.md` documenting bootstrap and main module architecture
+- `docs/IMPLEMENTATION_PLAN.md` providing detailed implementation guide
+- `docs/production-environment-strategy.md` for future multi-environment planning
+
+### Changed
+- Changed default Terraform workspace from `sandbox` to `default` in CI/CD workflows to use Terraform's built-in default workspace while maintaining extensibility for multi-environment deployments (dev/stage/prod)
+- Reorganized `.env.example` with purpose-based grouping (Required, GitHub CI/CD, Optional) and corrected variable names
+- Bootstrap module now creates GCS bucket for main module's remote state and adds storage.objectUser role for state bucket access
+- Main module now uses remote state in GCS (bucket created by bootstrap) with workspace isolation
+- Cloud Run deployment now integrates with Vertex AI Reasoning Engine via `AGENT_ENGINE` environment variable
+
+### Removed
+- `docs/github-docker-setup.md` (replaced by comprehensive cicd-setup.md)
+
+### Deprecated
+- `.github/workflows/docker-build-push.yml` (preserved for reference, superseded by reusable workflow pattern)
+
+### Fixed
+- Documented IAM bucket access limitation in artifact storage bucket variable (project-level storage roles only work within same GCP project, cross-project access requires additional configuration)
+
+### Documentation
+- Added inline comment justifying `roles/iam.serviceAccountUser` role requirement for Cloud Run service account attachment during deployment
+- Added "Terraform Variable Overrides" section in terraform-infrastructure.md documenting GitHub Actions Variables pattern
+- Added "IAM and Permissions Model" section in terraform-infrastructure.md documenting project-level IAM assumptions and cross-project limitations
+- Documented `coalesce()` usage for empty string vs null handling in Terraform variables
+
 ## [0.3.0] - 2025-11-20
 
 ### Added

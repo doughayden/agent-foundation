@@ -49,7 +49,16 @@ variable "agent_engine" {
 }
 
 variable "artifact_service_uri" {
-  description = "Artifact service bucket URI ('gs://your-bucket-name', optional override)"
+  description = <<-EOT
+    Artifact service bucket URI ('gs://your-bucket-name', optional override).
+
+    IMPORTANT: External buckets must be in the same GCP project as this deployment.
+    Project-level IAM roles (storage.bucketViewer, storage.objectUser) only grant
+    access to buckets within the project. Cross-project bucket access requires
+    additional IAM configuration outside this module.
+
+    Omit this variable to use the auto-created bucket (recommended).
+  EOT
   type        = string
   nullable    = true
   default     = null

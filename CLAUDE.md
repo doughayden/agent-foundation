@@ -267,6 +267,8 @@ ARTIFACT_SERVICE_URI=gs://your-artifact-storage-bucket
 # CORS allowed origins (JSON array string)
 # Parsed with validation and fallback to localhost defaults
 # Invalid JSON falls back to default with warning
+# Default (backward compatible for local development): ["http://127.0.0.1", "http://127.0.0.1:8000"]
+# Set via TF_VAR_allow_origins in CI/CD to override
 ALLOW_ORIGINS='["https://your-domain.com", "http://127.0.0.1:3000"]'
 ```
 
@@ -383,18 +385,69 @@ export TF_VAR_agent_name="adk-docker-uv"
 export TF_VAR_terraform_state_bucket="terraform-state-..."
 export TF_VAR_docker_image="registry/image:tag"  # nullable
 terraform -chdir=terraform/main init -backend-config="bucket=${TF_VAR_terraform_state_bucket}"
-terraform -chdir=terraform/main workspace select --or-create sandbox
+terraform -chdir=terraform/main workspace select --or-create default
 terraform -chdir=terraform/main plan
 terraform -chdir=terraform/main apply
 ```
 
 **Workspaces:**
 - Bootstrap: Uses `default` workspace (workspaces not recommended for local state)
-- Main: Uses workspaces for environment isolation (sandbox/staging/production)
+- Main: Uses workspaces for environment isolation (default/dev/stage/prod)
 
 **Key differences:**
 - Bootstrap: Local state (no backend.tf), reads `.env`, run locally
 - Main: Remote state in GCS, TF_VAR_* inputs, runs in CI/CD
+
+### Terraform Variable Overrides (CI/CD Runtime Configuration)
+
+**Pattern:** GitHub Actions maps workflow Variables to `TF_VAR_*` environment variables passed to Terraform.
+
+**Key insight - Empty string handling:**
+- GitHub Actions defaults unset Variables to empty string (`""`)
+- Terraform `nullable=true` treats `""` as null
+- `coalesce()` function applies sensible defaults when variables are null
+
+**Available runtime configuration overrides:**
+These variables can be set in GitHub Actions when needed for production configuration:
+
+- `TF_VAR_log_level`: Override default LOG_LEVEL for Cloud Run service
+- `TF_VAR_serve_web_interface`: Enable/disable web UI for running service
+- `TF_VAR_allow_origins`: Override CORS origins (JSON array string) - restores default `["http://127.0.0.1", "http://127.0.0.1:8000"]` if unset
+- `TF_VAR_root_agent_model`: Change agent model at deployment time
+- `TF_VAR_artifact_service_uri`: Override GCS bucket for artifact storage
+- `TF_VAR_agent_engine`: Override Vertex AI Reasoning Engine resource ID
+
+**Backward compatibility note:** The `ALLOW_ORIGINS` default is intentionally set to maintain local development compatibility. Changing this requires explicit override via `TF_VAR_allow_origins`.
+
+See `docs/terraform-infrastructure.md` section "Terraform Variable Overrides" for detailed examples.
+
+### IAM and Permissions Model
+
+**Project-level IAM assumption:**
+This deployment assumes a dedicated GCP project per deployment environment. All Terraform-provisioned resources are in the same GCP project. This simplifies IAM configuration and makes resource quotas and billing transparent.
+
+**Cross-project bucket access limitation:**
+Storage access is controlled by project-level IAM roles (e.g., `roles/storage.bucketViewer`, `roles/storage.objectUser`). These roles only grant access to buckets in the same project. To use an artifact bucket in a different GCP project:
+- The IAM binding must be configured outside the Terraform module
+- The service account needs explicit cross-project IAM roles on the external bucket
+- Use `ARTIFACT_SERVICE_URI` variable to reference the external bucket
+
+**App service account roles** (created by main module):
+- `roles/aiplatform.user`: Access Vertex AI Reasoning Engine (session persistence)
+- `roles/storage.bucketViewer`: List buckets in project
+- `roles/storage.objectUser`: Read/write to auto-created artifact bucket (same project only)
+- `roles/logging.logWriter`: Write logs to Cloud Logging
+- `roles/cloudtrace.agent`: Write traces to Cloud Trace
+- `roles/telemetry.tracesWriter`: Write telemetry traces
+- `roles/serviceusage.serviceUsageConsumer`: API usage tracking
+
+**GitHub Actions WIF roles** (created by bootstrap module):
+- `roles/aiplatform.user`: Deploy and manage Vertex AI resources
+- `roles/artifactregistry.writer`: Push Docker images to Artifact Registry
+- `roles/iam.serviceAccountUser`: Required for Cloud Run to attach service accounts during deployment
+- `roles/storage.admin`: Manage GCS buckets and Terraform state
+
+**Documentation:** See `docs/terraform-infrastructure.md` section "IAM and Permissions Model" for security implications and cross-project configuration guidance.
 
 ## Project-Specific Patterns
 
@@ -488,5 +541,9 @@ Container runs with `-registry` suffix to distinguish from locally-built images.
 - **docs/development.md**: Development workflows, code quality, testing
 - **docs/docker-compose-workflow.md**: Hot reloading and local development
 - **docs/dockerfile-strategy.md**: Multi-stage build architecture and rationale
-- **docs/terraform-infrastructure.md**: Terraform bootstrap and main module setup
+- **docs/terraform-infrastructure.md**: Comprehensive Terraform setup guide
+  - "Bootstrap Module Setup": One-time infrastructure creation (WIF, Artifact Registry, state bucket)
+  - "Main Module Setup": Cloud Run deployment with Agent Engine and artifact storage
+  - "Terraform Variable Overrides": Runtime configuration options via GitHub Actions
+  - "IAM and Permissions Model": Service account roles and cross-project access patterns
 - **docs/cicd-setup.md**: CI/CD workflow automation (build and deployment)

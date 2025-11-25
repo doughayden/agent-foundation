@@ -31,8 +31,8 @@ on:
         description: 'Terraform workspace'
         required: true
         type: choice
-        options: [sandbox, staging, production]
-        default: 'sandbox'
+        options: [default, dev, stage, prod]
+        default: 'default'
       terraform_action:
         description: 'Terraform action'
         required: true
@@ -107,6 +107,6 @@ jobs:
     uses: ./.github/workflows/terraform-plan-apply.yml
     with:
       docker_image: ${{ needs.build.outputs.image_uri }}
-      workspace: ${{ inputs.workspace || 'sandbox' }}
+      workspace: ${{ inputs.workspace || 'default' }}
       terraform_action: ${{ github.event_name == 'pull_request' && 'plan' || inputs.terraform_action || 'apply' }}
     secrets: inherit
