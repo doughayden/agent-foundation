@@ -212,3 +212,6 @@ sessions.db
 
 # Template initialization output files
 init_template_*.md
+
+# Ephemeral github actions creds
+gha-creds-*.json
