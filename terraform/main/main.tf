@@ -74,8 +74,17 @@ resource "google_storage_bucket" "artifact_service" {
     enabled = true
   }
 }
+
 resource "google_storage_bucket_iam_member" "artifact_service" {
   bucket = google_storage_bucket.artifact_service.name
+  role   = "roles/storage.objectUser"
+  member = google_service_account.app.member
+}
+
+# Conditionally grant access to artifact service URI override bucket
+resource "google_storage_bucket_iam_member" "artifact_service_override" {
+  count  = var.artifact_service_uri != null ? 1 : 0
+  bucket = regex("^gs://([^/]+)", var.artifact_service_uri)[0]
   role   = "roles/storage.objectUser"
   member = google_service_account.app.member
 }

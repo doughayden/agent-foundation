@@ -70,14 +70,13 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.14.0"
+          terraform_version: "~> 1.14.0"
           terraform_wrapper: false  # Better output handling
 
       - name: Terraform Format Check
         id: fmt
         working-directory: terraform/main
         run: terraform fmt -check -recursive
-        continue-on-error: true
 
       - name: Terraform Init
         id: init
@@ -89,21 +88,26 @@ jobs:
       - name: Terraform Validate
         id: validate
         working-directory: terraform/main
-        run: terraform validate -no-color
+        run: |
+          OUTPUT=$(terraform validate -no-color 2>&1)
+          echo "stdout<<EOF" >> $GITHUB_OUTPUT
+          echo "$OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Terraform Plan
         id: plan
         working-directory: terraform/main
         run: |
           terraform workspace select --or-create ${{ inputs.workspace }}
-          terraform plan -no-color -input=false -out=tfplan
+          OUTPUT=$(terraform plan -no-color -input=false -out=tfplan 2>&1)
+          echo "stdout<<EOF" >> $GITHUB_OUTPUT
+          echo "$OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
         continue-on-error: true
 
       - name: Comment PR with Plan
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v8
-        env:
-          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -112,8 +116,8 @@ jobs:
             #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
             <details><summary>Validation Output</summary>
 
-            \`\`\`\n
-            ${{ steps.validate.outputs.stdout }}
+            \`\`\`
+            ${{ steps.validate.outputs.stdout || 'No validation output' }}
             \`\`\`
 
             </details>
@@ -122,8 +126,8 @@ jobs:
 
             <details><summary>Show Plan</summary>
 
-            \`\`\`\n
-            ${process.env.PLAN}
+            \`\`\`terraform
+            ${{ steps.plan.outputs.stdout || 'No plan output available' }}
             \`\`\`
 
             </details>
