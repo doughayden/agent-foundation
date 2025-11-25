@@ -11,7 +11,7 @@ on:
         description: 'Terraform workspace'
         required: false
         type: string
-        default: 'sandbox'
+        default: 'default'
       terraform_action:
         description: 'Terraform action (plan or apply)'
         required: false
@@ -27,8 +27,8 @@ on:
         description: 'Terraform workspace'
         required: true
         type: choice
-        options: [sandbox, staging, production]
-        default: 'sandbox'
+        options: [default, dev, stage, prod]
+        default: 'default'
       terraform_action:
         description: 'Terraform action'
         required: true
@@ -51,11 +51,21 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      # Required Terraform variables
       TF_VAR_project: ${{ vars.GCP_PROJECT_ID }}
       TF_VAR_location: ${{ vars.GCP_LOCATION }}
       TF_VAR_agent_name: ${{ vars.IMAGE_NAME }}
       TF_VAR_terraform_state_bucket: ${{ vars.TERRAFORM_STATE_BUCKET }}
       TF_VAR_docker_image: ${{ inputs.docker_image }}
+
+      # Optional Terraform variables (Github Actions will default to empty strings if not set)
+      TF_VAR_adk_suppress_experimental_feature_warnings: ${{ vars.ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS }}
+      TF_VAR_agent_engine: ${{ vars.AGENT_ENGINE }}
+      TF_VAR_allow_origins: ${{ vars.ALLOW_ORIGINS }}
+      TF_VAR_artifact_service_uri: ${{ vars.ARTIFACT_SERVICE_URI }}
+      TF_VAR_log_level: ${{ vars.LOG_LEVEL }}
+      TF_VAR_root_agent_model: ${{ vars.ROOT_AGENT_MODEL }}
+      TF_VAR_serve_web_interface: ${{ vars.SERVE_WEB_INTERFACE }}
 
     steps:
       - name: Checkout repository
@@ -111,42 +121,72 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
-            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
-            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+            // Extract step results
+            const results = {
+              fmt: '${{ steps.fmt.outcome }}',
+              init: '${{ steps.init.outcome }}',
+              validate: '${{ steps.validate.outcome }}',
+              plan: '${{ steps.plan.outcome }}',
+              validateOutput: `${{ steps.validate.outputs.stdout }}` || 'No output',
+              planOutput: `${{ steps.plan.outputs.stdout }}` || 'No plan available'
+            };
+
+            // Map outcomes to icons
+            const statusIcon = (outcome) => {
+              const icons = {
+                success: '✅',
+                failure: '❌',
+                skipped: '⏭️',
+                cancelled: '🚫',
+                timed_out: '⏱️'
+              };
+              return icons[outcome] || '❓';
+            };
+
+            // Build comment body
+            const body = `
+            ## Terraform Plan Summary
+
+            | Step | Status |
+            |------|:------:|
+            | 🖌 Format & Style | ${statusIcon(results.fmt)} \`${results.fmt}\` |
+            | ⚙️ Initialization | ${statusIcon(results.init)} \`${results.init}\` |
+            | 🤖 Validation | ${statusIcon(results.validate)} \`${results.validate}\` |
+            | 📖 Plan | ${statusIcon(results.plan)} \`${results.plan}\` |
+
             <details><summary>Validation Output</summary>
 
             \`\`\`
-            ${{ steps.validate.outputs.stdout || 'No validation output' }}
+            ${results.validateOutput}
             \`\`\`
 
             </details>
 
-            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
-
-            <details><summary>Show Plan</summary>
+            <details><summary>Plan Output</summary>
 
             \`\`\`terraform
-            ${{ steps.plan.outputs.stdout || 'No plan output available' }}
+            ${results.planOutput}
             \`\`\`
 
             </details>
 
-            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            ---
+            *Pushed by @${{ github.actor }} · ${{ github.event_name }}*
+            `.trim();
 
-            github.rest.issues.createComment({
+            // Post comment
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: output
-            })
+              body
+            });
 
       - name: Terraform Plan Status
         if: steps.plan.outcome == 'failure'
         run: exit 1
 
       - name: Terraform Apply
-        id: apply
         if: inputs.terraform_action == 'apply'
         working-directory: terraform/main
         run: |

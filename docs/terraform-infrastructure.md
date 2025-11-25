@@ -227,6 +227,8 @@ Deploys the ADK agent application to Cloud Run. Designed to run in **GitHub Acti
      - `roles/cloudtrace.agent` - Write traces
      - `roles/telemetry.tracesWriter` - Write telemetry
      - `roles/serviceusage.serviceUsageConsumer` - API usage
+     - `roles/storage.bucketViewer` - List buckets in project
+     - `roles/storage.objectUser` - Read/write objects in project buckets
 
 2. **Vertex AI Reasoning Engine**
    - Session and memory persistence service
@@ -245,6 +247,29 @@ Deploys the ADK agent application to Cloud Run. Designed to run in **GitHub Acti
    - Minimum instances: 0 (request-based billing)
    - Environment variables from Terraform variables (see Configuration below)
    - **Production safety:** `RELOAD_AGENTS` hardcoded to `FALSE`
+
+### IAM and Permissions Model
+
+**Project-level IAM assumption:**
+This Terraform configuration assumes a dedicated GCP project per deployment. The app service account is granted project-level IAM roles that provide access to all resources within the project.
+
+**App service account roles:**
+- `roles/aiplatform.user` - Vertex AI API access
+- `roles/cloudtrace.agent` - Cloud Trace write access
+- `roles/logging.logWriter` - Cloud Logging write access
+- `roles/serviceusage.serviceUsageConsumer` - Service usage tracking
+- `roles/storage.bucketViewer` - List buckets in project
+- `roles/storage.objectUser` - Read/write objects in project buckets
+- `roles/telemetry.tracesWriter` - Telemetry traces write access
+
+**Storage access:**
+Project-level `storage.bucketViewer` and `storage.objectUser` roles grant access to all buckets **within the same project**. If you override `artifact_service_uri` to use an external bucket in a different project, you must configure cross-project IAM bindings separately.
+
+**GitHub Actions WIF roles:**
+See `terraform/bootstrap/main.tf` for the complete list of roles granted to GitHub Actions via Workload Identity Federation. Notable roles:
+- `roles/iam.serviceAccountUser` - Required for Cloud Run to attach service accounts during deployment
+- `roles/run.admin` - Create and update Cloud Run services
+- `roles/storage.admin` - Manage GCS buckets and Terraform state
 
 ### Configuration
 
@@ -271,6 +296,30 @@ terraform init -backend-config="bucket=${{ vars.TERRAFORM_STATE_BUCKET }}"
 - **Optional with defaults:** `log_level` (INFO), `serve_web_interface` (false), `root_agent_model` (gemini-2.5-flash)
 - **Nullable with defaults:** `agent_engine` (uses created resource), `artifact_service_uri` (uses created bucket)
 
+### Terraform Variable Overrides
+
+The main module accepts optional runtime configuration variables that can be set via GitHub Actions Variables.
+
+**How it works:**
+1. GitHub Actions Variables are set in the repository (e.g., `LOG_LEVEL=DEBUG`)
+2. CI/CD workflow maps them to `TF_VAR_*` environment variables
+3. Terraform uses `coalesce()` to fall back to defaults if null or empty
+
+**Empty string handling:**
+- GitHub Actions defaults unset Variables to empty strings (`""`)
+- `coalesce(var.x, "default")` applies defaults when null or empty
+
+**Available overrides:**
+- `ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS` (default: TRUE)
+- `AGENT_ENGINE` (default: auto-created Reasoning Engine)
+- `ALLOW_ORIGINS` (default: `["http://127.0.0.1", "http://127.0.0.1:8000"]`)
+- `ARTIFACT_SERVICE_URI` (default: auto-created GCS bucket)
+- `LOG_LEVEL` (default: INFO)
+- `ROOT_AGENT_MODEL` (default: gemini-2.5-flash)
+- `SERVE_WEB_INTERFACE` (default: FALSE)
+
+See `.github/workflows/terraform-plan-apply.yml` for the complete mapping.
+
 ### Usage in CI/CD
 
 The main module runs automatically in GitHub Actions. See `.github/workflows/ci-cd.yml` and `.github/workflows/terraform-plan-apply.yml` for the complete workflow.
@@ -294,20 +343,20 @@ The main module is designed for GitHub Actions execution. Local execution is pos
 
 ## Workspace Management
 
-Workspaces provide environment isolation (sandbox, staging, production).
+Workspaces provide environment isolation (default, dev, stage, prod).
 
 ### Workspaces
 
 **Bootstrap:** Uses `default` workspace (workspaces not recommended for local state).
 
-**Main:** Uses workspaces for environment isolation in CI/CD. Workspace selection happens automatically via the `--or-create` flag in workflows.
+**Main:** Uses workspaces for environment isolation in CI/CD (default/dev/stage/prod). Workspace selection happens automatically via the `--or-create` flag in workflows.
 
 ```bash
 # List workspaces
 terraform -chdir=terraform/main workspace list
 
 # Create workspace (manual)
-terraform -chdir=terraform/main workspace new staging
+terraform -chdir=terraform/main workspace new stage
 ```
 
 ## Common Operations

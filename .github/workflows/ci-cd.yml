@@ -31,8 +31,8 @@ on:
         description: 'Terraform workspace'
         required: true
         type: choice
-        options: [sandbox, staging, production]
-        default: 'sandbox'
+        options: [default, dev, stage, prod]
+        default: 'default'
       terraform_action:
         description: 'Terraform action'
         required: true
@@ -54,8 +54,8 @@ jobs:
     name: Extract Metadata
     runs-on: ubuntu-latest
     outputs:
-      tags: ${{ steps.meta.outputs.tags }}
-      image_uri: ${{ steps.meta.outputs.image_uri }}
+      tags: ${{ steps.extract.outputs.tags }}
+      image_uri: ${{ steps.extract.outputs.image_uri }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -63,7 +63,7 @@ jobs:
           fetch-depth: 0
 
       - name: Extract metadata
-        id: meta
+        id: extract
         run: |
           REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
           IMAGE_NAME="${{ vars.IMAGE_NAME }}"
@@ -107,6 +107,6 @@ jobs:
     uses: ./.github/workflows/terraform-plan-apply.yml
     with:
       docker_image: ${{ needs.build.outputs.image_uri }}
-      workspace: ${{ inputs.workspace || 'sandbox' }}
+      workspace: ${{ inputs.workspace || 'default' }}
       terraform_action: ${{ github.event_name == 'pull_request' && 'plan' || inputs.terraform_action || 'apply' }}
     secrets: inherit

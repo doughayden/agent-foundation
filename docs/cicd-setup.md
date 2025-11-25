@@ -77,7 +77,7 @@ ci-cd.yml (orchestrator)
 1. meta job runs (uses current commit SHA)
 2. docker-build.yml builds image
 3. terraform-plan-apply.yml runs plan or apply (user choice)
-4. Workspace selection: sandbox/staging/production
+4. Workspace selection: default/dev/stage/prod
 ```
 
 ## Image Tagging Strategy
@@ -247,12 +247,12 @@ Test the complete pipeline:
 ```bash
 # Via GitHub UI
 Actions > CI/CD Pipeline > Run workflow
-  - Workspace: sandbox
+  - Workspace: default
   - Terraform action: plan (or apply)
 
 # Via GitHub CLI
 gh workflow run ci-cd.yml \
-  -f workspace=sandbox \
+  -f workspace=default \
   -f terraform_action=plan
 ```
 
@@ -264,13 +264,13 @@ Test deployment with existing image:
 # Via GitHub UI
 Actions > Terraform Plan and Apply > Run workflow
   - Docker image: us-central1-docker.pkg.dev/project/repo/image:abc1234
-  - Workspace: sandbox
+  - Workspace: default
   - Terraform action: plan
 
 # Via GitHub CLI
 gh workflow run terraform-plan-apply.yml \
   -f docker_image="us-central1-docker.pkg.dev/project/repo/image:abc1234" \
-  -f workspace=sandbox \
+  -f workspace=default \
   -f terraform_action=plan
 ```
 
@@ -411,7 +411,7 @@ If timeouts occur frequently, investigate:
 **Permissions:**
 - ✅ Minimal IAM roles (only what's needed)
 - ✅ Repository-scoped Variables (not organization-wide)
-- ✅ Separate workspaces for environments (sandbox/staging/production)
+- ✅ Separate workspaces for environments (default/dev/stage/prod)
 
 **State Management:**
 - ✅ Remote state in GCS (encrypted at rest)

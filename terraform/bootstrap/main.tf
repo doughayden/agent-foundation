@@ -25,6 +25,7 @@ locals {
     "roles/aiplatform.user",
     "roles/artifactregistry.writer",
     "roles/iam.serviceAccountAdmin",
+    "roles/iam.serviceAccountUser",  # Required for Cloud Run to attach service accounts during deployment
     "roles/resourcemanager.projectIamAdmin",
     "roles/run.admin",
     "roles/storage.admin",

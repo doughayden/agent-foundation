@@ -13,28 +13,30 @@ locals {
   # Run app service account roles
   app_iam_roles = toset([
     "roles/aiplatform.user",
-    "roles/logging.logWriter",
     "roles/cloudtrace.agent",
-    "roles/telemetry.tracesWriter",
+    "roles/logging.logWriter",
     "roles/serviceusage.serviceUsageConsumer",
+    "roles/storage.bucketViewer",
+    "roles/storage.objectUser",
+    "roles/telemetry.tracesWriter",
   ])
 
   # Prepare for future regional Cloud Run redundancy
   locations = toset([var.location])
 
   run_app_env = {
-    ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS = var.adk_suppress_experimental_feature_warnings
+    ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS = coalesce(var.adk_suppress_experimental_feature_warnings, "TRUE")
     AGENT_ENGINE                               = coalesce(var.agent_engine, google_vertex_ai_reasoning_engine.session_and_memory.id)
     AGENT_NAME                                 = var.agent_name
-    ALLOW_ORIGINS                              = var.allow_origins
+    ALLOW_ORIGINS                              = coalesce(var.allow_origins, jsonencode(["http://127.0.0.1", "http://127.0.0.1:8000"]))
     ARTIFACT_SERVICE_URI                       = coalesce(var.artifact_service_uri, google_storage_bucket.artifact_service.url)
     GOOGLE_CLOUD_LOCATION                      = var.location
     GOOGLE_CLOUD_PROJECT                       = var.project
     GOOGLE_GENAI_USE_VERTEXAI                  = "TRUE"
-    LOG_LEVEL                                  = var.log_level
+    LOG_LEVEL                                  = coalesce(var.log_level, "INFO")
     RELOAD_AGENTS                              = "FALSE"
-    ROOT_AGENT_MODEL                           = var.root_agent_model
-    SERVE_WEB_INTERFACE                        = var.serve_web_interface
+    ROOT_AGENT_MODEL                           = coalesce(var.root_agent_model, "gemini-2.5-flash")
+    SERVE_WEB_INTERFACE                        = coalesce(var.serve_web_interface, "FALSE")
   }
 
   # Recycle docker_image from previous deployment if not provided
@@ -73,20 +75,6 @@ resource "google_storage_bucket" "artifact_service" {
   versioning {
     enabled = true
   }
-}
-
-resource "google_storage_bucket_iam_member" "artifact_service" {
-  bucket = google_storage_bucket.artifact_service.name
-  role   = "roles/storage.objectUser"
-  member = google_service_account.app.member
-}
-
-# Conditionally grant access to artifact service URI override bucket
-resource "google_storage_bucket_iam_member" "artifact_service_override" {
-  count  = var.artifact_service_uri != null ? 1 : 0
-  bucket = regex("^gs://([^/]+)", var.artifact_service_uri)[0]
-  role   = "roles/storage.objectUser"
-  member = google_service_account.app.member
 }
 
 resource "google_cloud_run_v2_service" "app" {
