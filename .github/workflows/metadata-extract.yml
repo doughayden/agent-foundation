@@ -9,6 +9,7 @@ on:
       image_uri:
         description: 'Primary image URI for deployment'
         value: ${{ jobs.extract-metadata.outputs.image_uri }}
+  workflow_dispatch:  # For manual testing
 
 permissions:
   contents: read
@@ -29,6 +30,7 @@ jobs:
       - name: Extract metadata
         id: extract
         run: |
+          set -euo pipefail
           REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
           IMAGE_NAME="${{ vars.IMAGE_NAME }}"
           SHA_SHORT=$(git rev-parse --short HEAD)
@@ -55,6 +57,7 @@ jobs:
 
       - name: Generate Job Summary
         run: |
+          set -euo pipefail
           SHA_SHORT=$(git rev-parse --short HEAD)
 
           cat >> $GITHUB_STEP_SUMMARY << EOF
@@ -73,10 +76,8 @@ jobs:
           EOF
 
           # Format tags as bulleted list
-          echo "${{ steps.extract.outputs.tags }}" | tr ',' '\n' | while read -r tag; do
-            if [ -n "${tag}" ]; then
-              echo "- \`${tag}\`" >> $GITHUB_STEP_SUMMARY
-            fi
+          echo "${{ steps.extract.outputs.tags }}" | tr ',' '\n' | grep -v '^$' | while read -r tag; do
+            echo "- \`${tag}\`" >> $GITHUB_STEP_SUMMARY
           done
 
           # Add separator
