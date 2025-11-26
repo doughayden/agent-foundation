@@ -169,6 +169,7 @@ jobs:
         run: exit 1
 
       - name: Terraform Apply
+        id: apply
         if: inputs.terraform_action == 'apply'
         working-directory: terraform/main
         run: |
@@ -183,3 +184,126 @@ jobs:
           echo ""
           echo "📍 Cloud Run Services:"
           terraform output -json cloud_run_services | jq -r 'to_entries[] | "  \(.key): \(.value.uri)"'
+
+      - name: Generate Job Summary
+        if: always()
+        working-directory: terraform/main
+        run: |
+          # Map outcomes to icons
+          fmt_icon="❓"
+          init_icon="❓"
+          validate_icon="❓"
+          plan_icon="❓"
+          apply_icon="❓"
+
+          [ "${{ steps.fmt.outcome }}" == "success" ] && fmt_icon="✅"
+          [ "${{ steps.fmt.outcome }}" == "failure" ] && fmt_icon="❌"
+          [ "${{ steps.fmt.outcome }}" == "skipped" ] && fmt_icon="⏭️"
+
+          [ "${{ steps.init.outcome }}" == "success" ] && init_icon="✅"
+          [ "${{ steps.init.outcome }}" == "failure" ] && init_icon="❌"
+          [ "${{ steps.init.outcome }}" == "skipped" ] && init_icon="⏭️"
+
+          [ "${{ steps.validate.outcome }}" == "success" ] && validate_icon="✅"
+          [ "${{ steps.validate.outcome }}" == "failure" ] && validate_icon="❌"
+          [ "${{ steps.validate.outcome }}" == "skipped" ] && validate_icon="⏭️"
+
+          [ "${{ steps.plan.outcome }}" == "success" ] && plan_icon="✅"
+          [ "${{ steps.plan.outcome }}" == "failure" ] && plan_icon="❌"
+          [ "${{ steps.plan.outcome }}" == "skipped" ] && plan_icon="⏭️"
+
+          [ "${{ steps.apply.outcome }}" == "success" ] && apply_icon="✅"
+          [ "${{ steps.apply.outcome }}" == "failure" ] && apply_icon="❌"
+          [ "${{ steps.apply.outcome }}" == "skipped" ] && apply_icon="⏭️"
+
+          # Determine overall status
+          if [ "${{ inputs.terraform_action }}" == "apply" ]; then
+            if [ "${{ steps.apply.outcome }}" == "success" ]; then
+              OVERALL_STATUS="✅ Apply Successful"
+            elif [ "${{ steps.apply.outcome }}" == "failure" ]; then
+              OVERALL_STATUS="❌ Apply Failed"
+            else
+              OVERALL_STATUS="⚠️ Apply Incomplete"
+            fi
+          else
+            if [ "${{ steps.plan.outcome }}" == "success" ]; then
+              OVERALL_STATUS="✅ Plan Successful"
+            elif [ "${{ steps.plan.outcome }}" == "failure" ]; then
+              OVERALL_STATUS="❌ Plan Failed"
+            else
+              OVERALL_STATUS="⚠️ Plan Incomplete"
+            fi
+          fi
+
+          # Write summary header
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🚀 Terraform Deployment Summary
+
+          ### Configuration
+          - **Workspace:** \`${{ inputs.workspace }}\`
+          - **Action:** \`${{ inputs.terraform_action }}\`
+          - **Docker Image:** \`${{ inputs.docker_image }}\`
+
+          ### ${OVERALL_STATUS}
+
+          | Step | Status | Outcome |
+          |------|:------:|---------|
+          | 🖌 Format Check | ${fmt_icon} | \`${{ steps.fmt.outcome }}\` |
+          | ⚙️ Initialize | ${init_icon} | \`${{ steps.init.outcome }}\` |
+          | 🤖 Validate | ${validate_icon} | \`${{ steps.validate.outcome }}\` |
+          | 📖 Plan | ${plan_icon} | \`${{ steps.plan.outcome }}\` |
+          EOF
+
+          # Add apply row if applicable
+          if [ "${{ inputs.terraform_action }}" == "apply" ]; then
+            echo "| 🚀 Apply | ${apply_icon} | \`${{ steps.apply.outcome }}\` |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Add plan output (first 50 lines)
+          if [ -n "${{ steps.plan.outputs.stdout }}" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>📋 Terraform Plan Output (first 50 lines)</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```terraform' >> $GITHUB_STEP_SUMMARY
+            echo "${{ steps.plan.outputs.stdout }}" | head -n 50 >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Add terraform outputs for successful apply
+          if [ "${{ inputs.terraform_action }}" == "apply" ] && [ "${{ steps.apply.outcome }}" == "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📍 Deployed Resources" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Get Cloud Run service URLs
+            if terraform output -json cloud_run_services 2>/dev/null | jq -e . >/dev/null 2>&1; then
+              echo "#### Cloud Run Services" >> $GITHUB_STEP_SUMMARY
+              terraform output -json cloud_run_services | jq -r 'to_entries[] | "- **\(.key):** [\(.value.uri)](\(.value.uri))"' >> $GITHUB_STEP_SUMMARY
+            fi
+
+            # Get other key outputs if they exist
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "#### Additional Outputs" >> $GITHUB_STEP_SUMMARY
+
+            # Service account
+            if terraform output -raw service_account_email 2>/dev/null; then
+              echo "- **Service Account:** \`$(terraform output -raw service_account_email)\`" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            # Agent Engine (if exists)
+            if terraform output -raw agent_engine_id 2>/dev/null; then
+              echo "- **Agent Engine ID:** \`$(terraform output -raw agent_engine_id)\`" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            # Artifact bucket
+            if terraform output -raw artifact_bucket_name 2>/dev/null; then
+              echo "- **Artifact Bucket:** \`gs://$(terraform output -raw artifact_bucket_name)\`" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+          # Add footer
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*Generated by @${{ github.actor }} · ${{ github.event_name }} · workspace: \`${{ inputs.workspace }}\`*" >> $GITHUB_STEP_SUMMARY
