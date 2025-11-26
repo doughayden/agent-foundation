@@ -94,36 +94,10 @@ Creates one-time infrastructure that supports automated CI/CD deployment. Run th
 
 ### Resources Created
 
-1. **Workload Identity Federation**
-   - Pool: `{agent-name}-github`
-   - Provider: GitHub OIDC with repository attribute condition
-   - Direct principal binding (no service account impersonation)
-   - IAM roles:
-     - `roles/aiplatform.user` - Access Vertex AI models
-     - `roles/artifactregistry.writer` - Push Docker images
-
-2. **Artifact Registry**
-   - Docker repository for container images
-   - Cleanup policies:
-     - Delete untagged images (intermediate layers)
-     - Delete tagged images older than 30 days
-     - **EXCEPT** keep 5 most recent versions (regardless of age)
-     - **EXCEPT** keep `buildcache` tag indefinitely (critical for fast builds)
-
-3. **GCS Bucket for Main Module State**
-   - Name: `terraform-state-{agent-name}-{random-suffix}`
-   - Location: `US`
-   - Versioning enabled for state recovery
-   - GitHub Actions granted `roles/storage.objectUser` access
-
-4. **GitHub Actions Variables** (auto-configured)
-   - `GCP_PROJECT_ID` - GCP project ID
-   - `GCP_LOCATION` - GCP region
-   - `IMAGE_NAME` - Docker image name (same as agent_name)
-   - `GCP_WORKLOAD_IDENTITY_PROVIDER` - WIF provider name
-   - `ARTIFACT_REGISTRY_URI` - Registry URI
-   - `ARTIFACT_REGISTRY_LOCATION` - Registry location
-   - `TERRAFORM_STATE_BUCKET` - GCS bucket name for main module
+1. **Workload Identity Federation** - GitHub OIDC provider with IAM bindings (see `terraform/bootstrap/main.tf` for roles)
+2. **Artifact Registry** - Docker repository with cleanup policies (keeps 5 recent, `buildcache` tag indefinite)
+3. **GCS Bucket for Main Module State** - Versioned bucket for remote state
+4. **GitHub Actions Variables** - Auto-configured (see [CI/CD Guide](./cicd-setup.md#github-variables-auto-created) for list)
 
 ### Configuration
 
@@ -181,31 +155,7 @@ gh variable list
 
 ### Security: Dotenv Provider
 
-Bootstrap uses the `germanbrew/dotenv` provider for convenient `.env` file reading.
-
-**Current version:** 1.2.9 (pinned)
-**Registry:** https://registry.terraform.io/providers/germanbrew/dotenv/latest/docs
-**Review date:** 2025-11-21
-
-**Security assessment:**
-- Provider source: `germanbrew/dotenv` from Terraform Registry
-- Version 1.2.9 (exact pin, not range)
-- Code review: Read-only file operations, no network calls
-- Provenance: Official Terraform Registry
-- Risk level: LOW (read-only local file access)
-- Scope: Only bootstrap module (not main)
-
-**Upgrade process:**
-1. Review new version documentation on Terraform Registry
-2. Check for security issues or unexpected changes
-3. Update version pin in `terraform/bootstrap/terraform.tf`
-4. Document review with date and findings
-5. Test with sample .env file
-
-**Why dotenv in bootstrap?**
-- Convenience for one-time setup (no need to pass CLI variables)
-- Local execution only (not in CI/CD)
-- Alternative: Remove dotenv and use `TF_VAR_*` environment variables
+Bootstrap uses `germanbrew/dotenv@1.2.9` for `.env` file reading. Version is pinned in `terraform/bootstrap/terraform.tf`. Provider is local-only (bootstrap execution), not used in CI/CD.
 
 ## Main Module
 
@@ -219,57 +169,20 @@ Deploys the ADK agent application to Cloud Run. Designed to run in **GitHub Acti
 
 ### Resources Created
 
-1. **Service Account**
-   - Attached to Cloud Run service
-   - IAM roles:
-     - `roles/aiplatform.user` - Access Vertex AI models
-     - `roles/logging.logWriter` - Write logs
-     - `roles/cloudtrace.agent` - Write traces
-     - `roles/telemetry.tracesWriter` - Write telemetry
-     - `roles/serviceusage.serviceUsageConsumer` - API usage
-     - `roles/storage.bucketViewer` - List buckets in project
-     - `roles/storage.objectUser` - Read/write objects in project buckets
-
-2. **Vertex AI Reasoning Engine**
-   - Session and memory persistence service
-   - Display name: `Session and Memory: {agent-name}`
-   - Resource ID passed to Cloud Run via `AGENT_ENGINE` env var
-
-3. **GCS Bucket for Artifacts**
-   - Name: `artifact-service-{agent-name}-{random-suffix}`
-   - Location: `US`
-   - Versioning enabled
-   - Service account granted `roles/storage.objectUser` access
-
-4. **Cloud Run Service**
-   - HTTP/2 service on port 8000
-   - Auto-scaling (0-100 instances)
-   - Minimum instances: 0 (request-based billing)
-   - Environment variables from Terraform variables (see Configuration below)
-   - **Production safety:** `RELOAD_AGENTS` hardcoded to `FALSE`
+1. **Service Account** - Attached to Cloud Run with IAM roles (see `terraform/main/main.tf`)
+2. **Vertex AI Reasoning Engine** - Session/memory persistence (resource ID passed via `AGENT_ENGINE`)
+3. **GCS Bucket for Artifacts** - Versioned storage for agent artifacts
+4. **Cloud Run Service** - HTTP/2 on port 8000, auto-scaling 0-100 instances, `RELOAD_AGENTS` hardcoded to FALSE
 
 ### IAM and Permissions Model
 
-**Project-level IAM assumption:**
-This Terraform configuration assumes a dedicated GCP project per deployment. The app service account is granted project-level IAM roles that provide access to all resources within the project.
+**Project-level IAM assumption:** Dedicated GCP project per deployment. Service account has project-level roles for all resources.
 
-**App service account roles:**
-- `roles/aiplatform.user` - Vertex AI API access
-- `roles/cloudtrace.agent` - Cloud Trace write access
-- `roles/logging.logWriter` - Cloud Logging write access
-- `roles/serviceusage.serviceUsageConsumer` - Service usage tracking
-- `roles/storage.bucketViewer` - List buckets in project
-- `roles/storage.objectUser` - Read/write objects in project buckets
-- `roles/telemetry.tracesWriter` - Telemetry traces write access
+**App service account roles:** See `terraform/main/main.tf` for complete list (Vertex AI, logging, storage access).
 
-**Storage access:**
-Project-level `storage.bucketViewer` and `storage.objectUser` roles grant access to all buckets **within the same project**. If you override `artifact_service_uri` to use an external bucket in a different project, you must configure cross-project IAM bindings separately.
+**Storage access:** Project-level storage roles grant access to buckets within the same project only. For external buckets in different projects, configure cross-project IAM separately.
 
-**GitHub Actions WIF roles:**
-See `terraform/bootstrap/main.tf` for the complete list of roles granted to GitHub Actions via Workload Identity Federation. Notable roles:
-- `roles/iam.serviceAccountUser` - Required for Cloud Run to attach service accounts during deployment
-- `roles/run.admin` - Create and update Cloud Run services
-- `roles/storage.admin` - Manage GCS buckets and Terraform state
+**GitHub Actions WIF roles:** See `terraform/bootstrap/main.tf` for complete list.
 
 ### Configuration
 
@@ -322,18 +235,7 @@ See `.github/workflows/terraform-plan-apply.yml` for the complete mapping.
 
 ### Usage in CI/CD
 
-The main module runs automatically in GitHub Actions. See `.github/workflows/ci-cd.yml` and `.github/workflows/terraform-plan-apply.yml` for the complete workflow.
-
-**On Pull Request:**
-1. Build Docker image (tagged `pr-{number}-{sha}`)
-2. Run `terraform plan` (no apply)
-3. Post plan output as PR comment
-
-**On Merge to Main:**
-1. Build Docker image (tagged `{sha}`, `latest`, `{version}`)
-2. Run `terraform apply` with auto-approval
-3. Cloud Run service updated with new image
-4. Service URL output in workflow logs
+Main module runs automatically in GitHub Actions. See [CI/CD Workflow Guide](./cicd-setup.md) for complete details.
 
 ### Local Execution (Not Recommended)
 
@@ -417,56 +319,9 @@ terraform -chdir=terraform/main init -reconfigure \
 terraform -chdir=terraform/main force-unlock LOCK_ID
 ```
 
-### GitHub Variables Not Created
+### GitHub Variables Issues
 
-**Error:** Bootstrap completes but GitHub Variables missing.
-
-**Cause:** GitHub CLI not authenticated or insufficient permissions.
-
-**Solution:**
-
-```bash
-# Re-authenticate with full permissions
-gh auth login
-
-# Verify access
-gh repo view OWNER/REPO
-
-# Re-run bootstrap
-terraform -chdir=terraform/bootstrap apply
-```
-
-### Wrong Variable Names in Workflows
-
-**Error:** Workflow fails with "variable not found" or similar.
-
-**Expected variable names** (set by bootstrap):
-- `GCP_PROJECT_ID` (not `GOOGLE_CLOUD_PROJECT`)
-- `GCP_LOCATION` (not `GOOGLE_CLOUD_LOCATION`)
-- `IMAGE_NAME` (not `AGENT_NAME` - serves dual purpose)
-- `TERRAFORM_STATE_BUCKET`
-- `GCP_WORKLOAD_IDENTITY_PROVIDER`
-- `ARTIFACT_REGISTRY_URI`
-- `ARTIFACT_REGISTRY_LOCATION`
-
-**Solution:** Verify variable names match bootstrap outputs:
-
-```bash
-gh variable list
-```
-
-### Workflow Fails with Missing Variables
-
-**Error:** `var.terraform_state_bucket` not set (or similar).
-
-**Cause:** Bootstrap didn't complete successfully or GitHub Variables weren't created.
-
-**Solution:** Verify bootstrap completed and re-run if needed:
-
-```bash
-terraform -chdir=terraform/bootstrap apply
-gh variable list
-```
+For GitHub Variables troubleshooting, see [CI/CD Workflow Guide](./cicd-setup.md#troubleshooting).
 
 ## CI/CD Integration
 
@@ -484,12 +339,7 @@ GitHub Variables (GCP_PROJECT_ID, TERRAFORM_STATE_BUCKET, etc.)
 terraform/main (with TF_VAR_* from Variables)
 ```
 
-**Key points:**
-- GitHub Actions has WIF access (no service account keys)
-- All Terraform inputs via `TF_VAR_*` environment variables
-- Docker image passed directly from build workflow output
-- State bucket access granted via bootstrap IAM bindings
-- Workspace selection via `--or-create` flag (idempotent)
+See [CI/CD Workflow Guide](./cicd-setup.md) for complete workflow details.
 
 ## Advanced Configuration
 
