@@ -430,25 +430,33 @@ gcloud run revisions describe adk-docker-uv-00009-xyz --format='value(spec.conta
 **Verification:**
 ```bash
 # 1. Get manifest list digest (what Terraform deployed)
-MANIFEST=$(gcloud run services describe adk-docker-uv \
+MANIFEST_DIGEST=$(gcloud run services describe adk-docker-uv \
   --region us-central1 \
-  --format='value(spec.template.spec.containers[0].image)')
-echo "Manifest list: $MANIFEST"
+  --format='value(spec.template.spec.containers[0].image)' \
+  | sed 's/.*@//')
+echo "Manifest digest: $MANIFEST_DIGEST"
 
 # 2. Get platform-specific digest (what's actually running)
-PLATFORM=$(gcloud run revisions describe adk-docker-uv-00009-xyz \
+PLATFORM_DIGEST=$(gcloud run revisions describe adk-docker-uv-00009-xyz \
   --region us-central1 \
-  --format='value(spec.containers[0].image)')
-echo "Platform image: $PLATFORM"
+  --format='value(spec.containers[0].image)' \
+  | sed 's/.*@//')
+echo "Platform digest: $PLATFORM_DIGEST"
 
-# 3. Verify manifest list contains platform image
-docker manifest inspect "$MANIFEST" | grep -A 3 "amd64"
-# Should show the platform digest in the manifests array
+# 3. Verify tag points to manifest list digest
+TAG_DIGEST=$(gcloud artifacts docker images describe \
+  "us-central1-docker.pkg.dev/.../adk-docker-uv:v0.4.1" \
+  --format="value(image_summary.digest)")
+[[ "$TAG_DIGEST" == "$MANIFEST_DIGEST" ]] && echo "✓ Tag v0.4.1 points to manifest"
 
-# 4. Verify deployed manifest has tags (platform images don't have tags)
-gcloud artifacts docker images describe "$MANIFEST" --format="value(tags)"
-# Output: f74a46a,latest,v0.4.1
+# 4. Verify manifest contains platform digest
+CONTAINS=$(docker manifest inspect \
+  "us-central1-docker.pkg.dev/.../adk-docker-uv@$MANIFEST_DIGEST" \
+  | jq -r '.manifests[] | select(.platform.architecture=="amd64") | .digest')
+[[ "$CONTAINS" == "$PLATFORM_DIGEST" ]] && echo "✓ Manifest contains platform image"
 ```
+
+**Note:** Artifact Registry doesn't return tags when querying by digest. Query by tag (`:v0.4.1`) to verify which digest it points to.
 
 ## Terraform Infrastructure
 

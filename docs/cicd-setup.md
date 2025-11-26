@@ -404,25 +404,49 @@ When deploying:
 3. Cloud Run pulls manifest, selects **linux/amd64** platform
 4. Revision runs **platform-specific image**
 
-**Verification they're from the same build:**
-
-Use `docker manifest inspect` to verify the manifest list contains the platform-specific digest:
+**Complete verification workflow:**
 
 ```bash
-# Inspect manifest list to see platform images
-docker manifest inspect \
-  "us-central1-docker.pkg.dev/.../image@sha256:29a4df4..." \
-  | jq '.manifests[] | select(.platform.architecture=="amd64") | .digest'
-# Output: "sha256:28d1b714d69d..."
+# Get deployed manifest list digest
+MANIFEST_DIGEST=$(gcloud run services describe adk-docker-uv \
+  --region us-central1 \
+  --format='value(spec.template.spec.containers[0].image)' \
+  | sed 's/.*@//')
+echo "Manifest list: $MANIFEST_DIGEST"
 
-# Verify tags (only manifest list has tags, not platform images)
-gcloud artifacts docker images describe \
-  "us-central1-docker.pkg.dev/.../image@sha256:29a4df4..." \
-  --format="value(tags)"
-# Output: f74a46a,latest,v0.4.1
+# Get running platform-specific digest
+PLATFORM_DIGEST=$(gcloud run revisions describe adk-docker-uv-00009-kgz \
+  --region us-central1 \
+  --format='value(spec.containers[0].image)' \
+  | sed 's/.*@//')
+echo "Platform image: $PLATFORM_DIGEST"
+
+# Verify tag points to manifest list
+TAG_DIGEST=$(gcloud artifacts docker images describe \
+  "us-central1-docker.pkg.dev/.../adk-docker-uv:v0.4.1" \
+  --format="value(image_summary.digest)")
+echo "Tag v0.4.1 points to: $TAG_DIGEST"
+[[ "$TAG_DIGEST" == "$MANIFEST_DIGEST" ]] && echo "✓ Match!"
+
+# Verify manifest contains platform image
+CONTAINS=$(docker manifest inspect \
+  "us-central1-docker.pkg.dev/.../adk-docker-uv@$MANIFEST_DIGEST" \
+  | jq -r '.manifests[] | select(.platform.architecture=="amd64") | .digest')
+echo "Manifest contains amd64: $CONTAINS"
+[[ "$CONTAINS" == "$PLATFORM_DIGEST" ]] && echo "✓ Match!"
 ```
 
-**Note:** Platform-specific images (`sha256:28d1b7...`) don't have tags - only the manifest list has tags. This is expected Docker behavior.
+**Expected output:**
+```
+Manifest list: sha256:29a4df4fd28b...
+Platform image: sha256:28d1b714d69d...
+Tag v0.4.1 points to: sha256:29a4df4fd28b...
+✓ Match!
+Manifest contains amd64: sha256:28d1b714d69d...
+✓ Match!
+```
+
+**Key insight:** Artifact Registry doesn't return tags when querying by digest. Query by tag (`:v0.4.1`) to verify which digest the tag points to, then use `docker manifest inspect` to verify that digest contains the platform-specific image.
 
 ### Workflow Fails: Missing Variables
 
