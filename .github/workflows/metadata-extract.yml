@@ -6,10 +6,6 @@ on:
       tags:
         description: 'Comma-separated list of Docker image tags'
         value: ${{ jobs.extract-metadata.outputs.tags }}
-      image_uri:
-        description: 'Primary image URI for deployment'
-        value: ${{ jobs.extract-metadata.outputs.image_uri }}
-  workflow_dispatch:  # For manual testing
 
 permissions:
   contents: read
@@ -20,7 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tags: ${{ steps.extract.outputs.tags }}
-      image_uri: ${{ steps.extract.outputs.image_uri }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -53,7 +48,6 @@ jobs:
           fi
 
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          echo "image_uri=${IMAGE_URI}" >> $GITHUB_OUTPUT
 
       - name: Generate Job Summary
         run: |

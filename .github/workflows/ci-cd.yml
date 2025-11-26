@@ -66,7 +66,6 @@ jobs:
     with:
       push: true
       tags: ${{ needs.meta.outputs.tags }}
-      image_uri: ${{ needs.meta.outputs.image_uri }}
       cache_from: type=registry,ref=${{ vars.ARTIFACT_REGISTRY_URI }}/${{ vars.IMAGE_NAME }}:buildcache
       cache_to: type=registry,ref=${{ vars.ARTIFACT_REGISTRY_URI }}/${{ vars.IMAGE_NAME }}:buildcache,mode=max
     secrets: inherit
