@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-11-25
+
 ### Added
 - Reusable CI/CD workflow pattern with three workflows: `ci-cd.yml` (orchestrator), `docker-build.yml` (multi-arch builds), `terraform-plan-apply.yml` (infrastructure deployment)
 - Automatic CI/CD workflow trigger on version tag push (builds Docker images for `v*` tags)
@@ -113,7 +115,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/adk-docker-uv/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/doughayden/adk-docker-uv/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/doughayden/adk-docker-uv/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/doughayden/adk-docker-uv/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/doughayden/adk-docker-uv/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/doughayden/adk-docker-uv/releases/tag/v0.1.0
