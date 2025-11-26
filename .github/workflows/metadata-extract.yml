@@ -64,5 +64,13 @@ jobs:
           | **Branch** | `${{ github.head_ref || github.ref_name }}` |
           | **Commit** | `${{ github.sha }}` |
           | **Image URI** | `${{ steps.extract.outputs.image_uri }}` |
-          | **Tags** | `${{ steps.extract.outputs.tags }}` |
+
+          **Tags:**
           EOF
+
+          # Format tags as bulleted list
+          echo "${{ steps.extract.outputs.tags }}" | tr ',' '\n' | while read -r tag; do
+            if [ -n "${tag}" ]; then
+              echo "- \`${tag}\`" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
