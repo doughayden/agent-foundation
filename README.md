@@ -68,8 +68,8 @@ A production-ready template for deploying Google ADK (Agent Development Kit) age
 
 ## Documentation
 
+- **[CI/CD Workflow Guide](docs/cicd-setup.md)** - GitHub Actions automation for build and deployment
 - **[Development](docs/development.md)** - Code quality, testing, dependencies, and project structure
 - **[Docker Compose Workflow](docs/docker-compose-workflow.md)** - Local development with hot reloading
 - **[Dockerfile Strategy](docs/dockerfile-strategy.md)** - Multi-stage build architecture and rationale
 - **[Terraform Infrastructure](docs/terraform-infrastructure.md)** - Bootstrap and main module setup for GCP
-- **[CI/CD Workflow Guide](docs/cicd-setup.md)** - GitHub Actions automation for build and deployment
