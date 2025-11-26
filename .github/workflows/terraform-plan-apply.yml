@@ -97,12 +97,14 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
         continue-on-error: true
 
-      - name: Comment PR with Plan
-        if: github.event_name == 'pull_request'
+      - name: Generate Terraform Summary
+        if: always()
         uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const fs = require('fs');
+
             // Extract step results
             const results = {
               fmt: '${{ steps.fmt.outcome }}',
@@ -127,7 +129,7 @@ jobs:
 
             // Build comment body
             const body = `
-            ## Terraform Plan Summary
+            ## 🏗️ Terraform Plan Summary
 
             | Step | Status |
             |------|:------:|
@@ -153,33 +155,29 @@ jobs:
             </details>
 
             ---
-            *Pushed by @${{ github.actor }} · ${{ github.event_name }}*
             `.trim();
 
-            // Post comment
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body
-            });
+            // Always write to job summary
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, body + '\n');
+
+            // Additionally post PR comment if this is a PR
+            if (context.eventName === 'pull_request') {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body
+              });
+            }
 
       - name: Terraform Plan Status
         if: steps.plan.outcome == 'failure'
         run: exit 1
 
       - name: Terraform Apply
+        id: apply
         if: inputs.terraform_action == 'apply'
         working-directory: terraform/main
         run: |
           terraform workspace select ${{ inputs.workspace }}
           terraform apply -auto-approve -input=false tfplan
-
-      - name: Output Service URL
-        if: inputs.terraform_action == 'apply'
-        working-directory: terraform/main
-        run: |
-          echo "🎉 Deployment successful!"
-          echo ""
-          echo "📍 Cloud Run Services:"
-          terraform output -json cloud_run_services | jq -r 'to_entries[] | "  \(.key): \(.value.uri)"'

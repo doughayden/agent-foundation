@@ -241,8 +241,9 @@ uv lock --upgrade-package package-name
 
 ## CI/CD
 
-**Three-workflow pattern** in `.github/workflows/`:
+**Workflow pattern** in `.github/workflows/`:
 - **ci-cd.yml**: Orchestrator (meta → build → deploy)
+- **metadata-extract.yml**: Reusable metadata extraction workflow
 - **docker-build.yml**: Reusable build workflow
 - **terraform-plan-apply.yml**: Reusable Terraform deployment
 - **code-quality.yml**: Runs ruff format, ruff check, mypy
@@ -265,6 +266,47 @@ uv lock --upgrade-package package-name
 - `TERRAFORM_STATE_BUCKET`
 
 **Note:** These are Variables (not Secrets) - resource identifiers, not credentials. Security via IAM policies.
+
+### GitHub Actions Job Summaries
+
+**What:** Use `$GITHUB_STEP_SUMMARY` environment variable to display formatted summaries in GitHub Actions UI (visible on workflow run page and PR summary).
+
+**Key patterns:**
+
+1. **GitHub context variable export** - Export context to shell variable for bash string manipulation:
+   ```bash
+   GITHUB_REF="${{ github.ref }}"
+   # Now bash parameter expansion works: ${GITHUB_REF#refs/tags/}
+   ```
+   Why: GitHub expressions (`${{ }}`) cannot be used inside bash string operations.
+
+2. **Capture-once pattern** - Execute expensive commands (e.g., `terraform output`) once, reuse in variables:
+   ```bash
+   SERVICE_ACCOUNT=$(terraform output -raw email 2>/dev/null || echo "")
+   if [ -n "$SERVICE_ACCOUNT" ]; then
+     echo "- **Service Account:** \`${SERVICE_ACCOUNT}\`" >> $GITHUB_STEP_SUMMARY
+   fi
+   ```
+   Why: Avoids duplicate terraform invocations in conditional checks and output lines.
+
+3. **Defensive empty checks** - Check for empty/missing outputs before displaying:
+   ```bash
+   if [ -n "${{ steps.plan.outputs.stdout }}" ]; then
+     # Show plan output in details block
+   fi
+   ```
+   Why: Prevents errors and empty sections when optional outputs are missing.
+
+4. **Conditional sections** - Include/exclude sections based on workflow context (plan vs apply, PR vs main):
+   ```bash
+   if [ "${{ inputs.terraform_action }}" == "apply" ]; then
+     echo "| 🚀 Apply | ${icon} | outcome |" >> $GITHUB_STEP_SUMMARY
+   fi
+   ```
+
+**Implementation examples:**
+- **Metadata job** (metadata-extract.yml): Shows build context, branch, image URI, tags, SHA, PR info with event-aware output
+- **Terraform job** (terraform-plan-apply.yml): Shows workspace, action, step status table, plan output, deployed resources
 
 ## Image Digest Deployment
 

@@ -4,11 +4,12 @@ This guide explains the GitHub Actions workflows that automate building and depl
 
 ## Overview
 
-The project uses **automated CI/CD** via GitHub Actions with three reusable workflows:
+The project uses **automated CI/CD** via GitHub Actions with four workflows:
 
 1. **`ci-cd.yml`** - Orchestrator (meta → build → deploy)
-2. **`docker-build.yml`** - Reusable Docker image build
-3. **`terraform-plan-apply.yml`** - Reusable Terraform deployment
+2. **`metadata-extract.yml`** - Reusable metadata extraction
+3. **`docker-build.yml`** - Reusable Docker image build
+4. **`terraform-plan-apply.yml`** - Reusable Terraform deployment
 
 **Key principle:** Zero manual intervention after initial setup. Merge to main = automatic deployment.
 
@@ -39,11 +40,11 @@ The bootstrap module creates these Variables in your repository:
 
 ## Workflow Architecture
 
-### Three-Workflow Pattern
+### Four-Workflow Pattern
 
 ```
 ci-cd.yml (orchestrator)
-├── meta (job) - Extract metadata and determine tags
+├── meta (calls metadata-extract.yml) - Extract metadata and determine tags
 ├── build (calls docker-build.yml) - Build multi-platform image
 └── deploy (calls terraform-plan-apply.yml) - Deploy to Cloud Run
 ```
@@ -58,7 +59,7 @@ ci-cd.yml (orchestrator)
 
 **On Pull Request:**
 ```
-1. meta job extracts: pr-{number}-{sha}
+1. metadata-extract.yml extracts: pr-{number}-{sha}
 2. docker-build.yml pushes: registry/image:pr-123-abc123
 3. terraform-plan-apply.yml runs: plan (no apply)
 4. Plan output posted as PR comment
@@ -66,7 +67,7 @@ ci-cd.yml (orchestrator)
 
 **On Push to Main or Version Tag:**
 ```
-1. meta job extracts: {sha}, latest, {version} (if tagged)
+1. metadata-extract.yml extracts: {sha}, latest, {version} (if tagged)
 2. docker-build.yml pushes: registry/image:abc123 + latest (+ v1.0.0 if tagged)
 3. terraform-plan-apply.yml runs: apply (auto-approved)
 4. Cloud Run service updated with image digest
@@ -74,7 +75,7 @@ ci-cd.yml (orchestrator)
 
 **On Manual Dispatch:**
 ```
-1. meta job runs (uses current commit SHA)
+1. metadata-extract.yml runs (uses current commit SHA)
 2. docker-build.yml builds image
 3. terraform-plan-apply.yml runs plan or apply (user choice)
 4. Workspace selection: default/dev/stage/prod
@@ -117,6 +118,26 @@ Automatically builds version-tagged image after release PR is merged. Safe becau
 ## Pull Request Comments
 
 terraform-plan-apply.yml posts formatted comments showing format/init/validation/plan results with collapsible sections for detailed output.
+
+## Job Summaries
+
+Both the metadata extraction and Terraform deployment jobs generate formatted job summaries visible in the GitHub Actions UI. These summaries provide quick insight into build and deployment status without requiring log analysis.
+
+**Metadata Extraction Summary** includes:
+- Build context (PR, main branch, tag push, manual)
+- Branch/tag name and commit SHA
+- PR author (for pull requests)
+- Primary deployment image URI
+- All image tags (formatted as bulleted list)
+
+**Terraform Deployment Summary** includes:
+- Workspace and action (plan/apply)
+- Docker image being deployed
+- Step-by-step outcomes (format, init, validate, plan, apply)
+- Collapsible plan output (first 50 lines)
+- Deployed resources (Cloud Run URLs, service account, Agent Engine ID, artifact bucket) for successful applies
+
+Job summaries appear at the top of each workflow run, providing a quick overview without navigating through individual job logs.
 
 ## Workload Identity Federation
 

@@ -1,0 +1,84 @@
+name: Metadata Extract
+
+on:
+  workflow_call:
+    outputs:
+      tags:
+        description: 'Comma-separated list of Docker image tags'
+        value: ${{ jobs.extract-metadata.outputs.tags }}
+      image_uri:
+        description: 'Primary image URI for deployment'
+        value: ${{ jobs.extract-metadata.outputs.image_uri }}
+
+permissions:
+  contents: read
+
+jobs:
+  extract-metadata:
+    name: Extract Build Metadata
+    runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.extract.outputs.tags }}
+      image_uri: ${{ steps.extract.outputs.image_uri }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Extract metadata
+        id: extract
+        run: |
+          REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
+          IMAGE_NAME="${{ vars.IMAGE_NAME }}"
+          SHA_SHORT=$(git rev-parse --short HEAD)
+
+          # Determine tags and primary image based on context
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            # PR build - use pr-{number}-{sha} (unique per commit, clearly indicates origin)
+            PR_TAG="pr-${{ github.event.pull_request.number }}-${SHA_SHORT}"
+            IMAGE_URI="${REGISTRY}/${IMAGE_NAME}:${PR_TAG}"
+            TAGS="${IMAGE_URI}"
+          else
+            # Main branch or manual - use SHA for deployment (immutable, traceable)
+            IMAGE_URI="${REGISTRY}/${IMAGE_NAME}:${SHA_SHORT}"
+            # Build all tags: SHA (primary), latest, version (if available)
+            TAGS="${IMAGE_URI},${REGISTRY}/${IMAGE_NAME}:latest"
+            # Add semantic version tag if available
+            if VERSION=$(git describe --tags --exact-match 2>/dev/null); then
+              TAGS="${TAGS},${REGISTRY}/${IMAGE_NAME}:${VERSION}"
+            fi
+          fi
+
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "image_uri=${IMAGE_URI}" >> $GITHUB_OUTPUT
+
+      - name: Generate Job Summary
+        run: |
+          SHA_SHORT=$(git rev-parse --short HEAD)
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 📦 Build Metadata
+
+          | Event | Branch | Commit |
+          |-------|--------|--------|
+          | \`${{ github.event_name }}\` | \`${{ github.head_ref || github.ref_name }}\` | \`${SHA_SHORT}\` |
+
+          ### 🎯 Primary Deployment Image
+          \`\`\`
+          ${{ steps.extract.outputs.image_uri }}
+          \`\`\`
+
+          ### 🏷️ All Image Tags
+          EOF
+
+          # Format tags as bulleted list
+          echo "${{ steps.extract.outputs.tags }}" | tr ',' '\n' | while read -r tag; do
+            if [ -n "${tag}" ]; then
+              echo "- \`${tag}\`" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+          # Add separator
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
