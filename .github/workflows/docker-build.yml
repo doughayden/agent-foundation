@@ -12,10 +12,6 @@ on:
         description: 'Comma-separated list of image tags'
         required: true
         type: string
-      image_uri:
-        description: 'Primary image URI (for terraform deployment)'
-        required: true
-        type: string
       cache_from:
         description: 'Cache source (e.g., type=registry,ref=...)'
         required: false
@@ -27,9 +23,6 @@ on:
         type: string
         default: ''
     outputs:
-      image_uri:
-        description: 'Built Docker image URI with tag'
-        value: ${{ inputs.image_uri }}
       digest_uri:
         description: 'Docker image digest URI (registry/image@sha256:...)'
         value: ${{ jobs.build-push.outputs.digest_uri }}
@@ -128,6 +121,5 @@ jobs:
           echo "🏷️ Image tags:"
           echo "${{ inputs.tags }}" | tr ',' '\n' | sed 's/^/  - /'
           echo ""
-          echo "📦 Primary image URI: ${{ inputs.image_uri }}"
           echo "🔏 Image digest: ${{ steps.build.outputs.digest }}"
           echo "🔗 Digest URI: ${{ steps.digest.outputs.uri }}"

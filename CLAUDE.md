@@ -305,7 +305,7 @@ uv lock --upgrade-package package-name
    ```
 
 **Implementation examples:**
-- **Metadata job** (metadata-extract.yml): Shows build context (event type, branch/tag, commit SHA), primary deployment image, and all tags as bulleted list
+- **Metadata job** (metadata-extract.yml): Shows build context (event type, branch/tag, commit SHA) and image tags as bulleted list
 - **Terraform job** (terraform-plan-apply.yml): Shows workspace, action, step status table, plan output, deployed resources
 
 ## Image Digest Deployment

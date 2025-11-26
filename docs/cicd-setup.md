@@ -126,8 +126,6 @@ Both the metadata extraction and Terraform deployment jobs generate formatted jo
 **Metadata Extraction Summary** includes:
 - Build context (PR, main branch, tag push, manual)
 - Branch/tag name and commit SHA
-- PR author (for pull requests)
-- Primary deployment image URI
 - All image tags (formatted as bulleted list)
 
 **Terraform Deployment Summary** includes:
