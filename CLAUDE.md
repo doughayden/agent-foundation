@@ -399,6 +399,48 @@ gcloud artifacts docker images describe "${RUNNING_IMAGE}" \
 - Digest format: `registry/image@sha256:full-hash`
 - Example: `us-central1-docker.pkg.dev/my-project/my-repo/adk-docker-uv@sha256:1a2b3c4d...`
 
+### Multi-Platform Builds and Digest Resolution
+
+**Build configuration:** Multi-platform images (linux/amd64, linux/arm64)
+
+When building for multiple platforms, Docker creates:
+1. **Manifest list** - Index pointing to all platform-specific images (has its own digest)
+2. **Platform-specific images** - Separate image for each architecture (each has its own digest)
+
+**Expected behavior in Cloud Run:**
+
+```bash
+# What Terraform deploys (manifest list digest)
+gcloud run services describe adk-docker-uv --format='value(spec.template.spec.containers[0].image)'
+# Output: registry/image@sha256:29a4df4fd28b... (manifest list)
+
+# What actually runs (platform-specific digest)
+gcloud run revisions describe adk-docker-uv-00009-xyz --format='value(spec.containers[0].image)'
+# Output: registry/image@sha256:28d1b714d69d... (linux/amd64 platform)
+```
+
+**Why digests differ:**
+- Workflow outputs **manifest list digest** (references all platforms)
+- Terraform deploys with **manifest list digest**
+- Cloud Run pulls manifest list, selects **linux/amd64** platform
+- Revision shows **platform-specific digest** (actual running image)
+
+**This is correct!** The manifest list ensures Cloud Run gets the right platform. Different digests in service vs revision specs are expected and normal.
+
+**Verification:**
+```bash
+# Verify manifest list was deployed
+gcloud run services describe SERVICE --format='value(spec.template.spec.containers[0].image)'
+
+# Check what's actually running
+gcloud run revisions describe REVISION --format='value(spec.containers[0].image)'
+
+# Both should trace to same tags (same build)
+gcloud artifacts docker images describe "MANIFEST_DIGEST" --format="value(tags)"
+gcloud artifacts docker images describe "PLATFORM_DIGEST" --format="value(tags)"
+# Both return: f74a46a,latest,v0.4.1
+```
+
 ## Terraform Infrastructure
 
 The project includes two Terraform modules for infrastructure management:

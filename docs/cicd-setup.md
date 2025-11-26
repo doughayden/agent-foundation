@@ -372,6 +372,58 @@ d1dda49
 
 The commit SHA can then be used with `git show d1dda49` to view the deployed code.
 
+### Understanding Multi-Platform Digest Differences
+
+**Important:** For multi-platform builds (linux/amd64, linux/arm64), you'll see different digests in different places. This is **expected and correct**.
+
+**What you'll observe:**
+
+```bash
+# Service shows manifest list digest
+gcloud run services describe adk-docker-uv \
+  --region us-central1 \
+  --format='value(spec.template.spec.containers[0].image)'
+# Output: ...@sha256:29a4df4fd28b... (manifest list)
+
+# Revision shows platform-specific digest
+gcloud run revisions describe adk-docker-uv-00009-kgz \
+  --region us-central1 \
+  --format='value(spec.containers[0].image)'
+# Output: ...@sha256:28d1b714d69d... (linux/amd64)
+```
+
+**Why this happens:**
+
+Multi-platform Docker builds create:
+1. **Manifest list** (index) - References all platform images (SHA: `29a4df4...`)
+2. **Platform images** - Actual images for each architecture (SHA: `28d1b7...` for amd64)
+
+When deploying:
+1. Workflow outputs **manifest list digest**
+2. Terraform deploys with **manifest list digest**
+3. Cloud Run pulls manifest, selects **linux/amd64** platform
+4. Revision runs **platform-specific image**
+
+**Verification they're from the same build:**
+
+Both digests should have identical tags:
+
+```bash
+# Check manifest list tags
+gcloud artifacts docker images describe \
+  "us-central1-docker.pkg.dev/.../image@sha256:29a4df4..." \
+  --format="value(tags)"
+# Output: f74a46a,latest,v0.4.1
+
+# Check platform-specific tags
+gcloud artifacts docker images describe \
+  "us-central1-docker.pkg.dev/.../image@sha256:28d1b7..." \
+  --format="value(tags)"
+# Output: f74a46a,latest,v0.4.1
+```
+
+Same tags = same build = working correctly!
+
 ### Workflow Fails: Missing Variables
 
 **Error:** `var.GCP_PROJECT_ID` not found (or similar)
