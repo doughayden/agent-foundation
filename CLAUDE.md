@@ -56,16 +56,13 @@ Script renames package, updates config/docs, updates GitHub Actions badges, rese
 ```bash
 # Setup (one-time)
 cp .env.example .env
-# Edit .env and choose ONE authentication method:
-#   - GOOGLE_API_KEY for Gemini Developer API
-#   - GOOGLE_CLOUD_PROJECT + GOOGLE_CLOUD_LOCATION for Vertex AI
+# Edit .env: GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION
+# Auth: gcloud auth application-default login
 
 # Run server (default: API-only at http://127.0.0.1:8000)
 uv run server
 
-# Enable web UI (set SERVE_WEB_INTERFACE=true in .env)
-
-# Debug mode with detailed logging
+# Debug mode
 LOG_LEVEL=DEBUG uv run server
 ```
 
@@ -151,26 +148,11 @@ The server (`src/adk_docker_uv/server.py`) provides:
 
 ### Multi-Stage Docker Build
 
-The Dockerfile uses a two-stage build strategy:
+**Two-stage strategy:**
+1. **Builder**: `python:3.13-slim` + uv binary, cache mount (`--mount=type=cache,target=/root/.cache/uv`), `--locked` validation, `--no-install-project` for layer optimization
+2. **Runtime**: Clean slim image, non-root `app:app`, ~200MB final size
 
-1. **Builder stage** (`python:3.13-slim` + uv binary):
-   - Copies uv binary from `ghcr.io/astral-sh/uv:0.9.6`
-   - Installs dependencies with cache mount (`--mount=type=cache,target=/root/.cache/uv`)
-   - Uses `--locked` flag to validate lockfile matches pyproject.toml
-   - Separates dependency installation (`--no-install-project`) from code copy for optimal caching
-   - Source code changes trigger ~5-10s rebuild (only install layer)
-
-2. **Runtime stage** (clean `python:3.13-slim`):
-   - Copies only `.venv` and source code from builder
-   - Runs as non-root user (`app:app`)
-   - Binds to `0.0.0.0:8000` for container networking
-   - Final image: ~200MB (vs ~500MB single-stage)
-
-**Key optimizations:**
-- Cache mount persists `/root/.cache/uv` across builds (~80% speedup)
-- Dependency layer rebuilds only when `pyproject.toml` or `uv.lock` changes
-- Code layer rebuilds only when `src/` changes
-- Documentation updates (README.md) don't trigger rebuilds (empty README created at build time)
+**Key optimizations:** Cache mount persists across builds (~80% speedup), dependency layer rebuilds only on `pyproject.toml`/`uv.lock` changes, code layer rebuilds only on `src/` changes. Empty README at build time prevents doc-only rebuilds.
 
 See `docs/dockerfile-strategy.md` for detailed rationale.
 
@@ -221,56 +203,17 @@ See `docs/dockerfile-strategy.md` for detailed rationale.
 
 ## Environment Variables
 
-### Required (choose ONE authentication method)
-
-**Option 1: Gemini Developer API**
-```bash
-GOOGLE_API_KEY=your_api_key_here
-```
-
-**Option 2: Vertex AI (default)**
+**Required (GCP auth only):**
 ```bash
 GOOGLE_GENAI_USE_VERTEXAI=TRUE
 GOOGLE_CLOUD_PROJECT=your-project-id
 GOOGLE_CLOUD_LOCATION=us-central1
-# Requires: gcloud auth application-default login
+# Auth: gcloud auth application-default login
 ```
 
-### Optional Configuration
+**Key optional vars:** `SERVE_WEB_INTERFACE` (web UI), `LOG_LEVEL` (DEBUG/INFO/WARNING/ERROR), `RELOAD_AGENTS` (dev hot reload), `ROOT_AGENT_MODEL` (default: gemini-2.5-flash), `AGENT_ENGINE` (session persistence, URI prefix auto-added), `ARTIFACT_SERVICE_URI` (GCS bucket), `ALLOW_ORIGINS` (JSON array, uses `parse_json_list_env()` with validation/fallback).
 
-```bash
-# Enable web UI (default: false)
-SERVE_WEB_INTERFACE=true
-
-# Logging level (default: INFO)
-LOG_LEVEL=DEBUG
-
-# Server configuration (defaults: HOST=127.0.0.1, PORT=8000)
-# Note: Dockerfile overrides HOST=0.0.0.0 for container networking
-HOST=127.0.0.1
-PORT=8000
-
-# Enable agent hot reloading on file changes (default: false)
-# Development-only: enables file watching for .py and .yaml changes
-RELOAD_AGENTS=true
-
-# Override default agent model (default: gemini-2.5-flash)
-ROOT_AGENT_MODEL=gemini-2.5-flash
-
-# Session/memory persistence via Agent Engine (default: in-memory ephemeral)
-# Note: URI prefix "agentengine://" is added automatically in code
-AGENT_ENGINE=projects/123/locations/us-central1/reasoningEngines/456
-
-# Artifact storage via GCS bucket (default: in-memory ephemeral)
-ARTIFACT_SERVICE_URI=gs://your-artifact-storage-bucket
-
-# CORS allowed origins (JSON array string)
-# Parsed with validation and fallback to localhost defaults
-# Invalid JSON falls back to default with warning
-# Default (backward compatible for local development): ["http://127.0.0.1", "http://127.0.0.1:8000"]
-# Set via TF_VAR_allow_origins in CI/CD to override
-ALLOW_ORIGINS='["https://your-domain.com", "http://127.0.0.1:3000"]'
-```
+See `.env.example` for complete list.
 
 ## Dependency Management
 
@@ -312,14 +255,9 @@ uv lock --upgrade-package package-name
 - **Deployment:** Uses image **digest** (`registry/image@sha256:...`) instead of tag, ensuring every rebuild triggers new Cloud Run revision
 - **Concurrency:** PRs cancel in-progress, main runs sequentially, per-workspace Terraform locking
 
-**Version tag trigger rationale:**
-- Tag creation happens after release PR is reviewed and merged (code already vetted)
-- Automatic workflow trigger ensures version-tagged images are built consistently
-- Tag is immutable pointer to already-reviewed code on main
-- Standard industry practice for automated release workflows
-- Security: Tags can only be pushed by authorized users, optional tag protection rules available
+**Version tag trigger:** Tag push (`v*`) triggers build after release PR merged. Safe because tags point to reviewed code, only authorized users can push tags.
 
-**Authentication:** Workload Identity Federation (no service account keys). WIF configured by Terraform bootstrap.
+**Auth:** Workload Identity Federation (no service account keys), configured by Terraform bootstrap.
 
 **GitHub Variables (auto-created by bootstrap):**
 - `GCP_PROJECT_ID`, `GCP_LOCATION`, `IMAGE_NAME`
@@ -330,151 +268,20 @@ uv lock --upgrade-package package-name
 
 ## Image Digest Deployment
 
-### Why Digests Instead of Tags
+**Critical pattern:** Deploy with immutable digest (`registry/image@sha256:...`), not mutable tag. Tags are mutable - rebuilding same tag won't trigger Cloud Run redeployment. Digests are unique per build, guaranteeing new revision.
 
-Docker tags are mutable references that can point to different images over time. This creates a deployment problem:
+**Workflow:** `docker-build.yml` outputs digest URI → `ci-cd.yml` passes to Terraform via `TF_VAR_docker_image` → Cloud Run deploys new revision.
 
-**Problem with tag-based deployment:**
-- Tag `latest` points to image A
-- Code is updated, image B built with same tag `latest`
-- Terraform deploys with tag `latest`, but Cloud Run still runs image A
-- No redeployment occurs (tag is already deployed)
-- New code never reaches Cloud Run
+**Multi-platform digests:** Manifest list digest (deployed) ≠ platform-specific digest (running). This is expected. Workflow outputs manifest list, Cloud Run pulls and selects platform (linux/amd64). Service shows manifest digest, revision shows platform digest.
 
-**Solution with digest-based deployment:**
-- Every Docker image has an immutable SHA256 digest (`sha256:abc123...`)
-- Each rebuild produces a unique digest (even same source code, different build timestamp)
-- Terraform detects digest change and redeploys
-- Every build guarantees a new Cloud Run revision
-
-### How Digest Deployment Works
-
-**Build phase** (`docker-build.yml`):
-1. Docker build step outputs digest: `sha256:abc123def456...`
-2. Extract registry and image name from first tag: `registry.location.pkg.dev/project/repo/image`
-3. Construct full digest URI: `registry.location.pkg.dev/project/repo/image@sha256:abc123def456...`
-4. Output digest URI as workflow output
-
-**Deployment phase** (`ci-cd.yml`):
-1. Pass digest URI to Terraform: `TF_VAR_docker_image="registry/image@sha256:..."`
-2. Terraform updates Cloud Run service with new digest
-3. Cloud Run detects image change, creates new revision automatically
-
-### Digest vs Tag Summary
-
-| Aspect | Tag | Digest |
-|--------|-----|--------|
-| Format | `registry/image:tag` | `registry/image@sha256:hash` |
-| Mutability | Mutable (can be reassigned) | Immutable (unique per image) |
-| Deployment trigger | Only if tag changes | Always (digest is unique per build) |
-| Use case | Development, releases | Production deployment |
-
-### Traceability: From Digest to Commit
-
-Trace a deployed image back to source code:
-
-```bash
-# Get currently running image digest from Cloud Run
-RUNNING_IMAGE=$(gcloud run services describe adk-docker-uv \
-  --region us-central1 \
-  --format='value(spec.template.spec.containers[0].image)')
-
-# Get all tags pointing to that digest
-gcloud artifacts docker images describe "${RUNNING_IMAGE}" \
-  --format="value(tags)" | tr ',' '\n'
-
-# The tags include commit SHA or version: pr-123-abc..., sha-abc..., v0.4.0, etc.
-# Match against git commits: git log --format=%H --grep="sha-abc..."
-```
-
-### Implementation Details
-
-**GitHub Actions outputs:**
-- `digest_uri`: Complete digest URI (`registry/image@sha256:abc123...`)
-- Output from `docker-build.yml` workflow passed to `terraform-plan-apply.yml`
-- Constructed from build digest and image registry/name
-
-**Terraform integration:**
-- `docker_image` variable accepts both tag-based and digest-based URIs
-- Digest format: `registry/image@sha256:full-hash`
-- Example: `us-central1-docker.pkg.dev/my-project/my-repo/adk-docker-uv@sha256:1a2b3c4d...`
-
-### Multi-Platform Builds and Digest Resolution
-
-**Build configuration:** Multi-platform images (linux/amd64, linux/arm64)
-
-When building for multiple platforms, Docker creates:
-1. **Manifest list** - Index pointing to all platform-specific images (has its own digest)
-2. **Platform-specific images** - Separate image for each architecture (each has its own digest)
-
-**Expected behavior in Cloud Run:**
-
-```bash
-# What Terraform deploys (manifest list digest)
-gcloud run services describe adk-docker-uv --format='value(spec.template.spec.containers[0].image)'
-# Output: registry/image@sha256:29a4df4fd28b... (manifest list)
-
-# What actually runs (platform-specific digest)
-gcloud run revisions describe adk-docker-uv-00009-xyz --format='value(spec.containers[0].image)'
-# Output: registry/image@sha256:28d1b714d69d... (linux/amd64 platform)
-```
-
-**Why digests differ:**
-- Workflow outputs **manifest list digest** (references all platforms)
-- Terraform deploys with **manifest list digest**
-- Cloud Run pulls manifest list, selects **linux/amd64** platform
-- Revision shows **platform-specific digest** (actual running image)
-
-**This is correct!** The manifest list ensures Cloud Run gets the right platform. Different digests in service vs revision specs are expected and normal.
-
-**For complete verification workflows and troubleshooting**, see the dedicated guide: [Validating Multi-Platform Docker Builds](docs/validating-multiplatform-builds.md)
+See [Validating Multi-Platform Docker Builds](docs/validating-multiplatform-builds.md) for verification workflows.
 
 ## Terraform Infrastructure
 
-The project includes two Terraform modules for infrastructure management:
+**Two modules:**
+1. **Bootstrap** (`terraform/bootstrap/`): One-time CI/CD setup. Creates WIF, Artifact Registry, GCS state bucket, GitHub Variables. Local state (default). Reads `.env` via dotenv provider (v1.2.9 pinned). Run from local terminal.
 
-### Bootstrap Module (`terraform/bootstrap/`)
-
-**Purpose:** One-time CI/CD infrastructure setup.
-
-**Resources created:**
-- Workload Identity Federation (pool + provider)
-- Artifact Registry with cleanup policies (keep 5 recent, keep buildcache forever)
-- **GCS bucket for main module's Terraform state** (auto-named with random suffix)
-- GitHub Actions Variables (all CI/CD config auto-created)
-
-**State management:** Local state by default (no backend.tf). Optional GCS backend for team collaboration.
-
-**Configuration:** Reads `.env` using `dotenv` provider (version 1.2.9 pinned). Run once from local terminal.
-
-**IAM roles to GitHub Actions:**
-- `roles/aiplatform.user`, `roles/artifactregistry.writer`, `roles/storage.objectUser` (state bucket)
-
-### Main Module (`terraform/main/`)
-
-**Purpose:** Cloud Run deployment (runs in GitHub Actions CI/CD).
-
-**Resources created:**
-- Service account with IAM roles
-- **Vertex AI Reasoning Engine** (session/memory persistence)
-- **GCS bucket for artifacts** (auto-named with random suffix)
-- Cloud Run service with environment variables
-
-**State management:** Remote state in GCS (bucket created by bootstrap). Backend config via `-backend-config` flag.
-
-**Configuration:** All inputs via `TF_VAR_*` environment variables (no dotenv). GitHub Actions maps Variables to TF_VAR_*.
-
-**Docker image recycling:** `docker_image` variable nullable - defaults to previous deployment's image for infrastructure-only updates.
-
-**Key features:**
-- Agent Engine resource ID passed to Cloud Run via `AGENT_ENGINE` env var
-- Production safety: `RELOAD_AGENTS` hardcoded to false
-
-### Terraform Naming Conventions
-
-- **Variable naming**: Use `project` (not `project_id`) for GCP project identifier
-- **Local variables**: Prefer descriptive names (`local.agent_name`, `local.location`)
-- **Resource IDs**: Use `agent_name` as base for consistent naming across resources
+2. **Main** (`terraform/main/`): Cloud Run deployment. Creates service account, Vertex AI Reasoning Engine, GCS artifact bucket, Cloud Run service. Remote state in GCS. Inputs via `TF_VAR_*` (no dotenv). Runs in GitHub Actions. `docker_image` variable nullable (defaults to previous image for infra-only updates).
 
 ### Running Terraform
 
@@ -487,101 +294,20 @@ terraform -chdir=terraform/bootstrap plan
 terraform -chdir=terraform/bootstrap apply
 # Creates GitHub Variables, GCS state bucket, WIF, Artifact Registry
 
-# Main (CI/CD execution - see workflows)
-# Local execution not recommended, but possible:
-export TF_VAR_project="project-id"
-export TF_VAR_location="us-central1"
-export TF_VAR_agent_name="adk-docker-uv"
-export TF_VAR_terraform_state_bucket="terraform-state-..."
-export TF_VAR_docker_image="registry/image:tag"  # nullable
-terraform -chdir=terraform/main init -backend-config="bucket=${TF_VAR_terraform_state_bucket}"
-terraform -chdir=terraform/main workspace select --or-create default
-terraform -chdir=terraform/main plan
-terraform -chdir=terraform/main apply
-```
+**Naming conventions:** Use `project` (not `project_id`), descriptive locals (`local.agent_name`), `agent_name` base for resource IDs.
 
-**Workspaces:**
-- Bootstrap: Uses `default` workspace (workspaces not recommended for local state)
-- Main: Uses workspaces for environment isolation (default/dev/stage/prod)
+**Workspaces:** Bootstrap uses `default`, main uses workspaces for environments (default/dev/stage/prod).
 
-**Key differences:**
-- Bootstrap: Local state (no backend.tf), reads `.env`, run locally
-- Main: Remote state in GCS, TF_VAR_* inputs, runs in CI/CD
+**Variable overrides (CI/CD):** GitHub Actions Variables → `TF_VAR_*` env vars. `coalesce()` skips empty strings and nulls, applies defaults. Override: `log_level`, `serve_web_interface`, `allow_origins` (JSON array), `root_agent_model`, `artifact_service_uri`, `agent_engine`.
 
-### Terraform Variable Overrides (CI/CD Runtime Configuration)
+See `docs/terraform-infrastructure.md` for detailed setup and IAM patterns.
 
-**Pattern:** GitHub Actions maps workflow Variables to `TF_VAR_*` environment variables passed to Terraform.
+**IAM model:** Dedicated GCP project per environment. Project-level IAM roles grant access to same-project resources only. Cross-project buckets require external IAM config + `ARTIFACT_SERVICE_URI` override.
 
-**Key insight - Empty string handling:**
-- GitHub Actions defaults unset Variables to empty string (`""`)
-- Terraform `nullable=true` treats `""` as null
-- `coalesce()` function applies sensible defaults when variables are null
+**App service account roles:** See `terraform/main/main.tf` (Vertex AI, storage, logging, tracing).
+**GitHub Actions WIF roles:** See `terraform/bootstrap/main.tf` (Vertex AI, Artifact Registry, IAM, storage).
 
-**Available runtime configuration overrides:**
-These variables can be set in GitHub Actions when needed for production configuration:
-
-- `TF_VAR_log_level`: Override default LOG_LEVEL for Cloud Run service
-- `TF_VAR_serve_web_interface`: Enable/disable web UI for running service
-- `TF_VAR_allow_origins`: Override CORS origins (JSON array string) - restores default `["http://127.0.0.1", "http://127.0.0.1:8000"]` if unset
-- `TF_VAR_root_agent_model`: Change agent model at deployment time
-- `TF_VAR_artifact_service_uri`: Override GCS bucket for artifact storage
-- `TF_VAR_agent_engine`: Override Vertex AI Reasoning Engine resource ID
-
-**Backward compatibility note:** The `ALLOW_ORIGINS` default is intentionally set to maintain local development compatibility. Changing this requires explicit override via `TF_VAR_allow_origins`.
-
-See `docs/terraform-infrastructure.md` section "Terraform Variable Overrides" for detailed examples.
-
-### IAM and Permissions Model
-
-**Project-level IAM assumption:**
-This deployment assumes a dedicated GCP project per deployment environment. All Terraform-provisioned resources are in the same GCP project. This simplifies IAM configuration and makes resource quotas and billing transparent.
-
-**Cross-project bucket access limitation:**
-Storage access is controlled by project-level IAM roles (e.g., `roles/storage.bucketViewer`, `roles/storage.objectUser`). These roles only grant access to buckets in the same project. To use an artifact bucket in a different GCP project:
-- The IAM binding must be configured outside the Terraform module
-- The service account needs explicit cross-project IAM roles on the external bucket
-- Use `ARTIFACT_SERVICE_URI` variable to reference the external bucket
-
-**App service account roles** (created by main module):
-- `roles/aiplatform.user`: Access Vertex AI Reasoning Engine (session persistence)
-- `roles/storage.bucketViewer`: List buckets in project
-- `roles/storage.objectUser`: Read/write to auto-created artifact bucket (same project only)
-- `roles/logging.logWriter`: Write logs to Cloud Logging
-- `roles/cloudtrace.agent`: Write traces to Cloud Trace
-- `roles/telemetry.tracesWriter`: Write telemetry traces
-- `roles/serviceusage.serviceUsageConsumer`: API usage tracking
-
-**GitHub Actions WIF roles** (created by bootstrap module):
-- `roles/aiplatform.user`: Deploy and manage Vertex AI resources
-- `roles/artifactregistry.writer`: Push Docker images to Artifact Registry
-- `roles/iam.serviceAccountUser`: Required for Cloud Run to attach service accounts during deployment
-- `roles/storage.admin`: Manage GCS buckets and Terraform state
-
-**Documentation:** See `docs/terraform-infrastructure.md` section "IAM and Permissions Model" for security implications and cross-project configuration guidance.
-
-### Cloud Run Startup Probe Configuration
-
-**Critical insight - Startup probe must allow time for credential initialization:**
-
-The Cloud Run container needs time to initialize credentials before the artifact service can authenticate to GCS. Aggressive startup probes cause immediate deployment failure with no visibility into the root cause.
-
-**Correct configuration** (in `terraform/main/main.tf`):
-- `failure_threshold=5, period_seconds=20, timeout_seconds=15, initial_delay_seconds=20`
-- Uses HTTP health check at `/health` endpoint (not TCP socket)
-- Total window: 120 seconds to reach healthy state
-- Health endpoint returns `{"status": "ok"}` when server is ready
-
-**Why this matters:**
-- Overly aggressive config (e.g., `failure_threshold=1, period_seconds=180`) fails immediately
-- Symptom: Container exits with DEADLINE_EXCEEDED, logging unavailable (crashes before log initialization)
-- Root cause: Cloud Run metadata server credential setup takes ~30-60s, GCS auth fails before then
-- Image works locally because docker/docker-compose don't require Cloud Run credential initialization
-
-**Debugging approach:**
-1. If Cloud Run deployment fails silently, test locally with identical env vars: `docker compose up`
-2. Image working locally but failing in Cloud Run indicates credential/timing issue
-3. Cloud Run logs appear in Logging, but startup failures may have zero app-level logs
-4. Increase startup probe `initial_delay_seconds` and `failure_threshold` if credential setup takes longer
+**Cloud Run startup probe:** Must allow time for credential initialization (~30-60s). Config: `failure_threshold=5, period_seconds=20, initial_delay_seconds=20, timeout_seconds=15`, HTTP `/health` endpoint. Total window: 120s. Aggressive config causes DEADLINE_EXCEEDED with no logs. Debug: Test locally first (`docker compose up`), if works locally but fails in Cloud Run = credential/timing issue.
 
 ## Project-Specific Patterns
 
@@ -671,13 +397,9 @@ Container runs with `-registry` suffix to distinguish from locally-built images.
 
 ## Documentation
 
-- **README.md**: Quickstart and overview
+- **docs/cicd-setup.md**: CI/CD automation (build/deployment)
 - **docs/development.md**: Development workflows, code quality, testing
-- **docs/docker-compose-workflow.md**: Hot reloading and local development
-- **docs/dockerfile-strategy.md**: Multi-stage build architecture and rationale
-- **docs/terraform-infrastructure.md**: Comprehensive Terraform setup guide
-  - "Bootstrap Module Setup": One-time infrastructure creation (WIF, Artifact Registry, state bucket)
-  - "Main Module Setup": Cloud Run deployment with Agent Engine and artifact storage
-  - "Terraform Variable Overrides": Runtime configuration options via GitHub Actions
-  - "IAM and Permissions Model": Service account roles and cross-project access patterns
-- **docs/cicd-setup.md**: CI/CD workflow automation (build and deployment)
+- **docs/docker-compose-workflow.md**: Hot reloading, local development
+- **docs/dockerfile-strategy.md**: Multi-stage build rationale
+- **docs/terraform-infrastructure.md**: Terraform setup (bootstrap/main modules, variable overrides, IAM patterns)
+- **docs/validating-multiplatform-builds.md**: Multi-platform digest verification (specialized troubleshooting)
