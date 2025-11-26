@@ -170,7 +170,7 @@ Deploys the ADK agent application to Cloud Run. Designed to run in **GitHub Acti
 ### Resources Created
 
 1. **Service Account** - Attached to Cloud Run with IAM roles (see `terraform/main/main.tf`)
-2. **Vertex AI Reasoning Engine** - Session/memory persistence (resource ID passed via `AGENT_ENGINE`)
+2. **Vertex AI Reasoning Engine** - Session/memory persistence (resource name passed via `AGENT_ENGINE`)
 3. **GCS Bucket for Artifacts** - Versioned storage for agent artifacts
 4. **Cloud Run Service** - HTTP/2 on port 8000, auto-scaling 0-100 instances, `RELOAD_AGENTS` hardcoded to FALSE
 
