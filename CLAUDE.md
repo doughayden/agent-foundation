@@ -429,16 +429,25 @@ gcloud run revisions describe adk-docker-uv-00009-xyz --format='value(spec.conta
 
 **Verification:**
 ```bash
-# Verify manifest list was deployed
-gcloud run services describe SERVICE --format='value(spec.template.spec.containers[0].image)'
+# 1. Get manifest list digest (what Terraform deployed)
+MANIFEST=$(gcloud run services describe adk-docker-uv \
+  --region us-central1 \
+  --format='value(spec.template.spec.containers[0].image)')
+echo "Manifest list: $MANIFEST"
 
-# Check what's actually running
-gcloud run revisions describe REVISION --format='value(spec.containers[0].image)'
+# 2. Get platform-specific digest (what's actually running)
+PLATFORM=$(gcloud run revisions describe adk-docker-uv-00009-xyz \
+  --region us-central1 \
+  --format='value(spec.containers[0].image)')
+echo "Platform image: $PLATFORM"
 
-# Both should trace to same tags (same build)
-gcloud artifacts docker images describe "MANIFEST_DIGEST" --format="value(tags)"
-gcloud artifacts docker images describe "PLATFORM_DIGEST" --format="value(tags)"
-# Both return: f74a46a,latest,v0.4.1
+# 3. Verify manifest list contains platform image
+docker manifest inspect "$MANIFEST" | grep -A 3 "amd64"
+# Should show the platform digest in the manifests array
+
+# 4. Verify deployed manifest has tags (platform images don't have tags)
+gcloud artifacts docker images describe "$MANIFEST" --format="value(tags)"
+# Output: f74a46a,latest,v0.4.1
 ```
 
 ## Terraform Infrastructure

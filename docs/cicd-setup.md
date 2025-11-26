@@ -406,23 +406,23 @@ When deploying:
 
 **Verification they're from the same build:**
 
-Both digests should have identical tags:
+Use `docker manifest inspect` to verify the manifest list contains the platform-specific digest:
 
 ```bash
-# Check manifest list tags
+# Inspect manifest list to see platform images
+docker manifest inspect \
+  "us-central1-docker.pkg.dev/.../image@sha256:29a4df4..." \
+  | jq '.manifests[] | select(.platform.architecture=="amd64") | .digest'
+# Output: "sha256:28d1b714d69d..."
+
+# Verify tags (only manifest list has tags, not platform images)
 gcloud artifacts docker images describe \
   "us-central1-docker.pkg.dev/.../image@sha256:29a4df4..." \
   --format="value(tags)"
 # Output: f74a46a,latest,v0.4.1
-
-# Check platform-specific tags
-gcloud artifacts docker images describe \
-  "us-central1-docker.pkg.dev/.../image@sha256:28d1b7..." \
-  --format="value(tags)"
-# Output: f74a46a,latest,v0.4.1
 ```
 
-Same tags = same build = working correctly!
+**Note:** Platform-specific images (`sha256:28d1b7...`) don't have tags - only the manifest list has tags. This is expected Docker behavior.
 
 ### Workflow Fails: Missing Variables
 
