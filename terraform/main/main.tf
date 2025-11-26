@@ -116,9 +116,10 @@ resource "google_cloud_run_v2_service" "app" {
       }
 
       startup_probe {
-        timeout_seconds   = 30
-        period_seconds    = 180
-        failure_threshold = 1
+        failure_threshold     = 5
+        initial_delay_seconds = 20
+        timeout_seconds       = 10
+        period_seconds        = 20
         tcp_socket {
           port = 8000
         }
