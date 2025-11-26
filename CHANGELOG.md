@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Reusable CI/CD workflow pattern with three workflows: `ci-cd.yml` (orchestrator), `docker-build.yml` (multi-arch builds), `terraform-plan-apply.yml` (infrastructure deployment)
-- Automatic Docker image version tagging on git tag push (workflow triggers on `v*` tags)
+- Automatic CI/CD workflow trigger on version tag push (builds Docker images for `v*` tags)
 - Smart image tagging strategy: PRs tagged as `pr-{number}-{sha}`, main branch tagged as `{sha}`, `latest`, and `{version}` (if git tag exists)
 - PR automation with Terraform plan posted as comment on pull requests
 - Workspace-based Terraform deployment supporting environment isolation (default/dev/stage/prod)
