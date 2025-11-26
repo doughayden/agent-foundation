@@ -110,6 +110,8 @@ registry/image:v0.9.0
 
 **Deployment uses SHA tag** for immutability and traceability.
 
+**Deployment uses image digest** (not tags) to ensure every build triggers a Cloud Run revision deployment. When the same tag is rebuilt (e.g., base image security update, manual rebuild), the new digest ensures Terraform detects a change and deploys the updated image.
+
 ### Version Tag Builds
 
 **Trigger:** Pushing a git tag matching `v*` pattern (e.g., `v0.4.0`)
@@ -323,6 +325,52 @@ gcloud run services describe IMAGE_NAME \
 ```
 
 ## Troubleshooting
+
+### Tracing Deployed Image to Git Commit
+
+Cloud Run deployments use image digests for reliability. To trace a deployed image back to its git commit:
+
+**Step-by-step process:**
+
+```bash
+# 1. Get deployed digest from Cloud Run service
+gcloud run services describe SERVICE_NAME \
+  --region REGION \
+  --format="value(spec.template.spec.containers[0].image)"
+
+# Output: us-central1-docker.pkg.dev/.../adk-docker-uv@sha256:abc123...
+
+# 2. Lookup tags in Artifact Registry using the digest
+gcloud artifacts docker images describe "DIGEST_FROM_STEP_1" \
+  --format="value(tags)"
+
+# Output: d1dda49,latest,v0.4.0
+
+# 3. Extract commit SHA (first tag is always the commit SHA)
+```
+
+**One-liner command:**
+
+```bash
+gcloud artifacts docker images describe \
+  "$(gcloud run services describe adk-docker-uv --region us-central1 \
+     --format='value(spec.template.spec.containers[0].image)')" \
+  --format="value(tags)" | cut -d',' -f1
+```
+
+**How it works:**
+
+1. Inner command gets the deployed image digest from Cloud Run
+2. `gcloud artifacts docker images describe` looks up all tags for that digest
+3. `cut -d',' -f1` extracts the first tag (always the commit SHA short hash)
+
+**Example output:**
+
+```
+d1dda49
+```
+
+The commit SHA can then be used with `git show d1dda49` to view the deployed code.
 
 ### Workflow Fails: Missing Variables
 

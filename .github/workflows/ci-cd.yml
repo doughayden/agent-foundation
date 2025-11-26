@@ -108,7 +108,7 @@ jobs:
     needs: build
     uses: ./.github/workflows/terraform-plan-apply.yml
     with:
-      docker_image: ${{ needs.build.outputs.image_uri }}
+      docker_image: ${{ needs.build.outputs.digest_uri }}
       workspace: ${{ inputs.workspace || 'default' }}
       terraform_action: ${{ github.event_name == 'pull_request' && 'plan' || inputs.terraform_action || 'apply' }}
     secrets: inherit

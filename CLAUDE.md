@@ -307,8 +307,9 @@ uv lock --upgrade-package package-name
 
 **Workflow behavior:**
 - **PR:** Build `pr-{number}-{sha}` image, run `terraform plan`, post comment
-- **Main:** Build `{sha}` + `latest` + `{version}` tags, run `terraform apply`, deploy to Cloud Run
+- **Main:** Build `{sha}` + `latest` + `{version}` tags, deploy by **digest** to Cloud Run
 - **Tag push (`v*`):** Triggers CI/CD to build version-tagged Docker image (e.g., `v0.4.0`)
+- **Deployment:** Uses image **digest** (`registry/image@sha256:...`) instead of tag, ensuring every rebuild triggers new Cloud Run revision
 - **Concurrency:** PRs cancel in-progress, main runs sequentially, per-workspace Terraform locking
 
 **Version tag trigger rationale:**
@@ -326,6 +327,77 @@ uv lock --upgrade-package package-name
 - `TERRAFORM_STATE_BUCKET`
 
 **Note:** These are Variables (not Secrets) - resource identifiers, not credentials. Security via IAM policies.
+
+## Image Digest Deployment
+
+### Why Digests Instead of Tags
+
+Docker tags are mutable references that can point to different images over time. This creates a deployment problem:
+
+**Problem with tag-based deployment:**
+- Tag `latest` points to image A
+- Code is updated, image B built with same tag `latest`
+- Terraform deploys with tag `latest`, but Cloud Run still runs image A
+- No redeployment occurs (tag is already deployed)
+- New code never reaches Cloud Run
+
+**Solution with digest-based deployment:**
+- Every Docker image has an immutable SHA256 digest (`sha256:abc123...`)
+- Each rebuild produces a unique digest (even same source code, different build timestamp)
+- Terraform detects digest change and redeploys
+- Every build guarantees a new Cloud Run revision
+
+### How Digest Deployment Works
+
+**Build phase** (`docker-build.yml`):
+1. Docker build step outputs digest: `sha256:abc123def456...`
+2. Extract registry and image name from first tag: `registry.location.pkg.dev/project/repo/image`
+3. Construct full digest URI: `registry.location.pkg.dev/project/repo/image@sha256:abc123def456...`
+4. Output digest URI as workflow output
+
+**Deployment phase** (`ci-cd.yml`):
+1. Pass digest URI to Terraform: `TF_VAR_docker_image="registry/image@sha256:..."`
+2. Terraform updates Cloud Run service with new digest
+3. Cloud Run detects image change, creates new revision automatically
+
+### Digest vs Tag Summary
+
+| Aspect | Tag | Digest |
+|--------|-----|--------|
+| Format | `registry/image:tag` | `registry/image@sha256:hash` |
+| Mutability | Mutable (can be reassigned) | Immutable (unique per image) |
+| Deployment trigger | Only if tag changes | Always (digest is unique per build) |
+| Use case | Development, releases | Production deployment |
+
+### Traceability: From Digest to Commit
+
+Trace a deployed image back to source code:
+
+```bash
+# Get currently running image digest from Cloud Run
+RUNNING_IMAGE=$(gcloud run services describe adk-docker-uv \
+  --region us-central1 \
+  --format='value(spec.template.spec.containers[0].image)')
+
+# Get all tags pointing to that digest
+gcloud artifacts docker images describe "${RUNNING_IMAGE}" \
+  --format="value(tags)" | tr ',' '\n'
+
+# The tags include commit SHA or version: pr-123-abc..., sha-abc..., v0.4.0, etc.
+# Match against git commits: git log --format=%H --grep="sha-abc..."
+```
+
+### Implementation Details
+
+**GitHub Actions outputs:**
+- `digest_uri`: Complete digest URI (`registry/image@sha256:abc123...`)
+- Output from `docker-build.yml` workflow passed to `terraform-plan-apply.yml`
+- Constructed from build digest and image registry/name
+
+**Terraform integration:**
+- `docker_image` variable accepts both tag-based and digest-based URIs
+- Digest format: `registry/image@sha256:full-hash`
+- Example: `us-central1-docker.pkg.dev/my-project/my-repo/adk-docker-uv@sha256:1a2b3c4d...`
 
 ## Terraform Infrastructure
 

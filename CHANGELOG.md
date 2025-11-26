@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- CI/CD workflows now use image digest (instead of tag) for Cloud Run deployments to ensure every Docker rebuild triggers a new revision deployment, even when tags are reused (e.g., base image security updates, manual rebuilds)
+
+### Added
+- "Image Digest Deployment" section in CLAUDE.md explaining digest-based deployment rationale and workflow
+- "Tracing Deployed Image to Git Commit" troubleshooting section in docs/cicd-setup.md with gcloud commands to lookup digest → tags → commit SHA
+
 ## [0.4.0] - 2025-11-25
 
 ### Added
@@ -39,12 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Documented IAM bucket access limitation in artifact storage bucket variable (project-level storage roles only work within same GCP project, cross-project access requires additional configuration)
 - Cloud Run startup probe configuration now uses HTTP health checks with resilient retry strategy (5 attempts over 120 seconds) to handle container initialization delays
-
-### Documentation
-- Added inline comment justifying `roles/iam.serviceAccountUser` role requirement for Cloud Run service account attachment during deployment
-- Added "Terraform Variable Overrides" section in terraform-infrastructure.md documenting GitHub Actions Variables pattern
-- Added "IAM and Permissions Model" section in terraform-infrastructure.md documenting project-level IAM assumptions and cross-project limitations
-- Documented `coalesce()` usage for empty string vs null handling in Terraform variables
+- Inline comment justifying `roles/iam.serviceAccountUser` role requirement for Cloud Run service account attachment during deployment
+- Documentation of `coalesce()` usage for empty string vs null handling in Terraform variables
+- "Terraform Variable Overrides" section in terraform-infrastructure.md documenting GitHub Actions Variables pattern
+- "IAM and Permissions Model" section in terraform-infrastructure.md documenting project-level IAM assumptions and cross-project limitations
 
 ## [0.3.0] - 2025-11-20
 
