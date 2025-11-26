@@ -17,24 +17,6 @@ on:
         required: false
         type: string
         default: 'plan'
-  workflow_dispatch:
-    inputs:
-      docker_image:
-        description: 'Docker image URI to deploy'
-        required: true
-        type: string
-      workspace:
-        description: 'Terraform workspace'
-        required: true
-        type: choice
-        options: [default, dev, stage, prod]
-        default: 'default'
-      terraform_action:
-        description: 'Terraform action'
-        required: true
-        type: choice
-        options: [plan, apply]
-        default: 'plan'
 
 permissions:
   contents: read

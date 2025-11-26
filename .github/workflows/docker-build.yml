@@ -30,27 +30,6 @@ on:
       image_uri:
         description: 'Built Docker image URI with tag'
         value: ${{ inputs.image_uri }}
-  workflow_dispatch:
-    inputs:
-      push:
-        description: 'Push image to registry'
-        required: false
-        type: boolean
-        default: true
-      tags:
-        description: 'Comma-separated list of image tags'
-        required: true
-        type: string
-      cache_from:
-        description: 'Cache source (e.g., type=registry,ref=...)'
-        required: false
-        type: string
-        default: ''
-      cache_to:
-        description: 'Cache destination (e.g., type=registry,ref=...,mode=max)'
-        required: false
-        type: string
-        default: ''
 
 permissions:
   contents: read
