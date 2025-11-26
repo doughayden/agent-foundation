@@ -129,7 +129,7 @@ jobs:
 
             // Build comment body
             const body = `
-            ## Terraform Plan Summary
+            ## 🏗️ Terraform Plan Summary
 
             | Step | Status |
             |------|:------:|
@@ -181,4 +181,3 @@ jobs:
         run: |
           terraform workspace select ${{ inputs.workspace }}
           terraform apply -auto-approve -input=false tfplan
-
