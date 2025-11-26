@@ -185,6 +185,8 @@ paths:
 - Code quality workflow changes
 - Bootstrap Terraform changes (one-time setup)
 
+**Note:** Tag triggers (`tags: - 'v*'`) ignore path filters and always run the full workflow.
+
 ### Multi-Platform Builds
 
 All images built for:
