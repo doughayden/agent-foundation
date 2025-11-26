@@ -118,6 +118,26 @@ Automatically builds version-tagged image after release PR is merged. Safe becau
 
 terraform-plan-apply.yml posts formatted comments showing format/init/validation/plan results with collapsible sections for detailed output.
 
+## Job Summaries
+
+Both the metadata extraction and Terraform deployment jobs generate formatted job summaries visible in the GitHub Actions UI. These summaries provide quick insight into build and deployment status without requiring log analysis.
+
+**Metadata Extraction Summary** includes:
+- Build context (PR, main branch, tag push, manual)
+- Branch/tag name and commit SHA
+- PR author (for pull requests)
+- Primary deployment image URI
+- All image tags (formatted as bulleted list)
+
+**Terraform Deployment Summary** includes:
+- Workspace and action (plan/apply)
+- Docker image being deployed
+- Step-by-step outcomes (format, init, validate, plan, apply)
+- Collapsible plan output (first 50 lines)
+- Deployed resources (Cloud Run URLs, service account, Agent Engine ID, artifact bucket) for successful applies
+
+Job summaries appear at the top of each workflow run, providing a quick overview without navigating through individual job logs.
+
 ## Workload Identity Federation
 
 Keyless authentication via WIF: GitHub Actions requests OIDC token, GCP validates against WIF provider, grants temporary credentials scoped to repository.
