@@ -241,8 +241,9 @@ uv lock --upgrade-package package-name
 
 ## CI/CD
 
-**Three-workflow pattern** in `.github/workflows/`:
+**Workflow pattern** in `.github/workflows/`:
 - **ci-cd.yml**: Orchestrator (meta → build → deploy)
+- **metadata-extract.yml**: Reusable metadata extraction workflow
 - **docker-build.yml**: Reusable build workflow
 - **terraform-plan-apply.yml**: Reusable Terraform deployment
 - **code-quality.yml**: Runs ruff format, ruff check, mypy
@@ -304,7 +305,7 @@ uv lock --upgrade-package package-name
    ```
 
 **Implementation examples:**
-- **Metadata job** (ci-cd.yml): Shows build context, branch, image URI, tags, SHA, PR info with event-aware output
+- **Metadata job** (metadata-extract.yml): Shows build context, branch, image URI, tags, SHA, PR info with event-aware output
 - **Terraform job** (terraform-plan-apply.yml): Shows workspace, action, step status table, plan output, deployed resources
 
 ## Image Digest Deployment
