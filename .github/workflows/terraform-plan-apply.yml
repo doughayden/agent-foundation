@@ -259,8 +259,8 @@ jobs:
             echo "| 🚀 Apply | ${apply_icon} | \`${{ steps.apply.outcome }}\` |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          # Add plan output (first 50 lines)
-          if [ -n "${{ steps.plan.outputs.stdout }}" ]; then
+          # Add plan output (first 50 lines) - only if plan step succeeded
+          if [ "${{ steps.plan.outcome }}" == "success" ] && [ -n "${{ steps.plan.outputs.stdout }}" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "<details><summary>📋 Terraform Plan Output (first 50 lines)</summary>" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -278,28 +278,34 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
 
             # Get Cloud Run service URLs
-            if terraform output -json cloud_run_services 2>/dev/null | jq -e . >/dev/null 2>&1; then
+            CLOUD_RUN_SERVICES=$(terraform output -json cloud_run_services 2>/dev/null || echo "{}")
+            if echo "$CLOUD_RUN_SERVICES" | jq -e 'length > 0' >/dev/null 2>&1; then
               echo "#### Cloud Run Services" >> $GITHUB_STEP_SUMMARY
-              terraform output -json cloud_run_services | jq -r 'to_entries[] | "- **\(.key):** [\(.value.uri)](\(.value.uri))"' >> $GITHUB_STEP_SUMMARY
+              echo "$CLOUD_RUN_SERVICES" | jq -r 'to_entries[] | "- **\(.key):** [\(.value.uri)](\(.value.uri))"' >> $GITHUB_STEP_SUMMARY
             fi
 
             # Get other key outputs if they exist
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "#### Additional Outputs" >> $GITHUB_STEP_SUMMARY
 
+            # Capture outputs to variables first to avoid duplicate execution
+            SERVICE_ACCOUNT_EMAIL=$(terraform output -raw service_account_email 2>/dev/null || echo "")
+            AGENT_ENGINE_ID=$(terraform output -raw agent_engine_id 2>/dev/null || echo "")
+            ARTIFACT_BUCKET_NAME=$(terraform output -raw artifact_bucket_name 2>/dev/null || echo "")
+
             # Service account
-            if terraform output -raw service_account_email 2>/dev/null; then
-              echo "- **Service Account:** \`$(terraform output -raw service_account_email)\`" >> $GITHUB_STEP_SUMMARY
+            if [ -n "$SERVICE_ACCOUNT_EMAIL" ]; then
+              echo "- **Service Account:** \`${SERVICE_ACCOUNT_EMAIL}\`" >> $GITHUB_STEP_SUMMARY
             fi
 
             # Agent Engine (if exists)
-            if terraform output -raw agent_engine_id 2>/dev/null; then
-              echo "- **Agent Engine ID:** \`$(terraform output -raw agent_engine_id)\`" >> $GITHUB_STEP_SUMMARY
+            if [ -n "$AGENT_ENGINE_ID" ]; then
+              echo "- **Agent Engine ID:** \`${AGENT_ENGINE_ID}\`" >> $GITHUB_STEP_SUMMARY
             fi
 
             # Artifact bucket
-            if terraform output -raw artifact_bucket_name 2>/dev/null; then
-              echo "- **Artifact Bucket:** \`gs://$(terraform output -raw artifact_bucket_name)\`" >> $GITHUB_STEP_SUMMARY
+            if [ -n "$ARTIFACT_BUCKET_NAME" ]; then
+              echo "- **Artifact Bucket:** \`gs://${ARTIFACT_BUCKET_NAME}\`" >> $GITHUB_STEP_SUMMARY
             fi
           fi
 

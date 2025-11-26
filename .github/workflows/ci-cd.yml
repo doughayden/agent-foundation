@@ -93,6 +93,9 @@ jobs:
 
       - name: Generate Job Summary
         run: |
+          # Set GITHUB_REF as shell variable for proper substitution
+          GITHUB_REF="${{ github.ref }}"
+
           # Determine build context
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             BUILD_CONTEXT="Pull Request #${{ github.event.pull_request.number }}"
@@ -150,10 +153,16 @@ jobs:
           ### 🏷️ All Image Tags
           EOF
 
-          # Format tags as a bulleted list
-          echo "${{ steps.extract.outputs.tags }}" | tr ',' '\n' | while read -r tag; do
-            echo "- \`${tag}\`" >> $GITHUB_STEP_SUMMARY
-          done
+          # Format tags as a bulleted list (with defensive check for empty tags)
+          if [ -n "${{ steps.extract.outputs.tags }}" ]; then
+            echo "${{ steps.extract.outputs.tags }}" | tr ',' '\n' | while read -r tag; do
+              if [ -n "${tag}" ]; then
+                echo "- \`${tag}\`" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          else
+            echo "- *No tags configured*" >> $GITHUB_STEP_SUMMARY
+          fi
 
           cat >> $GITHUB_STEP_SUMMARY << 'EOF'
 
