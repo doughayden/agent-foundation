@@ -55,82 +55,14 @@ jobs:
 
       - name: Generate Job Summary
         run: |
-          # Set GITHUB_REF as shell variable for proper substitution
-          GITHUB_REF="${{ github.ref }}"
-
-          # Determine build context
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            BUILD_CONTEXT="Pull Request #${{ github.event.pull_request.number }}"
-          elif [ "${{ github.event_name }}" == "push" ]; then
-            if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-              BUILD_CONTEXT="Tag Push (${GITHUB_REF#refs/tags/})"
-            else
-              BUILD_CONTEXT="Main Branch Push"
-            fi
-          else
-            BUILD_CONTEXT="Manual Dispatch"
-          fi
-
-          # Extract branch name
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            BRANCH_NAME="${{ github.head_ref }}"
-          elif [[ "${{ github.ref }}" == refs/heads/* ]]; then
-            BRANCH_NAME="${GITHUB_REF#refs/heads/}"
-          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            BRANCH_NAME="tag: ${GITHUB_REF#refs/tags/}"
-          else
-            BRANCH_NAME="unknown"
-          fi
-
-          # Generate summary
           cat >> $GITHUB_STEP_SUMMARY << 'EOF'
-          ## 📦 Build Metadata Extraction
+          ## 📦 Build Metadata
 
-          ### Build Context
-          - **Event Type:** ${{ github.event_name }}
-          - **Build Context:**
-          EOF
-          echo "${BUILD_CONTEXT}" >> $GITHUB_STEP_SUMMARY
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
-          - **Branch/Tag:**
-          EOF
-          echo "${BRANCH_NAME}" >> $GITHUB_STEP_SUMMARY
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
-          - **Commit SHA:** `${{ github.sha }}`
-          - **Short SHA:** `
-          EOF
-          echo "$(git rev-parse --short HEAD)\`" >> $GITHUB_STEP_SUMMARY
-
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            cat >> $GITHUB_STEP_SUMMARY << 'EOF'
-          - **PR Number:** #${{ github.event.pull_request.number }}
-          - **PR Author:** @${{ github.event.pull_request.user.login }}
-          EOF
-          fi
-
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
-
-          ### 🎯 Primary Deployment Image
-          ```
-          ${{ steps.extract.outputs.image_uri }}
-          ```
-
-          ### 🏷️ All Image Tags
-          EOF
-
-          # Format tags as a bulleted list (with defensive check for empty tags)
-          if [ -n "${{ steps.extract.outputs.tags }}" ]; then
-            echo "${{ steps.extract.outputs.tags }}" | tr ',' '\n' | while read -r tag; do
-              if [ -n "${tag}" ]; then
-                echo "- \`${tag}\`" >> $GITHUB_STEP_SUMMARY
-              fi
-            done
-          else
-            echo "- *No tags configured*" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
-
-          ---
-          *Generated at ${{ github.event.head_commit.timestamp || github.event.repository.updated_at }} by @${{ github.actor }}*
+          | Property | Value |
+          |----------|-------|
+          | **Event** | `${{ github.event_name }}` |
+          | **Branch** | `${{ github.head_ref || github.ref_name }}` |
+          | **Commit** | `${{ github.sha }}` |
+          | **Image URI** | `${{ steps.extract.outputs.image_uri }}` |
+          | **Tags** | `${{ steps.extract.outputs.tags }}` |
           EOF
