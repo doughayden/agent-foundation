@@ -110,6 +110,31 @@ registry/image:v0.9.0
 
 **Deployment uses SHA tag** for immutability and traceability.
 
+### Version Tag Builds
+
+**Trigger:** Pushing a git tag matching `v*` pattern (e.g., `v0.4.0`)
+
+**When this happens:**
+1. Release PR merged to main (code already reviewed)
+2. Tag created via `git tag v0.4.0 && git push origin v0.4.0`
+3. **CI/CD workflow automatically triggers** on tag push
+4. Builds Docker image with version tag: `registry/image:v0.4.0`
+
+**Why automatic tag trigger is safe:**
+- Tag creation happens AFTER release PR is merged (code already vetted through PR review)
+- Tag is immutable pointer to already-reviewed code on main
+- Standard industry practice for automated release workflows
+- Security: Only authorized users can push tags (optional: enable GitHub tag protection rules)
+
+**Workflow outputs:**
+```
+registry/image:abc1234     # SHA tag
+registry/image:latest      # Latest tag
+registry/image:v0.4.0      # Version tag
+```
+
+**Note:** The version-tagged image is built automatically when the tag is pushed. No manual workflow trigger needed.
+
 ## Workflow Behavior
 
 ### Concurrency Control
