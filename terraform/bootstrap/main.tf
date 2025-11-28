@@ -25,7 +25,7 @@ locals {
     "roles/aiplatform.user",
     "roles/artifactregistry.writer",
     "roles/iam.serviceAccountAdmin",
-    "roles/iam.serviceAccountUser",  # Required for Cloud Run to attach service accounts during deployment
+    "roles/iam.serviceAccountUser", # Required for Cloud Run to attach service accounts during deployment
     "roles/resourcemanager.projectIamAdmin",
     "roles/run.admin",
     "roles/storage.admin",
@@ -131,13 +131,14 @@ resource "google_artifact_registry_repository" "cloud_run" {
 
 locals {
   github_variables = {
-    ARTIFACT_REGISTRY_LOCATION     = google_artifact_registry_repository.cloud_run.location
-    ARTIFACT_REGISTRY_URI          = google_artifact_registry_repository.cloud_run.registry_uri
-    GCP_LOCATION                   = local.location
-    GCP_PROJECT_ID                 = local.project
-    GCP_WORKLOAD_IDENTITY_PROVIDER = google_iam_workload_identity_pool_provider.github.name
-    IMAGE_NAME                     = local.agent_name
-    TERRAFORM_STATE_BUCKET         = google_storage_bucket.terraform_state.name
+    ARTIFACT_REGISTRY_LOCATION                         = google_artifact_registry_repository.cloud_run.location
+    ARTIFACT_REGISTRY_URI                              = google_artifact_registry_repository.cloud_run.registry_uri
+    GCP_LOCATION                                       = local.location
+    GCP_PROJECT_ID                                     = local.project
+    GCP_WORKLOAD_IDENTITY_PROVIDER                     = google_iam_workload_identity_pool_provider.github.name
+    IMAGE_NAME                                         = local.agent_name
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = "FALSE"
+    TERRAFORM_STATE_BUCKET                             = google_storage_bucket.terraform_state.name
   }
 }
 

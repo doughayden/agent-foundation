@@ -46,6 +46,7 @@ jobs:
       TF_VAR_allow_origins: ${{ vars.ALLOW_ORIGINS }}
       TF_VAR_artifact_service_uri: ${{ vars.ARTIFACT_SERVICE_URI }}
       TF_VAR_log_level: ${{ vars.LOG_LEVEL }}
+      TF_VAR_otel_instrumentation_genai_capture_message_content: ${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}
       TF_VAR_root_agent_model: ${{ vars.ROOT_AGENT_MODEL }}
       TF_VAR_serve_web_interface: ${{ vars.SERVE_WEB_INTERFACE }}
 
