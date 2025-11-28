@@ -37,6 +37,7 @@ jobs:
       TF_VAR_project: ${{ vars.GCP_PROJECT_ID }}
       TF_VAR_location: ${{ vars.GCP_LOCATION }}
       TF_VAR_agent_name: ${{ vars.IMAGE_NAME }}
+      TF_VAR_otel_instrumentation_genai_capture_message_content: ${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}
       TF_VAR_terraform_state_bucket: ${{ vars.TERRAFORM_STATE_BUCKET }}
       TF_VAR_docker_image: ${{ inputs.docker_image }}
 
@@ -46,7 +47,6 @@ jobs:
       TF_VAR_allow_origins: ${{ vars.ALLOW_ORIGINS }}
       TF_VAR_artifact_service_uri: ${{ vars.ARTIFACT_SERVICE_URI }}
       TF_VAR_log_level: ${{ vars.LOG_LEVEL }}
-      TF_VAR_otel_instrumentation_genai_capture_message_content: ${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}
       TF_VAR_root_agent_model: ${{ vars.ROOT_AGENT_MODEL }}
       TF_VAR_serve_web_interface: ${{ vars.SERVE_WEB_INTERFACE }}
 
