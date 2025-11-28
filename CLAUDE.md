@@ -22,6 +22,7 @@ Initialize GCP and GitHub resources with Terraform bootstrap:
 ```bash
 # Configure .env with required values:
 # - AGENT_NAME, GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION
+# - OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
 # - GITHUB_REPO_NAME, GITHUB_REPO_OWNER
 
 # Run bootstrap (from repo root, uses local state)

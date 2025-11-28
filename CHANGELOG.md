@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Server startup now configures OpenTelemetry before ADK initialization for proper resource attribute propagation
 - Environment configuration now uses Pydantic models with factory pattern (`initialize_environment`) for validation and error handling
 
+### Fixed
+- Add `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` to Terraform bootstrap and main modules for proper deployment configuration
+
 ### Removed
 - File logging system with rotating handlers (replaced with cloud-native OpenTelemetry logging)
 - `src/adk_docker_uv/utils/env_parser.py` module (replaced with Pydantic-based configuration)

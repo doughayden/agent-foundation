@@ -4,11 +4,12 @@ data "dotenv" "adk" {
 
 # Get required Terraform variables from the project .env file unless explicitly passed as a root module input
 locals {
-  project          = coalesce(var.project, data.dotenv.adk.entries.GOOGLE_CLOUD_PROJECT)
-  location         = coalesce(var.location, data.dotenv.adk.entries.GOOGLE_CLOUD_LOCATION)
-  agent_name       = coalesce(var.agent_name, data.dotenv.adk.entries.AGENT_NAME)
-  repository_name  = coalesce(var.repository_name, data.dotenv.adk.entries.GITHUB_REPO_NAME)
-  repository_owner = coalesce(var.repository_owner, data.dotenv.adk.entries.GITHUB_REPO_OWNER)
+  project                                            = coalesce(var.project, data.dotenv.adk.entries.GOOGLE_CLOUD_PROJECT)
+  location                                           = coalesce(var.location, data.dotenv.adk.entries.GOOGLE_CLOUD_LOCATION)
+  agent_name                                         = coalesce(var.agent_name, data.dotenv.adk.entries.AGENT_NAME)
+  otel_instrumentation_genai_capture_message_content = coalesce(var.otel_instrumentation_genai_capture_message_content, data.dotenv.adk.entries.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT)
+  repository_name                                    = coalesce(var.repository_name, data.dotenv.adk.entries.GITHUB_REPO_NAME)
+  repository_owner                                   = coalesce(var.repository_owner, data.dotenv.adk.entries.GITHUB_REPO_OWNER)
 
   services = toset([
     "aiplatform.googleapis.com",
@@ -137,7 +138,7 @@ locals {
     GCP_PROJECT_ID                                     = local.project
     GCP_WORKLOAD_IDENTITY_PROVIDER                     = google_iam_workload_identity_pool_provider.github.name
     IMAGE_NAME                                         = local.agent_name
-    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = "FALSE"
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = local.otel_instrumentation_genai_capture_message_content
     TERRAFORM_STATE_BUCKET                             = google_storage_bucket.terraform_state.name
   }
 }

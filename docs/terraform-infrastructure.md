@@ -56,9 +56,10 @@ cp .env.example .env
 ```
 
 **Required variables:**
-- `AGENT_NAME` - Your agent name (e.g., `adk-docker-uv`)
 - `GOOGLE_CLOUD_PROJECT` - GCP project ID
 - `GOOGLE_CLOUD_LOCATION` - GCP region (e.g., `us-central1`)
+- `AGENT_NAME` - Your agent name (e.g., `adk-docker-uv`)
+- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` - Capture LLM content in traces (TRUE/FALSE)
 - `GITHUB_REPO_NAME` - Repository name
 - `GITHUB_REPO_OWNER` - GitHub username or organization
 
