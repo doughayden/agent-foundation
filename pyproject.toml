@@ -1,6 +1,6 @@
 [project]
 name = "adk-docker-uv"
-version = "0.4.1"
+version = "0.5.0"
 description = "ADK on Docker, optimized with uv"
 readme = "README.md"
 authors = [

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-11-27
+
 ### Added
 - OpenTelemetry observability with trace export to Google Cloud Trace via OTLP and log export to Cloud Logging with automatic trace correlation
 - Pydantic-based environment configuration (`ServerEnv` model) with type-safe validation and required field enforcement
@@ -150,7 +152,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/adk-docker-uv/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/doughayden/adk-docker-uv/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/doughayden/adk-docker-uv/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/doughayden/adk-docker-uv/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/doughayden/adk-docker-uv/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/doughayden/adk-docker-uv/compare/v0.2.0...v0.3.0
