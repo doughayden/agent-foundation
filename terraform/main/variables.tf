@@ -33,6 +33,13 @@ variable "log_level" {
   default     = null
 }
 
+variable "otel_instrumentation_genai_capture_message_content" {
+  description = "Capture LLM message content in OpenTelemetry traces (TRUE/FALSE)"
+  type        = string
+  nullable    = true
+  default     = null
+}
+
 variable "serve_web_interface" {
   description = "Enable web UI"
   type        = string

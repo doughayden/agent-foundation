@@ -19,6 +19,13 @@ variable "agent_name" {
   default     = null
 }
 
+variable "otel_instrumentation_genai_capture_message_content" {
+  description = "Capture LLM message content in OpenTelemetry traces (TRUE/FALSE)"
+  type        = string
+  nullable    = true
+  default     = null
+}
+
 variable "repository_name" {
   description = "GitHub repository name"
   type        = string

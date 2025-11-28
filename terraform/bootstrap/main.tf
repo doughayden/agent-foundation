@@ -4,11 +4,12 @@ data "dotenv" "adk" {
 
 # Get required Terraform variables from the project .env file unless explicitly passed as a root module input
 locals {
-  project          = coalesce(var.project, data.dotenv.adk.entries.GOOGLE_CLOUD_PROJECT)
-  location         = coalesce(var.location, data.dotenv.adk.entries.GOOGLE_CLOUD_LOCATION)
-  agent_name       = coalesce(var.agent_name, data.dotenv.adk.entries.AGENT_NAME)
-  repository_name  = coalesce(var.repository_name, data.dotenv.adk.entries.GITHUB_REPO_NAME)
-  repository_owner = coalesce(var.repository_owner, data.dotenv.adk.entries.GITHUB_REPO_OWNER)
+  project                                            = coalesce(var.project, data.dotenv.adk.entries.GOOGLE_CLOUD_PROJECT)
+  location                                           = coalesce(var.location, data.dotenv.adk.entries.GOOGLE_CLOUD_LOCATION)
+  agent_name                                         = coalesce(var.agent_name, data.dotenv.adk.entries.AGENT_NAME)
+  otel_instrumentation_genai_capture_message_content = coalesce(var.otel_instrumentation_genai_capture_message_content, data.dotenv.adk.entries.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT)
+  repository_name                                    = coalesce(var.repository_name, data.dotenv.adk.entries.GITHUB_REPO_NAME)
+  repository_owner                                   = coalesce(var.repository_owner, data.dotenv.adk.entries.GITHUB_REPO_OWNER)
 
   services = toset([
     "aiplatform.googleapis.com",
@@ -25,7 +26,7 @@ locals {
     "roles/aiplatform.user",
     "roles/artifactregistry.writer",
     "roles/iam.serviceAccountAdmin",
-    "roles/iam.serviceAccountUser",  # Required for Cloud Run to attach service accounts during deployment
+    "roles/iam.serviceAccountUser", # Required for Cloud Run to attach service accounts during deployment
     "roles/resourcemanager.projectIamAdmin",
     "roles/run.admin",
     "roles/storage.admin",
@@ -131,13 +132,14 @@ resource "google_artifact_registry_repository" "cloud_run" {
 
 locals {
   github_variables = {
-    ARTIFACT_REGISTRY_LOCATION     = google_artifact_registry_repository.cloud_run.location
-    ARTIFACT_REGISTRY_URI          = google_artifact_registry_repository.cloud_run.registry_uri
-    GCP_LOCATION                   = local.location
-    GCP_PROJECT_ID                 = local.project
-    GCP_WORKLOAD_IDENTITY_PROVIDER = google_iam_workload_identity_pool_provider.github.name
-    IMAGE_NAME                     = local.agent_name
-    TERRAFORM_STATE_BUCKET         = google_storage_bucket.terraform_state.name
+    ARTIFACT_REGISTRY_LOCATION                         = google_artifact_registry_repository.cloud_run.location
+    ARTIFACT_REGISTRY_URI                              = google_artifact_registry_repository.cloud_run.registry_uri
+    GCP_LOCATION                                       = local.location
+    GCP_PROJECT_ID                                     = local.project
+    GCP_WORKLOAD_IDENTITY_PROVIDER                     = google_iam_workload_identity_pool_provider.github.name
+    IMAGE_NAME                                         = local.agent_name
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = local.otel_instrumentation_genai_capture_message_content
+    TERRAFORM_STATE_BUCKET                             = google_storage_bucket.terraform_state.name
   }
 }
 
