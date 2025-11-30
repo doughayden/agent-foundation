@@ -21,7 +21,7 @@ A production-ready template for deploying Google ADK (Agent Development Kit) age
 
 ```bash
 # 1. Initialize from template (if using as template)
-uv run init_template.py  # Or --dry-run to preview
+uv run init_template.py  # Only if using as GitHub template; --dry-run to preview
 git add -A && git commit -m "chore: initialize from template"
 
 # 2. Configure environment

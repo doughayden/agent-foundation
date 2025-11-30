@@ -82,36 +82,6 @@ Expected output:
 terraform -chdir=terraform/bootstrap output
 ```
 
-## Troubleshooting
-
-### Missing GitHub Variables
-
-```bash
-# Re-run bootstrap
-terraform -chdir=terraform/bootstrap apply
-```
-
-### WIF Authentication Failed
-
-```bash
-# Check WIF provider
-terraform -chdir=terraform/bootstrap output -raw workload_identity_provider
-
-# Verify IAM bindings
-gcloud projects get-iam-policy PROJECT_ID \
-  --flatten="bindings[].members" \
-  --filter="bindings.members:principalSet*"
-```
-
-### Artifact Registry Permission Denied
-
-```bash
-# Verify artifactregistry.writer role
-gcloud projects get-iam-policy PROJECT_ID \
-  --flatten="bindings[].members" \
-  --filter="bindings.role:roles/artifactregistry.writer"
-```
-
 ## State Management
 
 Bootstrap uses **local state** by default:

@@ -37,7 +37,7 @@ Complete reference for all environment variables used in this project.
   - `TRUE` - Capture full prompts and responses in traces
   - `FALSE` - Capture metadata only (no message content)
 - **Purpose:** Controls LLM message content capture in OpenTelemetry traces
-- **Reference:** https://opentelemetry.io/blog/2024/otel-generative-ai/#example-usage
+- **Reference:** [OpenTelemetry GenAI Instrumentation](https://opentelemetry.io/blog/2024/otel-generative-ai/#example-usage)
 - **Consideration:** Set to `FALSE` if handling sensitive data
 
 ---
