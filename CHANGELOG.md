@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Move OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT to required section in Terraform variables (#31)
+- Truncate workload identity federation pool and provider IDs to fit GCP's 32-character limit by switching from agent_name to repository_name and using substr() truncation (#35)
 
 ### Changed
 - Use generic placeholders (your-agent-name, your_agent_name) instead of adk-docker-uv in documentation examples (#32, #33)
