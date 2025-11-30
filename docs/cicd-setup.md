@@ -15,12 +15,12 @@ The project uses **automated CI/CD** via GitHub Actions with four workflows:
 
 ## Prerequisites
 
-Before workflows can run, you must complete the one-time bootstrap setup:
+Complete one-time bootstrap setup before using CI/CD workflows:
 
-1. ✅ Run `terraform -chdir=terraform/bootstrap apply` (see [Terraform Infrastructure Guide](./terraform-infrastructure.md))
+1. ✅ Run the Terraform bootstrap module (see [Bootstrap Setup](./bootstrap-setup.md))
 2. ✅ Verify GitHub Variables created: `gh variable list`
 
-Bootstrap configures **everything needed for CI/CD**: WIF provider with IAM bindings, Artifact Registry, GitHub Variables, and Terraform state bucket. **No manual configuration needed.**
+Bootstrap creates all CI/CD infrastructure: WIF, Artifact Registry, GitHub Variables, Terraform state bucket.
 
 ## GitHub Variables (Auto-Created)
 

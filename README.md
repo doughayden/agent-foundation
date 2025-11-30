@@ -5,57 +5,6 @@
 
 ADK on Docker, optimized with uv
 
-## Template Setup
-
-**If you created this repository from the template**, run the initialization script once:
-
-```bash
-uv run init_template.py
-# Or preview changes first: uv run init_template.py --dry-run
-```
-
-This renames the package, updates configuration files, resets the changelog, and creates a fresh CODEOWNERS file. Review changes with `git status`, then commit.
-
-## Quickstart
-
-**0. Authentication** (one-time setup):
-```bash
-cp .env.example .env
-# Edit .env Vertex AI Model Authentication with your GCP project and location:
-# GOOGLE_GENAI_USE_VERTEXAI=TRUE
-# GOOGLE_CLOUD_PROJECT=your-project-id
-# GOOGLE_CLOUD_LOCATION=us-central1
-
-# Authenticate with gcloud:
-gcloud auth application-default login
-```
-
-See [ADK docs](https://google.github.io/adk-docs/get-started/quickstart/#set-up-the-model) for authentication details.
-
-**1. Configure Agent Name for logs and traces**:
-```bash
-# In .env, set AGENT_NAME to identify your agent in logs and cloud resources
-# AGENT_NAME=your-agent-name
-```
-
-**2. Run the server**:
-
-**Option A: Direct (uv)**
-```bash
-uv run server
-# Server runs on http://127.0.0.1:8000 (API-only by default)
-# Set SERVE_WEB_INTERFACE=true in .env to enable the web UI
-```
-
-**Option B: Docker Compose (recommended for local development)**
-```bash
-# Sync first to create uv.lock if it does not exist
-uv sync
-docker compose up --build --watch
-# Includes hot reloading - changes sync instantly
-# See docs/docker-compose-workflow.md for details
-```
-
 ## What is this?
 
 A production-ready template for deploying Google ADK (Agent Development Kit) agents using containerization best practices. This project demonstrates how to build efficient, type-safe ADK agents with modern Python tooling.
@@ -66,12 +15,81 @@ A production-ready template for deploying Google ADK (Agent Development Kit) age
 - **Code quality**: Strict type checking (mypy), comprehensive testing (100% coverage), modern linting (ruff)
 - **Production ready**: Non-root containers, health checks, environment-based configuration
 
+## Getting Started
+
+### Phase 1: Setup (One-Time)
+
+```bash
+# 1. Initialize from template (if using as template)
+uv run init_template.py  # Or --dry-run to preview
+git add -A && git commit -m "chore: initialize from template"
+
+# 2. Configure environment
+cp .env.example .env
+# Edit: GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION, AGENT_NAME,
+#       OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
+#       GITHUB_REPO_NAME, GITHUB_REPO_OWNER
+
+# 3. Authenticate
+gcloud auth application-default login
+gh auth login
+
+# 4. Provision CI/CD infrastructure
+terraform -chdir=terraform/bootstrap init
+terraform -chdir=terraform/bootstrap apply
+
+# 5. Verify
+gh variable list  # or view in GitHub repo Settings > Variables
+```
+
+See [Bootstrap Setup](docs/bootstrap-setup.md) for details and troubleshooting.
+
+### Phase 2: Develop Locally
+
+```bash
+uv run server
+# Or: docker compose up --build --watch
+```
+
+See [Development Guide](docs/development.md) for workflow, testing, and code quality.
+
+### Phase 3: Deploy to Cloud Run
+
+```bash
+git checkout -b feat/initial-setup
+git add . && git commit -m "feat: initial agent setup"
+git push origin feat/initial-setup
+```
+
+Open PR on GitHub. Merge to `main` triggers automatic deployment. Monitor:
+```bash
+gh run list --workflow=ci-cd.yml --limit 5
+```
+
+### Phase 4: Capture Deployed Resources (Optional)
+
+For local development with persistent sessions, add to `.env`:
+```bash
+# Get values from: terraform -chdir=terraform/main output
+AGENT_ENGINE=projects/PROJECT_ID/locations/LOCATION/reasoningEngines/ID
+ARTIFACT_SERVICE_URI=gs://BUCKET_NAME
+```
+
+See [Environment Variables](docs/environment-variables.md) for details.
+
 ## Documentation
 
-- **[CI/CD Workflow Guide](docs/cicd-setup.md)** - GitHub Actions automation for build and deployment
-- **[Development](docs/development.md)** - Code quality, testing, dependencies, and project structure
+### Getting Started
+- **[Bootstrap Setup](docs/bootstrap-setup.md)** - One-time CI/CD infrastructure provisioning
+- **[CI/CD Workflow](docs/cicd-setup.md)** - GitHub Actions automation details
+- **[Development](docs/development.md)** - Development workflow, code quality, testing
+- **[Environment Variables](docs/environment-variables.md)** - Complete environment variable reference
+
+### Infrastructure and Deployment
 - **[Docker Compose Workflow](docs/docker-compose-workflow.md)** - Local development with hot reloading
-- **[Dockerfile Strategy](docs/dockerfile-strategy.md)** - Multi-stage build architecture and rationale
-- **[Observability](docs/observability.md)** - OpenTelemetry setup for traces and logs with Google Cloud integration
-- **[Terraform Infrastructure](docs/terraform-infrastructure.md)** - Bootstrap and main module setup for GCP
-- **[Validating Multi-Platform Builds](docs/validating-multiplatform-builds.md)** - Digest verification for multi-platform Docker images in Cloud Run
+- **[Dockerfile Strategy](docs/dockerfile-strategy.md)** - Multi-stage build architecture
+- **[Terraform Infrastructure](docs/terraform-infrastructure.md)** - Bootstrap and main module setup
+
+### Production Features
+- **[Observability](docs/observability.md)** - OpenTelemetry traces and logs
+- **[Validating Multi-Platform Builds](docs/validating-multiplatform-builds.md)** - Digest verification
