@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Move OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT to required section in Terraform variables (#31)
 - Prevent workload identity federation resource ID collisions by using GitHub repository ID instead of repository name, ensuring unique identifiers even for repositories with similar names (#35)
+- Add `shell: bash {0}` to terraform plan for error output capture
+- Truncate service account IDs to enforce GCP 30-character limit
 
 ### Added
 - Dedicated bootstrap setup guide (`docs/bootstrap-setup.md`) with minimal commands and troubleshooting (#36)

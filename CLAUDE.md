@@ -208,7 +208,7 @@ Use `-chdir` flag from repo root:
 terraform -chdir=terraform/bootstrap init/plan/apply
 ```
 
-**Naming:** GCP resources use `${var.agent_name}-${terraform.workspace}` (e.g., `my-agent-dev`). Billing labels: `application`, `environment`. Workspaces: bootstrap=`default`, main=`default`/`dev`/`stage`/`prod`.
+**Naming:** GCP resources use `${var.agent_name}-${terraform.workspace}` (e.g., `my-agent-dev`). Service account IDs truncate agent_name to enforce GCP 30-char limit while preserving workspace suffix. Billing labels: `application`, `environment`. Workspaces: bootstrap=`default`, main=`default`/`dev`/`stage`/`prod`.
 
 **Auto config:** Cloud Run gets `TELEMETRY_NAMESPACE=terraform.workspace` for trace grouping.
 
