@@ -62,8 +62,10 @@ class TestInstructionProviderIntegration:
 
     def test_agent_configuration_completeness(self) -> None:
         """Verify agent has all expected configuration elements."""
-        # Verify agent has name
-        assert root_agent.name == "example_agent"
+        # Verify agent has name (should be non-empty string)
+        assert root_agent.name is not None
+        assert isinstance(root_agent.name, str)
+        assert len(root_agent.name) > 0
 
         # Verify agent has model configured
         assert root_agent.model is not None

@@ -45,6 +45,10 @@ locals {
   # Create a unique Agent resource name per deployment environment using Terraform workspaces
   resource_name = "${var.agent_name}-${terraform.workspace}"
 
+  # Service account ID has 30 character limit - truncate agent_name but preserve workspace
+  sa_max_agent_length = 30 - length(terraform.workspace) - 1 # Reserve space for "-workspace"
+  sa_id               = "${substr(var.agent_name, 0, local.sa_max_agent_length)}-${terraform.workspace}"
+
   # Create labels for billing organization
   labels = {
     application = var.agent_name
@@ -56,7 +60,7 @@ locals {
 }
 
 resource "google_service_account" "app" {
-  account_id   = local.resource_name
+  account_id   = local.sa_id
   display_name = "${local.resource_name} Service Account"
   description  = "Service account attached to the ${local.resource_name} Cloud Run service"
 }

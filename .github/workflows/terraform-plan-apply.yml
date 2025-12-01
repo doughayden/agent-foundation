@@ -90,6 +90,7 @@ jobs:
       - name: Terraform Plan
         id: plan
         working-directory: terraform/main
+        shell: bash {0}  # removes -e flag to allow capturing output on failure
         run: |
           terraform workspace select --or-create ${{ inputs.workspace }}
           OUTPUT=$(terraform plan -no-color -input=false -out=tfplan 2>&1)

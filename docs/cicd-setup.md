@@ -115,6 +115,10 @@ Automatically builds version-tagged image after release PR is merged. Safe becau
 
 **Build cache:** Registry cache with protected `buildcache` tag provides significant speedup on cache hits.
 
+## Shell Configuration
+
+**`bash {0}` pattern:** Terraform plan step uses `shell: bash {0}` to override default `bash -e` behavior. This allows capturing output on failure for job summaries and PR comments. Default behavior exits immediately on error, preventing output capture. See [GitHub Actions workflow syntax](https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#exit-codes-and-error-action-preference).
+
 ## Pull Request Comments
 
 terraform-plan-apply.yml posts formatted comments showing format/init/validation/plan results with collapsible sections for detailed output.

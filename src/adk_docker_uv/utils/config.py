@@ -5,6 +5,7 @@ and configuration management.
 """
 
 import json
+import os
 import sys
 from typing import Literal
 
@@ -48,8 +49,6 @@ def initialize_environment[T: BaseModel](
         >>> # Skip printing configuration
         >>> env = initialize_environment(ServerEnv, print_config=False)
     """
-    import os
-
     load_dotenv(override=override_dotenv)
 
     # Load and validate environment configuration
