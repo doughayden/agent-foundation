@@ -28,7 +28,7 @@ class TestAddSessionToMemory:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test that callback saves session when memory service exists."""
-        # Setup logging to capture DEBUG level
+        # Setup logging to capture DEBUG level (to see both INFO and DEBUG logs)
         caplog.set_level(logging.DEBUG)
 
         # Execute callback
@@ -43,7 +43,7 @@ class TestAddSessionToMemory:
         assert saved_session.user_id == "test_user_456"
 
         # Verify logging
-        assert "*** Started add_session_to_memory callback ***" in caplog.text
+        assert "*** Starting add_session_to_memory callback ***" in caplog.text
         assert "Adding session to memory using MockMemoryService" in caplog.text
 
     @pytest.mark.asyncio
@@ -81,8 +81,8 @@ class TestAddSessionToMemory:
         # Verify callback returns None
         assert result is None
 
-        # Verify debug log was created (callback started)
-        assert "*** Started add_session_to_memory callback ***" in caplog.text
+        # Verify info log was created (callback started)
+        assert "*** Starting add_session_to_memory callback ***" in caplog.text
 
         # Verify no warning about missing service (hasattr check prevents this path)
         assert "No memory_service found" not in caplog.text
@@ -132,17 +132,21 @@ class TestAddSessionToMemory:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test that callback uses appropriate logging levels."""
-        # Test case 1: Saving session (DEBUG level)
+        # Test case 1: Saving session (INFO and DEBUG levels)
         caplog.set_level(logging.DEBUG)
         caplog.clear()
 
         await add_session_to_memory(mock_memory_callback_context)
 
-        # Check for DEBUG logs
+        # Check for INFO log (starting callback)
+        info_records = [r for r in caplog.records if r.levelname == "INFO"]
+        assert len(info_records) == 1
+        assert "Starting add_session_to_memory" in info_records[0].message
+
+        # Check for DEBUG log (adding session)
         debug_records = [r for r in caplog.records if r.levelname == "DEBUG"]
-        assert len(debug_records) == 2  # Started and adding messages
-        assert any("Started add_session_to_memory" in r.message for r in debug_records)
-        assert any("Adding session to memory" in r.message for r in debug_records)
+        assert len(debug_records) == 1
+        assert "Adding session to memory" in debug_records[0].message
 
         # Test case 2: No service (WARNING level)
         caplog.set_level(logging.WARNING)
