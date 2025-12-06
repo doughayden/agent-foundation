@@ -1,0 +1,2 @@
+# The `main` Terraform module is intended only to run in CICD - ignore local testing lock files
+.terraform.lock.hcl
