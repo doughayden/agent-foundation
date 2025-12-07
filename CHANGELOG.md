@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Display terraform apply results in CI/CD job summaries alongside plan results for better deployment visibility
+
 ## [0.6.0] - 2025-12-07
 
 ### Fixed

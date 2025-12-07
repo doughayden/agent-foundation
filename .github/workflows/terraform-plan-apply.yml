@@ -99,7 +99,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
         continue-on-error: true
 
-      - name: Generate Terraform Summary
+      - name: Generate Plan Summary
         if: always()
         uses: actions/github-script@v8
         with:
@@ -107,43 +107,30 @@ jobs:
           script: |
             const fs = require('fs');
 
-            // Extract step results
-            const results = {
-              fmt: '${{ steps.fmt.outcome }}',
-              init: '${{ steps.init.outcome }}',
-              validate: '${{ steps.validate.outcome }}',
-              plan: '${{ steps.plan.outcome }}',
-              validateOutput: `${{ steps.validate.outputs.stdout }}` || 'No output',
-              planOutput: `${{ steps.plan.outputs.stdout }}` || 'No plan available'
-            };
+            // Map step outcomes to status icons
+            const statusIcon = (outcome) => ({
+              success: '✅',
+              failure: '❌',
+              skipped: '⏭️',
+              cancelled: '🚫',
+              timed_out: '⏱️'
+            }[outcome] || '❓');
 
-            // Map outcomes to icons
-            const statusIcon = (outcome) => {
-              const icons = {
-                success: '✅',
-                failure: '❌',
-                skipped: '⏭️',
-                cancelled: '🚫',
-                timed_out: '⏱️'
-              };
-              return icons[outcome] || '❓';
-            };
-
-            // Build comment body
+            // Build plan summary
             const body = `
             ## 🏗️ Terraform Plan Summary
 
             | Step | Status |
             |------|:------:|
-            | 🖌 Format & Style | ${statusIcon(results.fmt)} \`${results.fmt}\` |
-            | ⚙️ Initialization | ${statusIcon(results.init)} \`${results.init}\` |
-            | 🤖 Validation | ${statusIcon(results.validate)} \`${results.validate}\` |
-            | 📖 Plan | ${statusIcon(results.plan)} \`${results.plan}\` |
+            | 🖌 Format & Style | ${statusIcon('${{ steps.fmt.outcome }}')} \`${{ steps.fmt.outcome }}\` |
+            | ⚙️ Initialization | ${statusIcon('${{ steps.init.outcome }}')} \`${{ steps.init.outcome }}\` |
+            | 🤖 Validation | ${statusIcon('${{ steps.validate.outcome }}')} \`${{ steps.validate.outcome }}\` |
+            | 📖 Plan | ${statusIcon('${{ steps.plan.outcome }}')} \`${{ steps.plan.outcome }}\` |
 
             <details><summary>Validation Output</summary>
 
             \`\`\`
-            ${results.validateOutput}
+            ${{ steps.validate.outputs.stdout || 'No output' }}
             \`\`\`
 
             </details>
@@ -151,7 +138,7 @@ jobs:
             <details><summary>Plan Output</summary>
 
             \`\`\`terraform
-            ${results.planOutput}
+            ${{ steps.plan.outputs.stdout || 'No plan available' }}
             \`\`\`
 
             </details>
@@ -180,6 +167,54 @@ jobs:
         id: apply
         if: inputs.terraform_action == 'apply'
         working-directory: terraform/main
+        shell: bash {0}  # Allow capturing output on failure
         run: |
           terraform workspace select ${{ inputs.workspace }}
-          terraform apply -auto-approve -input=false tfplan
+          OUTPUT=$(terraform apply -auto-approve -input=false -no-color tfplan 2>&1)
+          echo "stdout<<EOF" >> $GITHUB_OUTPUT
+          echo "$OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Generate Apply Summary
+        if: always() && steps.apply.outcome != 'skipped'
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            // Map step outcomes to status icons
+            const statusIcon = (outcome) => ({
+              success: '✅',
+              failure: '❌',
+              skipped: '⏭️',
+              cancelled: '🚫',
+              timed_out: '⏱️'
+            }[outcome] || '❓');
+
+            // Build apply summary
+            const body = `
+            ## 🚀 Terraform Apply Summary
+
+            | Step | Status |
+            |------|:------:|
+            | 🚀 Apply | ${statusIcon('${{ steps.apply.outcome }}')} \`${{ steps.apply.outcome }}\` |
+
+            <details><summary>Apply Output</summary>
+
+            \`\`\`terraform
+            ${{ steps.apply.outputs.stdout || 'No output' }}
+            \`\`\`
+
+            </details>
+
+            ---
+            `.trim();
+
+            // Write to job summary
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, body + '\n');
+
+      - name: Terraform Apply Status
+        if: steps.apply.outcome == 'failure'
+        run: exit 1
