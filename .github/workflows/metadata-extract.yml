@@ -28,18 +28,19 @@ jobs:
           set -euo pipefail
           REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
           IMAGE_NAME="${{ vars.IMAGE_NAME }}"
-          SHA_SHORT=$(git rev-parse --short HEAD)
 
           # Determine tags based on context (deployment uses digest, not tags)
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            # PR build - use pr-{number}-{sha} (unique per commit, clearly indicates origin)
+            # PR build - use PR head SHA (not merge commit) for traceability
+            SHA_SHORT=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
             PR_TAG="pr-${{ github.event.pull_request.number }}-${SHA_SHORT}"
             IMAGE_URI="${REGISTRY}/${IMAGE_NAME}:${PR_TAG}"
             TAGS="${IMAGE_URI}"
           else
-            # Main branch or manual - build multiple tags (SHA, latest, version if available)
+            # Main branch or manual - use actual commit SHA
+            SHA_SHORT=$(git rev-parse --short HEAD)
+            # Build all tags: SHA (for traceability), latest, version if available
             IMAGE_URI="${REGISTRY}/${IMAGE_NAME}:${SHA_SHORT}"
-            # Build all tags: SHA (for traceability), latest, version (if available)
             TAGS="${IMAGE_URI},${REGISTRY}/${IMAGE_NAME}:latest"
             # Add semantic version tag if available
             if VERSION=$(git describe --tags --exact-match 2>/dev/null); then
@@ -52,7 +53,13 @@ jobs:
       - name: Generate Job Summary
         run: |
           set -euo pipefail
-          SHA_SHORT=$(git rev-parse --short HEAD)
+
+          # Use PR head SHA for PRs, git rev-parse for everything else
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            SHA_SHORT=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
+          else
+            SHA_SHORT=$(git rev-parse --short HEAD)
+          fi
 
           cat >> $GITHUB_STEP_SUMMARY << EOF
           ## 📦 Build Metadata
