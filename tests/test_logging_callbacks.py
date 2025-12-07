@@ -20,8 +20,6 @@ from conftest import (
 from agent_foundation.callbacks import LoggingCallbacks
 
 # Note: Custom mock classes (conftest.py) use duck typing to match ADK interfaces.
-# Type ignore comments suppress Pylance warnings (expects nominal types) while
-# maintaining mypy compatibility (validates structural typing). This is intentional.
 
 
 # Test fixtures

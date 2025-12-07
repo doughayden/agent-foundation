@@ -28,7 +28,7 @@ async def add_session_to_memory(callback_context: CallbackContext) -> None:
     """
     # TODO: use a public attribute (instead of _invocation_context) when available
     logger.info("*** Starting add_session_to_memory callback ***")
-    invocation_context = getattr(callback_context, "_invocation_context", None)  # pyright: ignore[reportPrivateUsage]
+    invocation_context = getattr(callback_context, "_invocation_context", None)
     if invocation_context:
         if invocation_context.memory_service:
             logger.debug(

@@ -69,7 +69,7 @@ class TemplateConfig(BaseModel):
         description="GitHub repository owner (username or organization)",
     )
 
-    @computed_field  # type: ignore[prop-decorator]
+    @computed_field
     @property
     def package_name(self) -> str:
         """Python package name derived from repo_name (kebab-case → snake_case)."""
