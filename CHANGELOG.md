@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Use PR head SHA instead of GitHub's temporary merge commit SHA for Docker image tags, improving traceability to actual commits in repository history
 - Move OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT to required section in Terraform variables
 - Prevent workload identity federation resource ID collisions by using GitHub repository ID instead of repository name, ensuring unique identifiers even for repositories with similar names
 - Add `shell: bash {0}` to terraform plan for error output capture
@@ -18,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive environment variables reference (`docs/environment-variables.md`) with WHEN/WHY/HOW context for each variable
 
 ### Changed
+- Rename Terraform dotenv data source from `adk` to `config` in bootstrap module for clarity after project rename
+- Update documentation naming consistency: replace "ADK agent" with "LLM agent", update example project IDs from `my-adk-*` to `my-agent-*`
 - **BREAKING**: Rename project from `adk-docker-uv` to `agent-foundation` to better reflect production-grade infrastructure focus
   - Repository: `doughayden/adk-docker-uv` → `doughayden/agent-foundation`
   - Package: `adk_docker_uv` → `agent_foundation`

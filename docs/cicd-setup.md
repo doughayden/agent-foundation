@@ -1,6 +1,6 @@
 # CI/CD Workflow Guide
 
-This guide explains the GitHub Actions workflows that automate building and deploying the ADK agent to Cloud Run.
+This guide explains the GitHub Actions workflows that automate building and deploying the LLM agent to Cloud Run.
 
 ## Overview
 

@@ -1,6 +1,6 @@
 # Terraform Infrastructure Guide
 
-This guide explains the Terraform infrastructure setup for deploying the ADK agent to Google Cloud Platform.
+This guide explains the Terraform infrastructure setup for deploying the LLM agent to Google Cloud Platform.
 
 ## Overview
 
@@ -106,7 +106,7 @@ Bootstrap reads configuration from `.env` using the `dotenv` provider:
 
 ```hcl
 # terraform/bootstrap uses dotenv provider
-data "dotenv" "adk" {
+data "dotenv" "config" {
   filename = "${path.cwd}/.env"
 }
 ```
@@ -162,7 +162,7 @@ Bootstrap uses `germanbrew/dotenv@1.2.9` for `.env` file reading. Version is pin
 
 ### Purpose
 
-Deploys the ADK agent application to Cloud Run. Designed to run in **GitHub Actions CI/CD** as part of the automated deployment pipeline.
+Deploys the LLM agent application to Cloud Run. Designed to run in **GitHub Actions CI/CD** as part of the automated deployment pipeline.
 
 **Execution model:**
 - **Primary:** GitHub Actions (automated on merge to main)

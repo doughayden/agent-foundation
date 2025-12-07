@@ -278,7 +278,7 @@ ENV VIRTUAL_ENV=/app/.venv \
 | `PYTHONUNBUFFERED=1` | Don't buffer stdout/stderr (better logs in Docker) |
 | `HOST=0.0.0.0` | Explicitly bind all interfaces for containers (server.py defaults to 127.0.0.1) |
 | `PORT=8000` | Explicitly set default port (matches EXPOSE and server.py default) |
-| `AGENT_DIR=/app/src` | Override agent directory path for ADK (see AGENT_DIR section below) |
+| `AGENT_DIR=/app/src` | Override agent directory path (see AGENT_DIR section below) |
 
 ---
 
