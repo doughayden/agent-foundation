@@ -90,7 +90,7 @@ uv run pytest tests/test_context.py::test_load_success -v   # Specific test
 
 ### ADK Agent Structure
 
-The agent is configured in `src/adk_docker_uv/agent.py`:
+The agent is configured in `src/agent_foundation/agent.py`:
 
 ```
 root_agent (LlmAgent)
@@ -110,9 +110,9 @@ root_agent (LlmAgent)
 
 ### FastAPI Server
 
-`src/adk_docker_uv/server.py`: ADK agent API endpoints (`get_fast_api_app()`), optional web UI (`SERVE_WEB_INTERFACE`), health check (`/health`), CORS for localhost.
+`src/agent_foundation/server.py`: ADK agent API endpoints (`get_fast_api_app()`), optional web UI (`SERVE_WEB_INTERFACE`), health check (`/health`), CORS for localhost.
 
-**Entry point:** `python -m adk_docker_uv.server`
+**Entry point:** `python -m agent_foundation.server`
 
 ### Multi-Stage Docker Build
 
@@ -227,7 +227,7 @@ See `docs/terraform-infrastructure.md`.
 
 ### Adding Custom Tools
 
-Create tools in `src/adk_docker_uv/tools.py` and register in `agent.py`:
+Create tools in `src/agent_foundation/tools.py` and register in `agent.py`:
 
 ```python
 from google.adk.tools import Tool

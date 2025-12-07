@@ -11,7 +11,7 @@ a new repository from the template. Run once after creating from template:
     uv run init_template.py
 
 The script performs:
-- Directory renaming (src/adk_docker_uv → src/{package_name})
+- Directory renaming (src/agent_foundation → src/{package_name})
 - File content updates (package imports, configuration, documentation)
 - GitHub Actions badge URL updates
 - CODEOWNERS replacement with fresh template
@@ -38,8 +38,8 @@ from typing import NoReturn
 from pydantic import BaseModel, Field, ValidationError, computed_field
 
 # Original template names - update these when reusing in other template projects
-ORIGINAL_PACKAGE_NAME = "adk_docker_uv"
-ORIGINAL_REPO_NAME = "adk-docker-uv"
+ORIGINAL_PACKAGE_NAME = "agent_foundation"
+ORIGINAL_REPO_NAME = "agent-foundation"
 ORIGINAL_GITHUB_OWNER = "doughayden"
 
 # Output file names for logging results

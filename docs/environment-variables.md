@@ -48,7 +48,7 @@ Required for bootstrap Terraform to configure GitHub Variables.
 
 **GITHUB_REPO_NAME**
 - **When:** Set before running `terraform -chdir=terraform/bootstrap apply`
-- **Value:** Repository name (e.g., `adk-docker-uv`)
+- **Value:** Repository name (e.g., `agent-foundation`)
 - **Purpose:** Configures GitHub Actions Variables and WIF bindings
 
 **GITHUB_REPO_OWNER**

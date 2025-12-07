@@ -3,7 +3,7 @@ revision = 3
 requires-python = "==3.13.*"
 
 [[package]]
-name = "adk-docker-uv"
+name = "agent-foundation"
 version = "0.5.0"
 source = { editable = "." }
 dependencies = [

@@ -12,7 +12,7 @@ from conftest import (
     MockSession,
 )
 
-from adk_docker_uv.callbacks import (
+from agent_foundation.callbacks import (
     add_session_to_memory,
 )
 

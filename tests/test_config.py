@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import ValidationError
 
-from adk_docker_uv.utils.config import (
+from agent_foundation.utils.config import (
     ServerEnv,
     initialize_environment,
 )

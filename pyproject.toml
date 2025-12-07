@@ -1,7 +1,7 @@
 [project]
-name = "adk-docker-uv"
+name = "agent-foundation"
 version = "0.5.0"
-description = "ADK on Docker, optimized with uv"
+description = "Opinionated, production-ready LLM Agent deployment with enterprise-grade infrastructure"
 readme = "README.md"
 authors = [
     { name = "doug", email = "110487462+doughayden@users.noreply.github.com" }
@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
-server = "adk_docker_uv.server:main"
+server = "agent_foundation.server:main"
 
 [dependency-groups]
 dev = [
@@ -72,7 +72,7 @@ select = [
 [tool.mypy]
 python_version = "3.13"
 mypy_path = "src"
-packages = ["adk_docker_uv"]
+packages = ["agent_foundation"]
 exclude = ["init_template.py"]
 warn_return_any = true
 warn_unused_configs = true
@@ -92,9 +92,9 @@ show_error_codes = true
 source = ["src"]
 branch = true
 omit = [
-    "src/adk_docker_uv/server.py",
-    "src/adk_docker_uv/agent.py",
-    "src/adk_docker_uv/utils/observability.py",
+    "src/agent_foundation/server.py",
+    "src/agent_foundation/agent.py",
+    "src/agent_foundation/utils/observability.py",
 ]
 
 [tool.coverage.report]

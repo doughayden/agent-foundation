@@ -1,9 +1,9 @@
 # Override file for testing pre-built registry images instead of building locally
 # Usage:
-#   export REGISTRY_IMAGE="<your-registry-url>/adk-docker-uv:latest"
+#   export REGISTRY_IMAGE="<your-registry-url>/agent-foundation:latest"
 #   docker compose -f docker-compose.yml -f docker-compose.registry.yml up
 
 services:
   app:
     image: ${REGISTRY_IMAGE}
-    container_name: adk-docker-uv-registry
+    container_name: agent-foundation-registry

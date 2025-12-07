@@ -436,7 +436,7 @@ def mock_load_dotenv() -> Generator[MagicMock]:
     Yields:
         Mock object for load_dotenv function.
     """
-    with patch("adk_docker_uv.utils.config.load_dotenv") as mock:
+    with patch("agent_foundation.utils.config.load_dotenv") as mock:
         yield mock
 
 

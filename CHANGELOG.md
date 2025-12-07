@@ -18,10 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive environment variables reference (`docs/environment-variables.md`) with WHEN/WHY/HOW context for each variable
 
 ### Changed
+- **BREAKING**: Rename project from `adk-docker-uv` to `agent-foundation` to better reflect production-grade infrastructure focus
+  - Repository: `doughayden/adk-docker-uv` → `doughayden/agent-foundation`
+  - Package: `adk_docker_uv` → `agent_foundation`
+  - Docker images: `adk-docker-uv` → `agent-foundation`
+  - All imports, configuration, and documentation updated
 - Streamline developer onboarding: condense README from 170 to 106 lines (38% reduction), integrate template initialization into Getting Started Phase 1, remove duplication between Quickstart and Getting Started sections
 - Condense development guide from 315 to 164 lines (48% reduction) with even density throughout, remove verbose code examples, combine related workflow sections
 - Reorganize README Documentation section with logical grouping: Getting Started, Infrastructure and Deployment, Production Features
-- Use generic placeholders (your-agent-name, your_agent_name) instead of adk-docker-uv in documentation examples
+- Use generic placeholders (your-agent-name, your_agent_name) in documentation examples
 - Update project structure tree in development.md to reflect current files and directories
 - Optimize CLAUDE.md for AI consumption: 36% size reduction (440→279 lines), replace verbose prose with dense technical summaries, update outdated utils references (env_parser.py → config.py/observability.py), add branch protection warning
 - Add explicit project parameters to all GCP resources in bootstrap Terraform module for clarity and reduced misconfiguration risk
@@ -52,8 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - File logging system with rotating handlers (replaced with cloud-native OpenTelemetry logging)
-- `src/adk_docker_uv/utils/env_parser.py` module (replaced with Pydantic-based configuration)
-- `src/adk_docker_uv/utils/log_config.py` module (replaced with `observability.py`)
+- `src/agent_foundation/utils/env_parser.py` module (replaced with Pydantic-based configuration)
+- `src/agent_foundation/utils/log_config.py` module (replaced with `observability.py`)
 - `tests/test_env_parser.py` and `tests/test_logging.py` (replaced with `tests/test_config.py`)
 - Log volume mount from `docker-compose.yml` (no longer needed without file logging)
 
@@ -146,7 +151,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sorted `LlmAgent` parameters in agent.py to match ADK field order
 - Updated coverage exclusions in pyproject.toml (removed prompt.py, updated paths to flat structure)
 - Updated test imports after package restructure (all existing tests passing)
-- Docker Compose container name to `adk-docker-uv-local`
+- Docker Compose container name adds `-local` suffix
 - Health endpoint response from `{"status": "healthy"}` to `{"status": "ok"}`
 - Simplified development.md with project-specific examples
 - Moved project structure documentation from README.md to development.md only
@@ -172,10 +177,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/adk-docker-uv/compare/v0.5.0...HEAD
-[0.5.0]: https://github.com/doughayden/adk-docker-uv/compare/v0.4.1...v0.5.0
-[0.4.1]: https://github.com/doughayden/adk-docker-uv/compare/v0.4.0...v0.4.1
-[0.4.0]: https://github.com/doughayden/adk-docker-uv/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/doughayden/adk-docker-uv/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/doughayden/adk-docker-uv/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/doughayden/adk-docker-uv/releases/tag/v0.1.0
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/doughayden/agent-foundation/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/doughayden/agent-foundation/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/doughayden/agent-foundation/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/doughayden/agent-foundation/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/doughayden/agent-foundation/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/doughayden/agent-foundation/releases/tag/v0.1.0

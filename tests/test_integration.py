@@ -10,8 +10,8 @@ from datetime import date
 
 from conftest import MockReadonlyContext
 
-from adk_docker_uv import root_agent
-from adk_docker_uv.prompt import return_global_instruction
+from agent_foundation import root_agent
+from agent_foundation.prompt import return_global_instruction
 
 
 class TestInstructionProviderIntegration:

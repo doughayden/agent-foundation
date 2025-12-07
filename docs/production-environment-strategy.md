@@ -298,9 +298,9 @@ locals {
 }
 
 # In dev project with sandbox workspace:
-# Service: adk-docker-uv-sandbox
+# Service: agent-foundation-sandbox
 # In prod project with production workspace:
-# Service: adk-docker-uv-production
+# Service: agent-foundation-production
 ```
 
 ---
@@ -381,9 +381,9 @@ variable "artifact_registry_location" {
 environment        = "dev"
 project           = "my-adk-dev"
 location          = "us-central1"
-agent_name        = "adk-docker-uv"
+agent_name        = "agent-foundation"
 github_repo_owner = "my-org"
-github_repo_name  = "adk-docker-uv"
+github_repo_name  = "agent-foundation"
 ```
 
 **environments/staging.tfvars:**
@@ -391,9 +391,9 @@ github_repo_name  = "adk-docker-uv"
 environment        = "staging"
 project           = "my-adk-staging"
 location          = "us-central1"
-agent_name        = "adk-docker-uv"
+agent_name        = "agent-foundation"
 github_repo_owner = "my-org"
-github_repo_name  = "adk-docker-uv"
+github_repo_name  = "agent-foundation"
 ```
 
 **environments/prod.tfvars:**
@@ -401,9 +401,9 @@ github_repo_name  = "adk-docker-uv"
 environment        = "prod"
 project           = "my-adk-prod"
 location          = "us-central1"
-agent_name        = "adk-docker-uv"
+agent_name        = "agent-foundation"
 github_repo_owner = "my-org"
-github_repo_name  = "adk-docker-uv"
+github_repo_name  = "agent-foundation"
 ```
 
 ### Bootstrap Resources (Per Environment)
@@ -412,7 +412,7 @@ Each bootstrap run creates:
 
 1. **Workload Identity Pool** - `github-actions-{environment}` (one per environment)
 2. **Workload Identity Provider** - Links to GitHub repo with attribute mapping
-3. **Artifact Registry** - `{agent_name}-{environment}` (e.g., `adk-docker-uv-dev`)
+3. **Artifact Registry** - `{agent_name}-{environment}` (e.g., `agent-foundation-dev`)
 4. **GCS State Bucket** - `terraform-state-{environment}-{random}` (auto-named)
 5. **GitHub Environment** - Creates GitHub Environment with protection rules
 6. **GitHub Environment Variables** - Scoped to the specific environment:
@@ -511,16 +511,16 @@ resource "google_storage_bucket" "terraform_state" {
 
 ```
 1. PR opens → Build in dev registry
-   Location: us-central1-docker.pkg.dev/project-dev/adk-docker-uv-dev:pr-123-abc1234
+   Location: us-central1-docker.pkg.dev/project-dev/agent-foundation-dev:pr-123-abc1234
 
 2. PR merges → Copy to staging registry + deploy
-   Source:   project-dev/adk-docker-uv-dev:pr-123-abc1234
-   Dest:     project-staging/adk-docker-uv-staging:abc1234
+   Source:   project-dev/agent-foundation-dev:pr-123-abc1234
+   Dest:     project-staging/agent-foundation-staging:abc1234
    Deploy:   staging Cloud Run ← abc1234
 
 3. DevOps approves → Copy to prod registry + deploy
-   Source:   project-staging/adk-docker-uv-staging:abc1234
-   Dest:     project-prod/adk-docker-uv-prod:abc1234
+   Source:   project-staging/agent-foundation-staging:abc1234
+   Dest:     project-prod/agent-foundation-prod:abc1234
    Also tag: v0.3.0, latest
    Deploy:   prod Cloud Run ← abc1234
 ```
@@ -655,8 +655,8 @@ Each GitHub Environment has these variables:
 ```
 GCP_PROJECT_ID                    # e.g., "my-adk-dev"
 GCP_LOCATION                      # e.g., "us-central1"
-IMAGE_NAME                        # e.g., "adk-docker-uv"
-ARTIFACT_REGISTRY_URI             # e.g., "us-central1-docker.pkg.dev/my-adk-dev/adk-docker-uv-dev"
+IMAGE_NAME                        # e.g., "agent-foundation"
+ARTIFACT_REGISTRY_URI             # e.g., "us-central1-docker.pkg.dev/my-adk-dev/agent-foundation-dev"
 GCP_WORKLOAD_IDENTITY_PROVIDER    # e.g., "projects/123/locations/global/..."
 TERRAFORM_STATE_BUCKET            # e.g., "terraform-state-dev-a1b2c3"
 
@@ -955,17 +955,17 @@ TF_VAR_cloud_run_max_instances: 100
 **Per environment:** Separate WIF pool and provider.
 
 **Dev WIF Provider:**
-- Attribute condition: `assertion.repository == 'my-org/adk-docker-uv' && assertion.environment == 'dev'`
+- Attribute condition: `assertion.repository == 'my-org/agent-foundation' && assertion.environment == 'dev'`
 - Grants access to: dev project only
 - IAM roles: artifactregistry.writer, run.admin, etc.
 
 **Staging WIF Provider:**
-- Attribute condition: `assertion.repository == 'my-org/adk-docker-uv' && assertion.environment == 'staging'`
+- Attribute condition: `assertion.repository == 'my-org/agent-foundation' && assertion.environment == 'staging'`
 - Grants access to: staging project only
 - **Additional:** read access to dev Artifact Registry (for image promotion)
 
 **Prod WIF Provider:**
-- Attribute condition: `assertion.repository == 'my-org/adk-docker-uv' && assertion.environment == 'production'`
+- Attribute condition: `assertion.repository == 'my-org/agent-foundation' && assertion.environment == 'production'`
 - Grants access to: prod project only
 - **Additional:** read access to staging Artifact Registry (for image promotion)
 
@@ -1277,7 +1277,7 @@ upstream_environment = {
 # Script: grant_cross_registry_access.sh
 # Run once after all bootstraps complete
 gcloud artifacts repositories add-iam-policy-binding \
-  adk-docker-uv-dev \
+  agent-foundation-dev \
   --project=my-adk-dev \
   --member="principalSet://...staging..." \
   --role=roles/artifactregistry.reader
@@ -1506,19 +1506,19 @@ resource "google_cloud_run_v2_service" "app" {
 }
 
 # Manual rollback via gcloud:
-gcloud run services update-traffic adk-docker-uv-production \
+gcloud run services update-traffic agent-foundation-production \
   --to-revisions=PREVIOUS-REVISION=100 \
   --region=us-central1
 
 # Or gradual:
-gcloud run services update-traffic adk-docker-uv-production \
+gcloud run services update-traffic agent-foundation-production \
   --to-revisions=CURRENT=10,PREVIOUS=90 \
   --region=us-central1
 ```
 
 **Process:**
 1. Identify issue
-2. List revisions: `gcloud run revisions list --service=adk-docker-uv-production`
+2. List revisions: `gcloud run revisions list --service=agent-foundation-production`
 3. Shift traffic to previous revision
 4. Verify rollback
 5. Later: Re-run workflow to make rollback permanent in Terraform state
@@ -1566,11 +1566,11 @@ Create `docs/runbook-rollback.md`:
 
 1. List Cloud Run revisions:
    ```bash
-   gcloud run revisions list --service=adk-docker-uv-production --region=us-central1
+   gcloud run revisions list --service=agent-foundation-production --region=us-central1
    ```
 2. Shift traffic:
    ```bash
-   gcloud run services update-traffic adk-docker-uv-production \
+   gcloud run services update-traffic agent-foundation-production \
      --to-revisions=<PREVIOUS-REVISION>=100 \
      --region=us-central1
    ```
