@@ -379,7 +379,7 @@ variable "artifact_registry_location" {
 **environments/dev.tfvars:**
 ```hcl
 environment        = "dev"
-project           = "my-adk-dev"
+project           = "my-agent-dev"
 location          = "us-central1"
 agent_name        = "agent-foundation"
 github_repo_owner = "my-org"
@@ -389,7 +389,7 @@ github_repo_name  = "agent-foundation"
 **environments/staging.tfvars:**
 ```hcl
 environment        = "staging"
-project           = "my-adk-staging"
+project           = "my-agent-staging"
 location          = "us-central1"
 agent_name        = "agent-foundation"
 github_repo_owner = "my-org"
@@ -399,7 +399,7 @@ github_repo_name  = "agent-foundation"
 **environments/prod.tfvars:**
 ```hcl
 environment        = "prod"
-project           = "my-adk-prod"
+project           = "my-agent-prod"
 location          = "us-central1"
 agent_name        = "agent-foundation"
 github_repo_owner = "my-org"
@@ -653,10 +653,10 @@ Against "same artifact" requirement (defeats testing). Skip.
 Each GitHub Environment has these variables:
 
 ```
-GCP_PROJECT_ID                    # e.g., "my-adk-dev"
+GCP_PROJECT_ID                    # e.g., "my-agent-dev"
 GCP_LOCATION                      # e.g., "us-central1"
 IMAGE_NAME                        # e.g., "agent-foundation"
-ARTIFACT_REGISTRY_URI             # e.g., "us-central1-docker.pkg.dev/my-adk-dev/agent-foundation-dev"
+ARTIFACT_REGISTRY_URI             # e.g., "us-central1-docker.pkg.dev/my-agent-dev/agent-foundation-dev"
 GCP_WORKLOAD_IDENTITY_PROVIDER    # e.g., "projects/123/locations/global/..."
 TERRAFORM_STATE_BUCKET            # e.g., "terraform-state-dev-a1b2c3"
 
@@ -1245,7 +1245,7 @@ environment = "dev"
 environment = "staging"
 upstream_environment = {
   wif_pool_id = "projects/123456/locations/global/workloadIdentityPools/github-actions-dev"
-  project     = "my-adk-dev"
+  project     = "my-agent-dev"
   environment = "dev"
 }
 
@@ -1253,7 +1253,7 @@ upstream_environment = {
 environment = "prod"
 upstream_environment = {
   wif_pool_id = "projects/789012/locations/global/workloadIdentityPools/github-actions-staging"
-  project     = "my-adk-staging"
+  project     = "my-agent-staging"
   environment = "staging"
 }
 ```
@@ -1278,7 +1278,7 @@ upstream_environment = {
 # Run once after all bootstraps complete
 gcloud artifacts repositories add-iam-policy-binding \
   agent-foundation-dev \
-  --project=my-adk-dev \
+  --project=my-agent-dev \
   --member="principalSet://...staging..." \
   --role=roles/artifactregistry.reader
 ```
