@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an ADK (Agent Development Kit) application containerized with Docker and optimized with `uv` package manager. The project demonstrates best practices for deploying Google ADK agents in production using multi-stage Docker builds, hot reloading for local development, and strict code quality standards.
+This is a production-grade ADK (Agent Development Kit) application with enterprise infrastructure. The project demonstrates best practices for deploying Google ADK agents in production with automated CI/CD, managed state persistence, custom observability, and proven cloud infrastructure.
 
 **Key technologies:**
 - **Google ADK**: Agent framework for LLM-powered applications using Gemini models
@@ -20,6 +20,9 @@ This is an ADK (Agent Development Kit) application containerized with Docker and
 - **uv**: Modern Python package manager with PEP 735 dependency groups
 - **Docker**: Multi-stage builds with BuildKit cache optimization
 - **Python 3.13**: Modern syntax with strict type checking
+- **Terraform**: Infrastructure as Code for reproducible deployments
+- **Cloud Run**: Production hosting with regional redundancy and autoscaling
+- **OpenTelemetry**: Custom instrumentation with trace-log correlation
 
 ## Development Commands
 

@@ -1,19 +1,52 @@
-# adk-docker-uv
+# agent-foundation
 
-![CI/CD](https://github.com/doughayden/adk-docker-uv/actions/workflows/ci-cd.yml/badge.svg)
-![Code Quality](https://github.com/doughayden/adk-docker-uv/actions/workflows/code-quality.yml/badge.svg)
+![CI/CD](https://github.com/doughayden/agent-foundation/actions/workflows/ci-cd.yml/badge.svg)
+![Code Quality](https://github.com/doughayden/agent-foundation/actions/workflows/code-quality.yml/badge.svg)
 
-ADK on Docker, optimized with uv
+Opinionated, production-ready LLM Agent deployment with enterprise-grade infrastructure
 
 ## What is this?
 
-A production-ready template for deploying Google ADK (Agent Development Kit) agents using containerization best practices. This project demonstrates how to build efficient, type-safe ADK agents with modern Python tooling.
+A comprehensive template for building and deploying LLM Agents, including those built using Google Agent Development Kit (ADK) to production. This is a complete, battle-tested foundation with automated CI/CD, managed state persistence, custom observability, and proven cloud infrastructure.
 
-**Key features:**
+Built for teams who need to move beyond prototypes and ship production AI agents with confidence.
+
+### How does this compare to Google's Agent Starter Pack?
+
+Google's [Agent Starter Pack](https://googlecloudplatform.github.io/agent-starter-pack/) is a feature-rich framework with extensive tooling and multi-platform CI/CD options. `agent-foundation` takes a different approach:
+
+- **Opinionated foundation**: Single optimized path (GitHub Actions + Terraform) vs choose-your-adventure configuration
+- **Build optimization**: Multi-stage Docker purpose-built for `uv` with aggressive layer caching (~200MB, 5-10s rebuilds) vs generic catch-all patterns
+- **Cloud Run deployment**: Production-grade container hosting with autoscaling vs preference for Agent Engine runtime
+- **Low-level control**: Direct infrastructure management for teams who need flexibility and performance without the CLI abstraction
+
+This project distills proven patterns from the Starter Pack while prioritizing build efficiency, deployment simplicity, and infrastructure transparency. Use the Starter Pack for rapid prototyping with Agent Engine; use `adk-foundation` for thoughtfully-curated developer experience and production deployments requiring optimization and control.
+
+## Features
+
+### ⚙️ Development & Build Optimization
+- **Multi-platform builds**: AMD64 and ARM64 support for local testing consistency with production
 - **Optimized Docker builds**: Multi-stage builds with uv package manager (~200MB images, 5-10s rebuilds)
 - **Developer experience**: Hot reloading with Docker Compose watch mode for instant feedback
 - **Code quality**: Strict type checking (mypy), comprehensive testing (100% coverage), modern linting (ruff)
-- **Production ready**: Non-root containers, health checks, environment-based configuration
+- **Template-ready**: One-command initialization script for rapid project setup
+
+### 🏗️ Production Infrastructure
+- **Automated CI/CD**: GitHub Actions workflows with Terraform IaC, smart PR automation with plan comments
+- **Automated code reviews**: Claude Code integration in CI for quality assurance
+- **Cloud Run deployment**: Production-grade hosting with regional redundancy and autoscaling
+- **Environment isolation**: Architecture supports workspace-based deployments (dev/stage/prod) - planned enhancement
+- **Global scalability**: Clear path to multi-region deployments via external Application Load Balancer
+
+### 🤖 Agent Capabilities
+- **Managed sessions**: Vertex AI Reasoning Engine for durable conversation state and memory bank
+- **Artifact storage**: GCS-backed persistent storage for session artifacts
+- **Custom observability**: 🔭 OpenTelemetry instrumentation with full trace-log correlation in Cloud Trace and Cloud Logging
+
+### 🔒 Security & Reliability
+- **Workload Identity Federation**: Keyless authentication for CI/CD (no service account keys)
+- **Non-root containers**: Security-hardened runtime with least privilege
+- **Health checks**: Kubernetes-style probes with startup grace periods
 
 ## Getting Started
 
