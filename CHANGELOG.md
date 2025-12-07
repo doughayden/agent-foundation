@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-12-07
+
 ### Fixed
 - Use PR head SHA instead of GitHub's temporary merge commit SHA for Docker image tags, improving traceability to actual commits in repository history
 - Move OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT to required section in Terraform variables
@@ -180,7 +182,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/doughayden/agent-foundation/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/doughayden/agent-foundation/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/doughayden/agent-foundation/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/doughayden/agent-foundation/compare/v0.3.0...v0.4.0
