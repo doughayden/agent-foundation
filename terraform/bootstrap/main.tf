@@ -1,15 +1,15 @@
-data "dotenv" "adk" {
+data "dotenv" "config" {
   filename = "${path.cwd}/.env"
 }
 
 # Get required Terraform variables from the project .env file unless explicitly passed as a root module input
 locals {
-  project                                            = coalesce(var.project, data.dotenv.adk.entries.GOOGLE_CLOUD_PROJECT)
-  location                                           = coalesce(var.location, data.dotenv.adk.entries.GOOGLE_CLOUD_LOCATION)
-  agent_name                                         = coalesce(var.agent_name, data.dotenv.adk.entries.AGENT_NAME)
-  otel_instrumentation_genai_capture_message_content = coalesce(var.otel_instrumentation_genai_capture_message_content, data.dotenv.adk.entries.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT)
-  repository_name                                    = coalesce(var.repository_name, data.dotenv.adk.entries.GITHUB_REPO_NAME)
-  repository_owner                                   = coalesce(var.repository_owner, data.dotenv.adk.entries.GITHUB_REPO_OWNER)
+  project                                            = coalesce(var.project, data.dotenv.config.entries.GOOGLE_CLOUD_PROJECT)
+  location                                           = coalesce(var.location, data.dotenv.config.entries.GOOGLE_CLOUD_LOCATION)
+  agent_name                                         = coalesce(var.agent_name, data.dotenv.config.entries.AGENT_NAME)
+  otel_instrumentation_genai_capture_message_content = coalesce(var.otel_instrumentation_genai_capture_message_content, data.dotenv.config.entries.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT)
+  repository_name                                    = coalesce(var.repository_name, data.dotenv.config.entries.GITHUB_REPO_NAME)
+  repository_owner                                   = coalesce(var.repository_owner, data.dotenv.config.entries.GITHUB_REPO_OWNER)
 
   services = toset([
     "aiplatform.googleapis.com",
