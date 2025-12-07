@@ -20,7 +20,7 @@ Google's [Agent Starter Pack](https://googlecloudplatform.github.io/agent-starte
 - **Cloud Run deployment**: Production-grade container hosting with autoscaling vs preference for Agent Engine runtime
 - **Low-level control**: Direct infrastructure management for teams who need flexibility and performance without the CLI abstraction
 
-This project distills proven patterns from the Starter Pack while prioritizing build efficiency, deployment simplicity, and infrastructure transparency. Use the Starter Pack for rapid prototyping with Agent Engine; use `adk-foundation` for thoughtfully-curated developer experience and production deployments requiring optimization and control.
+This project distills proven patterns from the Starter Pack while prioritizing build efficiency, deployment simplicity, and infrastructure transparency. Use the Starter Pack for rapid prototyping with Agent Engine; use `agent-foundation` for thoughtfully-curated developer experience and production deployments requiring optimization and control.
 
 ## Features
 
