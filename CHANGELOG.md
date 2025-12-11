@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-12-11
+
 ### Changed
 - **BREAKING**: Upgrade to google-adk 1.20.0 and migrate to App and plugin pattern for improved modularity and ADK best practices
   - Agent now wrapped in `App` container with `GlobalInstructionPlugin` for dynamic instruction generation and `LoggingPlugin` for agent lifecycle logging
@@ -190,7 +192,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/doughayden/agent-foundation/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/doughayden/agent-foundation/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/doughayden/agent-foundation/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/doughayden/agent-foundation/compare/v0.4.0...v0.4.1
