@@ -32,6 +32,7 @@ root_agent = LlmAgent(
     after_tool_callback=logging_callbacks.after_tool,
 )
 
+# Optional App configs explicitly set to None for template documentation
 app = App(
     name="agent_foundation",
     root_agent=root_agent,
