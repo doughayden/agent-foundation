@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **BREAKING**: Upgrade to google-adk 1.20.0 and migrate to App and plugin pattern for improved modularity and ADK best practices
+  - Agent now wrapped in `App` container with `GlobalInstructionPlugin` for dynamic instruction generation and `LoggingPlugin` for agent lifecycle logging
+  - Package exports `app` instead of `root_agent` (breaking change for direct agent imports)
+  - `global_instruction` moved from `LlmAgent` to `GlobalInstructionPlugin`
+  - Integration tests simplified to pattern-based validation for better template customization (test app/agent wiring, not specific implementations)
 - Display terraform apply results in CI/CD job summaries alongside plan results for better deployment visibility
 
 ## [0.6.0] - 2025-12-07

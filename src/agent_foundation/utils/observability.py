@@ -12,6 +12,7 @@ Google Cloud observability (all environments).
 import logging
 import os
 import uuid
+import warnings
 
 import google.auth
 import google.auth.transport.requests
@@ -32,6 +33,7 @@ from opentelemetry.instrumentation.google_genai import GoogleGenAiSdkInstrumento
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.sdk._events import EventLoggerProvider
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry.sdk._logs._internal import LogDeprecatedInitWarning
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.resources import (
     SERVICE_INSTANCE_ID,
@@ -41,6 +43,8 @@ from opentelemetry.sdk.resources import (
 )
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+warnings.filterwarnings("ignore", category=LogDeprecatedInitWarning)
 
 
 def configure_otel_resource(agent_name: str, project_id: str) -> None:

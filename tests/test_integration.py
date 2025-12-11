@@ -1,79 +1,79 @@
 """Integration tests for agent configuration and component wiring.
 
-This module contains integration tests that verify how components work together.
-Unlike unit tests, these tests validate end-to-end behavior and configuration.
+This module validates the basic structure and wiring of ADK app components.
+Tests are pattern-based and validate integration points regardless of specific
+implementation choices (plugins, tools, etc.).
 
 Future: Container-based smoke tests for CI/CD will be added here.
 """
 
-from datetime import date
-
-from conftest import MockReadonlyContext
-
-from agent_foundation import root_agent
-from agent_foundation.prompt import return_global_instruction
+from agent_foundation import app
 
 
-class TestInstructionProviderIntegration:
-    """Integration tests for InstructionProvider pattern wiring."""
+class TestAppIntegration:
+    """Pattern-based integration tests for App configuration and wiring."""
 
-    def test_agent_uses_instruction_provider_callable(self) -> None:
-        """Verify agent is configured with callable InstructionProvider, not string."""
-        # Agent should have callable global_instruction (not static string)
-        assert callable(root_agent.global_instruction)
-        assert root_agent.global_instruction == return_global_instruction
+    def test_app_is_properly_instantiated(self) -> None:
+        """Verify app container is properly instantiated."""
+        assert app is not None
+        assert app.name is not None
+        assert isinstance(app.name, str)
+        assert len(app.name) > 0
 
-    def test_instruction_provider_works_with_agent_context(self) -> None:
-        """Verify InstructionProvider can be invoked with ReadonlyContext."""
-        # Create context matching what ADK would pass
-        ctx = MockReadonlyContext(
-            agent_name=root_agent.name,
-            invocation_id="integration-test-123",
-            state={"test": "integration"},
-        )
+    def test_app_has_root_agent(self) -> None:
+        """Verify app is wired to root agent."""
+        assert app.root_agent is not None
 
-        # Invoke the provider (simulating ADK's call)
-        instruction = root_agent.global_instruction(ctx)
+    def test_app_plugins_are_valid_if_configured(self) -> None:
+        """Verify plugins (if any) are properly initialized."""
+        # Plugins are optional - if configured, they should be a list
+        if app.plugins is not None:
+            assert isinstance(app.plugins, list)
+            # Each plugin should be an object instance
+            for plugin in app.plugins:
+                assert plugin is not None
+                assert hasattr(plugin, "__class__")
 
-        # Verify it returns valid instruction
-        assert isinstance(instruction, str)
-        assert len(instruction) > 0
 
-    def test_instruction_includes_dynamic_date(self) -> None:
-        """Verify InstructionProvider generates instructions with current date."""
-        ctx = MockReadonlyContext(agent_name=root_agent.name)
+class TestAgentIntegration:
+    """Pattern-based integration tests for Agent configuration."""
 
-        instruction = root_agent.global_instruction(ctx)
+    def test_agent_has_required_configuration(self) -> None:
+        """Verify agent has required configuration fields."""
+        agent = app.root_agent
 
-        # Verify dynamic date injection
-        today = str(date.today())
-        assert today in instruction
-        assert "Today's date:" in instruction
+        # Required: agent name
+        assert agent.name is not None
+        assert isinstance(agent.name, str)
+        assert len(agent.name) > 0
 
-    def test_instruction_includes_expected_content(self) -> None:
-        """Verify InstructionProvider generates expected base instruction."""
-        ctx = MockReadonlyContext(agent_name=root_agent.name)
+        # Required: agent model
+        assert agent.model is not None
+        assert isinstance(agent.model, str)
+        assert len(agent.model) > 0
 
-        instruction = root_agent.global_instruction(ctx)
+    def test_agent_instructions_are_valid_if_configured(self) -> None:
+        """Verify agent instructions (if configured) are valid strings."""
+        agent = app.root_agent
 
-        # Verify expected content
-        assert "helpful Assistant" in instruction
-        assert "Today's date:" in instruction
+        # Instruction is optional - if configured, should be non-empty string
+        if agent.instruction is not None:
+            assert isinstance(agent.instruction, str)
+            assert len(agent.instruction) > 0
 
-    def test_agent_configuration_completeness(self) -> None:
-        """Verify agent has all expected configuration elements."""
-        # Verify agent has name (should be non-empty string)
-        assert root_agent.name is not None
-        assert isinstance(root_agent.name, str)
-        assert len(root_agent.name) > 0
+        # Description is optional - if configured, should be non-empty string
+        if agent.description is not None:
+            assert isinstance(agent.description, str)
+            assert len(agent.description) > 0
 
-        # Verify agent has model configured
-        assert root_agent.model is not None
-        assert "gemini" in root_agent.model.lower()
+    def test_agent_tools_are_valid_if_configured(self) -> None:
+        """Verify agent tools (if any) are properly initialized."""
+        agent = app.root_agent
 
-        # Verify agent has tools
-        assert root_agent.tools is not None
-        assert len(root_agent.tools) > 0
-
-        # Verify agent has instruction provider
-        assert callable(root_agent.global_instruction)
+        # Tools are optional - if configured, should be a list
+        if agent.tools is not None:
+            assert isinstance(agent.tools, list)
+            # Each tool should be an object instance
+            for tool in agent.tools:
+                assert tool is not None
+                assert hasattr(tool, "__class__")

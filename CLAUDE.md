@@ -88,22 +88,27 @@ uv run pytest tests/test_context.py::test_load_success -v   # Specific test
 
 ## Architecture
 
-### ADK Agent Structure
+### ADK App and Agent Structure
 
-The agent is configured in `src/agent_foundation/agent.py`:
+The app and agent are configured in `src/agent_foundation/agent.py`:
 
 ```
-root_agent (LlmAgent)
-  ├── Model: gemini-2.5-flash (configurable via ROOT_AGENT_MODEL env var)
-  ├── Tools: Custom tools from tools.py + PreloadMemoryTool
-  └── Callbacks: LoggingCallbacks + add_session_to_memory
+app (App)
+  ├── Plugins
+  │   ├── GlobalInstructionPlugin: Dynamic instruction generation (return_global_instruction)
+  │   └── LoggingPlugin: Agent lifecycle logging
+  └── root_agent (LlmAgent)
+      ├── Model: gemini-2.5-flash (configurable via ROOT_AGENT_MODEL env var)
+      ├── Tools: Custom tools from tools.py + PreloadMemoryTool
+      ├── Instruction: Base agent instruction (return_instruction_root)
+      └── Callbacks: LoggingCallbacks + add_session_to_memory
 ```
 
 **Key components:**
-- **agent.py**: LlmAgent configuration with callbacks
+- **agent.py**: App container with plugins and LlmAgent configuration
 - **tools.py**: Custom tools for the agent
 - **callbacks.py**: Lifecycle callbacks for logging and memory persistence (all return `None`)
-- **prompt.py**: Agent instructions and descriptions (includes InstructionProvider pattern)
+- **prompt.py**: Agent instructions and descriptions (includes InstructionProvider pattern for GlobalInstructionPlugin)
 - **server.py**: FastAPI server with ADK integration
 - **utils/config.py**: Pydantic-based environment configuration with validation
 - **utils/observability.py**: OpenTelemetry setup for tracing and logging
@@ -142,7 +147,7 @@ Ruff: 88 char line length, auto-fix, enforces pycodestyle/pyflakes/isort/flake8-
 
 ### Testing
 
-100% coverage on production code (excludes: `server.py`, `agent.py`). Tests by feature, shared fixtures in `conftest.py`, duck-typed mocks, pytest-asyncio. Patterns: `capsys` for stdout/stderr, `patch.dict(os.environ, ...)` for env vars, validate success + error cases.
+100% coverage on production code (excludes: `server.py`, `**/agent.py`, `**/__init__.py`). Tests by feature, shared fixtures in `conftest.py`, duck-typed mocks, pytest-asyncio. Patterns: `capsys` for stdout/stderr, `patch.dict(os.environ, ...)` for env vars, validate success + error cases.
 
 ## Environment Variables
 
@@ -247,7 +252,7 @@ Callback pattern: `LoggingCallbacks` (lifecycle logging), `add_session_to_memory
 
 ### InstructionProvider Pattern
 
-Dynamic instruction generation: `def instruction_provider(ctx: ReadonlyContext) -> str`. Pass function ref to `LlmAgent(global_instruction=func)`, not call. `ctx`: state, agent_name, invocation_id, user_content, session. Test with `MockReadonlyContext` (conftest.py).
+Dynamic instruction generation: `def instruction_provider(ctx: ReadonlyContext) -> str`. Pass function ref to `GlobalInstructionPlugin(instruction_provider)`, not call. `ctx`: state, agent_name, invocation_id, user_content, session. Plugin applies instruction dynamically at runtime. Test with `MockReadonlyContext` (conftest.py).
 
 ### Environment Configuration
 
