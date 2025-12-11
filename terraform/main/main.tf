@@ -75,7 +75,7 @@ resource "google_project_iam_member" "app" {
 resource "google_vertex_ai_reasoning_engine" "session_and_memory" {
   display_name = "${local.resource_name} Sessions and Memory"
   description  = "Managed Session and Memory Bank Service for the ${local.resource_name} app"
-  
+
   # Prevent plan and apply diffs with an empty spec for managed sessions and memory bank only (no runtime code)
   spec {}
 }
