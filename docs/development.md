@@ -8,8 +8,8 @@ This document covers development workflows, code quality standards, and testing.
 - `uv` package manager
 - Google Cloud SDK (gcloud CLI) for Vertex AI authentication
 
-> ![IMPORTANT]
-> Complete deployment first (see README Phase 2-3) to create required resources before running locally
+> [!IMPORTANT]
+> You must complete deployment first (README Phase 2-3) to create required resources (AGENT_ENGINE, ARTIFACT_SERVICE_URI) before running locally.
 
 ## Template Initialization
 
@@ -25,7 +25,8 @@ Renames package, updates configs/docs, resets changelog. Audit log: `init_templa
 
 ## Running Locally
 
-**PREREQUISITE:** Complete deployment (README Phase 2-3) first. Local development requires `AGENT_ENGINE` and other resources created during deployment.
+> [!IMPORTANT]
+> You must complete deployment first (README Phase 2-3) to create required resources (AGENT_ENGINE, ARTIFACT_SERVICE_URI) before running locally.
 
 ```bash
 # Setup environment

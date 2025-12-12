@@ -55,13 +55,17 @@ cp .env.example .env
 # Edit .env with your values
 ```
 
-**Required variables:**
+**Required variables in `.env`:**
 - `GOOGLE_CLOUD_PROJECT` - GCP project ID
 - `GOOGLE_CLOUD_LOCATION` - GCP region (e.g., `us-central1`)
 - `AGENT_NAME` - Your agent name (e.g., `your-agent-name`)
 - `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` - Capture LLM content in traces (TRUE/FALSE)
-- `GITHUB_REPO_NAME` - Repository name
-- `GITHUB_REPO_OWNER` - GitHub username or organization
+
+**Required variables in `terraform/bootstrap/terraform.tfvars`:**
+- `repository_owner` - GitHub username or organization
+- `repository_name` - Repository name
+
+See [Bootstrap Setup](./bootstrap-setup.md) for detailed configuration steps.
 
 ## State Management
 

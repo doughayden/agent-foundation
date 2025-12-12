@@ -48,7 +48,7 @@ Renames package, updates config/docs/badges, resets CODEOWNERS/version/changelog
 
 ### Running Locally
 
-**PREREQUISITE:** Complete deployment first (README Phase 2-3) to create AGENT_ENGINE, ARTIFACT_SERVICE_URI, and other required resources. Add those values to `.env` (Phase 3).
+**PREREQUISITE:** Complete deployment first (README Phase 2-3) to create required resources (AGENT_ENGINE, ARTIFACT_SERVICE_URI) before running locally. Add those values to `.env` (Phase 3).
 
 ```bash
 # Optional runtime configuration (before running)

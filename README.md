@@ -88,7 +88,8 @@ See [Bootstrap Setup](docs/bootstrap-setup.md) for details and troubleshooting.
 
 ### Phase 2: Deploy Cloud Resources
 
-**CRITICAL:** Deployment creates required resources (Reasoning Engine, GCS buckets) that local development needs. You must deploy before running locally.
+> [!IMPORTANT]
+> You must complete deployment first to create required resources (Reasoning Engine, GCS buckets) before running locally.
 
 ```bash
 # 1. Create feature branch
