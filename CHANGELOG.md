@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2025-12-12
+
 ### Changed
 - **BREAKING**: Move GitHub repository configuration from `.env` to `terraform/bootstrap/terraform.tfvars` for cleaner separation of infrastructure config from application runtime config
   - `GITHUB_REPO_OWNER` → `repository_owner` in terraform.tfvars
@@ -204,7 +206,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/doughayden/agent-foundation/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/doughayden/agent-foundation/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/doughayden/agent-foundation/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/doughayden/agent-foundation/compare/v0.4.1...v0.5.0
