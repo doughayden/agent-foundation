@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING**: Move GitHub repository configuration from `.env` to `terraform/bootstrap/terraform.tfvars` for cleaner separation of infrastructure config from application runtime config
+  - `GITHUB_REPO_OWNER` → `repository_owner` in terraform.tfvars
+  - `GITHUB_REPO_NAME` → `repository_name` in terraform.tfvars
+  - Bootstrap Terraform module now requires explicit tfvars (no .env fallback)
+- **BREAKING**: Enforce deploy-first workflow by making `AGENT_ENGINE` and `ARTIFACT_SERVICE_URI` required for local development
+  - Moved from optional to required deployment-created resources
+  - Local development now requires completed deployment to cloud
+  - Ensures users test full deployment pipeline early
+- Restructure documentation to emphasize deploy-first workflow before local development
+- Standardize prerequisite messaging with GitHub-style alerts across all user-facing documentation
+
 ## [0.7.0] - 2025-12-11
 
 ### Changed
