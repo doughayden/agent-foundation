@@ -30,11 +30,12 @@ This is a production-grade ADK (Agent Development Kit) application with enterpri
 
 ```bash
 # Configure .env: AGENT_NAME, GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION,
-# OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT, GITHUB_REPO_NAME, GITHUB_REPO_OWNER
+# OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
+# Configure terraform/bootstrap/terraform.tfvars: repository_owner, repository_name
 terraform -chdir=terraform/bootstrap init/plan/apply
 ```
 
-Creates: WIF, Artifact Registry, GCS state bucket, GitHub Actions Variables. Agent Engine created by main module in CI/CD.
+Creates: WIF, Artifact Registry, GCS state bucket, GitHub Actions Variables. Runtime resources (AGENT_ENGINE, ARTIFACT_SERVICE_URI) created by main module during deployment.
 
 ### Template Initialization (One-Time)
 
@@ -47,11 +48,11 @@ Renames package, updates config/docs/badges, resets CODEOWNERS/version/changelog
 
 ### Running Locally
 
+**PREREQUISITE:** Complete deployment first (README Phase 2-3) to create AGENT_ENGINE, ARTIFACT_SERVICE_URI, and other required resources. Add those values to `.env` (Phase 3).
+
 ```bash
-# Setup (one-time)
-cp .env.example .env
-# Edit .env: GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION
-# Auth: gcloud auth application-default login
+# Optional runtime configuration (before running)
+# Edit .env: SERVE_WEB_INTERFACE, LOG_LEVEL, etc.
 
 # Run server (default: API-only at http://127.0.0.1:8000)
 uv run server

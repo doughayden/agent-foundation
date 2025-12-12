@@ -8,6 +8,9 @@ This document covers development workflows, code quality standards, and testing.
 - `uv` package manager
 - Google Cloud SDK (gcloud CLI) for Vertex AI authentication
 
+> ![IMPORTANT]
+> Complete deployment first (see README Phase 2-3) to create required resources before running locally
+
 ## Template Initialization
 
 If using this as a template, initialize once after cloning:
@@ -22,13 +25,19 @@ Renames package, updates configs/docs, resets changelog. Audit log: `init_templa
 
 ## Running Locally
 
+**PREREQUISITE:** Complete deployment (README Phase 2-3) first. Local development requires `AGENT_ENGINE` and other resources created during deployment.
+
 ```bash
-# Setup (one-time)
+# Setup environment
 cp .env.example .env  # Edit: GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION
 gcloud auth application-default login
 
+# Add deployed resources to .env (from deployment logs)
+# AGENT_ENGINE=projects/.../reasoningEngines/...
+# ARTIFACT_SERVICE_URI=gs://...
+
 # Run server
-uv run server  # API-only (set SERVE_WEB_INTERFACE=true for web UI)
+uv run server  # API-only (set SERVE_WEB_INTERFACE=TRUE for web UI)
 LOG_LEVEL=DEBUG uv run server  # Debug mode
 
 # Docker Compose (recommended - hot reloading)
@@ -71,21 +80,17 @@ gh run view --log
 
 GitHub Actions automatically builds, tests, and deploys to Cloud Run. Check job summary for deployment details.
 
-### Capture Deployed Resources (Optional)
+### Capture Deployed Resources
 
-For local dev with persistent sessions, add to `.env` after first deployment:
+Get values from GitHub Actions logs (`gh run view <run-id>` or Actions tab UI) or GCP Console.
 
 ```bash
-# Get values from GitHub Actions job summary or:
-terraform -chdir=terraform/main output -raw agent_engine_resource_name
-terraform -chdir=terraform/main output -raw artifact_bucket_name
-
 # Add to .env:
 AGENT_ENGINE=projects/PROJECT_ID/locations/LOCATION/reasoningEngines/ID
 ARTIFACT_SERVICE_URI=gs://BUCKET_NAME
 ```
 
-See [Environment Variables](./environment-variables.md) for details.
+See [Environment Variables](./environment-variables.md) for where to find each value.
 
 ## Code Quality and Testing
 

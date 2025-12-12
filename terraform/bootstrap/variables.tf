@@ -29,13 +29,9 @@ variable "otel_instrumentation_genai_capture_message_content" {
 variable "repository_name" {
   description = "GitHub repository name"
   type        = string
-  nullable    = true
-  default     = null
 }
 
 variable "repository_owner" {
   description = "GitHub repository owner - username or organization"
   type        = string
-  nullable    = true
-  default     = null
 }

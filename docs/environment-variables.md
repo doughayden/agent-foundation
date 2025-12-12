@@ -42,25 +42,9 @@ Complete reference for all environment variables used in this project.
 
 ---
 
-## GitHub CI/CD Configuration (Bootstrap)
+## Deployment-Created Resources
 
-Required for bootstrap Terraform to configure GitHub Variables.
-
-**GITHUB_REPO_NAME**
-- **When:** Set before running `terraform -chdir=terraform/bootstrap apply`
-- **Value:** Repository name (e.g., `agent-foundation`)
-- **Purpose:** Configures GitHub Actions Variables and WIF bindings
-
-**GITHUB_REPO_OWNER**
-- **When:** Set before running `terraform -chdir=terraform/bootstrap apply`
-- **Value:** GitHub username or organization (e.g., `your-username`)
-- **Purpose:** Configures GitHub Actions Variables and WIF bindings
-
----
-
-## Optional: Deployed Resource URIs
-
-**Set these AFTER first deployment** to use deployed resources in local development.
+**Set these AFTER first deployment** to match production behavior in local development.
 
 ### Session and Memory Persistence
 
@@ -68,12 +52,8 @@ Required for bootstrap Terraform to configure GitHub Variables.
 - **When:** Set AFTER first deployment for local development with persistent sessions
 - **Value:** Agent Engine resource name (e.g., `projects/123/locations/us-central1/reasoningEngines/456`)
 - **Default:** Unset (in-memory ephemeral sessions)
-- **How to get:**
-  ```bash
-  terraform -chdir=terraform/main output -raw agent_engine_resource_name
-  ```
-- **Why:** Enables session persistence across server restarts, matching production behavior
-- **Note:** Sessions reset on restart when unset (default local development behavior)
+- **How to get:** GitHub Actions job summary (`gh run view <run-id>` or Actions tab UI) OR GCP Console (Vertex AI → Agent Builder → Reasoning Engines)
+- **Why:** Enables session persistence across server restarts
 
 ### Artifact Storage
 
@@ -81,12 +61,8 @@ Required for bootstrap Terraform to configure GitHub Variables.
 - **When:** Set AFTER first deployment for local development with artifact persistence
 - **Value:** GCS bucket URI (e.g., `gs://my-artifact-bucket`)
 - **Default:** Unset (in-memory ephemeral storage)
-- **How to get:**
-  ```bash
-  terraform -chdir=terraform/main output -raw artifact_bucket_name
-  ```
-- **Why:** Enables artifact storage persistence, matching production behavior
-- **Note:** Artifacts lost on restart when unset (default local development behavior)
+- **How to get:** GitHub Actions job summary (`gh run view <run-id>` or Actions tab UI) OR GCP Console (Cloud Storage → Buckets)
+- **Why:** Enables artifact storage persistence
 
 ---
 

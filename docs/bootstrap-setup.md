@@ -29,31 +29,39 @@ gcloud config set project YOUR_PROJECT_ID
 gh auth login
 ```
 
-**2. Configure environment:**
+**2. Configure app runtime environment:**
 ```bash
 cp .env.example .env
 # Edit .env with your values (see inline comments)
 ```
 
-Required variables:
+Required variables in `.env`:
 - `GOOGLE_CLOUD_PROJECT`
 - `GOOGLE_CLOUD_LOCATION`
 - `AGENT_NAME`
 - `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`
-- `GITHUB_REPO_NAME`
-- `GITHUB_REPO_OWNER`
 
-**3. Initialize Terraform:**
+**3. Configure bootstrap for GitHub:**
+```bash
+cp terraform/bootstrap/terraform.tfvars.example terraform/bootstrap/terraform.tfvars
+# Edit terraform.tfvars with your GitHub repository info
+```
+
+Required variables in `terraform/bootstrap/terraform.tfvars`:
+- `repository_owner` - GitHub username or organization
+- `repository_name` - GitHub repository name
+
+**4. Initialize Terraform:**
 ```bash
 terraform -chdir=terraform/bootstrap init
 ```
 
-**4. Preview changes:**
+**5. Preview changes:**
 ```bash
 terraform -chdir=terraform/bootstrap plan
 ```
 
-**5. Apply:**
+**6. Apply:**
 ```bash
 terraform -chdir=terraform/bootstrap apply
 ```

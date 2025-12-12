@@ -50,65 +50,103 @@ This project distills proven patterns from the Starter Pack while prioritizing b
 
 ## Getting Started
 
-### Phase 1: Setup (One-Time)
+### Phase 1: Bootstrap CI/CD Infrastructure (One-Time)
+
+Set up the foundation for automated deployments:
 
 ```bash
 # 0. Initialize from template (if using as template)
 uv run init_template.py  # Only if using as GitHub template; --dry-run to preview
 git add -A && git commit -m "chore: initialize from template"
 
-# 1. Configure environment
+# 1. Configure app runtime environment
 cp .env.example .env
-# Edit: GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION, AGENT_NAME,
-#       OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT,
-#       GITHUB_REPO_NAME, GITHUB_REPO_OWNER
+# Edit .env: GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION, AGENT_NAME,
+#       OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
 
-# 2. Authenticate
+# 2. Configure bootstrap for GitHub
+cp terraform/bootstrap/terraform.tfvars.example terraform/bootstrap/terraform.tfvars
+# Edit terraform/bootstrap/terraform.tfvars: repository_owner, repository_name
+
+# 3. Authenticate
 gcloud auth application-default login
 gh auth login
 
-# 3. Provision CI/CD infrastructure
+# 4. Provision CI/CD infrastructure
 terraform -chdir=terraform/bootstrap init
 terraform -chdir=terraform/bootstrap apply
 
-# 4. Verify
+# 5. Verify
 gh variable list  # or view in GitHub repo Settings > Variables
 ```
 
+Bootstrap creates: Workload Identity Federation, Artifact Registry, GCS state bucket, GitHub Variables.
+
 See [Bootstrap Setup](docs/bootstrap-setup.md) for details and troubleshooting.
 
-### Phase 2: Develop Locally
+---
+
+### Phase 2: Deploy Cloud Resources
+
+**CRITICAL:** Deployment creates required resources (Reasoning Engine, GCS buckets) that local development needs. You must deploy before running locally.
 
 ```bash
-uv run server
-# Or: docker compose up --build --watch
-```
-
-See [Development Guide](docs/development.md) for workflow, testing, and code quality.
-
-### Phase 3: Deploy to Cloud Run
-
-```bash
+# 1. Create feature branch
 git checkout -b feat/initial-setup
+
+# 2. Commit and push
 git add . && git commit -m "feat: initial agent setup"
 git push origin feat/initial-setup
-```
 
-Open PR on GitHub. Merge to `main` triggers automatic deployment. Monitor:
-```bash
+# 3. Create pull request
+gh pr create  # or use GitHub UI
+
+# 4. Review terraform plan in PR comments, then merge PR
+
+# 5. Monitor deployment (merging to main triggers automatic deployment)
 gh run list --workflow=ci-cd.yml --limit 5
+gh run view --log
 ```
 
-### Phase 4: Capture Deployed Resources (Optional)
+Deployment creates:
+- Reasoning Engine for session persistence (`AGENT_ENGINE`)
+- GCS bucket for artifact storage (`ARTIFACT_SERVICE_URI`)
+- Cloud Run service
 
-For local development with persistent sessions, add to `.env`:
+See [CI/CD Workflow](docs/cicd-setup.md) for automation details.
+
+---
+
+### Phase 3: Capture Deployed Resources
+
+Get resource values from GitHub Actions logs (`gh run view <run-id>` or Actions tab UI) or GCP Console, then add to `.env`:
+
 ```bash
-# Get values from: terraform -chdir=terraform/main output
-AGENT_ENGINE=projects/PROJECT_ID/locations/LOCATION/reasoningEngines/ID
-ARTIFACT_SERVICE_URI=gs://BUCKET_NAME
+AGENT_ENGINE=projects/.../reasoningEngines/...
+ARTIFACT_SERVICE_URI=gs://...
 ```
 
-See [Environment Variables](docs/environment-variables.md) for details.
+See [Environment Variables](docs/environment-variables.md) for where to find each value.
+
+---
+
+### Phase 4: Develop Locally
+
+With deployment complete (from Phase 2) and resources captured (from Phase 3):
+
+**Optional runtime configuration:** Set `SERVE_WEB_INTERFACE`, `LOG_LEVEL`, or other runtime variables in `.env` as needed.
+
+Run the server:
+
+```bash
+# Run server (http://127.0.0.1:8000)
+uv run server
+
+# Or with Docker Compose (hot reloading)
+docker compose up --build --watch
+```
+
+See [Development Guide](docs/development.md) for workflow, testing, and code quality standards.
 
 ## Documentation
 
