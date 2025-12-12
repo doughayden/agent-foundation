@@ -4,7 +4,7 @@ data "dotenv" "config" {
 
 # Get required Terraform variables from .env (app config) or terraform.tfvars (infrastructure config)
 locals {
-  # Application configuration from .env with optional override from input variables
+  # Application configuration with input variable override (falls back to .env)
   project                                            = coalesce(var.project, data.dotenv.config.entries.GOOGLE_CLOUD_PROJECT)
   location                                           = coalesce(var.location, data.dotenv.config.entries.GOOGLE_CLOUD_LOCATION)
   agent_name                                         = coalesce(var.agent_name, data.dotenv.config.entries.AGENT_NAME)
