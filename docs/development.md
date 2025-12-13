@@ -47,6 +47,25 @@ docker compose up --build --watch
 
 See [Docker Compose Workflow](./docker-compose-workflow.md) and [Environment Variables](./environment-variables.md).
 
+## Testing Deployed Service
+
+Proxy the deployed Cloud Run service to `http://localhost:8000` for local testing:
+
+```bash
+# Service name format: ${agent_name}-${workspace} (e.g., my-agent-default)
+gcloud run services proxy <service-name> --project <project-id> --region <region> --port 8000
+
+# Example
+gcloud run services proxy my-agent-default --project my-project-id --region us-central1 --port 8000
+curl http://localhost:8000/health
+```
+
+If `SERVE_WEB_INTERFACE=TRUE` is set in the deployed service, open http://localhost:8000 in your browser to access the web UI.
+
+Uses active gcloud credentials (`gcloud auth login`).
+
+See [Cloud Run proxy documentation](https://cloud.google.com/run/docs/authenticating/developers#proxy) for details.
+
 ## Development Workflow
 
 ### Feature Branch Development

@@ -276,6 +276,17 @@ docker compose -f docker-compose.yml -f docker-compose.registry.yml up
 
 Container suffix: `-registry`.
 
+### Testing Deployed Service
+
+Proxy the deployed Cloud Run service to localhost for testing:
+
+```bash
+# Proxy to http://localhost:8000
+gcloud run services proxy <service-name> --project <project-id> --region <region> --port 8000
+```
+
+Uses gcloud credentials (no manual token management). Service name: `${agent_name}-${workspace}` (e.g., `my-agent-default`). See `docs/development.md`.
+
 ## Documentation
 
 - **docs/bootstrap-setup.md**: One-time CI/CD infrastructure provisioning (minimal commands, troubleshooting)
