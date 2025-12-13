@@ -58,11 +58,16 @@ gcloud run services proxy <service-name> --project <project-id> --region <region
 # Example
 gcloud run services proxy my-agent-default --project my-project-id --region us-central1 --port 8000
 curl http://localhost:8000/health
+
+# Use a different port if 8000 is in use
+gcloud run services proxy <service-name> --project <project-id> --region <region> --port 8080
+
+# Stop proxy: Ctrl+C
 ```
 
 If `SERVE_WEB_INTERFACE=TRUE` is set in the deployed service, open http://localhost:8000 in your browser to access the web UI.
 
-Uses active gcloud credentials (`gcloud auth login`).
+Uses active gcloud account credentials (`gcloud auth login`).
 
 See [Cloud Run proxy documentation](https://cloud.google.com/run/docs/authenticating/developers#proxy) for details.
 
