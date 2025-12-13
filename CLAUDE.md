@@ -281,7 +281,7 @@ Container suffix: `-registry`.
 Proxy the deployed Cloud Run service to localhost for testing:
 
 ```bash
-# Proxy to http://localhost:8000
+# Proxy to http://127.0.0.1:8000
 gcloud run services proxy <service-name> --project <project-id> --region <region> --port 8000
 ```
 
