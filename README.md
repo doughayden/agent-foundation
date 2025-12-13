@@ -137,7 +137,7 @@ With deployment complete (from Phase 2) and resources captured (from Phase 3):
 
 **Optional runtime configuration:** Set `SERVE_WEB_INTERFACE`, `LOG_LEVEL`, or other runtime variables in `.env` as needed.
 
-Run the server:
+Run the local server:
 
 ```bash
 # Run server (http://127.0.0.1:8000)
@@ -145,6 +145,13 @@ uv run server
 
 # Or with Docker Compose (hot reloading)
 docker compose up --build --watch
+```
+
+Test the deployed Cloud Run service via proxy:
+
+```bash
+# Local proxy (http://127.0.0.1:8000)
+gcloud run services proxy <service-name> --project <project-id> --region <region> --port 8000
 ```
 
 See [Development Guide](docs/development.md) for workflow, testing, and code quality standards.
