@@ -114,5 +114,3 @@ OpenTelemetry resource attributes uniquely identify your service instances in tr
 - [OpenTelemetry | Generative AI Instrumentation](https://opentelemetry.io/blog/2024/otel-generative-ai/)
 - [OpenTelemetry | Semantic Conventions for Generative AI](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
 - [OpenTelemetry Environment Variables](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/)
-
-**[← Back to README](../README.md#documentation)**

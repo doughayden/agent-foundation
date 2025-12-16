@@ -42,9 +42,9 @@ Complete reference for all environment variables used in this project.
 
 ---
 
-## Deployment-Created Resources
+## Cloud Resources (Optional)
 
-**Set these AFTER first deployment** to match production behavior in local development.
+**Optional:** Add these for production-consistent testing with durable persistence. Defaults to in-memory services if unset.
 
 ### Session and Memory Persistence
 

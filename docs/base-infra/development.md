@@ -8,36 +8,20 @@ This document covers development workflows, code quality standards, and testing.
 - `uv` package manager
 - Google Cloud SDK (gcloud CLI) for Vertex AI authentication
 
-> [!IMPORTANT]
-> You must complete deployment first (README Phase 2-3) to create required resources (AGENT_ENGINE, ARTIFACT_SERVICE_URI) before running locally.
-
-## Template Initialization
-
-If using this as a template, initialize once after cloning:
-
-```bash
-uv run init_template.py --dry-run  # Preview changes
-uv run init_template.py            # Apply changes
-git add -A && git commit -m "chore: initialize from template"
-```
-
-Renames package, updates configs/docs, resets changelog. Audit log: `init_template_results.md` (gitignored).
+> [!NOTE]
+> The agent defaults to in-memory session and artifact services for local development.
+> For production-consistent testing with durable persistence, see [Cloud Resource Configuration](#cloud-resource-configuration) below.
 
 ## Running Locally
 
-> [!IMPORTANT]
-> You must complete deployment first (README Phase 2-3) to create required resources (AGENT_ENGINE, ARTIFACT_SERVICE_URI) before running locally.
+### Quick Start (In-Memory Mode)
 
 ```bash
-# Setup environment
+# Minimal setup for local development
 cp .env.example .env  # Edit: GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION
 gcloud auth application-default login
 
-# Add deployed resources to .env (from deployment logs)
-# AGENT_ENGINE=projects/.../reasoningEngines/...
-# ARTIFACT_SERVICE_URI=gs://...
-
-# Run server
+# Run server (uses in-memory sessions/memory/artifacts)
 uv run server  # API-only (set SERVE_WEB_INTERFACE=TRUE for web UI)
 LOG_LEVEL=DEBUG uv run server  # Debug mode
 
@@ -46,6 +30,18 @@ docker compose up --build --watch
 ```
 
 See [Docker Compose Workflow](./docker-compose-workflow.md) and [Environment Variables](./environment-variables.md).
+
+### Configure Cloud Resources (Optional)
+
+For production-consistent testing with cloud session/memory persistence and GCS artifacts, add deployed resource URIs to `.env` before running the server:
+
+```bash
+# From deployment logs (see CI/CD Infrastructure Setup in README)
+AGENT_ENGINE=projects/.../reasoningEngines/...
+ARTIFACT_SERVICE_URI=gs://...
+```
+
+See [Environment Variables](./environment-variables.md) for details.
 
 ## Testing Deployed Service
 
@@ -105,9 +101,11 @@ gh run view --log
 
 GitHub Actions automatically builds, tests, and deploys to Cloud Run. Check job summary for deployment details.
 
-### Capture Deployed Resources
+## Cloud Resource Configuration
 
-Get values from GitHub Actions logs (`gh run view <run-id>` or Actions tab UI) or GCP Console.
+After deploying infrastructure (see README), capture resource values for local development.
+
+Get values from GitHub Actions logs (`gh run view <run-id>` or Actions tab UI) or GCP Console:
 
 ```bash
 # Add to .env:

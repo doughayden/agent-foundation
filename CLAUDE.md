@@ -48,11 +48,12 @@ Renames package, updates config/docs/badges, resets CODEOWNERS/version/changelog
 
 ### Running Locally
 
-**PREREQUISITE:** Complete deployment first (README Phase 2-3) to create required resources (AGENT_ENGINE, ARTIFACT_SERVICE_URI) before running locally. Add those values to `.env` (Phase 3).
+Defaults to in-memory session, memory, and artifact services. For production-consistent testing with durable persistence, add cloud resource URIs to `.env` (see README Quickstart and CI/CD Infrastructure Setup).
 
 ```bash
 # Optional runtime configuration (before running)
 # Edit .env: SERVE_WEB_INTERFACE, LOG_LEVEL, etc.
+# Optional cloud resources: AGENT_ENGINE, ARTIFACT_SERVICE_URI
 
 # Run server (default: API-only at http://127.0.0.1:8000)
 uv run server
@@ -128,13 +129,13 @@ app (App)
 
 **Key optimizations:** Cache mount persists across builds (~80% speedup), dependency layer rebuilds only on `pyproject.toml`/`uv.lock` changes, code layer rebuilds only on `src/` changes. Empty README at build time prevents doc-only rebuilds.
 
-See `docs/dockerfile-strategy.md` for detailed rationale.
+See `docs/base-infra/dockerfile-strategy.md` for detailed rationale.
 
 ### Observability
 
 OpenTelemetry exports traces to Cloud Trace (OTLP) and logs to Cloud Logging (auto trace correlation). Resource attributes: `service.name` (AGENT_NAME), `service.instance.id` (worker-{PID}-{UUID}), `service.namespace` (TELEMETRY_NAMESPACE, defaults "local", set to workspace in deployments), `service.version` (K_REVISION). Controls: LOG_LEVEL, OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT.
 
-`LoggingCallbacks` logs agent lifecycle with trace context. See `docs/observability.md`.
+`LoggingCallbacks` logs agent lifecycle with trace context. See `docs/base-infra/observability.md`.
 
 ## Code Quality Standards
 
@@ -201,7 +202,7 @@ Workflows use `$GITHUB_STEP_SUMMARY` for formatted output. Key patterns: export 
 
 Deploy with immutable digest (`registry/image@sha256:...`), not mutable tag. Digests unique per build, guarantee new Cloud Run revision. Flow: docker-build.yml outputs digest → ci-cd.yml → TF_VAR_docker_image → Cloud Run.
 
-Multi-platform: manifest list digest (deployed) ≠ platform digest (running). Expected. See `docs/validating-multiplatform-builds.md`.
+Multi-platform: manifest list digest (deployed) ≠ platform digest (running). Expected. See `docs/base-infra/validating-multiplatform-builds.md`.
 
 ## Terraform Infrastructure
 
@@ -227,7 +228,7 @@ terraform -chdir=terraform/bootstrap init/plan/apply
 
 **Cloud Run probe:** Allow credential init (~30-60s). Config: failure_threshold=5, period_seconds=20, initial_delay_seconds=20, timeout_seconds=15, total 120s. Debug: local works but Cloud Run fails = credential/timing.
 
-See `docs/terraform-infrastructure.md`.
+See `docs/base-infra/terraform-infrastructure.md`.
 
 ## Project-Specific Patterns
 
@@ -285,15 +286,17 @@ Proxy the deployed Cloud Run service to localhost for testing:
 gcloud run services proxy <service-name> --project <project-id> --region <region> --port 8000
 ```
 
-Uses gcloud credentials (no manual token management). Service name: `${agent_name}-${workspace}` (e.g., `my-agent-default`). See `docs/development.md`.
+Uses gcloud credentials (no manual token management). Service name: `${agent_name}-${workspace}` (e.g., `my-agent-default`). See `docs/base-infra/development.md`.
 
 ## Documentation
 
-- **docs/bootstrap-setup.md**: One-time CI/CD infrastructure provisioning (minimal commands, troubleshooting)
-- **docs/environment-variables.md**: Complete environment variable reference (WHEN/WHY/HOW context)
-- **docs/development.md**: Development workflows, code quality, testing
-- **docs/cicd-setup.md**: CI/CD automation (build/deployment)
-- **docs/docker-compose-workflow.md**: Hot reloading, local development
-- **docs/dockerfile-strategy.md**: Multi-stage build rationale
-- **docs/terraform-infrastructure.md**: Terraform setup (bootstrap/main modules, variable overrides, IAM patterns)
-- **docs/validating-multiplatform-builds.md**: Multi-platform digest verification (specialized troubleshooting)
+Base infrastructure docs in `docs/base-infra/`. Add agent-specific docs to `docs/` root.
+
+- **docs/base-infra/bootstrap-setup.md**: One-time CI/CD infrastructure provisioning (minimal commands, troubleshooting)
+- **docs/base-infra/environment-variables.md**: Complete environment variable reference (WHEN/WHY/HOW context)
+- **docs/base-infra/development.md**: Development workflows, code quality, testing
+- **docs/base-infra/cicd-setup.md**: CI/CD automation (build/deployment)
+- **docs/base-infra/docker-compose-workflow.md**: Hot reloading, local development
+- **docs/base-infra/dockerfile-strategy.md**: Multi-stage build rationale
+- **docs/base-infra/terraform-infrastructure.md**: Terraform setup (bootstrap/main modules, variable overrides, IAM patterns)
+- **docs/base-infra/validating-multiplatform-builds.md**: Multi-platform digest verification (specialized troubleshooting)

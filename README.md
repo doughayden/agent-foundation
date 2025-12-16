@@ -48,15 +48,48 @@ This project distills proven patterns from the Starter Pack while prioritizing b
 - **Non-root containers**: Security-hardened runtime with least privilege
 - **Health checks**: Kubernetes-style probes with startup grace periods
 
-## Getting Started
+## Quickstart
 
-### Phase 1: Bootstrap CI/CD Infrastructure (One-Time)
+```bash
+# 1. Setup environment
+cp .env.example .env
+# Edit .env: Set GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION
+# Optional: Set SERVE_WEB_INTERFACE, LOG_LEVEL, or other runtime variables
+
+# 2. Authenticate with GCP
+gcloud auth application-default login
+
+# 3. Run locally
+uv run server  # http://127.0.0.1:8000
+
+# Or with Docker (hot reloading)
+docker compose up --build --watch
+```
+
+> [!NOTE]
+> The Quickstart defaults to in-memory session, memory, and artifact services.
+> For full CI/CD infrastructure setup with cloud persistence, see [CI/CD Infrastructure Setup](#cicd-infrastructure-setup) below.
+
+See [Development Guide](docs/base-infra/development.md) for workflow, testing, and code quality standards.
+
+---
+
+## CI/CD Infrastructure Setup
+
+Provision CI/CD infrastructure and deploy cloud resources.
+
+<details>
+<summary><strong>📦 Expand for bootstrap and deployment steps</strong></summary>
+
+### Bootstrap CI/CD Infrastructure
 
 Set up the foundation for automated deployments:
 
 ```bash
 # 0. Initialize from template (if using as template)
 uv run init_template.py  # Only if using as GitHub template; --dry-run to preview
+# Renames package, updates configs/docs, resets changelog, writes log: `init_template_results.md` (gitignored)
+# Delete init_template.py, init_template_results.md, and this step (README Bootstrap 0.) after initialization
 git add -A && git commit -m "chore: initialize from template"
 
 # 1. Configure app runtime environment
@@ -82,14 +115,11 @@ gh variable list  # or view in GitHub repo Settings > Variables
 
 Bootstrap creates: Workload Identity Federation, Artifact Registry, GCS state bucket, GitHub Variables.
 
-See [Bootstrap Setup](docs/bootstrap-setup.md) for details and troubleshooting.
+See [Bootstrap Setup](docs/base-infra/bootstrap-setup.md) for details and troubleshooting.
 
 ---
 
-### Phase 2: Deploy Cloud Resources
-
-> [!IMPORTANT]
-> You must complete deployment first to create required resources (Reasoning Engine, GCS buckets) before running locally.
+### Deploy Cloud Resources
 
 ```bash
 # 1. Create feature branch
@@ -110,42 +140,28 @@ gh run view --log
 ```
 
 Deployment creates:
-- Reasoning Engine for session persistence (`AGENT_ENGINE`)
+- Reasoning Engine for session and memory persistence (`AGENT_ENGINE`)
 - GCS bucket for artifact storage (`ARTIFACT_SERVICE_URI`)
-- Cloud Run service
+- Cloud Run service (automatically configured with `AGENT_ENGINE` and `ARTIFACT_SERVICE_URI`)
 
-See [CI/CD Workflow](docs/cicd-setup.md) for automation details.
+See [CI/CD Workflow](docs/base-infra/cicd-setup.md) for automation details.
 
 ---
 
-### Phase 3: Capture Deployed Resources
+### Configure Local Environment
 
 Get resource values from GitHub Actions logs (`gh run view <run-id>` or Actions tab UI) or GCP Console, then add to `.env`:
 
 ```bash
-AGENT_ENGINE=projects/.../reasoningEngines/...
-ARTIFACT_SERVICE_URI=gs://...
+AGENT_ENGINE=projects/YOUR_PROJECT_ID/locations/YOUR_LOCATION/reasoningEngines/YOUR_ENGINE_ID
+ARTIFACT_SERVICE_URI=gs://YOUR_BUCKET_NAME
 ```
 
-See [Environment Variables](docs/environment-variables.md) for where to find each value.
+See [Environment Variables](docs/base-infra/environment-variables.md) for where to find each value.
 
 ---
 
-### Phase 4: Develop Locally
-
-With deployment complete (from Phase 2) and resources captured (from Phase 3):
-
-**Optional runtime configuration:** Set `SERVE_WEB_INTERFACE`, `LOG_LEVEL`, or other runtime variables in `.env` as needed.
-
-Run the local server:
-
-```bash
-# Run server (http://127.0.0.1:8000)
-uv run server
-
-# Or with Docker Compose (hot reloading)
-docker compose up --build --watch
-```
+### Test the Deployed Service
 
 Test the deployed Cloud Run service via proxy:
 
@@ -154,21 +170,25 @@ Test the deployed Cloud Run service via proxy:
 gcloud run services proxy <service-name> --project <project-id> --region <region> --port 8000
 ```
 
-See [Development Guide](docs/development.md) for workflow, testing, and code quality standards.
+</details>
+
+---
 
 ## Documentation
 
+See [docs/](docs/) for complete documentation including base infrastructure guides and space for your custom agent documentation.
+
 ### Getting Started
-- **[Bootstrap Setup](docs/bootstrap-setup.md)** - One-time CI/CD infrastructure provisioning
-- **[CI/CD Workflow](docs/cicd-setup.md)** - GitHub Actions automation details
-- **[Development](docs/development.md)** - Development workflow, code quality, testing
-- **[Environment Variables](docs/environment-variables.md)** - Complete environment variable reference
+- **[Bootstrap Setup](docs/base-infra/bootstrap-setup.md)** - One-time CI/CD infrastructure provisioning
+- **[CI/CD Workflow](docs/base-infra/cicd-setup.md)** - GitHub Actions automation details
+- **[Development](docs/base-infra/development.md)** - Development workflow, code quality, testing
+- **[Environment Variables](docs/base-infra/environment-variables.md)** - Complete environment variable reference
 
 ### Infrastructure and Deployment
-- **[Docker Compose Workflow](docs/docker-compose-workflow.md)** - Local development with hot reloading
-- **[Dockerfile Strategy](docs/dockerfile-strategy.md)** - Multi-stage build architecture
-- **[Terraform Infrastructure](docs/terraform-infrastructure.md)** - Bootstrap and main module setup
+- **[Docker Compose Workflow](docs/base-infra/docker-compose-workflow.md)** - Local development with hot reloading
+- **[Dockerfile Strategy](docs/base-infra/dockerfile-strategy.md)** - Multi-stage build architecture
+- **[Terraform Infrastructure](docs/base-infra/terraform-infrastructure.md)** - Bootstrap and main module setup
 
 ### Production Features
-- **[Observability](docs/observability.md)** - OpenTelemetry traces and logs
-- **[Validating Multi-Platform Builds](docs/validating-multiplatform-builds.md)** - Digest verification
+- **[Observability](docs/base-infra/observability.md)** - OpenTelemetry traces and logs
+- **[Validating Multi-Platform Builds](docs/base-infra/validating-multiplatform-builds.md)** - Digest verification
