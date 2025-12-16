@@ -51,66 +51,54 @@ class MockContent:
         """Initialize mock content with optional data."""
         self._data = data if data is not None else {"text": "test content"}
 
-    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
+    def model_dump(self, **_kwargs: Any) -> dict[str, Any]:
         """Serialize content to dictionary."""
         return self._data
 
 
 class MockSession:
-    """Mock ADK Session for testing."""
+    """Mock ADK Session for testing.
+
+    Minimal mock used by MockReadonlyContext.
+    """
 
     def __init__(self, user_id: str = "test_user_123") -> None:
         """Initialize mock session with user_id."""
         self.user_id = user_id
 
 
-class MockMemoryService:
-    """Mock ADK MemoryService for testing."""
+class MockMemoryCallbackContext:
+    """Minimal mock CallbackContext for add_session_to_memory callback testing.
 
-    def __init__(self) -> None:
-        """Initialize mock memory service."""
-        self.add_session_calls: list[MockSession] = []  # Track calls for testing
-
-    async def add_session_to_memory(self, session: MockSession) -> None:
-        """Mock adding session to memory.
-
-        Args:
-            session: The session to add to memory.
-        """
-        self.add_session_calls.append(session)
-
-
-class MockInvocationContext:
-    """Mock ADK InvocationContext for testing."""
+    Controls behavior through constructor parameters instead of rebuilding
+    ADK's internal logic. This keeps tests independent of ADK implementation.
+    """
 
     def __init__(
         self,
-        session: MockSession | None = None,
-        memory_service: MockMemoryService | None = None,
+        should_raise: type[Exception] | None = None,
+        error_message: str = "",
     ) -> None:
-        """Initialize mock invocation context with optional session and memory service.
+        """Initialize mock callback context with controlled behavior.
 
         Args:
-            session: Optional mock session.
-            memory_service: Optional mock memory service.
+            should_raise: Exception type to raise when add_session_to_memory is called.
+                         None means the call succeeds.
+            error_message: Message for the exception if should_raise is set.
         """
-        self.session = session
-        self.memory_service = memory_service
+        self._should_raise = should_raise
+        self._error_message = error_message
+        self.add_session_to_memory_called = False
 
+    async def add_session_to_memory(self) -> None:
+        """Mock implementation that either succeeds or raises controlled exception.
 
-class MockMemoryCallbackContext:
-    """Mock CallbackContext for memory service callbacks.
-
-    Used by add_session_to_memory callback for testing.
-    """
-
-    def __init__(self, invocation_context: MockInvocationContext | None = None) -> None:
-        """Initialize mock callback context for memory callbacks.
-
-        Args:
-            invocation_context: Optional invocation context with memory service.
+        Raises:
+            Exception: The exception type configured in __init__ if should_raise is set.
         """
-        self._invocation_context = invocation_context
+        self.add_session_to_memory_called = True
+        if self._should_raise:
+            raise self._should_raise(self._error_message)
 
 
 class MockLoggingCallbackContext:
@@ -161,7 +149,7 @@ class MockEventActions:
         """Initialize mock event actions."""
         self._data = data if data is not None else {"action": "execute"}
 
-    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
+    def model_dump(self, **_kwargs: Any) -> dict[str, Any]:
         """Serialize actions to dictionary."""
         return self._data
 
@@ -302,8 +290,6 @@ def mock_event_actions() -> MockEventActions:
 
 @pytest.fixture
 def mock_tool_context(
-    mock_state: MockState,
-    mock_content: MockContent,
     mock_event_actions: MockEventActions,
 ) -> MockToolContext:
     """Create a mock tool context with full data."""
@@ -323,35 +309,36 @@ def mock_base_tool() -> MockBaseTool:
 
 
 @pytest.fixture
-def mock_memory_service() -> MockMemoryService:
-    """Create a mock memory service for testing."""
-    return MockMemoryService()
-
-
-@pytest.fixture
-def mock_memory_callback_context(
-    mock_memory_service: MockMemoryService,
-) -> MockMemoryCallbackContext:
-    """Create a mock memory callback context with memory service."""
-    session = MockSession(user_id="test_user_456")
-    invocation_context = MockInvocationContext(
-        session=session, memory_service=mock_memory_service
-    )
-    return MockMemoryCallbackContext(invocation_context=invocation_context)
+def mock_memory_callback_context() -> MockMemoryCallbackContext:
+    """Create a mock callback context that succeeds."""
+    return MockMemoryCallbackContext()
 
 
 @pytest.fixture
 def mock_memory_callback_context_no_service() -> MockMemoryCallbackContext:
-    """Create a mock memory callback context without memory service."""
-    session = MockSession(user_id="test_user_789")
-    invocation_context = MockInvocationContext(session=session, memory_service=None)
-    return MockMemoryCallbackContext(invocation_context=invocation_context)
+    """Create a mock callback context that raises ValueError (no service)."""
+    return MockMemoryCallbackContext(
+        should_raise=ValueError,
+        error_message="Cannot add session to memory: memory service is not available.",
+    )
 
 
 @pytest.fixture
-def mock_memory_callback_context_no_invocation() -> MockMemoryCallbackContext:
-    """Create a mock memory callback context without invocation context."""
-    return MockMemoryCallbackContext(invocation_context=None)
+def mock_memory_callback_context_with_runtime_error() -> MockMemoryCallbackContext:
+    """Create a mock callback context that raises RuntimeError."""
+    return MockMemoryCallbackContext(
+        should_raise=RuntimeError,
+        error_message="Memory service connection failed",
+    )
+
+
+@pytest.fixture
+def mock_memory_callback_context_with_attribute_error() -> MockMemoryCallbackContext:
+    """Create a mock callback context that raises AttributeError."""
+    return MockMemoryCallbackContext(
+        should_raise=AttributeError,
+        error_message="'MockMemoryCallbackContext' has no invocation context",
+    )
 
 
 @pytest.fixture

@@ -4,136 +4,118 @@ import logging
 
 import pytest
 
-# Import mock classes from conftest
-from conftest import (
-    MockInvocationContext,
-    MockMemoryCallbackContext,
-    MockMemoryService,
-    MockSession,
-)
-
-from agent_foundation.callbacks import (
-    add_session_to_memory,
-)
+from agent_foundation.callbacks import add_session_to_memory
 
 
 class TestAddSessionToMemory:
     """Tests for the add_session_to_memory callback function."""
 
     @pytest.mark.asyncio
-    async def test_add_session_to_memory_saves_session(
+    async def test_add_session_to_memory_success(
         self,
-        mock_memory_callback_context: MockMemoryCallbackContext,
-        mock_memory_service: MockMemoryService,
+        mock_memory_callback_context,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test that callback saves session when memory service exists."""
-        # Setup logging to capture DEBUG level (to see both INFO and DEBUG logs)
-        caplog.set_level(logging.DEBUG)
+        """Test that callback succeeds when context.add_session_to_memory succeeds."""
+        caplog.set_level(logging.INFO)
 
         # Execute callback
         result = await add_session_to_memory(mock_memory_callback_context)
 
-        # Verify callback returns None (proceeds normally)
+        # Verify callback returns None
         assert result is None
 
-        # Verify add_session_to_memory was called on the memory service
-        assert len(mock_memory_service.add_session_calls) == 1
-        saved_session = mock_memory_service.add_session_calls[0]
-        assert saved_session.user_id == "test_user_456"
+        # Verify add_session_to_memory was called on the context
+        assert mock_memory_callback_context.add_session_to_memory_called
 
         # Verify logging
         assert "*** Starting add_session_to_memory callback ***" in caplog.text
-        assert "Adding session to memory using MockMemoryService" in caplog.text
 
     @pytest.mark.asyncio
-    async def test_add_session_to_memory_no_service(
+    async def test_add_session_to_memory_handles_value_error(
         self,
-        mock_memory_callback_context_no_service: MockMemoryCallbackContext,
+        mock_memory_callback_context_no_service,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test that callback handles missing memory service gracefully."""
-        # Setup logging to capture WARNING level
+        """Test that callback handles ValueError (e.g., no memory service)."""
         caplog.set_level(logging.WARNING)
 
         # Execute callback - should not raise
         result = await add_session_to_memory(mock_memory_callback_context_no_service)
 
-        # Verify callback returns None
+        # Verify callback returns None (doesn't propagate exception)
         assert result is None
+
+        # Verify the method was attempted
+        assert mock_memory_callback_context_no_service.add_session_to_memory_called
 
         # Verify warning was logged
-        assert "No memory_service found in _invocation_context" in caplog.text
+        assert (
+            "Cannot add session to memory: memory service is not available."
+            in caplog.text
+        )
 
     @pytest.mark.asyncio
-    async def test_add_session_to_memory_no_invocation_context(
+    async def test_add_session_to_memory_handles_attribute_error(
         self,
-        mock_memory_callback_context_no_invocation: MockMemoryCallbackContext,
+        mock_memory_callback_context_with_attribute_error,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test that callback handles missing invocation context gracefully."""
-        # Setup logging to capture DEBUG level
-        caplog.set_level(logging.DEBUG)
+        """Test that callback handles AttributeError gracefully."""
+        caplog.set_level(logging.WARNING)
 
-        # Execute callback - should not raise AttributeError
-        result = await add_session_to_memory(mock_memory_callback_context_no_invocation)
+        # Execute callback - should not raise
+        result = await add_session_to_memory(
+            mock_memory_callback_context_with_attribute_error
+        )
 
         # Verify callback returns None
         assert result is None
 
-        # Verify info log was created (callback started)
-        assert "*** Starting add_session_to_memory callback ***" in caplog.text
+        # Verify the method was attempted
+        ctx = mock_memory_callback_context_with_attribute_error
+        assert ctx.add_session_to_memory_called
 
-        # Verify no warning about missing service (hasattr check prevents this path)
-        assert "No memory_service found" not in caplog.text
+        # Verify warning was logged with exception details
+        assert "Failed to add session to memory" in caplog.text
+        assert "AttributeError" in caplog.text
 
     @pytest.mark.asyncio
-    async def test_add_session_to_memory_with_different_sessions(
+    async def test_add_session_to_memory_handles_runtime_error(
         self,
-        mock_memory_service: MockMemoryService,
+        mock_memory_callback_context_with_runtime_error,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test that callback correctly handles different sessions."""
-        # Setup logging
-        caplog.set_level(logging.DEBUG)
+        """Test that callback handles RuntimeError gracefully."""
+        caplog.set_level(logging.WARNING)
 
-        # Create callback contexts with different sessions
-        session1 = MockSession(user_id="user_001")
-        session2 = MockSession(user_id="user_002")
-
-        invocation_context1 = MockInvocationContext(
-            session=session1, memory_service=mock_memory_service
-        )
-        invocation_context2 = MockInvocationContext(
-            session=session2, memory_service=mock_memory_service
+        # Execute callback - should not raise
+        result = await add_session_to_memory(
+            mock_memory_callback_context_with_runtime_error
         )
 
-        callback_context1 = MockMemoryCallbackContext(
-            invocation_context=invocation_context1
-        )
-        callback_context2 = MockMemoryCallbackContext(
-            invocation_context=invocation_context2
-        )
+        # Verify callback returns None (doesn't propagate exception)
+        assert result is None
 
-        # Execute callbacks
-        await add_session_to_memory(callback_context1)
-        await add_session_to_memory(callback_context2)
+        # Verify the method was attempted
+        ctx = mock_memory_callback_context_with_runtime_error
+        assert ctx.add_session_to_memory_called
 
-        # Verify both sessions were saved
-        assert len(mock_memory_service.add_session_calls) == 2
-        assert mock_memory_service.add_session_calls[0].user_id == "user_001"
-        assert mock_memory_service.add_session_calls[1].user_id == "user_002"
+        # Verify warning was logged with exception details
+        assert "Failed to add session to memory" in caplog.text
+        assert "RuntimeError" in caplog.text
+        assert "Memory service connection failed" in caplog.text
 
     @pytest.mark.asyncio
     async def test_add_session_to_memory_logging_levels(
         self,
-        mock_memory_callback_context: MockMemoryCallbackContext,
-        mock_memory_callback_context_no_service: MockMemoryCallbackContext,
+        mock_memory_callback_context,
+        mock_memory_callback_context_no_service,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test that callback uses appropriate logging levels."""
-        # Test case 1: Saving session (INFO and DEBUG levels)
-        caplog.set_level(logging.DEBUG)
+        # Test case 1: Success (INFO level)
+        caplog.set_level(logging.INFO)
         caplog.clear()
 
         await add_session_to_memory(mock_memory_callback_context)
@@ -143,12 +125,7 @@ class TestAddSessionToMemory:
         assert len(info_records) == 1
         assert "Starting add_session_to_memory" in info_records[0].message
 
-        # Check for DEBUG log (adding session)
-        debug_records = [r for r in caplog.records if r.levelname == "DEBUG"]
-        assert len(debug_records) == 1
-        assert "Adding session to memory" in debug_records[0].message
-
-        # Test case 2: No service (WARNING level)
+        # Test case 2: ValueError (WARNING level)
         caplog.set_level(logging.WARNING)
         caplog.clear()
 
@@ -156,12 +133,15 @@ class TestAddSessionToMemory:
 
         warning_records = [r for r in caplog.records if r.levelname == "WARNING"]
         assert len(warning_records) == 1
-        assert "No memory_service found" in warning_records[0].message
+        assert (
+            "Cannot add session to memory: memory service is not available."
+            in warning_records[0].message
+        )
 
     @pytest.mark.asyncio
     async def test_add_session_to_memory_returns_none(
         self,
-        mock_memory_callback_context: MockMemoryCallbackContext,
+        mock_memory_callback_context,
     ) -> None:
         """Test that callback always returns None."""
         # Execute callback
@@ -171,69 +151,29 @@ class TestAddSessionToMemory:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_add_session_to_memory_handles_async_call(
+    async def test_add_session_to_memory_multiple_calls(
         self,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test that callback properly awaits async memory service call."""
-        # Setup logging
-        caplog.set_level(logging.DEBUG)
+        """Test that callback can be called multiple times."""
+        from conftest import MockMemoryCallbackContext
 
-        # Create a real async mock for the memory service
-        mock_service = MockMemoryService()
-        session = MockSession(user_id="async_user")
-        invocation_context = MockInvocationContext(
-            session=session, memory_service=mock_service
-        )
-        callback_context = MockMemoryCallbackContext(
-            invocation_context=invocation_context
-        )
+        caplog.set_level(logging.INFO)
 
-        # Execute callback (await completes successfully)
-        result = await add_session_to_memory(callback_context)
+        # Create multiple contexts
+        ctx1 = MockMemoryCallbackContext()
+        ctx2 = MockMemoryCallbackContext()
 
-        # Verify callback completed successfully
-        assert result is None
-        assert len(mock_service.add_session_calls) == 1
-        assert mock_service.add_session_calls[0].user_id == "async_user"
+        # Execute callbacks
+        result1 = await add_session_to_memory(ctx1)
+        result2 = await add_session_to_memory(ctx2)
 
-    @pytest.mark.asyncio
-    async def test_add_session_to_memory_handles_service_exceptions(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
-        """Test that callback handles exceptions from memory service gracefully."""
-        # Setup logging to capture WARNING level
-        caplog.set_level(logging.WARNING)
+        # Verify both completed successfully
+        assert result1 is None
+        assert result2 is None
+        assert ctx1.add_session_to_memory_called
+        assert ctx2.add_session_to_memory_called
 
-        # Create a mock memory service that raises an exception
-        class FailingMockMemoryService:
-            """Mock memory service that always fails."""
-
-            async def add_session_to_memory(self, session: MockSession) -> None:
-                """Raise an exception when called."""
-                raise RuntimeError("Memory service connection failed")
-
-        failing_service = FailingMockMemoryService()
-        session = MockSession(user_id="test_user_fail")
-        invocation_context = MockInvocationContext(
-            session=session,
-            memory_service=failing_service,
-        )
-        callback_context = MockMemoryCallbackContext(
-            invocation_context=invocation_context
-        )
-
-        # Execute callback - should not raise
-        result = await add_session_to_memory(callback_context)
-
-        # Verify callback returns None (doesn't propagate exception)
-        assert result is None
-
-        # Verify warning was logged with exception details
-        assert "Failed to add session to memory" in caplog.text
-        assert "RuntimeError" in caplog.text
-        assert "Memory service connection failed" in caplog.text
-
-        # Verify WARNING level was used
-        warning_records = [r for r in caplog.records if r.levelname == "WARNING"]
-        assert len(warning_records) == 1
+        # Verify both were logged
+        info_records = [r for r in caplog.records if r.levelname == "INFO"]
+        assert len(info_records) == 2

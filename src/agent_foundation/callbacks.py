@@ -26,25 +26,13 @@ async def add_session_to_memory(callback_context: CallbackContext) -> None:
     Args:
         callback_context: The callback context with access to invocation context
     """
-    # TODO: use a public attribute (instead of _invocation_context) when available
     logger.info("*** Starting add_session_to_memory callback ***")
-    invocation_context = getattr(callback_context, "_invocation_context", None)
-    if invocation_context:
-        if invocation_context.memory_service:
-            logger.debug(
-                "Adding session to memory using "
-                f"{type(invocation_context.memory_service).__name__}..."
-            )
-            try:
-                await invocation_context.memory_service.add_session_to_memory(
-                    invocation_context.session
-                )
-            except Exception as e:
-                logger.warning(
-                    f"Failed to add session to memory: {type(e).__name__}: {e}"
-                )
-        else:
-            logger.warning("No memory_service found in _invocation_context")
+    try:
+        await callback_context.add_session_to_memory()
+    except ValueError as e:
+        logger.warning(e)
+    except Exception as e:
+        logger.warning(f"Failed to add session to memory: {type(e).__name__}: {e}")
 
     return None
 
