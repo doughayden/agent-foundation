@@ -93,10 +93,30 @@ jobs:
         shell: bash {0}  # removes -e flag to allow capturing output on failure
         run: |
           terraform workspace select --or-create ${{ inputs.workspace }}
-          OUTPUT=$(terraform plan -no-color -input=false -out=tfplan 2>&1)
+          WORKSPACE=$(terraform workspace show)
+          echo "Selected Terraform workspace: $WORKSPACE"
+
+          # Create secure temp file
+          PLAN_OUTPUT_FILE=$(mktemp)
+
+          # Stream output to both logs (real-time) and file (for summary)
+          terraform plan -no-color -input=false -out=tfplan 2>&1 | tee "$PLAN_OUTPUT_FILE"
+          EXIT_CODE=${PIPESTATUS[0]}  # Get exit code from terraform, not tee
+
+          # Read captured output for summary
+          OUTPUT=$(cat "$PLAN_OUTPUT_FILE")
+
+          # Save for summary
           echo "stdout<<EOF" >> $GITHUB_OUTPUT
           echo "$OUTPUT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+          echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
+          echo "workspace=$WORKSPACE" >> $GITHUB_OUTPUT
+
+          # Clean up temp file
+          rm -f "$PLAN_OUTPUT_FILE"
+
+          exit $EXIT_CODE
         continue-on-error: true
 
       - name: Generate Plan Summary
@@ -119,6 +139,8 @@ jobs:
             // Build plan summary
             const body = `
             ## 🏗️ Terraform Plan Summary
+
+            **🌎 Terraform Workspace:** \`${{ steps.plan.outputs.workspace }}\`
 
             | Step | Status |
             |------|:------:|
@@ -160,8 +182,10 @@ jobs:
             }
 
       - name: Terraform Plan Status
-        if: steps.plan.outcome == 'failure'
-        run: exit 1
+        if: steps.plan.outputs.exitcode != '0' && steps.plan.outputs.exitcode != ''
+        run: |
+          echo "::error::Terraform plan failed with exit code ${{ steps.plan.outputs.exitcode }}"
+          exit 1
 
       - name: Terraform Apply
         id: apply
@@ -170,10 +194,30 @@ jobs:
         shell: bash {0}  # Allow capturing output on failure
         run: |
           terraform workspace select ${{ inputs.workspace }}
-          OUTPUT=$(terraform apply -auto-approve -input=false -no-color tfplan 2>&1)
+          WORKSPACE=$(terraform workspace show)
+          echo "Selected Terraform workspace: $WORKSPACE"
+
+          # Create secure temp file
+          APPLY_OUTPUT_FILE=$(mktemp)
+
+          # Stream output to both logs (real-time) and file (for summary)
+          terraform apply -auto-approve -input=false -no-color tfplan 2>&1 | tee "$APPLY_OUTPUT_FILE"
+          EXIT_CODE=${PIPESTATUS[0]}  # Get exit code from terraform, not tee
+
+          # Read captured output for summary
+          OUTPUT=$(cat "$APPLY_OUTPUT_FILE")
+
+          # Save for summary
           echo "stdout<<EOF" >> $GITHUB_OUTPUT
           echo "$OUTPUT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+          echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
+          echo "workspace=$WORKSPACE" >> $GITHUB_OUTPUT
+
+          # Clean up temp file
+          rm -f "$APPLY_OUTPUT_FILE"
+
+          exit $EXIT_CODE
         continue-on-error: true
 
       - name: Generate Apply Summary
@@ -197,6 +241,8 @@ jobs:
             const body = `
             ## 🚀 Terraform Apply Summary
 
+            **🌎 Terraform Workspace:** \`${{ steps.apply.outputs.workspace }}\`
+
             | Step | Status |
             |------|:------:|
             | 🚀 Apply | ${statusIcon('${{ steps.apply.outcome }}')} \`${{ steps.apply.outcome }}\` |
@@ -216,5 +262,7 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, body + '\n');
 
       - name: Terraform Apply Status
-        if: steps.apply.outcome == 'failure'
-        run: exit 1
+        if: steps.apply.outputs.exitcode != '0' && steps.apply.outputs.exitcode != ''
+        run: |
+          echo "::error::Terraform apply failed with exit code ${{ steps.apply.outputs.exitcode }}"
+          exit 1

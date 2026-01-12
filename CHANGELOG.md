@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Real-time streaming of Terraform output in CI/CD workflow with `tee` command and secure temp files
+- Workspace display in Terraform plan and apply job summaries for environment visibility
+
+### Fixed
+- Exit code capture in Terraform plan and apply steps for proper error propagation in CI/CD workflow
+- Terraform output logging to runner logs for complete visibility of plan and apply operations
+
 ## [0.8.0] - 2025-12-12
 
 ### Changed
