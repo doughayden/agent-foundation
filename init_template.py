@@ -1,29 +1,60 @@
 """Initialize repository from template.
 
-⚠️ NOTE: This is a one-time use initialization script, NOT part of the package.
-- Excluded from test coverage (not in src/, runs once per repo clone)
-- Excluded from ruff/mypy checks (see pyproject.toml)
-- No automated tests required (manual validation via --dry-run mode)
+⚠️ ONE-TIME USE SCRIPT - Delete after running!
 
-This script automates the package name replacement process when creating
-a new repository from the template. Run once after creating from template:
+This script customizes your repository after creating from the template.
+It auto-detects the new repository info from git and performs all necessary renames.
 
+USAGE:
+    # Preview changes (no modifications)
+    uv run init_template.py --dry-run
+
+    # Apply changes
     uv run init_template.py
 
-The script performs:
-- Directory renaming (src/agent_foundation → src/{package_name})
-- File content updates (package imports, configuration, documentation)
-- GitHub Actions badge URL updates
-- CODEOWNERS replacement with fresh template
-- Version reset to 0.1.0 in pyproject.toml
-- CHANGELOG.md replacement with fresh template
-- UV lockfile regeneration
+REQUIREMENTS:
+    - Git repository with configured remote (clone from GitHub, not local init)
+    - Repository name must be kebab-case (lowercase, hyphens only)
+    - Examples: my-agent, cool-app-v2, data-processor
 
-Reusing in other template projects:
-    To adapt this script for another template repository, update the constants:
-    - ORIGINAL_PACKAGE_NAME: The original Python package name (snake_case)
-    - ORIGINAL_REPO_NAME: The original repository name (kebab-case)
-    - ORIGINAL_GITHUB_OWNER: The original GitHub owner/organization
+WHAT IT DOES:
+    1. Auto-detects YOUR new repository owner/name from git remote URL
+    2. Validates repository name is kebab-case (enforces Python naming)
+    3. Derives package name (my-agent → my_agent)
+    4. Replaces template names with yours:
+       - agent_foundation → your_package_name
+       - agent-foundation → your-repo-name
+       - template-owner/agent-foundation → your-owner/your-repo
+    5. Renames src/agent_foundation/ → src/{package_name}/
+    6. Updates imports, config, and docs in all files
+    7. Updates GitHub Actions badge URLs
+    8. Resets CODEOWNERS file (remove template owner)
+    9. Resets version to 0.1.0 in pyproject.toml
+    10. Resets CHANGELOG.md with clean template
+    11. Regenerates UV lockfile
+
+OUTPUT:
+    Creates init_template_results.md (or init_template_dry_run.md) with
+    detailed log of all changes. Review this file to verify changes.
+
+AFTER RUNNING:
+    1. Review: git status
+    2. Delete this script: rm init_template.py
+    3. Delete log file: rm init_template_results.md
+    4. Update README.md and CLAUDE.md to remove template initialization section
+    5. Configure .env: cp .env.example .env (add your GCP details)
+    6. Commit: git add -A && git commit -m "chore: initialize from template"
+
+REUSING IN OTHER TEMPLATES:
+    To adapt this script for a different template repository, update:
+    - ORIGINAL_PACKAGE_NAME: Original Python package (snake_case)
+    - ORIGINAL_REPO_NAME: Original repository name (kebab-case)
+    - ORIGINAL_GITHUB_OWNER: Original GitHub owner/organization
+
+TECHNICAL NOTES:
+    - Excluded from test coverage (not in src/, one-time use)
+    - Excluded from ruff/mypy checks (see pyproject.toml)
+    - No automated tests (manual validation via --dry-run)
 """
 
 import re

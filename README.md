@@ -74,7 +74,7 @@ See [Development Guide](docs/base-infra/development.md) for workflow, testing, a
 
 ---
 
-## CI/CD Infrastructure Setup
+## Setup and Deployment
 
 Provision CI/CD infrastructure and deploy cloud resources.
 
@@ -83,13 +83,11 @@ Provision CI/CD infrastructure and deploy cloud resources.
 
 ### Bootstrap CI/CD Infrastructure
 
-Set up the foundation for automated deployments:
-
 ```bash
-# 0. Initialize from template (if using as template)
-uv run init_template.py  # Only if using as GitHub template; --dry-run to preview
+# 0. Initialize from template
+uv run init_template.py  # --dry-run to preview changes
 # Renames package, updates configs/docs, resets changelog, writes log: `init_template_results.md` (gitignored)
-# Delete init_template.py, init_template_results.md, and this step (README Bootstrap 0.) after initialization
+# After initialization, delete: init_template.py, init_template_results.md, and this step (README Bootstrap 0.)
 git add -A && git commit -m "chore: initialize from template"
 
 # 1. Configure app runtime environment

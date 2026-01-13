@@ -176,7 +176,6 @@ your-agent-name/
   pyproject.toml          # Project configuration
   docker-compose.yml      # Local development
   Dockerfile              # Container image
-  init_template.py        # Template initialization
   CLAUDE.md               # Project instructions
   README.md               # Main documentation
 ```

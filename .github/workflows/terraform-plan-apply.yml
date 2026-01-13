@@ -90,7 +90,7 @@ jobs:
       - name: Terraform Plan
         id: plan
         working-directory: terraform/main
-        shell: bash {0}  # removes -e flag to allow capturing output on failure
+        shell: bash {0}  # Removes -e flag to allow capturing output on failure
         run: |
           terraform workspace select --or-create ${{ inputs.workspace }}
           WORKSPACE=$(terraform workspace show)
@@ -191,7 +191,7 @@ jobs:
         id: apply
         if: inputs.terraform_action == 'apply'
         working-directory: terraform/main
-        shell: bash {0}  # Allow capturing output on failure
+        shell: bash {0}  # Removes -e flag to allow capturing output on failure
         run: |
           terraform workspace select ${{ inputs.workspace }}
           WORKSPACE=$(terraform workspace show)
