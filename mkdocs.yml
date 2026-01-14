@@ -1,0 +1,56 @@
+site_name: Agent Foundation Docs
+site_url: ""
+repo_url: ""
+edit_uri: ""
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: README.md
+  - Infrastructure:
+    - Bootstrap Setup: base-infra/bootstrap-setup.md
+    - CI/CD Setup: base-infra/cicd-setup.md
+    - Development: base-infra/development.md
+    - Docker Compose Workflow: base-infra/docker-compose-workflow.md
+    - Dockerfile Strategy: base-infra/dockerfile-strategy.md
+    - Environment Variables: base-infra/environment-variables.md
+    - Observability: base-infra/observability.md
+    - Terraform Infrastructure: base-infra/terraform-infrastructure.md
+    - Validating Multiplatform Builds: base-infra/validating-multiplatform-builds.md
