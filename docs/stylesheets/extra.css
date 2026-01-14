@@ -1,0 +1,6 @@
+:root {
+  --md-primary-fg-color:        #f36262;
+  --md-primary-fg-color--light: #f36262; /* Using same color or slightly lighter/darker if preferred */
+  --md-primary-fg-color--dark:  #d14d4d; /* Slightly darker shade for contrast */
+  --md-accent-fg-color:         #f36262;
+}

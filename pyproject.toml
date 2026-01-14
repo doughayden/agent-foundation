@@ -33,6 +33,9 @@ dev = [
     "ipykernel>=7.0.0,<8.0.0",
     "types-grpcio>=1.0.0.20251009,<2.0.0.0",
 ]
+docs = [
+    "mkdocs-material>=9.7.1",
+]
 
 [build-system]
 requires = ["uv_build>=0.8.21,<0.9.0"]
