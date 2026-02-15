@@ -1,11 +1,69 @@
 """Shared pytest fixtures for all tests."""
 
-from collections.abc import Callable, Generator
-from contextlib import AbstractContextManager
+from __future__ import annotations
+
+from collections.abc import Callable
 from typing import Any
-from unittest.mock import MagicMock, patch
 
 import pytest
+from pytest_mock import MockerFixture, MockType
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Pytest hook to set up environment before test collection.
+
+    IMPORTANT: This hook runs BEFORE pytest's plugin system is fully initialized,
+    including pytest-mock. We must use unittest.mock.patch here because:
+
+    1. This hook runs before test collection
+    2. Test collection imports test modules, which imports agent_foundation modules
+    3. Agent modules may trigger API calls during import (auth, config loading)
+    4. pytest-mock's mocker/session_mocker fixtures aren't available until AFTER
+       test collection completes
+
+    Pytest execution order:
+    - pytest_configure() ← We are here (only stdlib available)
+    - Test collection (imports happen, triggers API calls if not mocked)
+    - Session setup (fixtures become available)
+    - Test execution
+
+    Therefore, unittest.mock is the ONLY tool available at this stage. This is
+    the only place in the codebase where unittest.mock is used - all other mocking
+    (fixtures and tests) uses pytest-mock's mocker fixture.
+    """
+    from unittest.mock import Mock, patch
+
+    # Patch load_dotenv to prevent loading real .env file during module imports
+    load_dotenv_patcher = patch("dotenv.load_dotenv")
+    load_dotenv_patcher.start()
+
+    # Patch google.auth.default to prevent Application Default Credentials lookup
+    mock_credentials = Mock()
+    mock_credentials.token = "test-token"  # noqa: S105
+    mock_credentials.valid = True
+    mock_credentials.expired = False
+    mock_credentials.refresh = Mock()
+    mock_credentials.universe_domain = "googleapis.com"
+
+    # Patch both public and private auth paths (ADK uses private path internally)
+    auth_patcher = patch(
+        "google.auth.default", return_value=(mock_credentials, "test-project")
+    )
+    auth_patcher.start()
+
+    auth_private_patcher = patch(
+        "google.auth._default.default", return_value=(mock_credentials, "test-project")
+    )
+    auth_private_patcher.start()
+
+    # Set test environment variables before any imports occur
+    # Use direct assignment (not setdefault) since we're preventing .env loading
+    import os
+
+    os.environ["GOOGLE_CLOUD_PROJECT"] = "test-project"
+    os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
+    os.environ["AGENT_NAME"] = "test-agent"
+    os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = "true"
 
 
 # ADK Callback Mock Objects for testing callbacks
@@ -186,6 +244,9 @@ class MockReadonlyContext:
 
     Provides read-only access to invocation metadata and session state,
     matching the interface of google.adk.agents.readonly_context.ReadonlyContext.
+
+    To customize user_id, pass a MockSession with the desired user_id:
+        MockReadonlyContext(session=MockSession(user_id="custom_user"))
     """
 
     def __init__(
@@ -203,7 +264,8 @@ class MockReadonlyContext:
             invocation_id: ID of the current invocation.
             state: Session state dictionary (read-only).
             user_content: Optional user content that started the invocation.
-            session: Optional session object.
+            session: Optional session object. If not provided, creates MockSession
+                     with default user_id.
         """
         self._agent_name = agent_name
         self._invocation_id = invocation_id
@@ -235,6 +297,11 @@ class MockReadonlyContext:
     def session(self) -> MockSession:
         """The current session for this invocation."""
         return self._session
+
+    @property
+    def user_id(self) -> str:
+        """The user ID from the current session."""
+        return self._session.user_id
 
 
 # Fixtures for ADK callback testing
@@ -387,103 +454,48 @@ def mock_environ() -> type[MockEnviron]:
     return MockEnviron
 
 
-@pytest.fixture(autouse=True)
-def clean_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Clean environment variables before each test.
-
-    Removes any existing environment variables that might interfere
-    with tests to ensure isolation.
-
-    Args:
-        monkeypatch: Pytest monkeypatch fixture.
-    """
-    env_vars_to_clean = [
-        "GOOGLE_CLOUD_PROJECT",
-        "GOOGLE_CLOUD_LOCATION",
-        "AGENT_NAME",
-        "LOG_LEVEL",
-        "SERVE_WEB_INTERFACE",
-        "RELOAD_AGENTS",
-        "AGENT_ENGINE",
-        "ARTIFACT_SERVICE_URI",
-        "ALLOW_ORIGINS",
-        "HOST",
-        "PORT",
-        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT",
-    ]
-
-    for var in env_vars_to_clean:
-        monkeypatch.delenv(var, raising=False)
+# Note: clean_environment fixture removed because pytest_configure now sets
+# all test environment variables and prevents .env loading. Test isolation is
+# achieved by explicit test values set at session start.
 
 
 @pytest.fixture
-def mock_load_dotenv() -> Generator[MagicMock]:
+def mock_load_dotenv(mocker: MockerFixture) -> MockType:
     """Mock load_dotenv function for testing.
 
-    Yields:
+    Returns:
         Mock object for load_dotenv function.
     """
-    with patch("agent_foundation.utils.config.load_dotenv") as mock:
-        yield mock
+    return mocker.patch("agent_foundation.utils.config.load_dotenv")
 
 
 @pytest.fixture
-def mock_sys_exit() -> Generator[MagicMock]:
+def mock_sys_exit(mocker: MockerFixture) -> MockType:
     """Mock sys.exit with SystemExit side effect for testing validation failures.
 
-    Yields:
+    Returns:
         Mock object for sys.exit that raises SystemExit(1).
     """
-    with patch("sys.exit", side_effect=SystemExit(1)) as mock:
-        yield mock
+    return mocker.patch("sys.exit", side_effect=SystemExit(1))
 
 
 @pytest.fixture
-def set_environment(
-    monkeypatch: pytest.MonkeyPatch,
-) -> Callable[[dict[str, str]], None]:
-    """Helper fixture to set multiple environment variables at once.
-
-    Args:
-        monkeypatch: Pytest monkeypatch fixture.
+def mock_print_config(mocker: MockerFixture) -> Callable[[type], MockType]:
+    """Factory fixture for mocking print_config on any model class.
 
     Returns:
-        Function that takes a dictionary and sets all key-value pairs as env vars.
+        Function that patches print_config on a given model class.
     """
 
-    def _set_env(env_dict: dict[str, str]) -> None:
-        """Set multiple environment variables from a dictionary.
-
-        Args:
-            env_dict: Dictionary of environment variable names and values.
-        """
-        for key, value in env_dict.items():
-            monkeypatch.setenv(key, value)
-
-    return _set_env
-
-
-@pytest.fixture
-def mock_print_config() -> Callable[[type], AbstractContextManager[MagicMock]]:
-    """Context manager factory for mocking print_config on any model class.
-
-    Returns:
-        Factory function that creates a context manager for mocking print_config.
-    """
-    from contextlib import contextmanager
-    from unittest.mock import patch
-
-    @contextmanager
-    def _mock_print_config(model_class: type) -> Generator[MagicMock]:
-        """Create a context manager for mocking print_config on a model class.
+    def _mock_print_config(model_class: type) -> MockType:
+        """Patch print_config on a model class.
 
         Args:
             model_class: The Pydantic model class to mock print_config on.
 
-        Yields:
+        Returns:
             Mock object for the print_config method.
         """
-        with patch.object(model_class, "print_config", autospec=True) as mock:
-            yield mock
+        return mocker.patch.object(model_class, "print_config", autospec=True)
 
     return _mock_print_config

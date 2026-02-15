@@ -34,13 +34,14 @@ WHAT IT DOES:
     11. Regenerates UV lockfile
 
 OUTPUT:
-    Creates init_template_results.md (or init_template_dry_run.md) with
+    Creates .log/init_template_results.md (or .log/init_template_dry_run.md) with
     detailed log of all changes. Review this file to verify changes.
+    The .log/ directory is git-ignored for safety.
 
 AFTER RUNNING:
     1. Review: git status
     2. Delete this script: rm init_template.py
-    3. Delete log file: rm init_template_results.md
+    3. Optional: Delete log directory: rm -rf .log/
     4. Update README.md and CLAUDE.md to remove template initialization section
     5. Configure .env: cp .env.example .env (add your GCP details)
     6. Commit: git add -A && git commit -m "chore: initialize from template"
@@ -73,9 +74,10 @@ ORIGINAL_PACKAGE_NAME = "agent_foundation"
 ORIGINAL_REPO_NAME = "agent-foundation"
 ORIGINAL_GITHUB_OWNER = "doughayden"
 
-# Output file names for logging results
-DRY_RUN_OUTPUT_FILE = "init_template_dry_run.md"
-ACTUAL_RUN_OUTPUT_FILE = "init_template_results.md"
+# Output directory and file names for logging results
+LOG_DIR = Path(".log")
+DRY_RUN_OUTPUT_FILE = LOG_DIR / "init_template_dry_run.md"
+ACTUAL_RUN_OUTPUT_FILE = LOG_DIR / "init_template_results.md"
 
 
 class TemplateConfig(BaseModel):
@@ -151,6 +153,19 @@ class DualOutput:
         self.log_file.close()
 
 
+def ensure_log_directory() -> None:
+    """Ensure .log directory exists with .gitignore.
+
+    Creates .log/ directory if it doesn't exist and adds a .gitignore
+    file to exclude all files in the directory as a safety measure.
+    """
+    LOG_DIR.mkdir(exist_ok=True)
+
+    gitignore_path = LOG_DIR / ".gitignore"
+    if not gitignore_path.exists():
+        gitignore_path.write_text("# Exclude all files in .log directory\n*\n")
+
+
 @contextmanager
 def dual_output_context(dry_run: bool = False) -> Generator[None]:
     """Context manager for dual output (terminal + file).
@@ -161,10 +176,12 @@ def dual_output_context(dry_run: bool = False) -> Generator[None]:
     Yields:
         None. Redirects sys.stdout to DualOutput during context.
     """
-    output_file = DRY_RUN_OUTPUT_FILE if dry_run else ACTUAL_RUN_OUTPUT_FILE
-    output_path = Path(output_file)
+    # Ensure .log directory exists before writing
+    ensure_log_directory()
 
-    dual_out = DualOutput(output_path)
+    output_file = DRY_RUN_OUTPUT_FILE if dry_run else ACTUAL_RUN_OUTPUT_FILE
+
+    dual_out = DualOutput(output_file)
     original_stdout = sys.stdout
     sys.stdout = dual_out
 

@@ -15,6 +15,7 @@ from pydantic import (
     ConfigDict,
     Field,
     ValidationError,
+    field_validator,
 )
 
 
@@ -136,15 +137,23 @@ class ServerEnv(BaseModel):
     )
 
     allow_origins: str = Field(
-        default='["http://127.0.0.1", "http://127.0.0.1:8000"]',
+        default='["http://localhost", "http://localhost:8000"]',
         alias="ALLOW_ORIGINS",
-        description="JSON array string of allowed CORS origins",
+        description=(
+            "JSON array string of allowed CORS origins. "
+            "Use 'localhost' for local dev (browsers send this as Origin header), "
+            "not '127.0.0.1' (which OAuth clients might only allow over HTTPS)"
+        ),
     )
 
     host: str = Field(
         default="127.0.0.1",
         alias="HOST",
-        description="Server host (127.0.0.1 for local, 0.0.0.0 for containers)",
+        description=(
+            "Network interface for uvicorn to bind. "
+            "Use 127.0.0.1 (loopback) for local dev, 0.0.0.0 for containers. "
+            "Note: browsers resolve localhost URLs to this IP"
+        ),
     )
 
     port: int = Field(
@@ -163,6 +172,30 @@ class ServerEnv(BaseModel):
         populate_by_name=True,  # Allow both field names and aliases
         extra="ignore",  # Ignore extra env vars (system vars, etc.)
     )
+
+    @field_validator("allow_origins")
+    @classmethod
+    def validate_allow_origins_format(cls, v: str) -> str:
+        """Validate allow_origins is valid JSON array with at least one string."""
+        try:
+            origins = json.loads(v)
+        except json.JSONDecodeError as e:
+            msg = f"ALLOW_ORIGINS must be valid JSON: {e}"
+            raise ValueError(msg) from e
+
+        if not isinstance(origins, list):
+            msg = "ALLOW_ORIGINS must be a JSON array"
+            raise ValueError(msg)
+
+        if not origins:
+            msg = "ALLOW_ORIGINS must contain at least one origin"
+            raise ValueError(msg)
+
+        if not all(isinstance(o, str) for o in origins):
+            msg = "ALLOW_ORIGINS must be an array of strings"
+            raise ValueError(msg)
+
+        return v
 
     def print_config(self) -> None:
         """Print server configuration for user verification."""
@@ -191,18 +224,10 @@ class ServerEnv(BaseModel):
 
         Returns:
             List of allowed origin strings.
-
-        Raises:
-            ValueError: If JSON parsing fails or result is not a list of strings.
         """
-        try:
-            origins = json.loads(self.allow_origins)
-            if not isinstance(origins, list) or not all(
-                isinstance(o, str) for o in origins
-            ):
-                msg = "ALLOW_ORIGINS must be a JSON array of strings"
-                raise ValueError(msg)
-            return origins
-        except json.JSONDecodeError as e:
-            msg = f"Failed to parse ALLOW_ORIGINS as JSON: {e}"
-            raise ValueError(msg) from e
+        result = json.loads(self.allow_origins)
+        # Should never fail due to field_validator, but satisfies type checker
+        if not isinstance(result, list):  # pragma: no cover
+            msg = "Invalid allow_origins format"
+            raise TypeError(msg)
+        return result

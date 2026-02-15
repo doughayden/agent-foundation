@@ -9,7 +9,7 @@ Production-grade Google ADK agent with enterprise infrastructure: FastAPI, Terra
 
 ## Template Initialization (One-Time)
 
-Base template repo. Run `uv run init_template.py --dry-run` (preview) or `uv run init_template.py` (apply). Script docstring contains complete usage/cleanup instructions. After use, suggest deleting `init_template.py`, `init_template_results.md`, README Bootstrap step 0, and this section from CLAUDE.md.
+Base template repo. Run `uv run init_template.py --dry-run` (preview) or `uv run init_template.py` (apply). Script docstring contains complete usage/cleanup instructions. After use, suggest deleting `init_template.py`, `./.log/init_template_*.md`, README Bootstrap step 0, and this section from CLAUDE.md.
 
 ## Quick Commands
 
@@ -59,6 +59,47 @@ terraform -chdir=terraform/main init/plan/apply       # Deploy
 - **mypy:** Strict, complete type annotations, modern Python 3.13 (`|` unions, lowercase generics), no untyped definitions.
 - **ruff:** 88 char line length, enforces bandit/simplify/use-pathlib. **Always use `Path` objects** (never `os.path`).
 - **pytest:** 100% coverage on production code (excludes `server.py`, `**/agent.py`, `**/__init__.py`). Fixtures in `conftest.py`, async via pytest-asyncio.
+
+## Testing Patterns
+
+**Tools:** pytest, pytest-cov (100% required), pytest-asyncio, pytest-mock (`MockerFixture`, `MockType`)
+
+**pytest_configure()** - Only place using unittest.mock (runs before pytest-mock available):
+- Mock `dotenv.load_dotenv`, `google.auth.default`, `google.auth._default.default`
+- Direct env assignment (`os.environ["KEY"] = "value"`, never `setdefault()`)
+- Comprehensive docstring explaining pytest lifecycle (see tests/conftest.py)
+
+**Fixtures:**
+- Type hints: `MockerFixture` → `MockType` return (strict mypy in conftest.py)
+- Factory pattern (not context managers): `def _factory() -> MockType` returned by fixture
+- Environment mocking: `mocker.patch.dict(os.environ, env_dict)`
+- Test functions: Don't type hint custom fixtures, optional hints on built-ins for IDE
+
+**ADK Mocks** (mirror real interfaces exactly):
+- MockState, MockContent, MockSession, MockReadonlyContext (with user_id property)
+- MockMemoryCallbackContext (controlled behavior via constructor)
+- MockLoggingCallbackContext, MockLlmRequest/Response, MockToolContext, MockBaseTool
+
+**Organization:** Mirror source (`src/X.py` → `tests/test_X.py`). Class grouping. Descriptive names (`test_<what>_<condition>_<expected>`).
+
+**Validation:** Pydantic `@field_validator` (validate at model creation). Tests expect `ValidationError` at `model_validate()`, not at property access. Property simplified with `# pragma: no cover` for impossible edge cases.
+
+**Mypy override:**
+```toml
+[[tool.mypy.overrides]]
+module = "tests.*"
+disable_error_code = ["arg-type"]
+```
+
+**Coverage:** 100% on production code. Omit `__init__.py`, `server.py`, `**/agent.py`, `utils/observability.py`. Test behaviors (errors, edge cases, return values, logging), not just statements.
+
+**Parameterization:** Thoughtfully. Inline loops OK for documenting complex behavior (e.g., boolean field parsing).
+
+**ADK patterns:**
+- InstructionProvider: Test with MockReadonlyContext
+- LoggingCallbacks: Return None (non-intrusive observation). Other callbacks can modify/short-circuit.
+- Async callbacks: `@pytest.mark.asyncio`, verify caplog
+- Controlled errors: MockMemoryCallbackContext constructor (should_raise, error_message)
 
 ## Dependencies
 

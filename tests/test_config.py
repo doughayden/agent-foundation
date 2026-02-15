@@ -1,10 +1,11 @@
 """Comprehensive unit tests for config module."""
 
+import os
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 
 from agent_foundation.utils.config import (
     ServerEnv,
@@ -53,7 +54,7 @@ class TestServerEnv:
         assert env.reload_agents is False
         assert env.agent_engine is None
         assert env.artifact_service_uri is None
-        assert env.allow_origins == '["http://127.0.0.1", "http://127.0.0.1:8000"]'
+        assert env.allow_origins == '["http://localhost", "http://localhost:8000"]'
         assert env.host == "127.0.0.1"
         assert env.port == 8000
 
@@ -117,32 +118,42 @@ class TestServerEnv:
     def test_allow_origins_list_invalid_json_raises_error(
         self, valid_server_env: dict[str, str]
     ) -> None:
-        """Test that invalid JSON in allow_origins raises ValueError."""
+        """Test that invalid JSON raises ValidationError at model creation."""
         data = {**valid_server_env, "ALLOW_ORIGINS": "not valid json"}
-        env = ServerEnv.model_validate(data)
 
-        with pytest.raises(ValueError, match="Failed to parse ALLOW_ORIGINS"):
-            _ = env.allow_origins_list
+        with pytest.raises(ValidationError, match="ALLOW_ORIGINS must be valid JSON"):
+            ServerEnv.model_validate(data)
 
     def test_allow_origins_list_not_array_raises_error(
         self, valid_server_env: dict[str, str]
     ) -> None:
-        """Test that non-array JSON in allow_origins raises ValueError."""
+        """Test that non-array JSON raises ValidationError at model creation."""
         data = {**valid_server_env, "ALLOW_ORIGINS": '{"key": "value"}'}
-        env = ServerEnv.model_validate(data)
 
-        with pytest.raises(ValueError, match="must be a JSON array of strings"):
-            _ = env.allow_origins_list
+        with pytest.raises(ValidationError, match="ALLOW_ORIGINS must be a JSON array"):
+            ServerEnv.model_validate(data)
 
     def test_allow_origins_list_non_string_array_raises_error(
         self, valid_server_env: dict[str, str]
     ) -> None:
-        """Test that array with non-strings raises ValueError."""
+        """Test that array with non-strings raises ValidationError at model creation."""
         data = {**valid_server_env, "ALLOW_ORIGINS": "[123, 456]"}
-        env = ServerEnv.model_validate(data)
 
-        with pytest.raises(ValueError, match="must be a JSON array of strings"):
-            _ = env.allow_origins_list
+        with pytest.raises(
+            ValidationError, match="ALLOW_ORIGINS must be an array of strings"
+        ):
+            ServerEnv.model_validate(data)
+
+    def test_allow_origins_list_empty_array_raises_error(
+        self, valid_server_env: dict[str, str]
+    ) -> None:
+        """Test that empty array raises ValidationError at model creation."""
+        data = {**valid_server_env, "ALLOW_ORIGINS": "[]"}
+
+        with pytest.raises(
+            ValidationError, match="ALLOW_ORIGINS must contain at least one origin"
+        ):
+            ServerEnv.model_validate(data)
 
     def test_server_env_print_config(
         self, valid_server_env: dict[str, str], capsys: pytest.CaptureFixture[str]
@@ -180,13 +191,11 @@ class TestInitializeEnvironment:
     def test_initialize_environment_success(
         self,
         valid_server_env: dict[str, str],
-        set_environment: Any,
-        mock_load_dotenv: MagicMock,
+        mock_load_dotenv,
+        mocker: MockerFixture,
     ) -> None:
         """Test successful environment initialization."""
-        # Set environment variables
-        set_environment(valid_server_env)
-
+        mocker.patch.dict(os.environ, valid_server_env)
         env = initialize_environment(ServerEnv, print_config=False)
 
         mock_load_dotenv.assert_called_once_with(override=True)
@@ -196,10 +205,16 @@ class TestInitializeEnvironment:
     def test_initialize_environment_validation_failure(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        mock_load_dotenv: MagicMock,
-        mock_sys_exit: MagicMock,
+        mock_load_dotenv,
+        mock_sys_exit,
     ) -> None:
         """Test that validation failure causes sys.exit."""
+        # Clear all environment to test validation failure
+        monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+        monkeypatch.delenv("AGENT_NAME", raising=False)
+        monkeypatch.delenv(
+            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", raising=False
+        )
         # Set incomplete environment (missing required field)
         # Don't set GOOGLE_CLOUD_PROJECT
         monkeypatch.setenv("AGENT_NAME", "test-agent")
@@ -212,42 +227,37 @@ class TestInitializeEnvironment:
     def test_initialize_environment_prints_config_by_default(
         self,
         valid_server_env: dict[str, str],
-        set_environment: Any,
-        mock_load_dotenv: MagicMock,
+        mock_load_dotenv,
         mock_print_config: Any,
+        mocker: MockerFixture,
     ) -> None:
         """Test that print_config is called by default."""
-        set_environment(valid_server_env)
-
-        with mock_print_config(ServerEnv) as mock_print:
-            initialize_environment(ServerEnv)
-
+        mocker.patch.dict(os.environ, valid_server_env)
+        mock_print = mock_print_config(ServerEnv)
+        initialize_environment(ServerEnv)
         mock_print.assert_called_once()
 
     def test_initialize_environment_skip_print_config(
         self,
         valid_server_env: dict[str, str],
-        set_environment: Any,
-        mock_load_dotenv: MagicMock,
+        mock_load_dotenv,
         mock_print_config: Any,
+        mocker: MockerFixture,
     ) -> None:
         """Test that print_config can be skipped."""
-        set_environment(valid_server_env)
-
-        with mock_print_config(ServerEnv) as mock_print:
-            initialize_environment(ServerEnv, print_config=False)
-
+        mocker.patch.dict(os.environ, valid_server_env)
+        mock_print = mock_print_config(ServerEnv)
+        initialize_environment(ServerEnv, print_config=False)
         mock_print.assert_not_called()
 
     def test_initialize_environment_override_dotenv_false(
         self,
         valid_server_env: dict[str, str],
-        set_environment: Any,
-        mock_load_dotenv: MagicMock,
+        mock_load_dotenv,
+        mocker: MockerFixture,
     ) -> None:
         """Test that override_dotenv can be set to False."""
-        set_environment(valid_server_env)
-
+        mocker.patch.dict(os.environ, valid_server_env)
         initialize_environment(ServerEnv, override_dotenv=False, print_config=False)
 
         mock_load_dotenv.assert_called_once_with(override=False)
@@ -256,10 +266,16 @@ class TestInitializeEnvironment:
         self,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
-        mock_load_dotenv: MagicMock,
-        mock_sys_exit: MagicMock,
+        mock_load_dotenv,
+        mock_sys_exit,
     ) -> None:
         """Test that validation errors are printed before exit."""
+        # Clear all environment to test validation failure
+        monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+        monkeypatch.delenv("AGENT_NAME", raising=False)
+        monkeypatch.delenv(
+            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", raising=False
+        )
         # Set incomplete environment
         monkeypatch.setenv("AGENT_NAME", "test-agent")
         # Missing GOOGLE_CLOUD_PROJECT

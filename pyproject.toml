@@ -32,6 +32,7 @@ dev = [
     "pytest-asyncio>=1.2.0,<2.0.0",
     "ipykernel>=7.0.0,<8.0.0",
     "types-grpcio>=1.0.0.20251009,<2.0.0.0",
+    "pytest-mock>=3.15.1,<4.0.0",
 ]
 
 [build-system]
@@ -43,7 +44,7 @@ src = ["src"]
 target-version = "py313"
 line-length = 88
 fix = true
-extend-exclude = ["notebooks", "init_template.py"]
+extend-exclude = ["notebooks"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -73,7 +74,6 @@ select = [
 python_version = "3.13"
 mypy_path = "src"
 packages = ["agent_foundation"]
-exclude = ["init_template.py"]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -88,13 +88,22 @@ warn_unreachable = true
 strict_equality = true
 show_error_codes = true
 
+[[tool.mypy.overrides]]
+module = "tests.*"
+# Allow duck-typed mocks in tests
+disable_error_code = "arg-type"
+
 [tool.coverage.run]
 source = ["src"]
 branch = true
 omit = [
+    # __init__.py files: namespace marker, no logic
     "src/agent_foundation/**/__init__.py",
+    # server.py: FastAPI setup and ADK initialization (integration tested via CI/CD)
     "src/agent_foundation/server.py",
+    # agent.py: LlmAgent instantiation (tested through callbacks, not in isolation)
     "src/agent_foundation/**/agent.py",
+    # observability.py: OpenTelemetry setup (infrastructure initialization)
     "src/agent_foundation/utils/observability.py",
 ]
 
@@ -112,3 +121,8 @@ asyncio_mode = "auto"
 filterwarnings = [
     "ignore::pydantic.warnings.PydanticDeprecatedSince212:google.genai.types",
 ]
+# Uncomment to enable live logging for debugging API calls
+# log_cli = true
+# log_cli_level = "DEBUG"
+# log_cli_format = "%(asctime)s [%(levelname)8s] %(name)s - %(message)s"
+# log_cli_date_format = "%Y-%m-%d %H:%M:%S"

@@ -1,8 +1,6 @@
 """Unit tests for the LoggingCallbacks class in the agent.logging_callbacks module."""
 
 import logging
-from typing import Any
-from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -16,6 +14,7 @@ from conftest import (
     MockState,
     MockToolContext,
 )
+from pytest_mock import MockerFixture
 
 from agent_foundation.callbacks import LoggingCallbacks
 
@@ -312,7 +311,7 @@ class TestToolCallbacks:
         callbacks = LoggingCallbacks()
 
         tool = MockBaseTool()
-        args: dict[str, Any] = {}
+        args = {}
         context = MockToolContext(user_content=None)
         tool_response = {"status": "success"}
 
@@ -401,14 +400,16 @@ class TestEdgeCases:
         assert len(debug_records) >= 1  # At least state should be logged
         assert any("State keys:" in r.message for r in debug_records)
 
-    def test_model_dump_serialization(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_model_dump_serialization(
+        self, caplog: pytest.LogCaptureFixture, mocker: MockerFixture
+    ) -> None:
         """Verify callbacks serialize content using model_dump with proper params."""
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
 
         # Create mock content with spy on model_dump
-        mock_content = Mock(spec=MockContent)
-        mock_content.model_dump = MagicMock(return_value={"mocked": "data"})
+        mock_content = mocker.Mock(spec=MockContent)
+        mock_content.model_dump = mocker.MagicMock(return_value={"mocked": "data"})
 
         context = MockLoggingCallbackContext(user_content=mock_content)
 
