@@ -39,7 +39,7 @@ def pytest_configure(config: pytest.Config) -> None:
 
     # Patch google.auth.default to prevent Application Default Credentials lookup
     mock_credentials = Mock()
-    mock_credentials.token = "test-token"  # noqa: S105
+    mock_credentials.token = "test-mock-token-totally-not-real"  # noqa: S105
     mock_credentials.valid = True
     mock_credentials.expired = False
     mock_credentials.refresh = Mock()
@@ -431,27 +431,6 @@ def valid_server_env() -> dict[str, str]:
         "AGENT_NAME": "test-agent",
         "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
     }
-
-
-class MockEnviron(dict[str, str]):
-    """Mock os.environ-like object for testing.
-
-    Mimics os._Environ behavior while being a dict subclass.
-    """
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize mock environ."""
-        super().__init__(*args, **kwargs)
-
-
-@pytest.fixture
-def mock_environ() -> type[MockEnviron]:
-    """Mock os.environ class for testing.
-
-    Returns:
-        MockEnviron class that behaves like os._Environ.
-    """
-    return MockEnviron
 
 
 # Note: clean_environment fixture removed because pytest_configure now sets

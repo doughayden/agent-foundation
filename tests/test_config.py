@@ -155,6 +155,39 @@ class TestServerEnv:
         ):
             ServerEnv.model_validate(data)
 
+    def test_allow_origins_array_with_empty_strings_raises_error(
+        self, valid_server_env: dict[str, str]
+    ) -> None:
+        """Test that array containing empty strings raises ValidationError."""
+        data = {**valid_server_env, "ALLOW_ORIGINS": '["", "http://localhost"]'}
+
+        with pytest.raises(
+            ValidationError, match="ALLOW_ORIGINS must be an array of non-empty strings"
+        ):
+            ServerEnv.model_validate(data)
+
+    def test_allow_origins_array_with_mixed_types_raises_error(
+        self, valid_server_env: dict[str, str]
+    ) -> None:
+        """Test that array with mixed types raises ValidationError."""
+        data = {**valid_server_env, "ALLOW_ORIGINS": '["http://localhost", 123, null]'}
+
+        with pytest.raises(
+            ValidationError, match="ALLOW_ORIGINS must be an array of strings"
+        ):
+            ServerEnv.model_validate(data)
+
+    def test_allow_origins_nested_arrays_raises_error(
+        self, valid_server_env: dict[str, str]
+    ) -> None:
+        """Test that nested arrays raise ValidationError."""
+        data = {**valid_server_env, "ALLOW_ORIGINS": '[["http://localhost"]]'}
+
+        with pytest.raises(
+            ValidationError, match="ALLOW_ORIGINS must be an array of strings"
+        ):
+            ServerEnv.model_validate(data)
+
     def test_server_env_print_config(
         self, valid_server_env: dict[str, str], capsys: pytest.CaptureFixture[str]
     ) -> None:

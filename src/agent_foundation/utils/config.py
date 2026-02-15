@@ -195,6 +195,10 @@ class ServerEnv(BaseModel):
             msg = "ALLOW_ORIGINS must be an array of strings"
             raise ValueError(msg)
 
+        if not all(o.strip() for o in origins):
+            msg = "ALLOW_ORIGINS must be an array of non-empty strings"
+            raise ValueError(msg)
+
         return v
 
     def print_config(self) -> None:
