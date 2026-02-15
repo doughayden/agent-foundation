@@ -370,6 +370,20 @@ def mock_tool_context(
 
 
 @pytest.fixture
+def mock_tool_context_empty_state(
+    mock_event_actions: MockEventActions,
+) -> MockToolContext:
+    """Create a mock tool context with empty state."""
+    return MockToolContext(
+        agent_name="tool_agent",
+        invocation_id="tool-inv-empty",
+        state=MockState({}),
+        user_content=MockContent({"text": "Execute tool"}),
+        actions=mock_event_actions,
+    )
+
+
+@pytest.fixture
 def mock_base_tool() -> MockBaseTool:
     """Create a mock tool with default name."""
     return MockBaseTool(name="test_tool")

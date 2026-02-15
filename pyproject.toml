@@ -103,6 +103,8 @@ omit = [
     "src/agent_foundation/server.py",
     # agent.py: LlmAgent instantiation (tested through callbacks, not in isolation)
     "src/agent_foundation/**/agent.py",
+    # prompt.py: Prompt text and formatting (integration tested via agent runs)
+    "src/agent_foundation/**/prompt.py",
     # observability.py: OpenTelemetry setup (infrastructure initialization)
     "src/agent_foundation/utils/observability.py",
 ]

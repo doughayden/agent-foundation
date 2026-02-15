@@ -10,7 +10,6 @@ from agent_foundation.callbacks import add_session_to_memory
 class TestAddSessionToMemory:
     """Tests for the add_session_to_memory callback function."""
 
-    @pytest.mark.asyncio
     async def test_add_session_to_memory_success(
         self,
         mock_memory_callback_context,
@@ -31,7 +30,6 @@ class TestAddSessionToMemory:
         # Verify logging
         assert "*** Starting add_session_to_memory callback ***" in caplog.text
 
-    @pytest.mark.asyncio
     async def test_add_session_to_memory_handles_value_error(
         self,
         mock_memory_callback_context_no_service,
@@ -55,7 +53,6 @@ class TestAddSessionToMemory:
             in caplog.text
         )
 
-    @pytest.mark.asyncio
     async def test_add_session_to_memory_handles_attribute_error(
         self,
         mock_memory_callback_context_with_attribute_error,
@@ -80,7 +77,6 @@ class TestAddSessionToMemory:
         assert "Failed to add session to memory" in caplog.text
         assert "AttributeError" in caplog.text
 
-    @pytest.mark.asyncio
     async def test_add_session_to_memory_handles_runtime_error(
         self,
         mock_memory_callback_context_with_runtime_error,
@@ -106,7 +102,6 @@ class TestAddSessionToMemory:
         assert "RuntimeError" in caplog.text
         assert "Memory service connection failed" in caplog.text
 
-    @pytest.mark.asyncio
     async def test_add_session_to_memory_logging_levels(
         self,
         mock_memory_callback_context,
@@ -138,7 +133,6 @@ class TestAddSessionToMemory:
             in warning_records[0].message
         )
 
-    @pytest.mark.asyncio
     async def test_add_session_to_memory_returns_none(
         self,
         mock_memory_callback_context,
@@ -150,7 +144,6 @@ class TestAddSessionToMemory:
         # Verify callback returns None (doesn't short-circuit)
         assert result is None
 
-    @pytest.mark.asyncio
     async def test_add_session_to_memory_multiple_calls(
         self,
         caplog: pytest.LogCaptureFixture,

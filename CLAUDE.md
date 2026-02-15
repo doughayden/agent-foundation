@@ -58,7 +58,7 @@ terraform -chdir=terraform/main init/plan/apply       # Deploy
 
 - **mypy:** Strict, complete type annotations, modern Python 3.13 (`|` unions, lowercase generics), no untyped definitions.
 - **ruff:** 88 char line length, enforces bandit/simplify/use-pathlib. **Always use `Path` objects** (never `os.path`).
-- **pytest:** 100% coverage on production code (excludes `server.py`, `**/agent.py`, `**/__init__.py`). Fixtures in `conftest.py`, async via pytest-asyncio.
+- **pytest:** 100% coverage on production code (excludes `server.py`, `**/agent.py`, `**/prompt.py`, `**/__init__.py`). Fixtures in `conftest.py`, async via pytest-asyncio.
 
 ## Testing Patterns
 
@@ -79,6 +79,8 @@ terraform -chdir=terraform/main init/plan/apply       # Deploy
 - MockState, MockContent, MockSession, MockReadonlyContext (with user_id property)
 - MockMemoryCallbackContext (controlled behavior via constructor)
 - MockLoggingCallbackContext, MockLlmRequest/Response, MockToolContext, MockBaseTool
+
+**Mock Usage:** Fixtures first. Import mock classes only when creating fixtures for every variant adds more complexity than direct instantiation. Guideline: >3 variants → import class; standard cases → use/add fixture.
 
 **Organization:** Mirror source (`src/X.py` → `tests/test_X.py`). Class grouping. Descriptive names (`test_<what>_<condition>_<expected>`).
 
