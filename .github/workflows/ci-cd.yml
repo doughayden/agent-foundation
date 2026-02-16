@@ -11,9 +11,12 @@ on:
       - '.dockerignore'
       - 'terraform/main/**'
       - '.github/workflows/ci-cd.yml'
+      - '.github/workflows/config-summary.yml'
       - '.github/workflows/docker-build.yml'
-      - '.github/workflows/terraform-plan-apply.yml'
       - '.github/workflows/metadata-extract.yml'
+      - '.github/workflows/pull-and-promote.yml'
+      - '.github/workflows/resolve-image-digest.yml'
+      - '.github/workflows/terraform-plan-apply.yml'
   push:
     branches: [main]
     paths:
@@ -24,25 +27,14 @@ on:
       - '.dockerignore'
       - 'terraform/main/**'
       - '.github/workflows/ci-cd.yml'
+      - '.github/workflows/config-summary.yml'
       - '.github/workflows/docker-build.yml'
-      - '.github/workflows/terraform-plan-apply.yml'
       - '.github/workflows/metadata-extract.yml'
+      - '.github/workflows/pull-and-promote.yml'
+      - '.github/workflows/resolve-image-digest.yml'
+      - '.github/workflows/terraform-plan-apply.yml'
     tags:
       - 'v*'
-  workflow_dispatch:
-    inputs:
-      workspace:
-        description: 'Terraform workspace'
-        required: true
-        type: choice
-        options: [default, dev, stage, prod]
-        default: 'default'
-      terraform_action:
-        description: 'Terraform action'
-        required: true
-        type: choice
-        options: [plan, apply]
-        default: 'plan'
 
 permissions:
   contents: read
@@ -59,23 +51,133 @@ jobs:
     uses: ./.github/workflows/metadata-extract.yml
     secrets: inherit
 
+  config:
+    name: Workflow Configuration
+    uses: ./.github/workflows/config-summary.yml
+    with:
+      # Set production_mode: true to enable full production pipeline (dev → stage → prod), false for dev-only
+      production_mode: false
+    secrets: inherit
+
   build:
     name: Build Docker Image
+    if: github.ref_type != 'tag'  # Skip on tag events (image already exists from merge)
     needs: meta
     uses: ./.github/workflows/docker-build.yml
     with:
+      environment: dev
       push: true
       tags: ${{ needs.meta.outputs.tags }}
-      cache_from: type=registry,ref=${{ vars.ARTIFACT_REGISTRY_URI }}/${{ vars.IMAGE_NAME }}:buildcache
-      cache_to: type=registry,ref=${{ vars.ARTIFACT_REGISTRY_URI }}/${{ vars.IMAGE_NAME }}:buildcache,mode=max
     secrets: inherit
 
-  deploy:
-    name: Terraform Plan and Apply
+  # Resolve digest on tag events (for prod deployment)
+  resolve-digest:
+    name: Resolve Image Digest
+    if: needs.config.outputs.production_mode == 'true' && github.ref_type == 'tag'
+    needs: [config, meta]
+    uses: ./.github/workflows/resolve-image-digest.yml
+    with:
+      environment: stage  # Look up image in stage registry (already validated)
+      tags: ${{ needs.meta.outputs.tags }}
+    secrets: inherit
+
+  # Dev environment (branch events only, not tags)
+  dev-plan:
+    name: Plan Dev
+    if: github.ref_type == 'branch'
     needs: build
     uses: ./.github/workflows/terraform-plan-apply.yml
     with:
+      environment: dev
       docker_image: ${{ needs.build.outputs.digest_uri }}
-      workspace: ${{ inputs.workspace || 'default' }}
-      terraform_action: ${{ github.event_name == 'pull_request' && 'plan' || inputs.terraform_action || 'apply' }}
+      terraform_action: plan
+      save_plan: ${{ github.event_name == 'push' }}  # Save on merge, not PR
+    secrets: inherit
+
+  dev-apply:
+    name: Apply Dev
+    if: github.ref_type == 'branch' && github.event_name == 'push'
+    needs: [build, dev-plan]
+    uses: ./.github/workflows/terraform-plan-apply.yml
+    with:
+      environment: dev
+      docker_image: ${{ needs.build.outputs.digest_uri }}
+      terraform_action: apply
+      use_saved_plan: true
+    secrets: inherit
+
+  # Stage environment (merge to main only, not PRs or tags, wait for dev to deploy)
+  stage-promote:
+    name: Promote to Stage
+    if: needs.config.outputs.production_mode == 'true' && github.ref_type == 'branch' && github.event_name == 'push'
+    needs: [config, meta, build, dev-apply]
+    uses: ./.github/workflows/pull-and-promote.yml
+    with:
+      source_environment: dev
+      target_environment: stage
+      source_digest: ${{ needs.build.outputs.digest }}
+      target_tags: ${{ needs.meta.outputs.tags }}
+    secrets: inherit
+
+  stage-plan:
+    name: Plan Stage
+    if: needs.config.outputs.production_mode == 'true' && github.ref_type == 'branch' && github.event_name == 'push'
+    needs: [config, stage-promote]
+    uses: ./.github/workflows/terraform-plan-apply.yml
+    with:
+      environment: stage
+      docker_image: ${{ needs.stage-promote.outputs.digest_uri }}
+      terraform_action: plan
+      save_plan: true
+    secrets: inherit
+
+  stage-apply:
+    name: Apply Stage
+    if: needs.config.outputs.production_mode == 'true' && github.ref_type == 'branch' && github.event_name == 'push'
+    needs: [config, stage-promote, stage-plan]
+    uses: ./.github/workflows/terraform-plan-apply.yml
+    with:
+      environment: stage
+      docker_image: ${{ needs.stage-promote.outputs.digest_uri }}
+      terraform_action: apply
+      use_saved_plan: true
+    secrets: inherit
+
+  # Production environment (tag events only)
+  prod-promote:
+    name: Promote to Prod
+    if: needs.config.outputs.production_mode == 'true' && github.ref_type == 'tag'
+    needs: [config, resolve-digest]
+    uses: ./.github/workflows/pull-and-promote.yml
+    with:
+      source_environment: stage  # Promote from stage (validated release candidate)
+      target_environment: prod
+      source_digest: ${{ needs.resolve-digest.outputs.digest }}
+      target_tags: ${{ needs.resolve-digest.outputs.tags }}
+    secrets: inherit
+
+  prod-plan:
+    name: Plan Prod
+    if: needs.config.outputs.production_mode == 'true' && github.ref_type == 'tag'
+    needs: [config, prod-promote]
+    uses: ./.github/workflows/terraform-plan-apply.yml
+    with:
+      environment: prod
+      terraform_environment: prod
+      docker_image: ${{ needs.prod-promote.outputs.digest_uri }}
+      terraform_action: plan
+      save_plan: true
+    secrets: inherit
+
+  prod-apply:
+    name: Apply Prod
+    if: needs.config.outputs.production_mode == 'true' && github.ref_type == 'tag'
+    needs: [config, prod-promote, prod-plan]
+    uses: ./.github/workflows/terraform-plan-apply.yml
+    with:
+      environment: prod-apply
+      terraform_environment: prod
+      docker_image: ${{ needs.prod-promote.outputs.digest_uri }}
+      terraform_action: apply
+      use_saved_plan: true
     secrets: inherit

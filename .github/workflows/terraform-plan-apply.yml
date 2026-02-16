@@ -1,22 +1,43 @@
+# Terraform Plan and Apply Workflow
+#
+# This workflow supports two environment concepts:
+# - GitHub Environment: Controls approval gates and secrets (can be prod-apply for gated deploys)
+# - Terraform Environment: Controls resource naming and state (always prod for production resources)
+#
+# This decoupling allows approval-gated production deployments without breaking artifact naming.
 name: Terraform Plan and Apply
 
 on:
   workflow_call:
     inputs:
+      environment:
+        description: 'GitHub Environment for approvals/secrets (dev, stage, prod, prod-apply)'
+        required: true
+        type: string
+      terraform_environment:
+        description: 'Terraform environment for resource naming (dev, stage, prod). If not specified, uses the GitHub environment value.'
+        required: false
+        type: string
+        default: ''
       docker_image:
         description: 'Docker image URI to deploy'
         required: true
         type: string
-      workspace:
-        description: 'Terraform workspace'
-        required: false
-        type: string
-        default: 'default'
       terraform_action:
         description: 'Terraform action (plan or apply)'
         required: false
         type: string
         default: 'plan'
+      save_plan:
+        description: 'Save plan as artifact for gated deployments'
+        required: false
+        type: boolean
+        default: false
+      use_saved_plan:
+        description: 'Use previously saved plan artifact instead of planning'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -24,16 +45,39 @@ permissions:
   pull-requests: write  # For PR comments
 
 concurrency:
-  group: terraform-deploy-${{ inputs.workspace }}
+  group: terraform-deploy-${{ inputs.terraform_environment != '' && inputs.terraform_environment || inputs.environment }}
   cancel-in-progress: false
 
 jobs:
+  resolve-env:
+    name: Resolve Environment
+    runs-on: ubuntu-latest
+    outputs:
+      terraform_environment: ${{ steps.resolve.outputs.terraform_environment }}
+    steps:
+      - id: resolve
+        env:
+          TF_ENV: ${{ inputs.terraform_environment }}
+          GH_ENV: ${{ inputs.environment }}
+        run: |
+          if [ -n "$TF_ENV" ]; then
+            echo "terraform_environment=$TF_ENV" >> $GITHUB_OUTPUT
+          else
+            echo "terraform_environment=$GH_ENV" >> $GITHUB_OUTPUT
+          fi
+
   terraform:
     name: Terraform ${{ inputs.terraform_action }}
+    needs: resolve-env
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
 
     env:
-      # Required Terraform variables
+      # Plan file naming (consistent across plan/upload/download/apply)
+      PLAN_FILE: tfplan-${{ needs.resolve-env.outputs.terraform_environment }}
+
+      # Required Terraform variables (loaded from GitHub Environment automatically)
+      TF_VAR_environment: ${{ needs.resolve-env.outputs.terraform_environment }}
       TF_VAR_project: ${{ vars.GCP_PROJECT_ID }}
       TF_VAR_location: ${{ vars.GCP_LOCATION }}
       TF_VAR_agent_name: ${{ vars.IMAGE_NAME }}
@@ -41,11 +85,8 @@ jobs:
       TF_VAR_terraform_state_bucket: ${{ vars.TERRAFORM_STATE_BUCKET }}
       TF_VAR_docker_image: ${{ inputs.docker_image }}
 
-      # Optional Terraform variables (Github Actions will default to empty strings if not set)
+      # Optional runtime app config variables (loaded from GitHub Environment, override Terraform defaults)
       TF_VAR_adk_suppress_experimental_feature_warnings: ${{ vars.ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS }}
-      TF_VAR_agent_engine: ${{ vars.AGENT_ENGINE }}
-      TF_VAR_allow_origins: ${{ vars.ALLOW_ORIGINS }}
-      TF_VAR_artifact_service_uri: ${{ vars.ARTIFACT_SERVICE_URI }}
       TF_VAR_log_level: ${{ vars.LOG_LEVEL }}
       TF_VAR_root_agent_model: ${{ vars.ROOT_AGENT_MODEL }}
       TF_VAR_serve_web_interface: ${{ vars.SERVE_WEB_INTERFACE }}
@@ -68,6 +109,8 @@ jobs:
 
       - name: Terraform Format Check
         id: fmt
+        # Skip on saved plan apply - already checked during plan phase
+        if: inputs.use_saved_plan == false
         working-directory: terraform/main
         run: terraform fmt -check -recursive
 
@@ -80,27 +123,57 @@ jobs:
 
       - name: Terraform Validate
         id: validate
-        working-directory: terraform/main
-        run: |
-          OUTPUT=$(terraform validate -no-color 2>&1)
-          echo "stdout<<EOF" >> $GITHUB_OUTPUT
-          echo "$OUTPUT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Terraform Plan
-        id: plan
+        # Skip on saved plan apply - already validated during plan phase
+        if: inputs.use_saved_plan == false
         working-directory: terraform/main
         shell: bash {0}  # Removes -e flag to allow capturing output on failure
         run: |
-          terraform workspace select --or-create ${{ inputs.workspace }}
-          WORKSPACE=$(terraform workspace show)
-          echo "Selected Terraform workspace: $WORKSPACE"
+          # Create secure temp file
+          VALIDATE_OUTPUT_FILE=$(mktemp)
 
+          # Stream output to both logs (real-time) and file (for summary)
+          terraform validate -no-color 2>&1 | tee "$VALIDATE_OUTPUT_FILE"
+          EXIT_CODE=${PIPESTATUS[0]}  # Get exit code from terraform, not tee
+
+          # Read captured output for summary
+          OUTPUT=$(cat "$VALIDATE_OUTPUT_FILE")
+
+          # Save for summary
+          echo "stdout<<EOF" >> $GITHUB_OUTPUT
+          echo "$OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
+
+          # Clean up temp file
+          rm -f "$VALIDATE_OUTPUT_FILE"
+
+          exit $EXIT_CODE
+        continue-on-error: true
+
+      - name: Terraform Validate Status
+        if: steps.validate.outputs.exitcode != '0' && steps.validate.outputs.exitcode != ''
+        run: |
+          echo "::error::Terraform validation failed with exit code ${{ steps.validate.outputs.exitcode }}"
+          exit 1
+
+      - name: Download Saved Plan
+        if: inputs.use_saved_plan
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.PLAN_FILE }}
+          path: terraform/main
+
+      - name: Terraform Plan
+        id: plan
+        if: inputs.use_saved_plan == false
+        working-directory: terraform/main
+        shell: bash {0}  # Removes -e flag to allow capturing output on failure
+        run: |
           # Create secure temp file
           PLAN_OUTPUT_FILE=$(mktemp)
 
           # Stream output to both logs (real-time) and file (for summary)
-          terraform plan -no-color -input=false -out=tfplan 2>&1 | tee "$PLAN_OUTPUT_FILE"
+          terraform plan -no-color -input=false -out="$PLAN_FILE" 2>&1 | tee "$PLAN_OUTPUT_FILE"
           EXIT_CODE=${PIPESTATUS[0]}  # Get exit code from terraform, not tee
 
           # Read captured output for summary
@@ -111,7 +184,6 @@ jobs:
           echo "$OUTPUT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
-          echo "workspace=$WORKSPACE" >> $GITHUB_OUTPUT
 
           # Clean up temp file
           rm -f "$PLAN_OUTPUT_FILE"
@@ -119,14 +191,29 @@ jobs:
           exit $EXIT_CODE
         continue-on-error: true
 
+      - name: Terraform Plan Status
+        if: steps.plan.outputs.exitcode != '0' && steps.plan.outputs.exitcode != ''
+        run: |
+          echo "::error::Terraform plan failed with exit code ${{ steps.plan.outputs.exitcode }}"
+          exit 1
+
+      - name: Upload Plan Artifact
+        if: inputs.save_plan && steps.plan.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PLAN_FILE }}
+          path: terraform/main/${{ env.PLAN_FILE }}
+          retention-days: 7
+
       - name: Generate Plan Summary
-        if: always()
+        if: always() && inputs.use_saved_plan == false
         uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
 
+            // NOTE: Mapping functions duplicated in the Apply Summary step - keep them in sync
             // Map step outcomes to status icons
             const statusIcon = (outcome) => ({
               success: '✅',
@@ -136,19 +223,18 @@ jobs:
               timed_out: '⏱️'
             }[outcome] || '❓');
 
+            // Map environments to emojis
+            const envIcon = (env) => ({
+              dev: '🧪',
+              stage: '🔬',
+              prod: '🚀'
+            }[env] || '🌎');
+
             // Build plan summary
-            const body = `
-            ## 🏗️ Terraform Plan Summary
-
-            **🌎 Terraform Workspace:** \`${{ steps.plan.outputs.workspace }}\`
-
-            | Step | Status |
-            |------|:------:|
-            | 🖌 Format & Style | ${statusIcon('${{ steps.fmt.outcome }}')} \`${{ steps.fmt.outcome }}\` |
-            | ⚙️ Initialization | ${statusIcon('${{ steps.init.outcome }}')} \`${{ steps.init.outcome }}\` |
-            | 🤖 Validation | ${statusIcon('${{ steps.validate.outcome }}')} \`${{ steps.validate.outcome }}\` |
-            | 📖 Plan | ${statusIcon('${{ steps.plan.outcome }}')} \`${{ steps.plan.outcome }}\` |
-
+            const environment = '${{ needs.resolve-env.outputs.terraform_environment }}';
+            const validateOutcome = '${{ steps.validate.outcome }}';
+            const validationOutput = validateOutcome === 'failure'
+              ? `
             <details><summary>Validation Output</summary>
 
             \`\`\`
@@ -156,7 +242,21 @@ jobs:
             \`\`\`
 
             </details>
+            `
+              : '';
 
+            const body = `
+            ## 🏗️ Terraform Plan Summary
+
+            **Environment:** ${envIcon(environment)} \`${environment}\`
+
+            | Step | Status |
+            |------|:------:|
+            | 🖌 Format & Style | ${statusIcon('${{ steps.fmt.outcome }}')} \`${{ steps.fmt.outcome }}\` |
+            | ⚙️ Initialization | ${statusIcon('${{ steps.init.outcome }}')} \`${{ steps.init.outcome }}\` |
+            | 🤖 Validation | ${statusIcon('${{ steps.validate.outcome }}')} \`${{ steps.validate.outcome }}\` |
+            | 📖 Plan | ${statusIcon('${{ steps.plan.outcome }}')} \`${{ steps.plan.outcome }}\` |
+            ${validationOutput}
             <details><summary>Plan Output</summary>
 
             \`\`\`terraform
@@ -181,27 +281,17 @@ jobs:
               });
             }
 
-      - name: Terraform Plan Status
-        if: steps.plan.outputs.exitcode != '0' && steps.plan.outputs.exitcode != ''
-        run: |
-          echo "::error::Terraform plan failed with exit code ${{ steps.plan.outputs.exitcode }}"
-          exit 1
-
       - name: Terraform Apply
         id: apply
         if: inputs.terraform_action == 'apply'
         working-directory: terraform/main
         shell: bash {0}  # Removes -e flag to allow capturing output on failure
         run: |
-          terraform workspace select ${{ inputs.workspace }}
-          WORKSPACE=$(terraform workspace show)
-          echo "Selected Terraform workspace: $WORKSPACE"
-
           # Create secure temp file
           APPLY_OUTPUT_FILE=$(mktemp)
 
           # Stream output to both logs (real-time) and file (for summary)
-          terraform apply -auto-approve -input=false -no-color tfplan 2>&1 | tee "$APPLY_OUTPUT_FILE"
+          terraform apply -auto-approve -input=false -no-color "$PLAN_FILE" 2>&1 | tee "$APPLY_OUTPUT_FILE"
           EXIT_CODE=${PIPESTATUS[0]}  # Get exit code from terraform, not tee
 
           # Read captured output for summary
@@ -212,13 +302,18 @@ jobs:
           echo "$OUTPUT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
-          echo "workspace=$WORKSPACE" >> $GITHUB_OUTPUT
 
           # Clean up temp file
           rm -f "$APPLY_OUTPUT_FILE"
 
           exit $EXIT_CODE
         continue-on-error: true
+
+      - name: Terraform Apply Status
+        if: steps.apply.outputs.exitcode != '0' && steps.apply.outputs.exitcode != ''
+        run: |
+          echo "::error::Terraform apply failed with exit code ${{ steps.apply.outputs.exitcode }}"
+          exit 1
 
       - name: Generate Apply Summary
         if: always() && steps.apply.outcome != 'skipped'
@@ -228,6 +323,7 @@ jobs:
           script: |
             const fs = require('fs');
 
+            // NOTE: Mapping functions duplicated in the Plan Summary step - keep them in sync
             // Map step outcomes to status icons
             const statusIcon = (outcome) => ({
               success: '✅',
@@ -237,12 +333,25 @@ jobs:
               timed_out: '⏱️'
             }[outcome] || '❓');
 
+            // Map environments to emojis
+            const envIcon = (env) => ({
+              dev: '🧪',
+              stage: '🔬',
+              prod: '🚀'
+            }[env] || '🌎');
+
             // Build apply summary
+            const environment = '${{ needs.resolve-env.outputs.terraform_environment }}';
+            const usedSavedPlan = ${{ inputs.use_saved_plan }} === true;
+            const planSource = usedSavedPlan
+              ? '**📦 Plan Source:** Saved artifact `${{ env.PLAN_FILE }}`\n\n'
+              : '';
+
             const body = `
-            ## 🚀 Terraform Apply Summary
+            ## 🏗️ Terraform Apply Summary
 
-            **🌎 Terraform Workspace:** \`${{ steps.apply.outputs.workspace }}\`
-
+            **Environment:** ${envIcon(environment)} \`${environment}\`
+            ${planSource}
             | Step | Status |
             |------|:------:|
             | 🚀 Apply | ${statusIcon('${{ steps.apply.outcome }}')} \`${{ steps.apply.outcome }}\` |
@@ -260,9 +369,3 @@ jobs:
 
             // Write to job summary
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, body + '\n');
-
-      - name: Terraform Apply Status
-        if: steps.apply.outputs.exitcode != '0' && steps.apply.outputs.exitcode != ''
-        run: |
-          echo "::error::Terraform apply failed with exit code ${{ steps.apply.outputs.exitcode }}"
-          exit 1

@@ -4,7 +4,7 @@ on:
   workflow_call:
     outputs:
       tags:
-        description: 'Comma-separated list of Docker image tags'
+        description: 'Newline-separated list of Docker image tag names (registry-agnostic)'
         value: ${{ jobs.extract-metadata.outputs.tags }}
 
 permissions:
@@ -26,35 +26,32 @@ jobs:
         id: extract
         run: |
           set -euo pipefail
-          REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
-          IMAGE_NAME="${{ vars.IMAGE_NAME }}"
 
           # Determine tags based on context (deployment uses digest, not tags)
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            # PR build - use PR head SHA (not merge commit) for traceability
+            # PR build - use pr-{number}-{sha} (unique per commit, clearly indicates origin)
+            # Use PR head SHA (actual commit) instead of merge commit for traceability
             SHA_SHORT=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
-            PR_TAG="pr-${{ github.event.pull_request.number }}-${SHA_SHORT}"
-            IMAGE_URI="${REGISTRY}/${IMAGE_NAME}:${PR_TAG}"
-            TAGS="${IMAGE_URI}"
+            TAGS="pr-${{ github.event.pull_request.number }}-${SHA_SHORT}"
           else
-            # Main branch or manual - use actual commit SHA
+            # Main branch or manual - build multiple tags (SHA, latest, version if available)
             SHA_SHORT=$(git rev-parse --short HEAD)
-            # Build all tags: SHA (for traceability), latest, version if available
-            IMAGE_URI="${REGISTRY}/${IMAGE_NAME}:${SHA_SHORT}"
-            TAGS="${IMAGE_URI},${REGISTRY}/${IMAGE_NAME}:latest"
+            TAGS="${SHA_SHORT}"$'\n'"latest"
             # Add semantic version tag if available
             if VERSION=$(git describe --tags --exact-match 2>/dev/null); then
-              TAGS="${TAGS},${REGISTRY}/${IMAGE_NAME}:${VERSION}"
+              TAGS="${TAGS}"$'\n'"${VERSION}"
             fi
           fi
 
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "tags<<EOF" >> $GITHUB_OUTPUT
+          echo "$TAGS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Generate Job Summary
         run: |
           set -euo pipefail
 
-          # Use PR head SHA for PRs, git rev-parse for everything else
+          # Use PR head SHA for pull requests, git SHA for other events
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             SHA_SHORT=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
           else
@@ -71,8 +68,8 @@ jobs:
           ### 🏷️ Image Tags
           EOF
 
-          # Format tags as bulleted list
-          echo "${{ steps.extract.outputs.tags }}" | tr ',' '\n' | grep -v '^$' | while read -r tag; do
+          # Format tags as bulleted list (tags already newline-separated)
+          echo "${{ steps.extract.outputs.tags }}" | grep -v '^$' | while read -r tag; do
             echo "- \`${tag}\`" >> $GITHUB_STEP_SUMMARY
           done
 

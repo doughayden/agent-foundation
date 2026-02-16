@@ -1,0 +1,28 @@
+### ===========================================
+### Shared Configuration
+### ===========================================
+project                                            = "project-id"
+location                                           = "us-central1"
+agent_name                                         = "agent-name"
+otel_instrumentation_genai_capture_message_content = "TRUE"
+
+
+### ===========================================
+### Terraform Configuration
+### ===========================================
+terraform_state_bucket = "terraform-state-agent-name-abcd1234"
+
+### Deploy a specific image by URI, leave unset to use the last deployed image
+# docker_image = "us-central1-docker.pkg.dev/project-id/agent-name/image-name@sha256:12345...."
+
+
+### ===========================================
+### Optional Agent App Runtime Configuration
+### ===========================================
+# log_level                                  = "DEBUG"
+# serve_web_interface                        = "TRUE"
+# agent_engine                               = "value"
+# artifact_service_uri                       = "value"
+# allow_origins                              = "value"
+# root_agent_model                           = "value"
+# adk_suppress_experimental_feature_warnings = "TRUE"

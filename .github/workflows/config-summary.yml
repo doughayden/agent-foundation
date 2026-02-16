@@ -1,0 +1,67 @@
+name: Configuration Summary
+
+on:
+  workflow_call:
+    inputs:
+      production_mode:
+        description: 'Production mode flag (passed to outputs where automatically converted to a string)'
+        required: true
+        type: boolean
+    outputs:
+      production_mode:
+        description: 'Production mode flag (passed through for dependent jobs)'
+        value: ${{ jobs.display.outputs.production_mode }}
+
+permissions:
+  contents: read
+
+jobs:
+  display:
+    name: Display Configuration
+    runs-on: ubuntu-latest
+    outputs:
+      production_mode: ${{ inputs.production_mode }}
+    steps:
+      - name: Generate Summary
+        run: |
+          # Determine mode display
+          if [ "${{ inputs.production_mode }}" == "true" ]; then
+            MODE_DISPLAY="🚀 Production (dev → stage → prod)"
+          else
+            MODE_DISPLAY="🧪 Dev-Only (dev)"
+          fi
+
+          # Build summary
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## ⚙️ Workflow Configuration
+
+          | Setting | Value |
+          |---------|-------|
+          | **Mode** | ${MODE_DISPLAY} |
+          | **Event** | \`${{ github.event_name }}\` |
+          | **Ref Type** | \`${{ github.ref_type }}\` |
+          | **Ref** | \`${{ github.ref_name }}\` |
+          | **Run ID** | [\`${{ github.run_id }}\`](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+          | **Triggered By** | @${{ github.actor }} |
+
+          ### 📋 Deployment Plan
+          EOF
+
+          # Show what will deploy based on mode and event
+          if [ "${{ github.ref_type }}" == "tag" ]; then
+            if [ "${{ inputs.production_mode }}" == "true" ]; then
+              echo "- ✅ **Production** deployment (tag-based release)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- ⛔ Tag events are skipped in dev-only mode" >> $GITHUB_STEP_SUMMARY
+            fi
+          elif [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "- ✅ **Dev** plan only (PR validation)" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ github.event_name }}" == "push" ]; then
+            echo "- ✅ **Dev** deployment" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ inputs.production_mode }}" == "true" ]; then
+              echo "- ✅ **Stage** deployment" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY

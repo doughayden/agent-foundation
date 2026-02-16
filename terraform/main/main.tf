@@ -1,11 +1,10 @@
 # Read own previous deployment (for docker_image default)
 data "terraform_remote_state" "main" {
-  backend   = "gcs"
-  workspace = terraform.workspace
+  backend = "gcs"
 
   config = {
     bucket = var.terraform_state_bucket
-    prefix = "main"
+    prefix = "${var.environment}/main"
   }
 }
 
@@ -27,10 +26,10 @@ locals {
   # Cloud Run service environment variables
   run_app_env = {
     ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS         = coalesce(var.adk_suppress_experimental_feature_warnings, "TRUE")
-    AGENT_ENGINE                                       = coalesce(var.agent_engine, google_vertex_ai_reasoning_engine.session_and_memory.id)
+    AGENT_ENGINE                                       = google_vertex_ai_reasoning_engine.session_and_memory.id
     AGENT_NAME                                         = var.agent_name
-    ALLOW_ORIGINS                                      = coalesce(var.allow_origins, jsonencode(["http://127.0.0.1", "http://127.0.0.1:8000"]))
-    ARTIFACT_SERVICE_URI                               = coalesce(var.artifact_service_uri, google_storage_bucket.artifact_service.url)
+    ALLOW_ORIGINS                                      = jsonencode(["http://127.0.0.1", "http://127.0.0.1:8000"]) # Localhost-only for gcloud proxy access (add client service origins when UI is deployed)
+    ARTIFACT_SERVICE_URI                               = google_storage_bucket.artifact_service.url
     GOOGLE_CLOUD_LOCATION                              = var.location
     GOOGLE_CLOUD_PROJECT                               = var.project
     GOOGLE_GENAI_USE_VERTEXAI                          = "TRUE"
@@ -39,20 +38,20 @@ locals {
     RELOAD_AGENTS                                      = "FALSE"
     ROOT_AGENT_MODEL                                   = coalesce(var.root_agent_model, "gemini-2.5-flash")
     SERVE_WEB_INTERFACE                                = coalesce(var.serve_web_interface, "FALSE")
-    TELEMETRY_NAMESPACE                                = terraform.workspace
+    TELEMETRY_NAMESPACE                                = var.environment
   }
 
-  # Create a unique Agent resource name per deployment environment using Terraform workspaces
-  resource_name = "${var.agent_name}-${terraform.workspace}"
+  # Create a unique Agent resource name per deployment environment
+  resource_name = "${var.agent_name}-${var.environment}"
 
-  # Service account ID has 30 character limit - truncate agent_name but preserve workspace
-  sa_max_agent_length = 30 - length(terraform.workspace) - 1 # Reserve space for "-workspace"
-  sa_id               = "${substr(var.agent_name, 0, local.sa_max_agent_length)}-${terraform.workspace}"
+  # Service account ID has 30 character limit - truncate agent_name but preserve environment
+  sa_max_agent_length = 30 - length(var.environment) - 1 # Reserve space for "-environment"
+  sa_id               = "${substr(var.agent_name, 0, local.sa_max_agent_length)}-${var.environment}"
 
   # Create labels for billing organization
   labels = {
     application = var.agent_name
-    environment = terraform.workspace
+    environment = var.environment
   }
 
   # Recycle docker_image from previous deployment if not provided

@@ -1,0 +1,29 @@
+#==============================================
+# REQUIRED: set to your GCP and GitHub values
+#==============================================
+
+# GCP Configuration
+project     = "your-project-dev"  # NOTE: USE A DIFFERENT PROJECT FOR EACH ENVIRONMENT
+location    = "us-central1"
+agent_name  = "your-agent-name"  # NOTE: USE THE SAME AGENT NAME ACROSS ALL ENVIRONMENTS
+
+# GitHub Configuration
+repository_owner = "your-github-username-or-org"
+repository_name  = "your-agent-repository"
+
+
+# ==============================================
+# Recommended Defaults for the dev environment
+# ==============================================
+
+# OpenTelemetry Configuration
+otel_instrumentation_genai_capture_message_content = "TRUE"
+
+# Registry Cleanup Policies (dev: aggressive)
+registry_cleanup_general_retention_days = 90   # All images expire after 90 days
+registry_cleanup_keep_count             = 20   # Keep 20 most recent
+registry_cleanup_pr_retention_days      = 30   # PR images expire after 30 days
+
+# Required for cross-project Artifact Registry docker image promotion to non-dev projects
+promotion_source_project                = null
+promotion_source_artifact_registry_name = null

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Production-grade Google ADK agent with enterprise infrastructure: FastAPI, Terraform, Cloud Run, OpenTelemetry, Python 3.13.
+Guidance for AI agents. **CRITICAL: Update this file when establishing project patterns.**
 
 ## Critical
 
@@ -9,7 +9,7 @@ Production-grade Google ADK agent with enterprise infrastructure: FastAPI, Terra
 
 ## Template Initialization (One-Time)
 
-Base template repo. Run `uv run init_template.py --dry-run` (preview) or `uv run init_template.py` (apply). Script docstring contains complete usage/cleanup instructions. After use, suggest deleting `init_template.py`, `./.log/init_template_*.md`, README Bootstrap step 0, and this section from CLAUDE.md.
+Base template repo. Run `uv run init_template.py --dry-run` (preview) or `uv run init_template.py` (apply). Script docstring contains complete usage/cleanup instructions. After use, delete `init_template.py`, `./.log/init_template_*.md`, README Bootstrap step 0, and this Template Initialization section.
 
 ## Quick Commands
 

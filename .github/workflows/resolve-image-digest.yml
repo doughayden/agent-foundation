@@ -1,0 +1,83 @@
+name: Resolve Image Digest
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Environment containing the image (dev, stage)'
+        required: true
+        type: string
+      tags:
+        description: 'Tags from metadata-extract (newline-separated, SHA is first)'
+        required: true
+        type: string
+    outputs:
+      digest:
+        description: 'Resolved image digest (sha256:...)'
+        value: ${{ jobs.resolve.outputs.digest }}
+      image_sha:
+        description: 'Image SHA tag that was resolved'
+        value: ${{ jobs.resolve.outputs.image_sha }}
+      tags:
+        description: 'Tags from metadata-extract (passed through for prod promotion)'
+        value: ${{ jobs.resolve.outputs.tags }}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  resolve:
+    name: Resolve ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    outputs:
+      digest: ${{ steps.resolve.outputs.digest }}
+      image_sha: ${{ steps.extract-sha.outputs.sha }}
+      tags: ${{ inputs.tags }}
+
+    steps:
+      - name: Extract SHA from Tags
+        id: extract-sha
+        run: |
+          # First line of tags is always the SHA
+          SHA=$(echo "${{ inputs.tags }}" | head -1)
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "Extracted SHA: ${SHA}"
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up crane
+        uses: imjasonh/setup-crane@v0.5
+
+      - name: Resolve SHA to Digest
+        id: resolve
+        run: |
+          set -euo pipefail
+
+          # Map environments to emojis
+          case "${{ inputs.environment }}" in
+            dev) ENV_EMOJI="🧪" ;;
+            stage) ENV_EMOJI="🔬" ;;
+            prod) ENV_EMOJI="🚀" ;;
+            *) ENV_EMOJI="🌎" ;;
+          esac
+
+          REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
+          IMAGE_NAME="${{ vars.IMAGE_NAME }}"
+          SHA_TAG="${{ steps.extract-sha.outputs.sha }}"
+
+          # Configure docker auth for Artifact Registry
+          gcloud auth configure-docker ${{ vars.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev --quiet
+
+          echo "Looking up in ${ENV_EMOJI} ${{ inputs.environment }}: ${REGISTRY}/${IMAGE_NAME}:${SHA_TAG}"
+
+          # Use crane to get digest (avoids Container Analysis API dependency)
+          DIGEST=$(crane digest "${REGISTRY}/${IMAGE_NAME}:${SHA_TAG}")
+
+          echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
+          echo "✅ Resolved ${SHA_TAG} → ${DIGEST}"

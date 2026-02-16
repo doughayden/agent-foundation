@@ -1,0 +1,187 @@
+name: Pull from Source and Promote
+
+on:
+  workflow_call:
+    inputs:
+      source_environment:
+        description: 'Source environment to pull from (dev, stage)'
+        required: true
+        type: string
+      target_environment:
+        description: 'Target environment to promote to (stage, prod)'
+        required: true
+        type: string
+      source_digest:
+        description: 'Image digest from source (sha256:...)'
+        required: true
+        type: string
+      target_tags:
+        description: 'Tag names to apply in target env (newline-separated: "abc1234\nlatest\nv1.0.0")'
+        required: true
+        type: string
+    outputs:
+      digest_uri:
+        description: 'Target registry digest URI (for Terraform deployment)'
+        value: ${{ jobs.promote.outputs.digest_uri }}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  # Job 1: Get source registry details from source environment's GitHub Variables
+  get-source-details:
+    name: Get Source Registry Details
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.source_environment }}
+    outputs:
+      source_registry_uri: ${{ steps.extract.outputs.registry_uri }}
+      source_image_name: ${{ steps.extract.outputs.image_name }}
+      source_registry_location: ${{ steps.extract.outputs.registry_location }}
+
+    steps:
+      - name: Extract Source Registry Details
+        id: extract
+        run: |
+          # Get source environment's registry details from GitHub Variables
+          echo "registry_uri=${{ vars.ARTIFACT_REGISTRY_URI }}" >> $GITHUB_OUTPUT
+          echo "image_name=${{ vars.IMAGE_NAME }}" >> $GITHUB_OUTPUT
+          echo "registry_location=${{ vars.ARTIFACT_REGISTRY_LOCATION }}" >> $GITHUB_OUTPUT
+
+  # Job 2: Promote using crane (digest-preserving)
+  promote:
+    name: Promote to ${{ inputs.target_environment }}
+    needs: get-source-details
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target_environment }}
+    outputs:
+      digest_uri: ${{ steps.output-uri.outputs.uri }}
+
+    steps:
+      - name: Authenticate to Target Project
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up crane
+        uses: imjasonh/setup-crane@v0.5
+
+      - name: Copy Image with crane (digest-preserving)
+        run: |
+          set -euo pipefail
+
+          # NOTE: Emoji mapping function duplicated in the Promotion Summary step - keep them in sync
+          # Map environments to emojis
+          get_env_emoji() {
+            case "$1" in
+              dev) echo "🧪" ;;
+              stage) echo "🔬" ;;
+              prod) echo "🚀" ;;
+              *) echo "🌎" ;;
+            esac
+          }
+
+          SOURCE_EMOJI=$(get_env_emoji "${{ inputs.source_environment }}")
+          TARGET_EMOJI=$(get_env_emoji "${{ inputs.target_environment }}")
+
+          # Source image (from source environment's vars)
+          SOURCE_REGISTRY="${{ needs.get-source-details.outputs.source_registry_uri }}"
+          SOURCE_IMAGE_NAME="${{ needs.get-source-details.outputs.source_image_name }}"
+          SOURCE_IMAGE="${SOURCE_REGISTRY}/${SOURCE_IMAGE_NAME}@${{ inputs.source_digest }}"
+
+          # Target registry (from target environment's vars)
+          TARGET_REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
+          TARGET_IMAGE_NAME="${{ vars.IMAGE_NAME }}"
+
+          # Configure docker auth (WIF has cross-project read access via IAM)
+          gcloud auth configure-docker ${{ needs.get-source-details.outputs.source_registry_location }}-docker.pkg.dev --quiet
+          gcloud auth configure-docker ${{ vars.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev --quiet
+
+          echo "==> Promoting from ${SOURCE_EMOJI} ${{ inputs.source_environment }} (immutable): ${SOURCE_IMAGE}"
+          echo "==> Target registry: ${TARGET_REGISTRY}"
+
+          # Copy to all target tags (crane preserves digest)
+          while IFS= read -r tag; do
+            if [ -n "$tag" ]; then
+              TARGET_IMAGE="${TARGET_REGISTRY}/${TARGET_IMAGE_NAME}:${tag}"
+              echo "  → ${TARGET_IMAGE}"
+              crane cp "${SOURCE_IMAGE}" "${TARGET_IMAGE}"
+            fi
+          done <<< "${{ inputs.target_tags }}"
+
+          echo "✅ Successfully promoted to ${TARGET_EMOJI} ${{ inputs.target_environment }}"
+
+      - name: Verify Digest Preservation
+        id: verify-digest
+        run: |
+          set -euo pipefail
+          TARGET_REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
+          TARGET_IMAGE_NAME="${{ vars.IMAGE_NAME }}"
+
+          # Get first tag from input
+          FIRST_TAG=$(echo "${{ inputs.target_tags }}" | head -1)
+
+          # Query target registry for actual digest using crane
+          ACTUAL_DIGEST=$(crane digest "${TARGET_REGISTRY}/${TARGET_IMAGE_NAME}:${FIRST_TAG}")
+
+          echo "digest=${ACTUAL_DIGEST}" >> $GITHUB_OUTPUT
+          echo "Target digest: ${ACTUAL_DIGEST}"
+
+          # Verify digest matches source (immutability check)
+          if [ "${ACTUAL_DIGEST}" != "${{ inputs.source_digest }}" ]; then
+            echo "❌ ERROR: Digest mismatch!"
+            echo "  Source: ${{ inputs.source_digest }}"
+            echo "  Target: ${ACTUAL_DIGEST}"
+            exit 1
+          fi
+
+          echo "✅ Digest verification passed (source matches target)"
+
+      - name: Output Target Digest URI
+        id: output-uri
+        run: |
+          set -euo pipefail
+          TARGET_REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
+          TARGET_IMAGE_NAME="${{ vars.IMAGE_NAME }}"
+          DIGEST="${{ steps.verify-digest.outputs.digest }}"
+
+          URI="${TARGET_REGISTRY}/${TARGET_IMAGE_NAME}@${DIGEST}"
+          echo "uri=${URI}" >> $GITHUB_OUTPUT
+          echo "Target digest URI: ${URI}"
+
+      - name: Generate Promotion Summary
+        run: |
+          # NOTE: Emoji mapping function duplicated in the Copy Image step - keep them in sync
+          # Map environments to emojis
+          get_env_emoji() {
+            case "$1" in
+              dev) echo "🧪" ;;
+              stage) echo "🔬" ;;
+              prod) echo "🚀" ;;
+              *) echo "🌎" ;;
+            esac
+          }
+
+          SOURCE_EMOJI=$(get_env_emoji "${{ inputs.source_environment }}")
+          TARGET_EMOJI=$(get_env_emoji "${{ inputs.target_environment }}")
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🚀 Image Promoted
+
+          | Detail | Value |
+          |--------|-------|
+          | **Promotion** | ${SOURCE_EMOJI} \`${{ inputs.source_environment }}\` → ${TARGET_EMOJI} \`${{ inputs.target_environment }}\` |
+          | **Target URI** | \`${{ steps.output-uri.outputs.uri }}\` |
+          | **Verification** | ✅ Digest preserved (immutable) |
+
+          ### 🏷️ Tags Applied
+          EOF
+
+          # Format tags as bulleted list
+          echo "${{ inputs.target_tags }}" | grep -v '^$' | while read -r tag; do
+            echo "- \`${tag}\`" >> $GITHUB_STEP_SUMMARY
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY

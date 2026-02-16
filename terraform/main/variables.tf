@@ -1,3 +1,12 @@
+variable "environment" {
+  description = "Deployment environment (dev, stage, prod)"
+  type        = string
+  validation {
+    condition     = contains(["dev", "stage", "prod"], var.environment)
+    error_message = "Must be dev, stage, or prod"
+  }
+}
+
 variable "project" {
   description = "Google Cloud project ID"
   type        = string
@@ -42,37 +51,6 @@ variable "otel_instrumentation_genai_capture_message_content" {
 
 variable "serve_web_interface" {
   description = "Enable web UI"
-  type        = string
-  nullable    = true
-  default     = null
-}
-
-variable "agent_engine" {
-  description = "Agent Engine resource name (optional override)"
-  type        = string
-  nullable    = true
-  default     = null
-
-}
-
-variable "artifact_service_uri" {
-  description = <<-EOT
-    Artifact service bucket URI ('gs://your-bucket-name', optional override).
-
-    IMPORTANT: External buckets must be in the same GCP project as this deployment.
-    Project-level IAM roles (storage.bucketViewer, storage.objectUser) only grant
-    access to buckets within the project. Cross-project bucket access requires
-    additional IAM configuration outside this module.
-
-    Omit this variable to use the auto-created bucket (recommended).
-  EOT
-  type        = string
-  nullable    = true
-  default     = null
-}
-
-variable "allow_origins" {
-  description = "Allow these origins for CORS (JSON array string)"
   type        = string
   nullable    = true
   default     = null

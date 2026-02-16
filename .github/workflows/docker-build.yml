@@ -3,28 +3,28 @@ name: Docker Build
 on:
   workflow_call:
     inputs:
+      environment:
+        description: 'GitHub Environment (dev, stage, prod) for registry context'
+        required: true
+        type: string
       push:
         description: 'Push image to registry (false for PR validation only)'
         required: false
         type: boolean
         default: true
       tags:
-        description: 'Comma-separated list of image tags'
+        description: 'Newline-separated list of image tag names (registry-agnostic)'
         required: true
         type: string
-      cache_from:
-        description: 'Cache source (e.g., type=registry,ref=...)'
-        required: false
-        type: string
-        default: ''
-      cache_to:
-        description: 'Cache destination (e.g., type=registry,ref=...,mode=max)'
-        required: false
-        type: string
-        default: ''
     outputs:
+      image_sha:
+        description: 'Short SHA tag (user-friendly reference for break-glass workflow)'
+        value: ${{ jobs.build-push.outputs.image_sha }}
+      digest:
+        description: 'Image digest (immutable content hash: sha256:...)'
+        value: ${{ jobs.build-push.outputs.digest }}
       digest_uri:
-        description: 'Docker image digest URI (registry/image@sha256:...)'
+        description: 'Full registry path with digest (for Terraform deployment)'
         value: ${{ jobs.build-push.outputs.digest_uri }}
 
 permissions:
@@ -35,9 +35,12 @@ jobs:
   build-push:
     name: Build and Push to Artifact Registry
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     timeout-minutes: 15
     outputs:
-      digest_uri: ${{ steps.digest.outputs.uri }}
+      image_sha: ${{ steps.image-sha.outputs.sha }}
+      digest: ${{ steps.build.outputs.digest }}
+      digest_uri: ${{ steps.digest-uri.outputs.uri }}
 
     steps:
       - name: Checkout repository
@@ -60,57 +63,65 @@ jobs:
         run: |
           gcloud auth configure-docker ${{ vars.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev
 
+      - name: Construct Image Tags
+        id: construct-tags
+        run: |
+          set -euo pipefail
+          REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
+          IMAGE_NAME="${{ vars.IMAGE_NAME }}"
+
+          # Convert newline-separated tag names to comma-separated full registry paths
+          # Note: metadata-extract outputs newline-separated (idiomatic bash), but docker/build-push-action
+          # requires comma-separated format for the 'tags' parameter
+          FULL_TAGS=""
+          while IFS= read -r tag; do
+            if [ -n "$tag" ]; then
+              if [ -n "$FULL_TAGS" ]; then
+                FULL_TAGS="${FULL_TAGS},"
+              fi
+              FULL_TAGS="${FULL_TAGS}${REGISTRY}/${IMAGE_NAME}:${tag}"
+            fi
+          done <<< "${{ inputs.tags }}"
+
+          echo "full_tags=${FULL_TAGS}" >> $GITHUB_OUTPUT
+          echo "Constructed tags: ${FULL_TAGS}"
+
       - name: Build and push Docker image
         id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           push: ${{ inputs.push }}
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ inputs.tags }}
-          cache-from: ${{ inputs.cache_from }}
-          cache-to: ${{ inputs.cache_to }}
+          platforms: linux/amd64
+          tags: ${{ steps.construct-tags.outputs.full_tags }}
+          cache-from: type=registry,ref=${{ vars.ARTIFACT_REGISTRY_URI }}/${{ vars.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ vars.ARTIFACT_REGISTRY_URI }}/${{ vars.IMAGE_NAME }}:buildcache,mode=max
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
 
-      - name: Construct digest URI
-        id: digest
+      - name: Extract Image SHA
+        id: image-sha
         run: |
-          # Validate inputs
-          if [ -z "${{ inputs.tags }}" ]; then
-            echo "::error::Tags input is empty (cannot construct digest URI)"
-            exit 1
-          fi
+          # Get first tag (SHA) from inputs
+          FIRST_TAG=$(echo "${{ inputs.tags }}" | head -1)
+          echo "sha=${FIRST_TAG}" >> $GITHUB_OUTPUT
+          echo "Image SHA: ${FIRST_TAG}"
 
-          if [ -z "${{ steps.build.outputs.digest }}" ]; then
-            echo "::warning::No digest available from build step"
-            echo "uri=" >> $GITHUB_OUTPUT
-            exit 0
-          fi
+      - name: Construct Digest URI
+        id: digest-uri
+        run: |
+          set -euo pipefail
+          REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
+          IMAGE_NAME="${{ vars.IMAGE_NAME }}"
+          DIGEST="${{ steps.build.outputs.digest }}"
 
-          # Extract registry and image name from the first tag
-          FIRST_TAG=$(echo "${{ inputs.tags }}" | cut -d',' -f1)
+          URI="${REGISTRY}/${IMAGE_NAME}@${DIGEST}"
+          echo "uri=${URI}" >> $GITHUB_OUTPUT
+          echo "Digest URI: ${URI}"
 
-          # Validate first tag is not empty
-          if [ -z "${FIRST_TAG}" ]; then
-            echo "::error::Failed to extract first tag from: ${{ inputs.tags }}"
-            exit 1
-          fi
-
-          # Remove tag portion to get registry/image base
-          IMAGE_BASE=$(echo "${FIRST_TAG}" | sed 's/:.*$//')
-
-          # Construct full digest URI
-          DIGEST_URI="${IMAGE_BASE}@${{ steps.build.outputs.digest }}"
-
-          # Output with descriptive logging
-          echo "Raw digest from build: ${{ steps.build.outputs.digest }}"
-          echo "Constructed digest URI: ${DIGEST_URI}"
-          echo "uri=${DIGEST_URI}" >> $GITHUB_OUTPUT
-
-      - name: Output image details
+      - name: Log image details
         run: |
           if [ "${{ inputs.push }}" == "true" ]; then
             echo "✅ Docker image built and pushed successfully"
@@ -119,7 +130,23 @@ jobs:
           fi
           echo ""
           echo "🏷️ Image tags:"
-          echo "${{ inputs.tags }}" | tr ',' '\n' | sed 's/^/  - /'
+          echo "${{ inputs.tags }}" | grep -v '^$' | while read -r tag; do
+            echo "  - ${tag}"
+          done
           echo ""
           echo "🔏 Image digest: ${{ steps.build.outputs.digest }}"
-          echo "🔗 Digest URI: ${{ steps.digest.outputs.uri }}"
+          echo "🔗 Digest URI: ${{ steps.digest-uri.outputs.uri }}"
+
+      - name: Generate Build Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🐳 Build Outputs
+
+          | Output | Value |
+          |--------|-------|
+          | **Image SHA** | \`${{ steps.image-sha.outputs.sha }}\` |
+          | **Digest** | \`${{ steps.build.outputs.digest }}\` |
+          | **Digest URI** | \`${{ steps.digest-uri.outputs.uri }}\` |
+
+          ---
+          EOF

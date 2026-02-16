@@ -1,0 +1,215 @@
+name: 🚨 Break Glass - Emergency Promotion
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_environment:
+        description: 'Source environment (dev, stage)'
+        required: true
+        type: choice
+        options: [dev, stage]
+      target_environment:
+        description: 'Target environment (stage, prod)'
+        required: true
+        type: choice
+        options: [stage, prod]
+      image_sha:
+        description: 'Image SHA tag (e.g., abc1234)'
+        required: true
+        type: string
+      deploy:
+        description: 'Deploy to target after promotion'
+        required: false
+        type: boolean
+        default: false
+      reason:
+        description: 'Reason for manual intervention (audit trail)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write  # Required by terraform-plan-apply workflow
+
+jobs:
+  # Log the intervention for audit trail
+  log-intervention:
+    name: Log Manual Intervention
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log Break Glass Event
+        run: |
+          # Map environments to emojis
+          get_env_emoji() {
+            case "$1" in
+              dev) echo "🧪" ;;
+              stage) echo "🔬" ;;
+              prod) echo "🚀" ;;
+              *) echo "🌎" ;;
+            esac
+          }
+
+          SOURCE_EMOJI=$(get_env_emoji "${{ inputs.source_environment }}")
+          TARGET_EMOJI=$(get_env_emoji "${{ inputs.target_environment }}")
+
+          echo "🚨 BREAK GLASS - MANUAL INTERVENTION"
+          echo "Source: ${SOURCE_EMOJI} ${{ inputs.source_environment }}"
+          echo "Target: ${TARGET_EMOJI} ${{ inputs.target_environment }}"
+          echo "Image SHA: ${{ inputs.image_sha }}"
+          echo "Deploy: ${{ inputs.deploy }}"
+          echo "Reason: ${{ inputs.reason }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+
+  # Resolve SHA to digest from source environment (using reusable workflow)
+  resolve-digest:
+    name: Resolve Image Digest
+    needs: log-intervention
+    uses: ./.github/workflows/resolve-image-digest.yml
+    with:
+      environment: ${{ inputs.source_environment }}
+      tags: ${{ inputs.image_sha }}  # Pass SHA tag (workflow extracts first line)
+    secrets: inherit
+
+  # Promote image from source to target
+  promote:
+    name: Promote ${{ inputs.source_environment }} → ${{ inputs.target_environment }}
+    needs: resolve-digest
+    uses: ./.github/workflows/pull-and-promote.yml
+    with:
+      source_environment: ${{ inputs.source_environment }}
+      target_environment: ${{ inputs.target_environment }}
+      source_digest: ${{ needs.resolve-digest.outputs.digest }}
+      target_tags: |
+        ${{ inputs.image_sha }}
+        break-glass
+    secrets: inherit
+
+  # Deploy to target (optional)
+  deploy:
+    name: Deploy to ${{ inputs.target_environment }}
+    if: inputs.deploy
+    needs: [resolve-digest, promote]
+    uses: ./.github/workflows/terraform-plan-apply.yml
+    with:
+      environment: ${{ inputs.target_environment }}
+      docker_image: ${{ needs.promote.outputs.digest_uri }}
+      terraform_action: apply
+    secrets: inherit
+
+  # Generate comprehensive summary
+  # Always runs to provide visibility into emergency interventions even if upstream jobs fail
+  summary:
+    name: Generate Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [resolve-digest, promote, deploy]
+    steps:
+      - name: Generate Break-Glass Summary
+        run: |
+          # Map environments to emojis
+          get_env_emoji() {
+            case "$1" in
+              dev) echo "🧪" ;;
+              stage) echo "🔬" ;;
+              prod) echo "🚀" ;;
+              *) echo "🌎" ;;
+            esac
+          }
+
+          SOURCE_EMOJI=$(get_env_emoji "${{ inputs.source_environment }}")
+          TARGET_EMOJI=$(get_env_emoji "${{ inputs.target_environment }}")
+
+          # Determine deployment status
+          if [ "${{ inputs.deploy }}" = "true" ]; then
+            if [ "${{ needs.deploy.result }}" = "success" ]; then
+              DEPLOY_STATUS="✅ Deployed successfully"
+            elif [ "${{ needs.deploy.result }}" = "failure" ]; then
+              DEPLOY_STATUS="❌ Deployment failed"
+            elif [ "${{ needs.deploy.result }}" = "cancelled" ]; then
+              DEPLOY_STATUS="⚠️ Deployment cancelled"
+            else
+              DEPLOY_STATUS="⏳ Deployment in progress"
+            fi
+          else
+            DEPLOY_STATUS="⏭️ Deployment skipped (deploy=false)"
+          fi
+
+          # Determine promotion status
+          if [ "${{ needs.promote.result }}" = "success" ]; then
+            PROMOTION_STATUS="✅ Image promoted successfully"
+          elif [ "${{ needs.promote.result }}" = "failure" ]; then
+            PROMOTION_STATUS="❌ Promotion failed"
+          else
+            PROMOTION_STATUS="⚠️ Promotion status: ${{ needs.promote.result }}"
+          fi
+
+          # Generate timestamp
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # 🚨 Break Glass - Emergency Promotion
+
+          ## 📋 Audit Trail
+
+          | Field | Value |
+          |-------|-------|
+          | **Reason** | ${{ inputs.reason }} |
+          | **Triggered By** | ${{ github.actor }} |
+          | **Timestamp** | ${TIMESTAMP} |
+          | **Run ID** | [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+
+          ## 🔄 Promotion Details
+
+          | Detail | Value |
+          |--------|-------|
+          | **Source** | ${SOURCE_EMOJI} \`${{ inputs.source_environment }}\` |
+          | **Target** | ${TARGET_EMOJI} \`${{ inputs.target_environment }}\` |
+          | **Image SHA** | \`${{ inputs.image_sha }}\` |
+          | **Status** | ${PROMOTION_STATUS} |
+
+          EOF
+
+          # Only show image details if promotion succeeded and outputs are available
+          if [ "${{ needs.promote.result }}" = "success" ] && [ -n "${{ needs.resolve-digest.outputs.digest }}" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🖼️ Image Details
+
+          | Detail | Value |
+          |--------|-------|
+          | **Source Digest** | \`${{ needs.resolve-digest.outputs.digest }}\` |
+          | **Target URI** | \`${{ needs.promote.outputs.digest_uri }}\` |
+          | **Verification** | ✅ Digest preserved (immutable) |
+
+          ### 🏷️ Tags Applied
+
+          - \`${{ inputs.image_sha }}\`
+          - \`break-glass\`
+
+          EOF
+          fi
+
+          # Add deployment status
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+
+          ## 🚀 Deployment
+
+          **Status:** ${DEPLOY_STATUS}
+
+          EOF
+
+          # Add next steps
+          if [ "${{ inputs.deploy }}" = "false" ] && [ "${{ needs.promote.result }}" = "success" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+
+          ### 📌 Next Steps
+
+          To deploy this image to ${{ inputs.target_environment }}, either:
+          1. Manually trigger this workflow again with \`deploy: true\`
+          2. Use Terraform to deploy: \`docker_image = "${{ needs.promote.outputs.digest_uri }}"\`
+
+          ---
+
+          EOF
+          fi
