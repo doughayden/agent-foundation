@@ -248,10 +248,11 @@ The project uses a **hybrid pull-and-promote** strategy to distribute images acr
 
 ### Key Benefits
 
-**No cross-project IAM:**
-- Each promotion job uses its own environment's WIF
-- No IAM grants between projects required
-- Org-policy safe (critical for compliance-heavy organizations)
+**Minimal cross-project IAM:**
+- Narrow grants: read-only (`roles/artifactregistry.reader`) members on specific registry resources
+- Resource-level, not project-level: stage WIF → dev registry only, prod WIF → stage registry only
+- Uses WIF principals, not service accounts: not impacted by cross-project service account org policies
+- Each promotion job authenticates with its own environment's WIF
 
 **Extended retention window:**
 - Dev registry: 90-day retention (source of truth for rollbacks)
@@ -273,8 +274,6 @@ The project uses a **hybrid pull-and-promote** strategy to distribute images acr
 **Stage promotion:** Always pulls from dev (validates latest commit)
 
 **Prod promotion:** Always pulls from stage (promotes validated release candidate)
-
-**Break-glass:** Allows flexible source selection (dev or stage) for emergency rollbacks
 
 ## Deployment Workflows
 
@@ -321,111 +320,9 @@ The project uses a **hybrid pull-and-promote** strategy to distribute images acr
 
 **Tag workflow is production-mode only.** Dev-only mode ignores tag events (no prod environment exists).
 
-## Break-Glass Workflow
-
-The break-glass workflow provides emergency manual promotion and rollback capabilities.
-
-### When to Use
-
-- Production issue requires immediate rollback
-- No direct GCP project access (or blocked by org policy)
-- Within 90-day dev registry retention window
-- GitHub Actions is operational
-
-### Finding the Image SHA
-
-Three methods to identify the SHA for rollback:
-
-**1. From Cloud Run revision:**
-```bash
-gcloud run revisions list \
-  --service=your-service-prod \
-  --project=your-prod-project \
-  --region=us-central1
-
-# Describe specific revision
-gcloud run revisions describe REVISION_NAME \
-  --project=your-prod-project \
-  --region=us-central1 \
-  --format="value(spec.containers[0].image)"
-```
-
-**2. From Artifact Registry:**
-```bash
-gcloud artifacts docker tags list \
-  us-central1-docker.pkg.dev/your-dev-project/your-app-dev/your-app \
-  --project=your-dev-project
-```
-
-**3. From git history:**
-```bash
-git log --oneline --decorate
-# Use first 7 characters of commit SHA
-```
-
-### Triggering Break-Glass
-
-**Via gh CLI:**
-```bash
-gh workflow run break-glass-promote.yml \
-  -f source_environment=stage \
-  -f target_environment=prod \
-  -f image_sha=abc1234 \
-  -f deploy=true \
-  -f reason="Rollback: prod crash in v0.5.0, returning to v0.4.9"
-```
-
-**Via GitHub UI:**
-1. Navigate to Actions → Break-Glass Promote
-2. Click "Run workflow"
-3. Fill in inputs:
-   - Source environment: `stage` (preferred) or `dev`
-   - Target environment: `prod`
-   - Image SHA: 7-character commit SHA
-   - Deploy: `true` (to deploy after promotion)
-   - Reason: Audit trail explanation
-
-### Workflow Options
-
-**Promotion only (deploy=false):**
-- Promotes image to target registry
-- Does not deploy to Cloud Run
-- Next steps shown in job summary
-
-**Promotion + deployment (deploy=true):**
-- Promotes image to target registry
-- Runs Terraform apply to update Cloud Run
-- Service deployed and healthy
-
-### Source Environment Selection
-
-**Prefer stage → prod:**
-- Promotes the stage-validated image
-- Stage already tested the image
-- Best practice for production rollbacks
-
-**Use dev → prod only if:**
-- Stage is also broken
-- Stage doesn't have the required image
-- Emergency requires bypassing stage
-
-Same digest guarantees identical image regardless of source registry.
-
-### Audit Trail
-
-All break-glass promotions log:
-- Reason for intervention
-- Actor (GitHub username)
-- Timestamp
-- Source and target environments
-- Image SHA and digest
-- Deployment status
-
-Audit trail is visible in workflow run logs and job summaries.
-
 ## Rollback Procedures
 
-Three rollback strategies depending on the scenario:
+Two rollback strategies depending on the scenario:
 
 ### Strategy 1: Cloud Run Traffic Split
 
@@ -458,39 +355,7 @@ gcloud run services update-traffic your-service-prod \
 
 **Reference:** [Cloud Run Rollbacks and Traffic Migration](https://cloud.google.com/run/docs/rollouts-rollbacks-traffic-migration)
 
-### Strategy 2: Break-Glass Workflow
-
-**When to use:**
-- No direct GCP prod access (or blocked by org policy)
-- App or container issue (not infrastructure)
-- Within 90-day dev registry retention window
-- GitHub Actions is operational
-
-**How:**
-```bash
-# Find the last known-good SHA (methods above)
-# Trigger break-glass workflow
-gh workflow run break-glass-promote.yml \
-  -f source_environment=stage \
-  -f target_environment=prod \
-  -f image_sha=abc1234 \
-  -f deploy=true \
-  -f reason="Rollback: explain what broke"
-```
-
-**Timing:**
-- ~2-3 minutes end-to-end
-- Promotion: ~30 seconds
-- Terraform apply: ~1-2 minutes
-- Cloud Run deployment: ~30 seconds
-
-**Limitations:**
-- Slower than traffic split
-- App-only (cannot rollback infrastructure)
-- Requires knowing which SHA to rollback to
-- Depends on GitHub Actions availability
-
-### Strategy 3: Hotfix + Tag
+### Strategy 2: Hotfix + Tag
 
 **When to use:**
 - Infrastructure needs rollback (Terraform changes)
@@ -565,19 +430,16 @@ Production issue detected?
 │  ├─ Have direct GCP prod access?
 │  │  └─→ Strategy 1: Cloud Run Traffic Split (instant)
 │  │
-│  └─ No GCP access (or access blocked by org policy)?
-│     └─→ Strategy 2: Break-Glass Workflow (2-3 minutes)
+│  └─ No direct GCP access?
+│     └─→ Strategy 2: Hotfix + Tag (10-20 minutes)
 │
 ├─ Bad container image (won't start, missing dependencies)
 │  │
 │  ├─ Old revision exists + have GCP access?
 │  │  └─→ Strategy 1: Cloud Run Traffic Split (instant)
 │  │
-│  ├─ Within 90-day retention window?
-│  │  └─→ Strategy 2: Break-Glass Workflow (2-3 minutes)
-│  │
-│  └─ Older than 90 days?
-│     └─→ Strategy 3: Hotfix + Tag (10-20 minutes)
+│  └─ No old revision or no GCP access?
+│     └─→ Strategy 2: Hotfix + Tag (10-20 minutes)
 │
 ├─ Configuration regression (wrong env vars, feature flags)
 │  │
@@ -585,10 +447,10 @@ Production issue detected?
 │  │  └─→ Manual GitHub UI edit + re-trigger deployment
 │  │
 │  └─ Config in application code?
-│     └─→ Strategy 3: Hotfix + Tag
+│     └─→ Strategy 2: Hotfix + Tag
 │
 └─ Infrastructure regression (IAM, GCS, Cloud Run config)
-   └─→ Strategy 3: Hotfix + Tag (only option)
+   └─→ Strategy 2: Hotfix + Tag (only option)
 ```
 
 ## Environment Variables
@@ -745,21 +607,6 @@ gh run cancel RUN_ID
 terraform -chdir=terraform/main force-unlock LOCK_ID
 ```
 
-### Break-Glass Workflow Fails
-
-**Symptom:** Break-glass workflow fails during promotion or deployment
-
-**Common issues:**
-1. Image SHA not found in source registry (check retention)
-2. Permission denied (verify WIF for both source and target)
-3. Deployment failed (check Terraform plan output for errors)
-
-**Debugging:**
-1. Check workflow run logs for specific error
-2. Verify source image exists: `gcloud artifacts docker tags list`
-3. Verify target registry writable: Check IAM roles
-4. Check deployment status: `gcloud run services describe`
-
 ## Security Best Practices
 
 **Keyless authentication:**
@@ -770,7 +617,7 @@ terraform -chdir=terraform/main force-unlock LOCK_ID
 **Minimal permissions:**
 - Each environment uses dedicated service account
 - Only required IAM roles granted
-- No cross-project grants needed
+- Cross-project grants WIF narrowly scoped (read-only, registry-resource-bound)
 
 **Environment protection:**
 - Production requires manual approval
@@ -785,8 +632,8 @@ terraform -chdir=terraform/main force-unlock LOCK_ID
 
 **Audit trail:**
 - All deployments logged in workflow runs
-- Break-glass interventions logged with reason
 - Git history tracks all code changes
+- Workflow run logs capture all automation
 
 ## Next Steps
 
