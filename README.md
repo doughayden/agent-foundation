@@ -52,6 +52,9 @@ This project distills proven patterns from the Starter Pack while prioritizing b
 > [!IMPORTANT]
 > You must complete deployment first to create required resources (Agent Engine, GCS buckets, other agent-specific resources) before running locally.
 
+> [!NOTE]
+> By default, this project uses **dev-only mode** (single environment). To enable production mode with staged deployments (dev → stage → prod), see [Multi-Environment Guide](docs/base-infra/multi-environment-guide.md).
+
 Provision CI/CD infrastructure and deploy cloud resources.
 
 ### Bootstrap CI/CD Infrastructure
@@ -103,7 +106,7 @@ gh pr create  # or use GitHub UI
 
 # 4. Review terraform plan in PR comments, then merge PR
 
-# 5. Monitor deployment (merging to main triggers automatic deployment)
+# 5. Monitor deployment (merging to main deploys to dev environment)
 gh run list --workflow=ci-cd.yml --limit 5
 gh run view --log
 ```
@@ -146,8 +149,9 @@ See [Development Guide](docs/base-infra/development.md) for workflow, testing, a
 Test the deployed Cloud Run service via proxy:
 
 ```bash
-# Local proxy (http://localhost:8000)
-gcloud run services proxy <service-name> --project <project-id> --region <region> --port 8000
+# Local proxy to dev environment (http://localhost:8000)
+# Service name format: ${AGENT_NAME}-dev
+gcloud run services proxy <agent-name>-dev --project <project-id> --region <region> --port 8000
 ```
 
 ---
