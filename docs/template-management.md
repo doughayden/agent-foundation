@@ -12,10 +12,6 @@ This template uses **transparent git-based syncing** rather than opaque automati
 - **Flexible:** Resolve conflicts your way
 - **No magic:** Standard git commands, no proprietary tools
 
-**Contrast with agent-starter-pack:**
-- agent-starter-pack: Opaque `enhance` command, trust-based updates
-- agent-foundation: Git commands, full control and transparency
-
 ## Setup
 
 Add template repository as upstream remote (one-time):
@@ -38,19 +34,26 @@ upstream  https://github.com/your-org/agent-foundation.git (push)
 
 ## Common Patterns
 
-### Pull All Documentation Updates
+### Pull Entire Directory
 
-Update all documentation to latest template version:
+Update an entire directory to latest template version:
+
+**WARNING:** This overwrites ALL files in the directory with template versions and deletes local files not in the upstream. See [Example: Restore Custom Files](#example-restore-custom-files-after-sync) for how to recover files if needed.
 
 ```bash
 # Fetch latest from template
 git fetch upstream main
 
-# Check what changed in docs
+# Check what changed in the directory
 git diff upstream/main -- docs/
 
-# Pull all doc updates
+# Pull the directory
 git checkout upstream/main -- docs/
+
+# Verify what you're about to commit
+git status
+
+# Commit the sync
 git commit -m "docs: sync with template upstream"
 ```
 
@@ -146,49 +149,15 @@ git add docs/deployment.md
 git commit -m "docs: merge deployment.md from upstream"
 ```
 
-### Sync Entire docs/ Directory
+## Sync Carefully
 
-Replace all documentation with template version:
-
-```bash
-# WARNING: This overwrites ALL docs with template version
-git fetch upstream main
-git checkout upstream/main -- docs/
-git commit -m "docs: full sync with template"
-```
-
-**Use when:**
-- Major template documentation overhaul
-- Starting fresh with docs
-- Project-specific docs are elsewhere
-
-**Avoid when:**
-- You have custom documentation mixed with template docs
-- You've made project-specific changes to template docs
-
-## When to Sync
-
-**No strict schedule** - sync when it makes sense for your project:
-
-- **Quarterly:** Check for infrastructure improvements, new features
-- **On-demand:** When you see relevant updates in template changelog
-- **Before major releases:** Ensure you have latest deployment patterns
-- **When stuck:** Check if template solved the problem you're facing
-
-**Don't sync blindly:**
 - Review changes before pulling
 - Test in development environment first
 - Understand what each change does
 
-## What NOT to Sync
-
-Avoid syncing files you've customized:
-
 **Don't sync:**
 - `src/` - Your agent code
 - `tests/` - Your tests
-- `.env` - Your local config
-- `terraform/bootstrap/*/terraform.tfvars` - Your bootstrap config
 - Any file with project-specific customizations
 
 **Safe to sync:**
@@ -202,32 +171,7 @@ Avoid syncing files you've customized:
 - Cherry-pick specific improvements
 - Keep your customizations in separate files
 
-## Examples
-
-### Example 1: Update CI/CD Workflows
-
-Template added new workflow optimizations:
-
-```bash
-# Check what changed
-git fetch upstream main
-git diff upstream/main -- .github/workflows/
-
-# Looks good, pull workflows
-git checkout upstream/main -- .github/workflows/
-git commit -m "ci: sync workflows from upstream
-
-- Update docker-build.yml with new caching strategy
-- Add retry logic to terraform-plan-apply.yml
-- Update config-summary.yml output format
-"
-
-# Test in PR before merging
-git push origin update-workflows
-gh pr create
-```
-
-### Example 2: Update Documentation After Template Overhaul
+## Example: Restore Custom Files After Sync
 
 Template reorganized docs/ directory:
 
@@ -245,7 +189,7 @@ git commit -m "docs: sync with template restructure
 - Add new troubleshooting guide
 "
 
-# Restore any custom docs you want to keep
+# Oh no! Forgot about custom-tools.md - restore it
 git checkout HEAD~1 -- docs/custom-tools.md
 git commit --amend -m "docs: sync with template restructure
 
@@ -253,51 +197,6 @@ git commit --amend -m "docs: sync with template restructure
 - Update cross-references
 - Add new troubleshooting guide
 - Preserve custom-tools.md
-"
-```
-
-### Example 3: Selectively Update Terraform Bootstrap
-
-Template added multi-environment support:
-
-```bash
-# Check bootstrap changes
-git fetch upstream main
-git diff upstream/main -- terraform/bootstrap/
-
-# Don't want full rewrite, just cherry-pick improvements
-git log --oneline HEAD..upstream/main -- terraform/bootstrap/
-# Shows: "feat: add cross-project IAM for image promotion"
-
-# Cherry-pick just that commit
-git cherry-pick <commit-sha>
-
-# Test bootstrap still works
-terraform -chdir=terraform/bootstrap/dev plan
-
-# Commit if successful
-git commit
-```
-
-### Example 4: Update Just the README
-
-Template improved README structure:
-
-```bash
-# View changes
-git fetch upstream main
-git diff upstream/main -- README.md
-
-# Pull new README
-git checkout upstream/main -- README.md
-
-# Restore project-specific sections
-# Edit README.md to add back your project name, description, etc.
-
-git commit -m "docs: update README structure from upstream
-
-- Adopt new format with clearer sections
-- Preserve project-specific content
 "
 ```
 
@@ -332,7 +231,25 @@ When template has significant changes:
    git commit -m "infra: sync terraform modules"
    ```
 
-4. **Test thoroughly:**
+4. **Review and resolve:**
+   ```bash
+   # Check what changed
+   git log --oneline -3  # Last 3 commits
+
+   # If conflicts occurred during checkout
+   git status  # Shows conflicted files
+
+   # Resolve conflicts manually or with merge tool
+   git mergetool
+   git add <resolved-files>
+   git commit --amend
+
+   # Restore any custom files you need to keep
+   git checkout HEAD~3 -- docs/custom-tools.md
+   git commit --amend
+   ```
+
+5. **Test thoroughly:**
    ```bash
    # Run tests
    uv run pytest --cov
@@ -343,13 +260,13 @@ When template has significant changes:
    # Test workflows (if possible in dev)
    ```
 
-5. **Create PR:**
+6. **Create PR:**
    ```bash
    git push origin sync-upstream
    gh pr create --title "Sync with upstream template"
    ```
 
-6. **Review and merge:**
+7. **Review and merge:**
    - Review changes in GitHub
    - Ensure CI passes
    - Merge when confident
