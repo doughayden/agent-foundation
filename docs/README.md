@@ -21,7 +21,3 @@ Navigate by what you want to do:
 ## Template Management
 
 - [Syncing Upstream Changes](template-management.md) - Pull updates from template
-
----
-
-**Philosophy:** Elegant simplicity. Clear, discoverable, actionable.
