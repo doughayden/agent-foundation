@@ -53,7 +53,7 @@ This project distills proven patterns from the Starter Pack while prioritizing b
 > You must complete deployment first to create required resources (Agent Engine, GCS buckets, other agent-specific resources) before running locally.
 
 > [!NOTE]
-> By default, this project uses **dev-only mode** (single environment). To enable production mode with staged deployments (dev → stage → prod), see [Multi-Environment Guide](docs/deployment.md).
+> By default, this project uses **dev-only mode** (single environment). To enable production mode with staged deployments (dev → stage → prod), see [Deployment: Multi-Environment Strategy](docs/deployment.md#multi-environment-strategy).
 
 Provision CI/CD infrastructure and deploy cloud resources.
 
@@ -83,11 +83,11 @@ gh variable list  # or view in GitHub repo Settings > Environments > dev
 To enable full production deployment (dev/stage/prod):
 1. Bootstrap all three environments (dev, stage, prod) using steps above
 2. Set `production_mode: true` in the `config` job of `.github/workflows/ci-cd.yml`
-3. See [Multi-Environment Guide](docs/deployment.md) for complete setup
+3. See [Deployment: Bootstrap Setup](docs/deployment.md#bootstrap-setup) for complete setup
 
 Bootstrap creates: Workload Identity Federation, Artifact Registry, GCS state bucket, GitHub Environments, GitHub Variables.
 
-See [Bootstrap Setup](docs/getting-started.md) for details and [Multi-Environment Guide](docs/deployment.md) for production mode.
+See [Getting Started](docs/getting-started.md) for detailed first-time setup and [Deployment: Switching Modes](docs/deployment.md#switching-deployment-modes) for production mode configuration.
 
 ---
 
@@ -116,7 +116,7 @@ Deployment creates:
 - GCS bucket for artifact storage (`ARTIFACT_SERVICE_URI`)
 - Cloud Run service (automatically configured with `AGENT_ENGINE` and `ARTIFACT_SERVICE_URI`)
 
-See [CI/CD Workflow](docs/cicd.md) for automation details.
+See [CI/CD](docs/cicd.md) for automation details.
 
 ---
 
@@ -139,8 +139,8 @@ uv run server
 docker compose up --build --watch
 ```
 
-See [Environment Variables](docs/environment-variables.md) for where to find each value.
-See [Development Guide](docs/development.md) for workflow, testing, and code quality standards.
+See [Environment Variables: Cloud Resources](docs/environment-variables.md#cloud-resources) for where to find each value.
+See [Development](docs/development.md) for workflow, testing, and code quality standards.
 
 ---
 
