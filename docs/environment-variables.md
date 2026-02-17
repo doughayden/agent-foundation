@@ -14,7 +14,7 @@ These must be set for the agent to function.
 - **Where:** Set locally in `.env`, auto-configured in Cloud Run
 
 **GOOGLE_CLOUD_PROJECT**
-- **Value:** Your GCP project ID (e.g., `my-project-123`)
+- **Value:** Your GCP project ID (e.g., `your-project-id`)
 - **Purpose:** Identifies the Google Cloud project for Vertex AI and other GCP services
 - **Where:** Set locally in `.env`, configured via Terraform for Cloud Run
 
@@ -26,7 +26,7 @@ These must be set for the agent to function.
 ### Agent Identification
 
 **AGENT_NAME**
-- **Value:** Unique identifier (e.g., `my-agent`)
+- **Value:** Unique identifier (e.g., `your-agent`)
 - **Purpose:** Identifies cloud resources, logs, and traces
 - **Where:** Set locally in `.env`, set before bootstrap (used for Terraform resource naming)
 - **Note:** Used as base name for Terraform resources (`{agent_name}-{environment}`)
@@ -56,7 +56,7 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
 - **Note:** Defaults to in-memory if unset (not recommended for development)
 
 **ARTIFACT_SERVICE_URI**
-- **Value:** GCS bucket URI (e.g., `gs://my-artifact-bucket`)
+- **Value:** GCS bucket URI (e.g., `gs://your-artifact-bucket`)
 - **Purpose:** Artifact storage persistence (production-consistent behavior)
 - **Where:** Set locally in `.env` after first deployment, auto-configured in Cloud Run
 - **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or GCP Console (Cloud Storage → Buckets)
@@ -130,12 +130,27 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
 
 ### Advanced
 
+**AGENT_DIR**
+- **Default:** Auto-detected (parent directory of `server.py`)
+- **Purpose:** Override agent directory path for ADK
+- **Where:** Set in Dockerfile (`/app/src`), rarely needed locally
+- **Note:** Only override if you need non-standard directory structure
+
 **ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS**
 - **Default:** `FALSE`
 - **Purpose:** Suppress ADK experimental feature warnings
 - **Options:**
   - `FALSE` - Show warnings
   - `TRUE` - Suppress warnings
+
+### Cloud Run Auto-Set (Read-Only)
+
+These variables are automatically set by Cloud Run. Do not set manually.
+
+**K_REVISION**
+- **Purpose:** Cloud Run revision identifier
+- **Where:** Auto-set by Cloud Run (used for `service.version` in traces)
+- **Example:** `your-agent-dev-00042-abc`
 
 ---
 
@@ -209,20 +224,12 @@ Override runtime config via GitHub Environment Variables (mapped to `TF_VAR_*`):
 **CI/CD:**
 - GitHub Environment Variables (auto-created by bootstrap)
 - Workflow inputs and outputs
-- Hard-coded in workflow files
-
-### Precedence
-
-1. **Environment variables** (highest priority)
-2. **`.env` file** (loaded via `python-dotenv`)
-3. **Default values** (defined in code)
 
 ### Security
 
-- **Never commit `.env` files** - Already gitignored
-- **Use Workload Identity Federation** - No service account keys needed for CI/CD
-- **Rotate credentials** - If `.env` is accidentally committed, rotate all credentials
-- **Limit OTEL content capture** - Set `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=FALSE` for sensitive data
+- **Never commit `.env` files** to version control - Already gitignored
+- **Workload Identity Federation** - No service account keys needed for CI/CD
+- **Sensitive data** - Set `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=FALSE` when handling sensitive information
 
 ### See Also
 

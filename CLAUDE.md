@@ -54,6 +54,8 @@ terraform -chdir=terraform/main init/plan/apply           # Deploy (TF_VAR_envir
 
 **Key optional:** SERVE_WEB_INTERFACE, LOG_LEVEL (DEBUG/INFO/WARNING/ERROR/CRITICAL), TELEMETRY_NAMESPACE (default "local", auto-set to environment in deployments), ROOT_AGENT_MODEL, AGENT_ENGINE, ARTIFACT_SERVICE_URI, ALLOW_ORIGINS (JSON array).
 
+**CRITICAL:** Any new environment variable introduced to the codebase MUST be documented in `docs/environment-variables.md`. No exceptions. Include: purpose, default value, where to set, and whether required or optional.
+
 ## Code Quality
 
 - **mypy:** Strict, complete type annotations, modern Python 3.13 (`|` unions, lowercase generics), no untyped definitions.
