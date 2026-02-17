@@ -146,45 +146,30 @@ gh run view <run-id>
 ```
 
 Save these values from the job summary:
-- **Cloud Run URL** - Agent API endpoint
-- **AGENT_ENGINE** - Reasoning Engine resource name (for local `.env`)
+- **AGENT_ENGINE** - Agent Engine resource name (for local `.env`)
 - **ARTIFACT_SERVICE_URI** - GCS bucket URI (for local `.env`)
 
 ## Verify Deployment
 
-Test the deployed agent.
-
-### Health Check
+Test the deployed agent using Cloud Run proxy (handles authentication automatically).
 
 ```bash
-# Get Cloud Run URL from deployment summary
-CLOUD_RUN_URL="https://your-agent-url.run.app"
-
-# Test health endpoint
-curl ${CLOUD_RUN_URL}/health
-```
-
-Expected response:
-```json
-{"status": "ok"}
-```
-
-### Proxy to Local
-
-Proxy the Cloud Run service to test locally:
-
-```bash
-# Service name format: ${agent_name}-default
+# Service name format: ${agent_name}-dev (or ${agent_name}-default for single env)
+# Get service name, project, and region from deployment summary
 gcloud run services proxy <service-name> \
   --project <project-id> \
   --region <region> \
   --port 8000
 
-# Test
+# In another terminal, test the health endpoint
 curl http://localhost:8000/health
+
+# Expected response: {"status": "ok"}
 
 # Stop proxy: Ctrl+C
 ```
+
+**Why use proxy?** Cloud Run services enforce authentication. The proxy handles auth automatically using your gcloud credentials.
 
 See [Cloud Run proxy documentation](https://cloud.google.com/run/docs/authenticating/developers#proxy) for details.
 
