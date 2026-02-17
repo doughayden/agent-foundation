@@ -109,7 +109,7 @@ gh api repos/:owner/:repo/branches/main/protection
 gcloud run services logs read <service-name> --region <region> --limit 50
 
 # 2. Test locally with same config
-docker compose up --build
+docker compose up --build  # or: uv run server
 
 # 3. Verify environment variables set correctly
 gcloud run services describe <service-name> --region <region> --format="value(spec.template.spec.containers[0].env)"
@@ -202,9 +202,9 @@ uv sync --locked
 
 **Debug:**
 ```bash
-# Check OTEL variable
-echo $OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
-# Or verify in .env
+# Check required configuration
+cat .env | grep OTEL_
+cat .env | grep GOOGLE_
 
 # Verify auth
 gcloud auth application-default login

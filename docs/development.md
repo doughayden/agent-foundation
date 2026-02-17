@@ -33,55 +33,22 @@ Configure your local `.env` file after completing your first deployment. The dep
 cp .env.example .env
 ```
 
-### 2. Add Required Variables
+### 2. Configure Environment Variables
 
-Edit `.env` with these required values:
+Edit `.env` and configure required values. The `.env.example` file includes inline comments for each variable.
 
-```bash
-# Google Cloud Vertex AI (required)
-GOOGLE_GENAI_USE_VERTEXAI=TRUE
-GOOGLE_CLOUD_PROJECT=your-project-id
-GOOGLE_CLOUD_LOCATION=us-central1
+**Required configuration:**
+- Google Cloud Vertex AI credentials
+- Agent identification
+- OpenTelemetry settings
 
-# Agent Identification (required)
-AGENT_NAME=your-agent-name
+**Recommended (after first deployment):**
+- `AGENT_ENGINE` - Session and memory persistence
+- `ARTIFACT_SERVICE_URI` - Artifact storage
 
-# OpenTelemetry (required)
-OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=TRUE
-```
+See [Environment Variables](environment-variables.md) for complete reference.
 
-### 3. Add Cloud Resources
-
-After first deployment, add these values from GitHub Actions job summary (`gh run view <run-id>`):
-
-```bash
-# Production-ready persistence (get from deployment outputs)
-AGENT_ENGINE=projects/YOUR_PROJECT/locations/YOUR_REGION/reasoningEngines/YOUR_ENGINE_ID
-ARTIFACT_SERVICE_URI=gs://YOUR_BUCKET_NAME
-```
-
-**Where to find these values:**
-- GitHub Actions: `gh run view <run-id>` (look for deployment outputs)
-- GCP Console: Vertex AI → Agent Builder → Reasoning Engines
-- GCP Console: Cloud Storage → Buckets
-
-### 4. Optional Configuration
-
-Add these for customization (see [Environment Variables](environment-variables.md) for all options):
-
-```bash
-# Logging
-LOG_LEVEL=DEBUG  # DEBUG, INFO, WARNING, ERROR, CRITICAL
-
-# Development features
-SERVE_WEB_INTERFACE=TRUE  # Enable ADK web UI
-TELEMETRY_NAMESPACE=your-name-local  # Isolate your traces
-
-# Model selection
-ROOT_AGENT_MODEL=gemini-2.5-flash  # Or gemini-2.5-pro
-```
-
-### 5. Verify Configuration
+### 3. Verify Configuration
 
 Test your setup:
 
@@ -96,7 +63,7 @@ uv run server
 docker compose up --build --watch
 ```
 
-**Note:** Without `AGENT_ENGINE` and `ARTIFACT_SERVICE_URI`, the agent falls back to in-memory persistence (not recommended for development).
+**Note:** Without cloud resource configuration, the agent falls back to in-memory persistence (not recommended for development).
 
 See [Environment Variables](environment-variables.md) for complete reference.
 
@@ -106,8 +73,9 @@ See [Environment Variables](environment-variables.md) for complete reference.
 # Create branch (feat/, fix/, docs/, refactor/, test/)
 git checkout -b feat/your-feature-name
 
-# Develop locally
-docker compose up --build --watch  # Leave running, changes sync automatically
+# Develop locally (choose one)
+docker compose up --build --watch  # Docker (recommended - matches production)
+uv run server  # Direct execution (if Docker unavailable)
 
 # Quality checks before commit (100% coverage required)
 uv run ruff format && uv run ruff check && uv run mypy
@@ -142,6 +110,8 @@ See [Testing Strategy](references/testing.md) and [Code Quality](references/code
 ## Docker Development
 
 **Recommended:** Docker Compose matches production environment and enables hot reloading.
+
+**Alternative:** Use `uv run server` if Docker is unavailable (device policies, etc.). You'll need to manually restart the server when making changes.
 
 ```bash
 # Start with watch mode (leave running)

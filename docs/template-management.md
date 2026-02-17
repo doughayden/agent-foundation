@@ -254,8 +254,8 @@ When template has significant changes:
    # Run tests
    uv run pytest --cov
 
-   # Build Docker image
-   docker compose up --build
+   # Test server locally
+   docker compose up --build  # or: uv run server
 
    # Test workflows (if possible in dev)
    ```

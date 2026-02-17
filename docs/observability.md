@@ -37,16 +37,16 @@ See `.env.example` for complete configuration reference.
 
 Identical OpenTelemetry setup across local development and deployed environments:
 - Traces and logs automatically exported to Google Cloud
-- ADK web UI available locally (when `SERVE_WEB_INTERFACE=TRUE`)
-- **Production tip**: Set `LOG_LEVEL=INFO` to minimize logging costs
+- ADK web UI available locally (when web interface enabled)
+- **Production tip**: Use INFO log level to minimize logging costs
 
 ## Viewing Traces and Logs
 
 ### Google Cloud Console (Recommended)
 
-**[Cloud Trace](https://console.cloud.google.com/traces):** Filter by `AGENT_NAME`, view spans, timing, and generative AI events
+**[Cloud Trace](https://console.cloud.google.com/traces):** Filter by agent name, view spans, timing, and generative AI events
 
-**[Logs Explorer](https://console.cloud.google.com/logs):** Query `logName="projects/{PROJECT_ID}/logs/{AGENT_NAME}-otel-logs"` for correlated logs
+**[Logs Explorer](https://console.cloud.google.com/logs):** Query `logName="projects/{PROJECT_ID}/logs/{AGENT_NAME}-otel-logs"` for correlated logs (replace `{AGENT_NAME}` with your agent identifier)
 
 ### gcloud CLI
 
@@ -89,7 +89,7 @@ OpenTelemetry resource attributes uniquely identify your service instances in tr
 - `service.instance.id`: Unique per server restart (includes UUID to prevent collisions)
 
 **Deployed Environments:**
-- `service.namespace`: Automatically set to Terraform workspace name (`default`, `dev`, `stage`, `prod`)
+- `service.namespace`: Automatically set to environment name (`dev`, `stage`, `prod`)
 - `service.version`: Automatically set to Cloud Run revision ID
 - `service.instance.id`: Unique per container instance
 

@@ -2,6 +2,34 @@
 
 Complete configuration reference. Single source of truth.
 
+## Quick Reference
+
+| Variable | Required | Default | Purpose |
+|----------|----------|---------|---------|
+| **[GOOGLE_GENAI_USE_VERTEXAI](#google-cloud-vertex-ai)** | ✅ | - | Enable Vertex AI authentication |
+| **[GOOGLE_CLOUD_PROJECT](#google-cloud-vertex-ai)** | ✅ | - | GCP project ID |
+| **[GOOGLE_CLOUD_LOCATION](#google-cloud-vertex-ai)** | ✅ | - | GCP region |
+| **[AGENT_NAME](#agent-identification)** | ✅ | - | Unique agent identifier |
+| **[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT](#opentelemetry)** | ✅ | - | Capture LLM content in traces |
+| **[AGENT_ENGINE](#cloud-resources)** | Recommended | in-memory | Session/memory persistence |
+| **[ARTIFACT_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Artifact storage |
+| [LOG_LEVEL](#logging) | Optional | `INFO` | Logging verbosity |
+| [TELEMETRY_NAMESPACE](#logging) | Optional | `local` | Trace grouping |
+| [SERVE_WEB_INTERFACE](#agent-features) | Optional | `FALSE` | Enable ADK web UI |
+| [RELOAD_AGENTS](#agent-features) | Optional | `FALSE` | Hot-reload on file changes |
+| [ROOT_AGENT_MODEL](#agent-features) | Optional | `gemini-2.5-flash` | Override default model |
+| [ALLOW_ORIGINS](#cors) | Optional | `["http://localhost", "http://localhost:8000"]` | CORS allowed origins |
+| [AGENT_DIR](#advanced) | Optional | Auto-detected | Override agent directory |
+| [HOST](#advanced) | Optional | `127.0.0.1` | Server bind address |
+| [PORT](#advanced) | Optional | `8000` | Server listening port |
+| [ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS](#advanced) | Optional | `FALSE` | Suppress ADK warnings |
+
+**Cloud Run auto-set:** [K_REVISION](#cloud-run-auto-set-read-only)
+
+**CI/CD only:** [TF_VAR_*](#cicd-only) variables (GitHub Actions)
+
+---
+
 ## Required
 
 These must be set for the agent to function.
@@ -85,18 +113,6 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
 - **Usage:** Filter traces in Cloud Trace by namespace to isolate your development traces
 - **Example:** `TELEMETRY_NAMESPACE=alice-local`
 
-### Server
-
-**HOST**
-- **Default:** `127.0.0.1`
-- **Purpose:** Server bind address
-- **Note:** `127.0.0.1` binds to localhost only (recommended for local development)
-
-**PORT**
-- **Default:** `8000`
-- **Purpose:** Server listening port
-- **Note:** Cloud Run always uses port 8000, Docker Compose maps to host port 8000
-
 ### Agent Features
 
 **SERVE_WEB_INTERFACE**
@@ -135,6 +151,18 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
 - **Purpose:** Override agent directory path for ADK
 - **Where:** Set in Dockerfile (`/app/src`), rarely needed locally
 - **Note:** Only override if you need non-standard directory structure
+
+**HOST**
+- **Default:** `127.0.0.1`
+- **Purpose:** Server bind address
+- **Where:** Rarely needs override - defaults work for most use cases
+- **Note:** Docker Compose overrides to `0.0.0.0` in container for host access, Cloud Run manages internally
+
+**PORT**
+- **Default:** `8000`
+- **Purpose:** Server listening port
+- **Where:** Rarely needs override - Cloud Run always uses 8000, Docker Compose maps to host port 8000
+- **Note:** Only override if you have port conflicts on your local machine
 
 **ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS**
 - **Default:** `FALSE`
