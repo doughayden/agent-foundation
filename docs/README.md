@@ -1,54 +1,27 @@
 # Documentation
 
-## Organization
+Navigate by what you want to do:
 
-This directory separates **base infrastructure documentation** from **your custom agent documentation**.
+## First Time Setup
 
-### `base-infra/` - Base Infrastructure
+- [Getting Started](getting-started.md) - Bootstrap CI/CD, first deployment
+- [Environment Variables](environment-variables.md) - Complete configuration reference
 
-Base infrastructure documentation. Reference these for deployment, CI/CD, and infrastructure patterns. Do not modify unless contributing back to the template.
+## Development
 
-**Contents:**
-- Bootstrap and deployment setup
-- CI/CD workflows and automation
-- Docker and development environment
-- Terraform infrastructure patterns
-- Observability and production features
+- [Development](development.md) - Docker, testing, code quality
+- [Deployment](deployment.md) - Terraform, multi-environment, Cloud Run
 
-See [base-infra/](./base-infra/) for complete list.
+## Operations
 
-### Root - Your Custom Documentation
+- [CI/CD](cicd.md) - GitHub Actions workflows
+- [Observability](observability.md) - Traces and logs
+- [Troubleshooting](troubleshooting.md) - Common issues
 
-Add your agent-specific documentation here:
-- Custom tools and capabilities
-- Domain-specific logic and patterns
-- Agent instructions and prompts
-- Integration guides
-- API documentation
+## Template Management
 
-**Examples:**
-```
-docs/
-├── base-infra/              # Base infrastructure (don't modify)
-├── custom-tools.md          # Your custom tool documentation
-├── domain-guide.md          # Your domain-specific patterns
-├── api-integration.md       # Your API integrations
-└── agent-instructions.md    # Your agent instruction docs
-```
+- [Syncing Upstream Changes](template-management.md) - Pull updates from template
 
-## Quick Links
+---
 
-### Getting Started
-- [Bootstrap Setup](base-infra/bootstrap-setup.md) - One-time CI/CD provisioning
-- [Development Guide](base-infra/development.md) - Local workflow and code quality
-- [Environment Variables](base-infra/environment-variables.md) - Complete configuration reference
-
-### Infrastructure
-- [CI/CD Setup](base-infra/cicd-setup.md) - GitHub Actions automation
-- [Terraform Infrastructure](base-infra/terraform-infrastructure.md) - IaC setup and patterns
-- [Docker Compose Workflow](base-infra/docker-compose-workflow.md) - Local development
-
-### Production
-- [Observability](base-infra/observability.md) - Traces and logs
-- [Dockerfile Strategy](base-infra/dockerfile-strategy.md) - Build optimization
-- [Validating Multi-Platform Builds](base-infra/validating-multiplatform-builds.md) - Image verification
+**Philosophy:** Elegant simplicity. Clear, discoverable, actionable.
