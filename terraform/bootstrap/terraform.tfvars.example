@@ -1,5 +1,0 @@
-# GitHub Repository Configuration
-# These values are used to configure Workload Identity Federation and GitHub Actions Variables
-
-repository_owner = "your-github-username-or-org"
-repository_name  = "agent-foundation"
