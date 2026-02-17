@@ -44,27 +44,27 @@ These must be set for the agent to function.
 
 ---
 
-## Optional - Cloud Resources
+## Cloud Resources
 
-Add these for production-consistent testing with durable persistence. Defaults to in-memory services if unset.
+Production-ready persistence for sessions, memory, and artifacts. Configure after first deployment.
 
 **AGENT_ENGINE**
 - **Value:** Agent Engine resource name (e.g., `projects/123/locations/us-central1/reasoningEngines/456`)
-- **Default:** Unset (in-memory ephemeral sessions)
-- **Purpose:** Enables session persistence across server restarts
-- **Where:** Set locally in `.env` after first deployment
+- **Purpose:** Session and memory persistence (production-consistent behavior)
+- **Where:** Set locally in `.env` after first deployment, auto-configured in Cloud Run
 - **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or GCP Console (Vertex AI → Agent Builder → Reasoning Engines)
+- **Note:** Defaults to in-memory if unset (not recommended for development)
 
 **ARTIFACT_SERVICE_URI**
 - **Value:** GCS bucket URI (e.g., `gs://my-artifact-bucket`)
-- **Default:** Unset (in-memory ephemeral storage)
-- **Purpose:** Enables artifact storage persistence
-- **Where:** Set locally in `.env` after first deployment
+- **Purpose:** Artifact storage persistence (production-consistent behavior)
+- **Where:** Set locally in `.env` after first deployment, auto-configured in Cloud Run
 - **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or GCP Console (Cloud Storage → Buckets)
+- **Note:** Defaults to in-memory if unset (not recommended for development)
 
 ---
 
-## Optional - Runtime Configuration
+## Runtime Configuration (Optional)
 
 ### Logging
 
@@ -122,7 +122,7 @@ Add these for production-consistent testing with durable persistence. Defaults t
 ### CORS
 
 **ALLOW_ORIGINS**
-- **Default:** `["http://127.0.0.1", "http://127.0.0.1:8000"]`
+- **Default:** `'["http://localhost", "http://localhost:8000"]'`
 - **Format:** JSON array string
 - **Purpose:** Configure CORS allowed origins
 - **Where:** Hard-coded in Terraform for Cloud Run, configurable locally via `.env`

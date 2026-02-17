@@ -2,9 +2,8 @@
 
 Day-to-day development workflow, code quality, testing, and Docker.
 
-> [!NOTE]
-> The agent defaults to in-memory session and artifact services for local development.
-> For production-consistent testing with durable persistence, add `AGENT_ENGINE` and `ARTIFACT_SERVICE_URI` to `.env` (see [Environment Variables](environment-variables.md)).
+> [!IMPORTANT]
+> Configure `AGENT_ENGINE` and `ARTIFACT_SERVICE_URI` in `.env` after first deployment for production-ready persistence (sessions, memory, artifacts). See [Environment Variables](environment-variables.md) and [Getting Started](getting-started.md).
 
 ## Quick Start
 
