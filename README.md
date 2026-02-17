@@ -158,7 +158,7 @@ gcloud run services proxy <agent-name>-dev --project <project-id> --region <regi
 
 ## Documentation
 
-See [docs/](docs/) for complete documentation. All docs use task-based organization.
+See [docs/](docs/) for complete documentation.
 
 ### Core Documentation
 - **[Getting Started](docs/getting-started.md)** - Bootstrap and first deployment

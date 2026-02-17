@@ -110,7 +110,7 @@ jobs:
   stage-promote:
     name: Promote to Stage
     if: needs.config.outputs.production_mode == 'true' && github.ref_type == 'branch' && github.event_name == 'push'
-    needs: [config, meta, build, dev-apply]
+    needs: [config, meta, build]
     uses: ./.github/workflows/pull-and-promote.yml
     with:
       source_environment: dev

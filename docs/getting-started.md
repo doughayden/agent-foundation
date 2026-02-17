@@ -17,7 +17,7 @@ First-time setup: from zero to deployed.
 **GCP Project:**
 - Create a new GCP project (or use existing)
 - Enable billing
-- Owner or Editor role
+- Owner role
 
 **GitHub Repository:**
 - Create a new repository from this template
@@ -57,7 +57,7 @@ Required variables in `terraform/bootstrap/dev/terraform.tfvars`:
 - `repository_owner` - GitHub username or organization
 - `repository_name` - GitHub repository name
 
-**Note:** For production mode (dev → stage → prod), see [Deployment](deployment.md).
+**Note:** For production mode (dev → stage → prod), see [Infrastructure](infrastructure.md).
 
 ### 3. Run Bootstrap
 
@@ -78,16 +78,6 @@ terraform -chdir=terraform/bootstrap/dev apply
 # Check GitHub Variables
 gh variable list
 ```
-
-Expected output:
-- `ARTIFACT_REGISTRY_LOCATION`
-- `ARTIFACT_REGISTRY_URI`
-- `GCP_LOCATION`
-- `GCP_PROJECT_ID`
-- `GCP_WORKLOAD_IDENTITY_PROVIDER`
-- `IMAGE_NAME`
-- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`
-- `TERRAFORM_STATE_BUCKET`
 
 ## First Deployment
 
@@ -130,9 +120,7 @@ Deployment flow:
 gh run view <run-id>
 ```
 
-Save these values from the job summary:
-- **AGENT_ENGINE** - Agent Engine resource name (for local `.env`)
-- **ARTIFACT_SERVICE_URI** - GCS bucket URI (for local `.env`)
+Save cloud resource values from the job summary to use in your local `.env`. See [Development](development.md) for details and [Environment Variables](environment-variables.md) for a complete reference.
 
 ## Verify Deployment
 
@@ -161,13 +149,13 @@ See [Cloud Run proxy documentation](https://cloud.google.com/run/docs/authentica
 ## Next Steps
 
 **Local Development:**
-1. Update `.env` with AGENT_ENGINE and ARTIFACT_SERVICE_URI from deployment
+1. Update `.env` with cloud resources from deployment
 2. See [Development](development.md) for feature branch workflow
 
 **Multi-Environment:**
 - Default: Dev-only mode (deploys to default environment on merge to main)
 - Optional: Enable production mode for dev → stage → prod workflow
-- See [Deployment](deployment.md) for multi-environment strategy
+- See [Infrastructure](infrastructure.md) for multi-environment strategy
 
 **Observability:**
 - View traces in [Cloud Trace](https://console.cloud.google.com/traces)
@@ -177,4 +165,4 @@ See [Cloud Run proxy documentation](https://cloud.google.com/run/docs/authentica
 **CI/CD:**
 - Understand GitHub Actions workflows
 - Customize deployment triggers
-- See [CI/CD](cicd.md) for workflow reference
+- See [CI/CD](references/cicd.md) for workflow reference

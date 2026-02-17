@@ -7,6 +7,13 @@ project    = "your-project-stage"  # NOTE: USE A DIFFERENT PROJECT FOR EACH ENVI
 location   = "us-central1"
 agent_name = "your-agent-name"  # NOTE: USE THE SAME AGENT NAME ACROSS ALL ENVIRONMENTS
 
+# Cross-project Artifact Registry docker image promotion
+# - Set to null for dev bootstrap (images built in dev, no promotion)
+# - Set to dev project values for stage bootstrap (promotion dev -> stage)
+# - Set to stage values for prod bootstrap (promotion stage -> prod)
+promotion_source_project                = "your-project-dev"
+promotion_source_artifact_registry_name = "your-registry-dev"
+
 # GitHub Configuration
 repository_owner = "your-github-username-or-org"
 repository_name  = "your-agent-repository"
@@ -23,7 +30,3 @@ otel_instrumentation_genai_capture_message_content = "TRUE"
 registry_cleanup_general_retention_days = 90   # Images expire after 90 days
 registry_cleanup_keep_count             = null # No KEEP policy
 registry_cleanup_pr_retention_days      = null # No PR images in stage
-
-# Required for cross-project Artifact Registry docker image promotion to non-dev projects
-promotion_source_project                = "your-project-dev"
-promotion_source_artifact_registry_name = "your-registry-dev"

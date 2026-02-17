@@ -127,188 +127,39 @@ gh run view --log
 
 GitHub Actions automatically builds, tests, and deploys to Cloud Run. Check job summary for deployment details.
 
-## Code Quality
+## Code Quality & Testing
 
-Run before every commit:
+Run format, lint, type check, and unit tests (100% coverage required) **before every commit**
 
-```bash
-# Format, lint, type check
-uv run ruff format && uv run ruff check && uv run mypy
+**Standards:**
+- **Type Hints:** Strict mypy, modern Python 3.13+ syntax (`|` unions, lowercase generics)
+- **Code Style:** Ruff enforced (88-char lines, `Path` objects, security checks)
+- **Docstrings:** Google-style format (args, returns, exceptions)
+- **Testing:** 100% coverage on production code, exclusions for configuration modules, fixtures in `conftest.py`, test behaviors and errors
 
-# Tests (100% coverage required)
-uv run pytest --cov --cov-report=term-missing
+See [Testing Strategy](references/testing.md) and [Code Quality](references/code-quality.md) references for detailed patterns, tool usage, and exclusion strategies.
 
-# Specific tests
-uv run pytest tests/test_integration.py -v
-uv run pytest tests/test_file.py::test_name -v
-```
+## Docker Development
 
-### Standards
-
-**Type Hints:**
-- Strict mypy
-- Complete annotations (args, returns, raises)
-- Modern Python 3.13+ syntax (`|` unions, lowercase generics)
-- Pydantic validation for config
-
-**Code Style:**
-- Ruff (88-char lines, auto-fix)
-- Always use `Path` objects (never `os.path`)
-- See `pyproject.toml` for rules
-
-**Docstrings:**
-- Google-style format
-- Document args, returns, exceptions
-- See `src/agent_foundation/` for examples
-
-**Testing:**
-- 100% coverage (excludes `server.py`, `agent.py`, `prompt.py`, `__init__.py`)
-- Shared fixtures in `conftest.py`
-- Duck-typed mocks (mirror real interfaces)
-- Test behaviors, errors, edge cases
-
-## Testing
-
-### Coverage Requirements
-
-100% coverage on production code:
-- Includes: `src/agent_foundation/*.py` (except exclusions), `src/agent_foundation/utils/*.py`
-- Excludes: `server.py`, `**/agent.py`, `**/prompt.py`, `**/__init__.py`
+**Recommended:** Docker Compose matches production environment and enables hot reloading.
 
 ```bash
-# Full coverage report
-uv run pytest --cov --cov-report=term-missing
-
-# HTML report
-uv run pytest --cov --cov-report=html
-open htmlcov/index.html
-```
-
-### Test Organization
-
-- **Location:** `tests/` directory, mirrors source structure
-- **Fixtures:** Shared fixtures in `tests/conftest.py`
-- **Naming:** `test_<what>_<condition>_<expected>.py`
-- **Grouping:** Classes for related tests
-
-### Testing Patterns
-
-**Fixtures:**
-- Type hints: `MockerFixture` → `MockType` return
-- Factory pattern (not context managers)
-- Environment mocking: `mocker.patch.dict(os.environ, env_dict)`
-
-**ADK Mocks:**
-- Use fixtures from `conftest.py`: `mock_state`, `mock_session`, `mock_context`
-- Mirror real interfaces exactly
-- Import mock classes only when fixtures add complexity
-
-**Validation:**
-- Pydantic validates at model creation
-- Expect `ValidationError` at `model_validate()`, not property access
-
-See `tests/conftest.py` and existing tests for examples.
-
-## Docker Compose Deep Dive
-
-Recommended for local development - matches production environment.
-
-### Daily Workflow
-
-```bash
-# Start with hot reloading (leave running)
+# Start with watch mode (leave running)
 docker compose up --build --watch
 
-# Changes in src/ sync instantly (no rebuild)
-# Changes in pyproject.toml or uv.lock trigger automatic rebuild
+# Changes in src/ sync instantly
+# Changes in pyproject.toml or uv.lock trigger rebuild
 
 # Stop: Ctrl+C or docker compose down
 ```
 
-### What Watch Mode Does
+**Key details:**
+- Source files sync to container without rebuild (instant feedback)
+- Loads `.env` automatically for configuration
+- Multi-stage Dockerfile optimized with uv cache mounts (~80% faster rebuilds)
+- Non-root container (~200MB final image)
 
-**Sync Action** (instant):
-- Triggers when: You edit files in `src/`
-- What happens: Files copied into running container
-- Speed: Immediate
-- No rebuild needed
-
-**Rebuild Action** (5-10 seconds):
-- Triggers when: You edit `pyproject.toml` or `uv.lock`
-- What happens: Full image rebuild, container recreated
-- Speed: Fast with cache
-
-### File Locations
-
-- **Source:** `./src/` → `/app/src` (synced via watch mode)
-- **Data:** `./data/` → `/app/data` (read-only, optional)
-- **Credentials:** `~/.config/gcloud/` → `/gcloud/` (Application Default Credentials)
-
-### Environment Variables
-
-Docker Compose loads `.env` automatically. See [Environment Variables](environment-variables.md) for reference.
-
-**Note:** Container uses `HOST=0.0.0.0` to allow connections from host. `docker-compose.yml` maps container port 8000 to host port 8000.
-
-### Common Commands
-
-```bash
-# View logs (if running detached)
-docker compose logs -f
-docker compose logs -f app  # Just app logs
-
-# Rebuild without starting
-docker compose build
-
-# Run without watch mode
-docker compose up --build
-```
-
-## Dockerfile Understanding
-
-Multi-stage build for fast rebuilds and minimal runtime image.
-
-### Architecture
-
-1. **Builder Stage:** `python:3.13-slim` + uv binary
-   - Copy uv from Astral's distroless image
-   - Install dependencies (cache mount ~80% speedup)
-   - Install project code
-2. **Runtime Stage:** Clean `python:3.13-slim`
-   - Copy only virtual environment from builder
-   - Non-root user (`app:app`)
-   - ~200MB final image
-
-### Layer Optimization
-
-**Dependency Layer** (rebuilds only when pyproject.toml or uv.lock change):
-```dockerfile
-COPY pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-install-project --no-dev
-```
-
-**Code Layer** (rebuilds on src/ changes):
-```dockerfile
-COPY src ./src
-RUN --mount=type=cache,target=/root/.cache/uv \
-    touch README.md && \
-    uv sync --locked --no-editable --no-dev
-```
-
-**Why `--locked`?**
-- Validates lockfile matches `pyproject.toml`
-- Catches developer mistakes (forgot to run `uv lock`)
-- Fails fast with clear error
-- Standard across dev, CI/CD, production
-
-**Cache mount** is the key optimization - persists across builds, so even "unnecessary" rebuilds are fast.
-
-### Security
-
-- **Non-root:** Runs as user `app:app` (UID 1000)
-- **Minimal image:** Only virtual environment, no build tools
-- **Slim base:** Debian-based `python:3.13-slim` (~200MB total)
+See [Docker Compose Workflow](references/docker-compose-workflow.md) and [Dockerfile Strategy](references/dockerfile-strategy.md) for details on watch mode, volumes, layer optimization, and security.
 
 ## Common Tasks
 
@@ -372,18 +223,16 @@ See [Cloud Run proxy documentation](https://cloud.google.com/run/docs/authentica
 
 ### Observability
 
-View traces and logs:
+**Server Logs:**
+- Print to stdout (via LoggingPlugin callbacks)
+- Basic request/response logging for immediate feedback
 
-```bash
-# Cloud Console
-# Traces: https://console.cloud.google.com/traces
-# Logs: https://console.cloud.google.com/logs
+**Opentelemetry Traces and Logs:**
+- Detailed traces → Cloud Trace
+- Structured logs → Cloud Logging
+- Full correlation between traces and logs
 
-# CLI
-gcloud logging tail "logName:projects/{PROJECT_ID}/logs/{AGENT_NAME}-otel-logs"
-```
-
-See [Observability](observability.md) for query examples and trace filtering.
+See [Observability](observability.md) for querying, filtering, and trace analysis.
 
 ## Project Structure
 
@@ -402,22 +251,28 @@ your-agent-name/
     conftest.py           # Shared fixtures
     test_*.py             # Unit and integration tests
   terraform/              # Infrastructure as code
-    bootstrap/            # One-time CI/CD setup (per environment)
+    bootstrap/{env}       # One-time CI/CD setup (per environment)
     main/                 # Cloud Run deployment
   docs/                   # Documentation
   .env.example            # Environment template
   pyproject.toml          # Project configuration
   docker-compose.yml      # Local development
   Dockerfile              # Container image
-  CLAUDE.md               # Project instructions
+  CLAUDE.md               # LLM Agent instructions
   README.md               # Main documentation
 ```
 
 ## See Also
 
+**Core Guides:**
 - [Getting Started](getting-started.md) - Initial setup
 - [Environment Variables](environment-variables.md) - Configuration reference
-- [Deployment](deployment.md) - Cloud Run and multi-environment
-- [CI/CD](cicd.md) - GitHub Actions workflows
+- [Infrastructure](infrastructure.md) - Deployment and CI/CD
 - [Observability](observability.md) - Traces and logs
 - [Troubleshooting](troubleshooting.md) - Common issues
+
+**References:**
+- [Testing Strategy](references/testing.md) - Detailed testing patterns and organization
+- [Code Quality](references/code-quality.md) - Tool usage and exclusion strategies
+- [Docker Compose Workflow](references/docker-compose-workflow.md) - Watch mode, volumes, and configuration
+- [Dockerfile Strategy](references/dockerfile-strategy.md) - Multi-stage builds and optimization

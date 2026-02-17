@@ -274,8 +274,7 @@ When template has significant changes:
 ## See Also
 
 - [Development](development.md) - Local development workflow
-- [Deployment](deployment.md) - Infrastructure and deployment
-- [CI/CD](cicd.md) - GitHub Actions workflows
+- [Infrastructure](infrastructure.md) - Deployment and CI/CD
 - [Getting Started](getting-started.md) - Initial setup
 
 ---

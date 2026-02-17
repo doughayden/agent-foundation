@@ -235,5 +235,4 @@ Override runtime config via GitHub Environment Variables (mapped to `TF_VAR_*`):
 
 - `.env.example` - Template configuration with inline comments
 - [Development](development.md) - Local development setup
-- [Deployment](deployment.md) - Cloud Run deployment and GitHub Environment Variables
-- [CI/CD](cicd.md) - GitHub Actions workflows
+- [Infrastructure](infrastructure.md) - Deployment and CI/CD
