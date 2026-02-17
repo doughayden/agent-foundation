@@ -41,22 +41,7 @@ gcloud config set project YOUR_PROJECT_ID
 gh auth login
 ```
 
-### 2. Configure Runtime Environment
-
-```bash
-cp .env.example .env
-# Edit .env with your values (see inline comments)
-```
-
-Required variables in `.env`:
-- `GOOGLE_CLOUD_PROJECT` - Your GCP project ID
-- `GOOGLE_CLOUD_LOCATION` - GCP region (e.g., `us-central1`)
-- `AGENT_NAME` - Unique identifier (e.g., `my-agent`)
-- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` - `TRUE` or `FALSE`
-
-See [Environment Variables](environment-variables.md) for complete reference.
-
-### 3. Configure Bootstrap
+### 2. Configure Bootstrap
 
 Dev-only mode (default): bootstrap only the dev environment.
 
@@ -68,13 +53,13 @@ cp terraform/bootstrap/dev/terraform.tfvars.example terraform/bootstrap/dev/terr
 Required variables in `terraform/bootstrap/dev/terraform.tfvars`:
 - `project` - GCP project ID for dev environment
 - `location` - GCP region (e.g., `us-central1`)
-- `agent_name` - Unique identifier (same value from `.env`)
+- `agent_name` - Unique identifier (e.g., `my-agent`)
 - `repository_owner` - GitHub username or organization
 - `repository_name` - GitHub repository name
 
 **Note:** For production mode (dev → stage → prod), see [Deployment](deployment.md).
 
-### 4. Run Bootstrap
+### 3. Run Bootstrap
 
 ```bash
 # Initialize Terraform
@@ -87,7 +72,7 @@ terraform -chdir=terraform/bootstrap/dev plan
 terraform -chdir=terraform/bootstrap/dev apply
 ```
 
-### 5. Verify Bootstrap
+### 4. Verify Bootstrap
 
 ```bash
 # Check GitHub Variables
