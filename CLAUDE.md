@@ -113,7 +113,7 @@ uv lock --upgrade               # Update all
 
 ## CI/CD & Deployment
 
-**Deployment Modes:** Dev-only (default, `production_mode: false` in ci-cd.yml config job) deploys to dev on merge. Production mode (`production_mode: true`) deploys dev+stage on merge, prod on git tag with approval gate. See [Multi-Environment Guide](docs/base-infra/multi-environment-guide.md).
+**Deployment Modes:** Dev-only (default, `production_mode: false` in ci-cd.yml config job) deploys to dev on merge. Production mode (`production_mode: true`) deploys dev+stage on merge, prod on git tag with approval gate. See [Deployment Guide](docs/deployment.md).
 
 **Workflows:** ci-cd.yml (orchestrator), config-summary.yml, docker-build.yml, metadata-extract.yml, pull-and-promote.yml, resolve-image-digest.yml, terraform-plan-apply.yml, code-quality.yml. PR: build `pr-{sha}`, dev-plan, comment. Main: build `{sha}`+`latest`, deploy dev (+ stage in prod mode). Tag: prod deploy (prod mode only). **Deploy by immutable digest** (not tag) to guarantee new Cloud Run revision.
 
@@ -159,4 +159,4 @@ uv lock --upgrade               # Update all
 
 ## Documentation References
 
-Base infra docs: `docs/base-infra/`. Key files: bootstrap-setup.md, multi-environment-guide.md, environment-variables.md, development.md, cicd-setup.md, docker-compose-workflow.md, dockerfile-strategy.md, terraform-infrastructure.md, observability.md.
+Task-based docs in `docs/`. Core: getting-started.md, development.md, deployment.md, cicd.md, environment-variables.md. Operations: observability.md, troubleshooting.md. Template: template-management.md.

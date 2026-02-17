@@ -53,7 +53,7 @@ This project distills proven patterns from the Starter Pack while prioritizing b
 > You must complete deployment first to create required resources (Agent Engine, GCS buckets, other agent-specific resources) before running locally.
 
 > [!NOTE]
-> By default, this project uses **dev-only mode** (single environment). To enable production mode with staged deployments (dev → stage → prod), see [Multi-Environment Guide](docs/base-infra/multi-environment-guide.md).
+> By default, this project uses **dev-only mode** (single environment). To enable production mode with staged deployments (dev → stage → prod), see [Multi-Environment Guide](docs/deployment.md).
 
 Provision CI/CD infrastructure and deploy cloud resources.
 
@@ -83,11 +83,11 @@ gh variable list  # or view in GitHub repo Settings > Environments > dev
 To enable full production deployment (dev/stage/prod):
 1. Bootstrap all three environments (dev, stage, prod) using steps above
 2. Set `production_mode: true` in the `config` job of `.github/workflows/ci-cd.yml`
-3. See [Multi-Environment Guide](docs/base-infra/multi-environment-guide.md) for complete setup
+3. See [Multi-Environment Guide](docs/deployment.md) for complete setup
 
 Bootstrap creates: Workload Identity Federation, Artifact Registry, GCS state bucket, GitHub Environments, GitHub Variables.
 
-See [Bootstrap Setup](docs/base-infra/bootstrap-setup.md) for details and [Multi-Environment Guide](docs/base-infra/multi-environment-guide.md) for production mode.
+See [Bootstrap Setup](docs/getting-started.md) for details and [Multi-Environment Guide](docs/deployment.md) for production mode.
 
 ---
 
@@ -116,7 +116,7 @@ Deployment creates:
 - GCS bucket for artifact storage (`ARTIFACT_SERVICE_URI`)
 - Cloud Run service (automatically configured with `AGENT_ENGINE` and `ARTIFACT_SERVICE_URI`)
 
-See [CI/CD Workflow](docs/base-infra/cicd-setup.md) for automation details.
+See [CI/CD Workflow](docs/cicd.md) for automation details.
 
 ---
 
@@ -139,8 +139,8 @@ uv run server
 docker compose up --build --watch
 ```
 
-See [Environment Variables](docs/base-infra/environment-variables.md) for where to find each value.
-See [Development Guide](docs/base-infra/development.md) for workflow, testing, and code quality standards.
+See [Environment Variables](docs/environment-variables.md) for where to find each value.
+See [Development Guide](docs/development.md) for workflow, testing, and code quality standards.
 
 ---
 
@@ -158,19 +158,18 @@ gcloud run services proxy <agent-name>-dev --project <project-id> --region <regi
 
 ## Documentation
 
-See [docs/](docs/) for complete documentation.
+See [docs/](docs/) for complete documentation. All docs use task-based organization.
 
-### Getting Started
-- **[Bootstrap Setup](docs/base-infra/bootstrap-setup.md)** - One-time CI/CD infrastructure provisioning
-- **[CI/CD Workflow](docs/base-infra/cicd-setup.md)** - GitHub Actions automation details
-- **[Development](docs/base-infra/development.md)** - Development workflow, code quality, testing
-- **[Environment Variables](docs/base-infra/environment-variables.md)** - Complete environment variable reference
+### Core Documentation
+- **[Getting Started](docs/getting-started.md)** - Bootstrap and first deployment
+- **[Development](docs/development.md)** - Local workflow, Docker, testing, code quality
+- **[Deployment](docs/deployment.md)** - Multi-environment, Terraform, rollbacks
+- **[CI/CD](docs/cicd.md)** - GitHub Actions workflows and automation
+- **[Environment Variables](docs/environment-variables.md)** - Complete configuration reference
 
-### Infrastructure and Deployment
-- **[Multi-Environment Guide](docs/base-infra/multi-environment-guide.md)** - Complete multi-environment deployment guide
-- **[Docker Compose Workflow](docs/base-infra/docker-compose-workflow.md)** - Local development with hot reloading
-- **[Dockerfile Strategy](docs/base-infra/dockerfile-strategy.md)** - Multi-stage build architecture
-- **[Terraform Infrastructure](docs/base-infra/terraform-infrastructure.md)** - Bootstrap and main module setup
+### Operations
+- **[Observability](docs/observability.md)** - OpenTelemetry traces and logs
+- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
 
-### Production Features
-- **[Observability](docs/base-infra/observability.md)** - OpenTelemetry traces and logs
+### Template Management
+- **[Syncing Upstream](docs/template-management.md)** - Pull updates from template
