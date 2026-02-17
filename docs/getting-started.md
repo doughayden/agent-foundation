@@ -58,26 +58,33 @@ See [Environment Variables](environment-variables.md) for complete reference.
 
 ### 3. Configure Bootstrap
 
+Dev-only mode (default): bootstrap only the dev environment.
+
 ```bash
-cp terraform/bootstrap/terraform.tfvars.example terraform/bootstrap/terraform.tfvars
-# Edit terraform.tfvars with your GitHub repository info
+cp terraform/bootstrap/dev/terraform.tfvars.example terraform/bootstrap/dev/terraform.tfvars
+# Edit terraform.tfvars with your values
 ```
 
-Required variables in `terraform.tfvars`:
+Required variables in `terraform/bootstrap/dev/terraform.tfvars`:
+- `project` - GCP project ID for dev environment
+- `location` - GCP region (e.g., `us-central1`)
+- `agent_name` - Unique identifier (same value from `.env`)
 - `repository_owner` - GitHub username or organization
 - `repository_name` - GitHub repository name
+
+**Note:** For production mode (dev → stage → prod), see [Deployment](deployment.md).
 
 ### 4. Run Bootstrap
 
 ```bash
 # Initialize Terraform
-terraform -chdir=terraform/bootstrap init
+terraform -chdir=terraform/bootstrap/dev init
 
 # Preview changes
-terraform -chdir=terraform/bootstrap plan
+terraform -chdir=terraform/bootstrap/dev plan
 
 # Apply (typically completes in 2-3 minutes)
-terraform -chdir=terraform/bootstrap apply
+terraform -chdir=terraform/bootstrap/dev apply
 ```
 
 ### 5. Verify Bootstrap
