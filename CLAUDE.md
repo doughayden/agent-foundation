@@ -117,7 +117,7 @@ uv lock --upgrade               # Update all
 
 **Deployment Modes:** Dev-only (default, `production_mode: false` in ci-cd.yml config job) deploys to dev on merge. Production mode (`production_mode: true`) deploys dev+stage on merge, prod on git tag with approval gate. See [Infrastructure Guide](docs/infrastructure.md).
 
-**Workflows:** ci-cd.yml (orchestrator), config-summary.yml, docker-build.yml, metadata-extract.yml, pull-and-promote.yml, resolve-image-digest.yml, terraform-plan-apply.yml, code-quality.yml. PR: build `pr-{sha}`, dev-plan, comment. Main: build `{sha}`+`latest`, deploy dev (+ stage in prod mode). Tag: prod deploy (prod mode only). **Deploy by immutable digest** (not tag) to guarantee new Cloud Run revision.
+**Workflows:** ci-cd.yml (orchestrator), config-summary.yml, docker-build.yml, metadata-extract.yml, pull-and-promote.yml, resolve-image-digest.yml, terraform-plan-apply.yml, code-quality.yml. PR: build `pr-{sha}`, dev-plan, comment. Main: build `{sha}`+`latest`, deploy dev (+ stage in prod mode). Tag: prod deploy (prod mode only). **Deploy by immutable digest** (not tag) to guarantee new Cloud Run revision. **Option to deploy to dev on all PRs:** single-line change to ci-cd.yml deploys on PR (remove `&& github.event_name == 'push'` from dev-apply condition).
 
 **Auth:** WIF (no SA keys). GitHub Variables auto-created: GCP_PROJECT_ID, GCP_LOCATION, IMAGE_NAME, GCP_WORKLOAD_IDENTITY_PROVIDER, ARTIFACT_REGISTRY_URI, ARTIFACT_REGISTRY_LOCATION, TERRAFORM_STATE_BUCKET.
 

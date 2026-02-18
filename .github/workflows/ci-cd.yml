@@ -103,7 +103,7 @@ jobs:
       environment: dev
       docker_image: ${{ needs.build.outputs.digest_uri }}
       terraform_action: apply
-      use_saved_plan: true
+      use_saved_plan: ${{ github.event_name == 'push' }}  # Matches the dev-plan job's save_plan pattern
     secrets: inherit
 
   # Stage environment (merge to main only, not PRs or tags, wait for dev to deploy)

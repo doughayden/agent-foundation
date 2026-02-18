@@ -68,7 +68,7 @@ Configure protection rules after bootstrap (manual setup):
 
 See [Protection Strategies](references/protection-strategies.md) for detailed UI setup and rationale.
 
-## Common Operations
+## Deployment Operations
 
 ### Deploy to Dev (Automatic)
 
@@ -92,6 +92,26 @@ gh pr merge --squash
 GitHub Actions automatically builds and deploys to dev (+ stage in production mode) when PR is merged.
 
 Monitor: Actions tab → CI/CD Pipeline
+
+### Enable Dev Deployment on Pull Request (Optional)
+
+> [!NOTE]
+> By default, the pipeline deploys to dev only on merge to main. Enable PR deploys to deploy dev on every PR for immediate feedback in live environment.
+
+**Impact:**
+- Every PR and commit deploys to dev (concurrency prevents simultaneous deploys)
+- Dev becomes unstable (last PR wins)
+- Requires team coordination for concurrent PRs
+- Useful for complex integrations requiring live environment testing
+
+**Enable:** Change `.github/workflows/ci-cd.yml` line 98:
+```yaml
+# From:
+if: github.ref_type == 'branch' && github.event_name == 'push'
+
+# To:
+if: github.ref_type == 'branch'
+```
 
 ### Deploy to Production (Production Mode)
 
