@@ -82,7 +82,7 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
 - **Value:** Agent Engine resource name (e.g., `projects/123/locations/us-central1/reasoningEngines/456`)
 - **Purpose:** Session and memory persistence (production-consistent behavior)
 - **Where:** Set locally in `.env` after first deployment, auto-configured in Cloud Run
-- **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or GCP Console (Vertex AI → Agent Builder → Reasoning Engines)
+- **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or GCP Console (Vertex AI → Agent Builder → Agent Engines)
 - **Note:** Defaults to in-memory if unset (not recommended for development)
 
 **ARTIFACT_SERVICE_URI**

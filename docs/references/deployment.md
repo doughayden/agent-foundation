@@ -215,7 +215,7 @@ Production mode uses **image promotion** (pull from source, push to target) inst
 GitHub Environment Variables pass overrides to Terraform as `TF_VAR_*` inputs. Default values managed in Terraform.
 
 **Infrastructure config** (managed exclusively in Terraform files):
-- `AGENT_ENGINE` - Vertex AI Reasoning Engine ID (auto-created)
+- `AGENT_ENGINE` - Vertex AI Agent Engine ID (auto-created)
 - `ARTIFACT_SERVICE_URI` - GCS bucket URL (auto-created)
 - `ALLOW_ORIGINS` - CORS origins for Cloud Run
 - Terraform-managed values only (no variable overrides)
@@ -279,7 +279,7 @@ gh pr create
 **Resources created:**
 - Cloud Run Service (containerized agent deployment)
 - Service Account (IAM identity for Cloud Run)
-- Vertex AI Reasoning Engine (session/memory persistence)
+- Vertex AI Agent Engine (session/memory persistence)
 - GCS Bucket (artifact storage)
 
 **State management:** Remote state in GCS (bucket created by bootstrap)
