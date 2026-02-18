@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Conditional deployment strategy: PR builds and plans, main deploys based on mode, tags trigger prod
 - Real-time Terraform output streaming in CI/CD with `tee` and secure temp files
 - Environment display in Terraform job summaries for visibility
+- Optional PR deployment support with single-line workflow change for downstream repos needing immediate feedback
 
 ### Changed
 - **BREAKING**: Resource naming switched from workspace-based to variable-based suffixes
