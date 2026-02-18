@@ -45,7 +45,7 @@ permissions:
   pull-requests: write  # For PR comments
 
 concurrency:
-  group: terraform-deploy-${{ inputs.terraform_environment != '' && inputs.terraform_environment || inputs.environment }}
+  group: terraform-apply-${{ inputs.terraform_environment != '' && inputs.terraform_environment || inputs.environment }}
   cancel-in-progress: false
 
 jobs:
