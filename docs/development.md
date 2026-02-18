@@ -232,17 +232,6 @@ your-agent-name/
   README.md               # Main documentation
 ```
 
-## See Also
+---
 
-**Core Guides:**
-- [Getting Started](getting-started.md) - Initial setup
-- [Environment Variables](environment-variables.md) - Configuration reference
-- [Infrastructure](infrastructure.md) - Deployment and CI/CD
-- [Observability](observability.md) - Traces and logs
-- [Troubleshooting](troubleshooting.md) - Common issues
-
-**References:**
-- [Testing Strategy](references/testing.md) - Detailed testing patterns and organization
-- [Code Quality](references/code-quality.md) - Tool usage and exclusion strategies
-- [Docker Compose Workflow](references/docker-compose-workflow.md) - Watch mode, volumes, and configuration
-- [Dockerfile Strategy](references/dockerfile-strategy.md) - Multi-stage builds and optimization
+← [Back to Documentation](README.md)

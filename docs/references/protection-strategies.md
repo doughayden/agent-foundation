@@ -250,9 +250,6 @@ gh run list --workflow=ci-cd.yml | grep "waiting"
 | Tag (v*) | Automated | Bootstrap (prod mode) | Environment-specific requirement |
 | Environment (prod-apply) | Manual reviewers | After prod bootstrap | Human security decision, changes over time |
 
-## See Also
+---
 
-- [Infrastructure](../infrastructure.md) - Main infrastructure guide
-- [Bootstrap](bootstrap.md) - Complete bootstrap setup
-- [Deployment Modes](deployment.md) - Multi-environment strategy
-- [Troubleshooting](../troubleshooting.md) - Common protection issues
+← [Back to References](README.md) | [Documentation](../README.md)

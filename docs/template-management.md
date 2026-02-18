@@ -271,12 +271,6 @@ When template has significant changes:
    - Ensure CI passes
    - Merge when confident
 
-## See Also
-
-- [Development](development.md) - Local development workflow
-- [Infrastructure](infrastructure.md) - Deployment and CI/CD
-- [Getting Started](getting-started.md) - Initial setup
-
 ---
 
-**Template Repository:** Update this line with your template repository URL after forking.
+← [Back to Documentation](README.md)

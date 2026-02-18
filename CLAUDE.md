@@ -115,7 +115,7 @@ uv lock --upgrade               # Update all
 
 ## CI/CD & Deployment
 
-**Deployment Modes:** Dev-only (default, `production_mode: false` in ci-cd.yml config job) deploys to dev on merge. Production mode (`production_mode: true`) deploys dev+stage on merge, prod on git tag with approval gate. See [Deployment Guide](docs/deployment.md).
+**Deployment Modes:** Dev-only (default, `production_mode: false` in ci-cd.yml config job) deploys to dev on merge. Production mode (`production_mode: true`) deploys dev+stage on merge, prod on git tag with approval gate. See [Infrastructure Guide](docs/infrastructure.md).
 
 **Workflows:** ci-cd.yml (orchestrator), config-summary.yml, docker-build.yml, metadata-extract.yml, pull-and-promote.yml, resolve-image-digest.yml, terraform-plan-apply.yml, code-quality.yml. PR: build `pr-{sha}`, dev-plan, comment. Main: build `{sha}`+`latest`, deploy dev (+ stage in prod mode). Tag: prod deploy (prod mode only). **Deploy by immutable digest** (not tag) to guarantee new Cloud Run revision.
 
@@ -159,6 +159,24 @@ uv lock --upgrade               # Update all
 
 **Test Deployed:** `gcloud run services proxy <service-name> --project <project> --region <region> --port 8000`. Service name: `${agent_name}-${environment}` (e.g., `my-agent-dev`).
 
+## Documentation Strategy
+
+**CRITICAL:** Task-based organization (match developer mental model), not technical boundaries.
+
+**Structure:**
+- **README.md:** ~200 lines max. Quick start only. Points to docs/.
+- **docs/*.md:** ~300 lines max. Action paths ("I want to..."). Core guides: getting-started, development, infrastructure, environment-variables, observability, troubleshooting, template-management.
+- **docs/references/*.md:** No limit. Deep-dive technical docs. Optional follow-up.
+
+**Rules:**
+- Task-based, not tech-based (e.g., "Infrastructure" not "Terraform" + "CI/CD" separately)
+- Hub-and-spoke navigation: docs/README.md and docs/references/README.md are navigation indexes
+- Inline cross-links only when critically contextual (hybrid approach)
+- No "See Also" sections - rely on index navigation instead
+- Single source of truth: env vars only in docs/environment-variables.md
+- Update docs/README.md when adding docs
+- Keep guides digestible (<300 lines). Move details to references/.
+
 ## Documentation References
 
-Task-based docs in `docs/`. Core: getting-started.md, development.md, deployment.md, cicd.md, environment-variables.md. Operations: observability.md, troubleshooting.md. Template: template-management.md.
+Task-based docs in `docs/`. Core: getting-started.md, development.md, infrastructure.md, environment-variables.md. Operations: observability.md, troubleshooting.md. Template: template-management.md. Detailed references: docs/references/ (bootstrap.md, protection-strategies.md, deployment.md, cicd.md, testing.md, code-quality.md, docker-compose-workflow.md, dockerfile-strategy.md).

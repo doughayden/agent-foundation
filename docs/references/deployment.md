@@ -299,9 +299,6 @@ All resources named: `${var.agent_name}-${var.environment}`
 
 **Note:** Service account IDs truncate agent_name to 30 chars (GCP limit).
 
-## See Also
+---
 
-- [Infrastructure](../infrastructure.md) - Main infrastructure guide
-- [Bootstrap](bootstrap.md) - Complete bootstrap setup
-- [CI/CD Workflows](cicd.md) - Workflow mechanics
-- [Troubleshooting](../troubleshooting.md) - Rollback strategies and common issues
+← [Back to References](README.md) | [Documentation](../README.md)

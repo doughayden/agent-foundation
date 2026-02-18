@@ -268,16 +268,6 @@ Production mode promotes images between registries instead of rebuilding:
 
 See [Deployment Modes](references/deployment.md) for promotion details.
 
-## See Also
+---
 
-**Core Guides:**
-- [Getting Started](getting-started.md) - Initial setup and first deployment
-- [Environment Variables](environment-variables.md) - Configuration reference
-- [Observability](observability.md) - Traces and logs
-- [Troubleshooting](troubleshooting.md) - Common issues and rollback strategies
-
-**References:**
-- [Bootstrap](references/bootstrap.md) - Complete bootstrap setup for both modes
-- [Protection Strategies](references/protection-strategies.md) - Branch, tag, environment protection
-- [Deployment Modes](references/deployment.md) - Multi-environment strategy and infrastructure
-- [CI/CD Workflows](references/cicd.md) - Workflow architecture and mechanics
+← [Back to Documentation](README.md)

@@ -4,7 +4,7 @@ data "terraform_remote_state" "main" {
 
   config = {
     bucket = var.terraform_state_bucket
-    prefix = "${var.environment}/main"
+    prefix = "main"
   }
 }
 

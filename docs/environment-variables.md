@@ -2,6 +2,8 @@
 
 Complete configuration reference. Single source of truth.
 
+See [.env.example](../.env.example) for template configuration with inline comments.
+
 ## Quick Reference
 
 | Variable | Required | Default | Purpose |
@@ -259,8 +261,6 @@ Override runtime config via GitHub Environment Variables (mapped to `TF_VAR_*`):
 - **Workload Identity Federation** - No service account keys needed for CI/CD
 - **Sensitive data** - Set `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=FALSE` when handling sensitive information
 
-### See Also
+---
 
-- `.env.example` - Template configuration with inline comments
-- [Development](development.md) - Local development setup
-- [Infrastructure](infrastructure.md) - Deployment and CI/CD
+← [Back to Documentation](README.md)

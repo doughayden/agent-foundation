@@ -311,9 +311,6 @@ git push origin v1.0.1
 - Requires PR approval + prod deployment approval
 - Slower than traffic split
 
-## See Also
+---
 
-- [Infrastructure](infrastructure.md) - Deployment and rollback operations
-- [Development](development.md) - Local development setup
-- [Environment Variables](environment-variables.md) - Configuration reference
-- [Observability](observability.md) - Traces and logs
+← [Back to Documentation](README.md)

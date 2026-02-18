@@ -527,3 +527,7 @@ DOCKER_BUILDKIT=1 docker build -t your-agent-name:latest .
 ### Docker Compose
 - [Docker Compose Workflow Guide](./docker-compose-workflow.md) - Local development workflow
 - [Docker Compose Watch Mode](https://docs.docker.com/compose/file-watch/)
+
+---
+
+← [Back to References](README.md) | [Documentation](../README.md)

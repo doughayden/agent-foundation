@@ -277,8 +277,6 @@ terraform -chdir=terraform/bootstrap/dev output -raw terraform_state_bucket
 - Troubleshooting WIF authentication
 - Verifying resource names
 
-## See Also
+---
 
-- [Infrastructure](../infrastructure.md) - Main infrastructure guide
-- [Protection Strategies](protection-strategies.md) - Configure protection rules after bootstrap
-- [Deployment Modes](deployment.md) - Understand multi-environment strategy
+← [Back to References](README.md) | [Documentation](../README.md)

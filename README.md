@@ -53,7 +53,7 @@ This project distills proven patterns from the Starter Pack while prioritizing b
 > You must complete deployment first to create required resources (Agent Engine, GCS buckets, other agent-specific resources) before running locally.
 
 > [!NOTE]
-> By default, this project uses **dev-only mode** (single environment). To enable production mode with staged deployments (dev → stage → prod), see [Deployment: Multi-Environment Strategy](docs/deployment.md#multi-environment-strategy).
+> By default, this project uses **dev-only mode** (single environment). To enable production mode with staged deployments (dev → stage → prod), see [Infrastructure: Deployment Modes](docs/infrastructure.md#deployment-modes).
 
 Provision CI/CD infrastructure and deploy cloud resources.
 
@@ -75,7 +75,7 @@ terraform -chdir=terraform/bootstrap/dev init
 terraform -chdir=terraform/bootstrap/dev apply
 
 # 4. Verify
-gh variable list  # or view in GitHub repo Settings > Environments > dev
+gh variable list --env dev  # or view in GitHub repo Settings > Environments > dev
 ```
 
 **Production Mode Setup:**
@@ -83,11 +83,11 @@ gh variable list  # or view in GitHub repo Settings > Environments > dev
 To enable full production deployment (dev/stage/prod):
 1. Bootstrap all three environments (dev, stage, prod) using steps above
 2. Set `production_mode: true` in the `config` job of `.github/workflows/ci-cd.yml`
-3. See [Deployment: Bootstrap Setup](docs/deployment.md#bootstrap-setup) for complete setup
+3. See [Infrastructure: Bootstrap Setup](docs/infrastructure.md#bootstrap-setup) for complete setup
 
 Bootstrap creates: Workload Identity Federation, Artifact Registry, GCS state bucket, GitHub Environments, GitHub Variables.
 
-See [Getting Started](docs/getting-started.md) for detailed first-time setup and [Deployment: Switching Modes](docs/deployment.md#switching-deployment-modes) for production mode configuration.
+See [Getting Started](docs/getting-started.md) for detailed first-time setup and [Infrastructure: Switching Modes](docs/infrastructure.md#switching-deployment-modes) for production mode configuration.
 
 ---
 
@@ -116,7 +116,7 @@ Deployment creates:
 - GCS bucket for artifact storage (`ARTIFACT_SERVICE_URI`)
 - Cloud Run service (automatically configured with `AGENT_ENGINE` and `ARTIFACT_SERVICE_URI`)
 
-See [CI/CD](docs/cicd.md) for automation details.
+See [Infrastructure](docs/infrastructure.md) for deployment and CI/CD automation details.
 
 ---
 
@@ -163,8 +163,7 @@ See [docs/](docs/) for complete documentation.
 ### Core Documentation
 - **[Getting Started](docs/getting-started.md)** - Bootstrap and first deployment
 - **[Development](docs/development.md)** - Local workflow, Docker, testing, code quality
-- **[Deployment](docs/deployment.md)** - Multi-environment, Terraform, rollbacks
-- **[CI/CD](docs/cicd.md)** - GitHub Actions workflows and automation
+- **[Infrastructure](docs/infrastructure.md)** - Deployment, CI/CD, multi-environment
 - **[Environment Variables](docs/environment-variables.md)** - Complete configuration reference
 
 ### Operations

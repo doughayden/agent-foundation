@@ -215,7 +215,6 @@ See `tests/conftest.py` and existing test files for complete patterns:
 - Pydantic validation tests
 - Async test patterns (with pytest-asyncio)
 
-## See Also
+---
 
-- [Code Quality](code-quality.md) - Detailed tool usage and exclusion strategies
-- [Development](../development.md) - Daily development workflow
+← [Back to References](README.md) | [Documentation](../README.md)

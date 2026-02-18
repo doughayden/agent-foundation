@@ -449,7 +449,6 @@ This is a **team practice**, not enforced by tooling. Maintain discipline when w
 
 **Always prefer fixing the issue over adding exclusions.**
 
-## See Also
+---
 
-- [Testing Strategy](testing.md) - Detailed testing patterns and requirements
-- [Development](../development.md) - Daily development workflow
+← [Back to References](README.md) | [Documentation](../README.md)

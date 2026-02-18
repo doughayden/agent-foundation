@@ -210,3 +210,7 @@ docker run \
 - [Docker Compose Documentation](https://docs.docker.com/compose/)
 - [Docker Compose Watch Mode](https://docs.docker.com/compose/file-watch/)
 - [Dockerfile Strategy Guide](./dockerfile-strategy.md) - Architecture decisions and design rationale
+
+---
+
+← [Back to References](README.md) | [Documentation](../README.md)

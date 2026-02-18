@@ -431,9 +431,6 @@ on:
       # Add more tag patterns
 ```
 
-## See Also
+---
 
-- [Infrastructure](../infrastructure.md) - Main infrastructure guide
-- [Deployment Modes](deployment.md) - Multi-environment strategy
-- [Bootstrap](bootstrap.md) - Complete bootstrap setup
-- [Troubleshooting](../troubleshooting.md) - Debugging workflows and common issues
+← [Back to References](README.md) | [Documentation](../README.md)
