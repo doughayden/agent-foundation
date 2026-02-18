@@ -158,3 +158,12 @@ resource "google_cloud_run_v2_service" "app" {
     max_instance_request_concurrency = 100
   }
 }
+
+# Read Cloud Run service state after resource modification completes to work around GCP API eventual
+# consistency - Terraform's dependency graph ensures this data source is read after the resource is
+# updated, guaranteeing outputs reflect the actual deployed revision rather than stale cached data.
+data "google_cloud_run_v2_service" "app_actual" {
+  for_each = local.locations
+  name     = google_cloud_run_v2_service.app[each.key].name
+  location = each.key
+}
