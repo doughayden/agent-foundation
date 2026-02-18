@@ -96,6 +96,7 @@ jobs:
 
   dev-apply:
     name: Apply Dev
+    # To enable PR deploys: remove '&& github.event_name == 'push'' from condition below
     if: github.ref_type == 'branch' && github.event_name == 'push'
     needs: [build, dev-plan]
     uses: ./.github/workflows/terraform-plan-apply.yml
