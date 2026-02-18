@@ -59,7 +59,7 @@ GitHub Actions workflow architecture, mechanics, and customization.
 **Concurrency:**
 - PR builds: Cancel in-progress on new push (`cancel-in-progress: true`)
 - Main builds: Run sequentially (no cancellation, `cancel-in-progress: false`)
-- Per-environment Terraform locking prevents state corruption
+- Tag push and main push use different `${{ github.ref }}` values, so they get separate ci-cd concurrency groups — Terraform apply concurrency (see below) prevents state lock contention between them
 
 **Path filtering:**
 ```yaml
@@ -273,6 +273,11 @@ config → metadata-extract → resolve-digest → prod-promote → prod-plan �
 - Terraform format, init, validate, plan, apply steps
 
 **When it runs:** After build (or promote) for each environment
+
+**Concurrency:**
+- Repository-wide concurrency group (`terraform-apply-{repo}`) serializes all Terraform runs across environments and event types
+- `cancel-in-progress: false` queues runs rather than cancelling them
+- This ensures tag-push applies queue gracefully behind main-branch applies at the GitHub Actions level instead of timing out on Terraform state lock contention
 
 **Key behavior:**
 - `plan` job on PR: Comment plan, don't save artifact
