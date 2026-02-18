@@ -8,8 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Real-time streaming of Terraform output in CI/CD workflow with `tee` command and secure temp files
-- Workspace display in Terraform plan and apply job summaries for environment visibility
+- Multi-environment deployment with dual-mode operation (toggle via `production_mode` in ci-cd.yml)
+  - Dev-only mode (default): Deploy to dev on merge to main
+  - Production mode: Deploy dev+stage on merge, prod on git tag with approval gate
+- Environment-specific bootstrap with separate Terraform roots (dev, stage, prod)
+  - Each environment provisions WIF, Artifact Registry, state bucket, GitHub Environment and Variables
+  - Cross-project IAM grants for secure image promotion (stage reads dev registry, prod reads stage)
+- Image promotion workflow for production mode (pull-and-promote.yml)
+  - Promotes images by digest between registries without rebuilding
+  - Conditional deployment strategy: PR builds and plans, main deploys based on mode, tags trigger prod
+- Real-time Terraform output streaming in CI/CD with `tee` and secure temp files
+- Environment display in Terraform job summaries for visibility
+
+### Changed
+- **BREAKING**: Resource naming switched from workspace-based to variable-based suffixes
+  - Previous behavior used Terraform workspace (was "default") → `{agent_name}-default` resources
+  - New behavior uses `environment` input variable (dev/stage/prod) → `{agent_name}-{environment}` resources
+  - Existing deployments must recreate resources or manually rename to match new convention
+  - Enables multi-environment deployment with production mode (dev → stage → prod workflows)
+  - Dev-only mode continues single-environment deployment with `environment=dev` → `-dev` suffix
+- Reorganize documentation with task-based core guides (docs/*.md) and detailed references (docs/references/*.md)
 
 ### Fixed
 - Exit code capture in Terraform plan and apply steps for proper error propagation in CI/CD workflow

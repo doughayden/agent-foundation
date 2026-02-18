@@ -53,7 +53,7 @@ This project distills proven patterns from the Starter Pack while prioritizing b
 > You must complete deployment first to create required resources (Agent Engine, GCS buckets, other agent-specific resources) before running locally.
 
 > [!NOTE]
-> By default, this project uses **dev-only mode** (single environment). To enable production mode with staged deployments (dev → stage → prod), see [Infrastructure: Deployment Modes](docs/infrastructure.md#deployment-modes).
+> The project starts in **dev-only mode** (single environment) by default. To enable production mode with staged deployments (dev → stage → prod), see [Infrastructure: Deployment Modes](docs/infrastructure.md#deployment-modes).
 
 Provision CI/CD infrastructure and deploy cloud resources.
 
