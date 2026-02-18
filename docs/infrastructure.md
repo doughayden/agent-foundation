@@ -99,7 +99,7 @@ Monitor: Actions tab → CI/CD Pipeline
 > By default, the pipeline deploys to dev only on merge to main. Enable PR deploys to deploy dev on every PR for immediate feedback in live environment.
 
 **Impact:**
-- Every PR and commit deploys to dev (concurrency prevents simultaneous deploys)
+- Every PR and commit deploys to dev (concurrency prevents simultaneous deploys: new commits cancel in-progress PR deploys)
 - Dev becomes unstable (last PR wins)
 - Requires team coordination for concurrent PRs
 - Useful for complex integrations requiring live environment testing
