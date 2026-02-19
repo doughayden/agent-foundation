@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-02-18
+
 ### Added
+- MkDocs documentation site with Material theme and GitHub Pages deployment
+- Documentation badge in README linking to GitHub Pages site
+- GitHub Pages URL replacement pattern in init_template.py
 - Multi-environment deployment with dual-mode operation (toggle via `production_mode` in ci-cd.yml)
   - Dev-only mode (default): Deploy to dev on merge to main
   - Production mode: Deploy dev+stage on merge, prod on git tag with approval gate
@@ -22,15 +27,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional PR deployment support with single-line workflow change for downstream repos needing immediate feedback
 
 ### Changed
+- **BREAKING**: Remove app export from __init__.py to enable lazy loading pattern
+  - Forces ADK to use fallback discovery pattern for improved developer experience
+  - Ensures .env loads before module-level code executes
+  - Integration tests updated to import from agent_foundation.agent
+- **BREAKING**: Update callback signatures for ADK 1.21.0 API compatibility
 - **BREAKING**: Resource naming switched from workspace-based to variable-based suffixes
   - Previous behavior used Terraform workspace (was "default") → `{agent_name}-default` resources
   - New behavior uses `environment` input variable (dev/stage/prod) → `{agent_name}-{environment}` resources
   - Existing deployments must recreate resources or manually rename to match new convention
   - Enables multi-environment deployment with production mode (dev → stage → prod workflows)
   - Dev-only mode continues single-environment deployment with `environment=dev` → `-dev` suffix
+- Standardize workflow concurrency groups across CI/CD workflows
+- Update terminology from "Reasoning Engine" to "Agent Engine" throughout documentation
 - Reorganize documentation with task-based core guides (docs/*.md) and detailed references (docs/references/*.md)
+- Adopt modern pytest patterns with class-based test organization
 
 ### Fixed
+- Exclude release PRs from automated code review workflow
+- Cloud Run output inconsistency from GCP API eventual consistency
 - Exit code capture in Terraform plan and apply steps for proper error propagation in CI/CD workflow
 - Terraform output logging to runner logs for complete visibility of plan and apply operations
 
@@ -233,7 +248,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/doughayden/agent-foundation/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/doughayden/agent-foundation/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/doughayden/agent-foundation/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/doughayden/agent-foundation/compare/v0.5.0...v0.6.0
