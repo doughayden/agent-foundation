@@ -32,29 +32,69 @@ upstream  https://github.com/your-org/agent-foundation.git (fetch)
 upstream  https://github.com/your-org/agent-foundation.git (push)
 ```
 
+## Choosing a Version
+
+**Recommended:** Sync from tagged releases for stability and reproducibility.
+
+```bash
+# List available versions
+git fetch upstream --tags
+git tag -l 'v*' --sort=-version:refname | head -10
+
+# View CHANGELOG
+git show v0.9.1:CHANGELOG.md
+
+# Compare versions
+git diff v0.9.0 v0.9.1 -- docs/
+```
+
+**Advanced:** Use `upstream/main` for unreleased changes. All examples below use tags - substitute `main` if needed.
+
+## Workflow: Always Use Pull Requests
+
+**CRITICAL:** Never commit directly to main. Always create feature branches and PRs.
+
+```bash
+# Standard workflow for any sync
+git checkout main && git pull origin main     # Update local main
+git checkout -b sync-upstream-v0.9.1          # Create feature branch
+# ... make changes ...
+git push -u origin sync-upstream-v0.9.1       # Push branch
+gh pr create                                   # Create PR
+# Review, approve, merge via GitHub
+```
+
 ## Common Patterns
 
 ### Pull Entire Directory
 
-Update an entire directory to latest template version:
+Update an entire directory to latest template version.
 
 **WARNING:** This overwrites ALL files in the directory with template versions and deletes local files not in the upstream. See [Example: Restore Custom Files](#example-restore-custom-files-after-sync) for how to recover files if needed.
 
 ```bash
-# Fetch latest from template
-git fetch upstream main
+# Update main and create feature branch
+git checkout main && git pull origin main
+git checkout -b sync-docs-v0.9.1
+
+# Fetch tags from template
+git fetch upstream --tags
 
 # Check what changed in the directory
-git diff upstream/main -- docs/
+git diff v0.9.1 -- docs/
 
-# Pull the directory
-git checkout upstream/main -- docs/
+# Pull the directory from tagged version
+git checkout v0.9.1 -- docs/
 
 # Verify what you're about to commit
 git status
 
 # Commit the sync
-git commit -m "docs: sync with template upstream"
+git commit -m "docs: sync with template v0.9.1"
+
+# Push and create PR
+git push -u origin sync-docs-v0.9.1
+gh pr create --title "docs: sync with template v0.9.1"
 ```
 
 ### Pull Specific File
@@ -62,15 +102,23 @@ git commit -m "docs: sync with template upstream"
 Update a single file:
 
 ```bash
-# Fetch latest
-git fetch upstream main
+# Create feature branch
+git checkout main && git pull origin main
+git checkout -b sync-deployment-docs-v0.9.1
+
+# Fetch tags
+git fetch upstream --tags
 
 # Check what changed
-git diff upstream/main -- docs/deployment.md
+git diff v0.9.1 -- docs/deployment.md
 
 # Pull specific file
-git checkout upstream/main -- docs/deployment.md
-git commit -m "docs: sync deployment.md from upstream"
+git checkout v0.9.1 -- docs/deployment.md
+git commit -m "docs: sync deployment.md from v0.9.1"
+
+# Push and create PR
+git push -u origin sync-deployment-docs-v0.9.1
+gh pr create --title "docs: sync deployment.md from v0.9.1"
 ```
 
 ### Pull Multiple Related Files
@@ -78,26 +126,40 @@ git commit -m "docs: sync deployment.md from upstream"
 Update related files as a group:
 
 ```bash
+# Create feature branch
+git checkout main && git pull origin main
+git checkout -b sync-infrastructure-v0.9.1
+
+# Fetch tags
+git fetch upstream --tags
+
 # Pull workflow files
-git fetch upstream main
-git checkout upstream/main -- .github/workflows/
-git commit -m "ci: sync workflows from upstream"
+git checkout v0.9.1 -- .github/workflows/
+git commit -m "ci: sync workflows from v0.9.1"
 
 # Pull Terraform bootstrap
-git checkout upstream/main -- terraform/bootstrap/
-git commit -m "infra: sync bootstrap from upstream"
+git checkout v0.9.1 -- terraform/bootstrap/
+git commit -m "infra: sync bootstrap from v0.9.1"
+
+# Push and create PR
+git push -u origin sync-infrastructure-v0.9.1
+gh pr create --title "infra: sync infrastructure from v0.9.1"
 ```
 
 ### Pull Code Changes Selectively
 
-Review and cherry-pick code improvements:
+Review and cherry-pick specific improvements:
 
 ```bash
-# Fetch latest
-git fetch upstream main
+# Create feature branch
+git checkout main && git pull origin main
+git checkout -b cherry-pick-improvements
 
-# View commits
-git log --oneline HEAD..upstream/main
+# Fetch tags
+git fetch upstream --tags
+
+# View commits between versions
+git log --oneline v0.9.0..v0.9.1
 
 # Cherry-pick specific commit
 git cherry-pick <commit-sha>
@@ -106,27 +168,38 @@ git cherry-pick <commit-sha>
 git format-patch -1 <commit-sha>
 git apply --check 0001-*.patch  # Test first
 git apply 0001-*.patch          # Apply if clean
+git commit -m "feat: cherry-pick improvement from v0.9.1"
+
+# Push and create PR
+git push -u origin cherry-pick-improvements
+gh pr create --title "Cherry-pick improvements from v0.9.1"
 ```
 
 ### Check Available Updates
 
-See what's new in template without pulling:
+See what's new in template versions without pulling:
 
 ```bash
-# Fetch latest
-git fetch upstream main
+# Fetch tags
+git fetch upstream --tags
 
-# Summary of changes
-git log --oneline --graph HEAD..upstream/main
+# List available versions
+git tag -l 'v*' --sort=-version:refname | head -10
 
-# Detailed diff
-git diff upstream/main
+# View CHANGELOG for a version
+git show v0.9.1:CHANGELOG.md
+
+# Compare versions
+git log --oneline v0.9.0..v0.9.1
+
+# Detailed diff between versions
+git diff v0.9.0 v0.9.1
 
 # Changes to specific directory
-git diff upstream/main -- terraform/
+git diff v0.9.0 v0.9.1 -- terraform/
 
 # File-by-file summary
-git diff --stat upstream/main
+git diff --stat v0.9.0 v0.9.1
 ```
 
 ### Resolve Conflicts
@@ -134,8 +207,15 @@ git diff --stat upstream/main
 When updates conflict with customizations:
 
 ```bash
+# Create feature branch
+git checkout main && git pull origin main
+git checkout -b resolve-sync-conflicts
+
+# Fetch tags
+git fetch upstream --tags
+
 # Attempt pull
-git checkout upstream/main -- docs/deployment.md
+git checkout v0.9.1 -- docs/deployment.md
 
 # If conflicts occur
 git status  # Shows conflicted files
@@ -146,7 +226,11 @@ git mergetool
 
 # After resolving
 git add docs/deployment.md
-git commit -m "docs: merge deployment.md from upstream"
+git commit -m "docs: merge deployment.md from v0.9.1"
+
+# Push and create PR
+git push -u origin resolve-sync-conflicts
+gh pr create --title "docs: merge deployment.md from v0.9.1"
 ```
 
 ## Sync Carefully
@@ -176,13 +260,17 @@ git commit -m "docs: merge deployment.md from upstream"
 Template reorganized docs/ directory:
 
 ```bash
+# Create feature branch
+git checkout main && git pull origin main
+git checkout -b sync-docs-restructure-v0.9.1
+
 # Review changes
-git fetch upstream main
-git diff upstream/main -- docs/
+git fetch upstream --tags
+git diff v0.9.1 -- docs/
 
 # Major restructure, better to pull all docs
-git checkout upstream/main -- docs/
-git commit -m "docs: sync with template restructure
+git checkout v0.9.1 -- docs/
+git commit -m "docs: sync with template v0.9.1 restructure
 
 - Adopt new flat structure (removed base-infra/)
 - Update cross-references
@@ -191,44 +279,55 @@ git commit -m "docs: sync with template restructure
 
 # Oh no! Forgot about custom-tools.md - restore it
 git checkout HEAD~1 -- docs/custom-tools.md
-git commit --amend -m "docs: sync with template restructure
+git commit --amend -m "docs: sync with template v0.9.1 restructure
 
 - Adopt new flat structure (removed base-infra/)
 - Update cross-references
 - Add new troubleshooting guide
 - Preserve custom-tools.md
 "
+
+# Push and create PR
+git push -u origin sync-docs-restructure-v0.9.1
+gh pr create --title "docs: sync with template v0.9.1 restructure"
 ```
 
 ## Workflow for Major Updates
 
-When template has significant changes:
+When template has significant changes (e.g., v0.9.0 → v0.9.1):
 
-1. **Create branch:**
+1. **Create feature branch:**
    ```bash
-   git checkout -b sync-upstream
+   git checkout main && git pull origin main
+   git checkout -b sync-upstream-v0.9.1
    ```
 
 2. **Review changes:**
    ```bash
-   git fetch upstream main
-   git log --oneline HEAD..upstream/main
-   git diff --stat upstream/main
+   # Fetch tags
+   git fetch upstream --tags
+
+   # View what's new
+   git log --oneline v0.9.0..v0.9.1
+   git diff --stat v0.9.0 v0.9.1
+
+   # Read CHANGELOG
+   git show v0.9.1:CHANGELOG.md
    ```
 
 3. **Pull updates incrementally:**
    ```bash
    # Docs first (safest)
-   git checkout upstream/main -- docs/
-   git commit -m "docs: sync with upstream"
+   git checkout v0.9.1 -- docs/
+   git commit -m "docs: sync with v0.9.1"
 
    # Workflows next
-   git checkout upstream/main -- .github/workflows/
-   git commit -m "ci: sync workflows"
+   git checkout v0.9.1 -- .github/workflows/
+   git commit -m "ci: sync workflows from v0.9.1"
 
    # Infrastructure last (most critical)
-   git checkout upstream/main -- terraform/
-   git commit -m "infra: sync terraform modules"
+   git checkout v0.9.1 -- terraform/
+   git commit -m "infra: sync terraform from v0.9.1"
    ```
 
 4. **Review and resolve:**
@@ -251,24 +350,49 @@ When template has significant changes:
 
 5. **Test thoroughly:**
    ```bash
+   # Run code quality checks
+   uv run ruff format && uv run ruff check --fix && uv run mypy
+
    # Run tests
    uv run pytest --cov
 
    # Test server locally
    docker compose up --build  # or: uv run server
 
-   # Test workflows (if possible in dev)
+   # Verify Terraform plans (if infrastructure changed)
+   terraform -chdir=terraform/bootstrap/dev plan
    ```
 
-6. **Create PR:**
+6. **Push and create PR:**
    ```bash
-   git push origin sync-upstream
-   gh pr create --title "Sync with upstream template"
+   git push -u origin sync-upstream-v0.9.1
+   gh pr create --title "Sync with upstream template v0.9.1" --body "$(cat <<'EOF'
+## What
+Sync infrastructure, workflows, and docs from template v0.9.1.
+
+## Why
+- Keep template updates current
+- Includes fixes and improvements from upstream
+
+## How
+- Sync docs/ from v0.9.1
+- Sync .github/workflows/ from v0.9.1
+- Sync terraform/ from v0.9.1
+- Preserve custom-tools.md
+
+## Tests
+- [ ] Code quality checks pass
+- [ ] Tests pass
+- [ ] Server starts successfully
+- [ ] Terraform plans validate
+EOF
+)"
    ```
 
 7. **Review and merge:**
-   - Review changes in GitHub
+   - Review changes in GitHub UI
    - Ensure CI passes
+   - Test in development environment
    - Merge when confident
 
 ---
