@@ -28,11 +28,12 @@ WHAT IT DOES:
     5. Renames src/agent_foundation/ → src/{package_name}/
     6. Updates imports, config, and docs in all files
     7. Updates GitHub Actions badge URLs
-    8. Updates mkdocs.yml repository URLs (site_url, repo_url)
-    9. Resets CODEOWNERS file (remove template owner)
-    10. Resets version to 0.1.0 in pyproject.toml
-    11. Resets CHANGELOG.md with clean template
-    12. Regenerates UV lockfile
+    8. Updates GitHub Pages documentation URLs
+    9. Updates mkdocs.yml repository URLs (site_url, repo_url)
+    10. Resets CODEOWNERS file (remove template owner)
+    11. Resets version to 0.1.0 in pyproject.toml
+    12. Resets CHANGELOG.md with clean template
+    13. Regenerates UV lockfile
 
 OUTPUT:
     Creates .log/init_template_results.md (or .log/init_template_dry_run.md) with
@@ -272,10 +273,11 @@ def get_validated_config(dry_run: bool = False) -> TemplateConfig:
     print("  3. Update configuration files")
     print("  4. Update documentation")
     print("  5. Update GitHub Actions badge URLs")
-    print("  6. Reset CODEOWNERS file")
-    print("  7. Reset version to 0.1.0")
-    print("  8. Reset CHANGELOG.md")
-    print("  9. Regenerate UV lockfile\n")
+    print("  6. Update GitHub Pages documentation URLs")
+    print("  7. Reset CODEOWNERS file")
+    print("  8. Reset version to 0.1.0")
+    print("  9. Reset CHANGELOG.md")
+    print("  10. Regenerate UV lockfile\n")
 
     # Auto-detect repository name and owner from git
     github_info = get_github_info_from_git()
@@ -502,6 +504,7 @@ def print_summary(config: TemplateConfig, dry_run: bool = False) -> None:
     print(f"  • Directory: src/{ORIGINAL_PACKAGE_NAME}/ → src/{config.package_name}/")
     print("  • Updated configuration and test files")
     print("  • Updated GitHub Actions badge URLs")
+    print("  • Updated GitHub Pages documentation URLs")
     print("  • Updated mkdocs.yml repository URLs")
     print("  • Removed template author from pyproject.toml")
     print("  • Reset version to 0.1.0 in pyproject.toml")
@@ -536,6 +539,7 @@ def main() -> NoReturn:
         # Define replacements
         replacements = {
             f"https://github.com/{ORIGINAL_GITHUB_OWNER}/{ORIGINAL_REPO_NAME}/": f"https://github.com/{config.github_owner}/{config.repo_name}/",
+            f"https://{ORIGINAL_GITHUB_OWNER}.github.io/{ORIGINAL_REPO_NAME}/": f"https://{config.github_owner}.github.io/{config.repo_name}/",
             ORIGINAL_PACKAGE_NAME: config.package_name,
             ORIGINAL_REPO_NAME: config.repo_name,
         }
