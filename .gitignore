@@ -207,8 +207,8 @@ marimo/_lsp/
 __marimo__/
 
 ### Custom patterns
-sessions.db
-.log/
+# Google ADK local storage (v1.20.0+)
+.adk/
 
 # Ephemeral github actions creds
 gha-creds-*.json

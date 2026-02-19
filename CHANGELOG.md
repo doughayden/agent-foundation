@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Upgrade google-adk from 1.21.0 to 1.25.1 with transitive deps
+- Update .gitignore for google-adk v1.20.0+ storage (.adk/)
+
+### Fixed
+- Restore OpenAPI spec endpoint (GET /docs) via google-adk upgrade
+- Add type narrowing for credentials (google-auth 2.48.0 compat)
+
 ## [0.9.0] - 2026-02-18
 
 ### Added

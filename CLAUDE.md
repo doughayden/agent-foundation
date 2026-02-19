@@ -60,9 +60,20 @@ terraform -chdir=terraform/main init/plan/apply           # Deploy (TF_VAR_envir
 
 ## Code Quality
 
-- **mypy:** Strict, complete type annotations, modern Python 3.13 (`|` unions, lowercase generics), no untyped definitions.
+**Workflow (run before every commit):**
+```bash
+uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --cov
+```
+
+- **mypy:** Strict, complete type annotations, modern Python 3.13 (`|` unions, lowercase generics), no untyped definitions. Enforces: `no_implicit_optional`, `strict_equality`, `warn_return_any`, `warn_unreachable`.
 - **ruff:** 88 char line length, enforces bandit/simplify/use-pathlib. **Always use `Path` objects** (never `os.path`).
 - **pytest:** 100% coverage on production code (excludes `server.py`, `**/agent.py`, `**/prompt.py`, `**/__init__.py`). Fixtures in `conftest.py`, async via pytest-asyncio.
+
+**Type narrowing:** **NEVER use `cast()`** - always use `isinstance()` checks for type narrowing (provides both mypy inference and runtime safety).
+
+**Code quality exclusions:**
+- `# noqa` - Use specific codes (`# noqa: S105`) with justification. Common: S105 (test mocks), S104 (0.0.0.0 in Docker), E501 (URLs).
+- `# pragma: no cover` - Only for provably unreachable defensive code (e.g., Pydantic validation guarantees). Never for "hard to test" code.
 
 ## Testing Patterns
 
