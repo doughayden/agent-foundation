@@ -2,7 +2,7 @@
 
 Complete configuration reference. Single source of truth.
 
-See [.env.example](../.env.example) for template configuration with inline comments.
+See `.env.example` in the repository root for template configuration with inline comments.
 
 ## Quick Reference
 
