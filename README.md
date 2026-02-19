@@ -2,6 +2,7 @@
 
 ![CI/CD](https://github.com/doughayden/agent-foundation/actions/workflows/ci-cd.yml/badge.svg)
 ![Code Quality](https://github.com/doughayden/agent-foundation/actions/workflows/code-quality.yml/badge.svg)
+[![Documentation](https://img.shields.io/badge/docs-mkdocs-blue)](https://doughayden.github.io/agent-foundation/)
 
 Opinionated, production-ready LLM Agent deployment with enterprise-grade infrastructure
 
