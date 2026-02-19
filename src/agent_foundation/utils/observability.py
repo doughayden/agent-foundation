@@ -127,6 +127,13 @@ def setup_opentelemetry(
         print(f"❌ [observability] Unexpected error during authentication: {e}")
         raise e
 
+    # Type narrowing: Validate quota project support (required for Cloud Logging client)
+    if not hasattr(credentials, "with_quota_project"):
+        raise TypeError(
+            f"Credentials type {type(credentials).__name__} does not support "
+            "with_quota_project method required for Cloud Logging"
+        )
+
     # Set up OpenTelemetry Python SDK for logs and genai events
     # LoggerProvider auto-detects resource from OTEL_RESOURCE_ATTRIBUTES
     log_name: str = f"{agent_name}-otel-logs"
