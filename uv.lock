@@ -60,7 +60,7 @@ dev = [
 ]
 docs = [
     { name = "mkdocs-callouts", specifier = ">=1.16.0,<2.0.0" },
-    { name = "mkdocs-material", specifier = ">=9.7.1" },
+    { name = "mkdocs-material", specifier = ">=9.7.1,<10.0.0" },
 ]
 
 [[package]]

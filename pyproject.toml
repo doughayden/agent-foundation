@@ -36,7 +36,7 @@ dev = [
 ]
 docs = [
     "mkdocs-callouts>=1.16.0,<2.0.0",
-    "mkdocs-material>=9.7.1",
+    "mkdocs-material>=9.7.1,<10.0.0",
 ]
 
 [build-system]

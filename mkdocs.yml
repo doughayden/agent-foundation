@@ -1,7 +1,7 @@
 site_name: Agent Foundation Docs
-site_url: ""
-repo_url: ""
-edit_uri: ""
+site_url: https://doughayden.github.io/agent-foundation/
+repo_url: https://github.com/doughayden/agent-foundation
+edit_uri: edit/main/docs/
 
 theme:
   name: material

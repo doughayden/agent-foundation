@@ -28,10 +28,11 @@ WHAT IT DOES:
     5. Renames src/agent_foundation/ → src/{package_name}/
     6. Updates imports, config, and docs in all files
     7. Updates GitHub Actions badge URLs
-    8. Resets CODEOWNERS file (remove template owner)
-    9. Resets version to 0.1.0 in pyproject.toml
-    10. Resets CHANGELOG.md with clean template
-    11. Regenerates UV lockfile
+    8. Updates mkdocs.yml repository URLs (site_url, repo_url)
+    9. Resets CODEOWNERS file (remove template owner)
+    10. Resets version to 0.1.0 in pyproject.toml
+    11. Resets CHANGELOG.md with clean template
+    12. Regenerates UV lockfile
 
 OUTPUT:
     Creates .log/init_template_results.md (or .log/init_template_dry_run.md) with
@@ -501,6 +502,7 @@ def print_summary(config: TemplateConfig, dry_run: bool = False) -> None:
     print(f"  • Directory: src/{ORIGINAL_PACKAGE_NAME}/ → src/{config.package_name}/")
     print("  • Updated configuration and test files")
     print("  • Updated GitHub Actions badge URLs")
+    print("  • Updated mkdocs.yml repository URLs")
     print("  • Removed template author from pyproject.toml")
     print("  • Reset version to 0.1.0 in pyproject.toml")
     print("  • Replaced CHANGELOG.md with fresh template")
@@ -545,6 +547,7 @@ def main() -> NoReturn:
             "pyproject.toml",
             "README.md",
             "tests/conftest.py",
+            "mkdocs.yml",
         ]
 
         # Glob docker-compose files
