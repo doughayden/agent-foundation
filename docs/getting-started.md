@@ -79,22 +79,36 @@ terraform -chdir=terraform/bootstrap/dev apply
 gh variable list
 ```
 
+See [Bootstrap Reference](references/bootstrap.md) for complete bootstrap setup instructions.
+
 ## First Deployment
 
 Deploy the agent to Cloud Run using GitHub Actions.
 
-### 1. Push to Main
+### 1. Create Pull Request
 
 ```bash
+# Create feature branch
+git checkout -b feat/initial-setup
+
 # Commit any initial customizations
 git add .
 git commit -m "feat: initial setup"
 
-# Push to main (triggers deployment)
-git push origin main
+# Push branch
+git push origin feat/initial-setup
+
+# Create PR
+gh pr create --title "feat: initial setup" --body "Initial agent deployment"
 ```
 
-### 2. Monitor Deployment
+### 2. Review and Merge
+
+1. Review the Terraform plan in the PR comments
+2. Verify the planned infrastructure changes
+3. Merge the PR (triggers deployment to dev environment)
+
+### 3. Monitor Deployment
 
 ```bash
 # View workflow runs
@@ -113,7 +127,7 @@ Deployment flow:
 3. Deploy to Cloud Run (default environment)
 4. Report outputs in job summary
 
-### 3. Get Deployment Info
+### 4. Get Deployment Info
 
 ```bash
 # View job summary (includes Cloud Run URL, resource URIs)

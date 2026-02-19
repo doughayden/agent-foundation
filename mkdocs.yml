@@ -5,6 +5,8 @@ edit_uri: ""
 
 theme:
   name: material
+  icon:
+    logo: material/robot
   features:
     - navigation.tabs
     - navigation.sections
@@ -29,6 +31,10 @@ theme:
 extra_css:
   - stylesheets/extra.css
 
+plugins:
+  - search
+  - callouts
+
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
@@ -41,16 +47,31 @@ markdown_extensions:
   - pymdownx.details
   - attr_list
   - md_in_html
+  - def_list
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - nl2br
 
 nav:
   - Home: README.md
-  - Infrastructure:
-    - Bootstrap Setup: base-infra/bootstrap-setup.md
-    - CI/CD Setup: base-infra/cicd-setup.md
-    - Development: base-infra/development.md
-    - Docker Compose Workflow: base-infra/docker-compose-workflow.md
-    - Dockerfile Strategy: base-infra/dockerfile-strategy.md
-    - Environment Variables: base-infra/environment-variables.md
-    - Observability: base-infra/observability.md
-    - Terraform Infrastructure: base-infra/terraform-infrastructure.md
-    - Validating Multiplatform Builds: base-infra/validating-multiplatform-builds.md
+  - Getting Started:
+    - Quick Start: getting-started.md
+    - Environment Variables: environment-variables.md
+  - Guides:
+    - Development Workflow: development.md
+    - Infrastructure & Deployment: infrastructure.md
+    - Observability: observability.md
+    - Troubleshooting: troubleshooting.md
+  - Template:
+    - Syncing Upstream Changes: template-management.md
+  - Reference:
+    - Overview: references/README.md
+    - Bootstrap Setup: references/bootstrap.md
+    - Protection Strategies: references/protection-strategies.md
+    - Deployment Modes: references/deployment.md
+    - CI/CD Workflows: references/cicd.md
+    - Testing Patterns: references/testing.md
+    - Code Quality Tools: references/code-quality.md
+    - Docker Compose: references/docker-compose-workflow.md
+    - Dockerfile Strategy: references/dockerfile-strategy.md
+    - MkDocs Setup: references/mkdocs-setup.md

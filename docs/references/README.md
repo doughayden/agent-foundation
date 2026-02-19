@@ -15,6 +15,7 @@ Deep-dive technical documentation for optional follow-up.
 - [Code Quality](code-quality.md) - Tool usage and exclusion strategies
 - [Docker Compose Workflow](docker-compose-workflow.md) - Watch mode, volumes, and configuration
 - [Dockerfile Strategy](dockerfile-strategy.md) - Multi-stage builds and optimization
+- [MkDocs Setup](mkdocs-setup.md) - Documentation site setup and customization
 
 ---
 
