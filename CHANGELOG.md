@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-02-20
+
+### Changed
+- Restructure template management guide with semantic workflow phases (Prepare/Sync/Review/Test & Merge)
+- Add Quick Reference section with copy-paste sync commands organized by file type
+- Introduce VERSION shell variable pattern for streamlined workflow
+- Add roadmap tip directing first-time users to essential sections
+- Enhance Common Patterns and Troubleshooting sections with proper alert styling
+
+### Fixed
+- Correct git checkout behavior warning (does not delete untracked local files)
+- Add .adk/ directory to .dockerignore for ADK v1.20.0+ compatibility
+- Clarify RELOAD_AGENTS comment in .env.example
+
 ## [0.9.1] - 2026-02-19
 
 ### Changed
@@ -258,7 +272,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/doughayden/agent-foundation/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/doughayden/agent-foundation/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/doughayden/agent-foundation/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/doughayden/agent-foundation/compare/v0.7.0...v0.8.0
