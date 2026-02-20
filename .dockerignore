@@ -50,6 +50,9 @@ docs/
 .tmp/
 *.log
 
+# ADK local storage (v1.20.0+)
+.adk/
+
 # Build artifacts
 dist/
 build/

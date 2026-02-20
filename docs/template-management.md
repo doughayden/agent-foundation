@@ -14,386 +14,230 @@ This template uses **transparent git-based syncing** rather than opaque automati
 
 ## Setup
 
-Add template repository as upstream remote (one-time):
+One-time configuration:
 
 ```bash
-# Add template as upstream
-git remote add upstream https://github.com/your-org/agent-foundation.git
+# Add template repository as foundation remote
+git remote add foundation https://github.com/your-org/agent-foundation.git
+git remote -v  # Verify
 
-# Verify remotes
-git remote -v
+# Fetch foundation tags to refs/foundation-tags/* (avoids conflicts with local tags)
+# --no-tags prevents git from also creating local copies in refs/tags/*
+# See: https://git-scm.com/book/en/v2/Git-Internals-The-Refspec
+git fetch foundation 'refs/tags/*:refs/foundation-tags/*' --no-tags
 ```
 
-**Output:**
-```
-origin    https://github.com/your-org/your-agent.git (fetch)
-origin    https://github.com/your-org/your-agent.git (push)
-upstream  https://github.com/your-org/agent-foundation.git (fetch)
-upstream  https://github.com/your-org/agent-foundation.git (push)
-```
-
-## Choosing a Version
-
-**Recommended:** Sync from tagged releases for stability and reproducibility.
+Verify foundation tags were fetched:
 
 ```bash
-# List available versions
-git fetch upstream --tags
-git tag -l 'v*' --sort=-version:refname | head -10
-
-# View CHANGELOG
-git show v0.9.1:CHANGELOG.md
-
-# Compare versions
-git diff v0.9.0 v0.9.1 -- docs/
+# List foundation tags with dates
+git for-each-ref refs/foundation-tags --format='%(refname:short) | %(creatordate:short)' --sort=-creatordate
 ```
 
-**Advanced:** Use `upstream/main` for unreleased changes. All examples below use tags - substitute `main` if needed.
+> [!NOTE]
+> `git tag -l` only lists refs in `refs/tags/*`, not custom namespaces. We need `git for-each-ref` for `refs/foundation-tags/*`
 
-## Workflow: Always Use Pull Requests
-
-**CRITICAL:** Never commit directly to main. Always create feature branches and PRs.
+## Standard Workflow
 
 ```bash
-# Standard workflow for any sync
-git checkout main && git pull origin main     # Update local main
-git checkout -b sync-upstream-v0.9.1          # Create feature branch
-# ... make changes ...
-git push -u origin sync-upstream-v0.9.1       # Push branch
-gh pr create                                   # Create PR
-# Review, approve, merge via GitHub
+# 1. Check for updates
+git fetch foundation 'refs/tags/*:refs/foundation-tags/*' --no-tags
+git for-each-ref refs/foundation-tags --format='%(refname:short)' --sort=-version:refname | head -10
+
+# 2. Choose version from the first step and review
+git show foundation-tags/v0.9.1:CHANGELOG.md                      # See what changed
+git log --oneline foundation-tags/v0.9.0..foundation-tags/v0.9.1  # Commits between versions
+
+# 3. Create sync branch
+git checkout main && git pull origin main
+git checkout -b sync/foundation-v0.9.1
+
+# 4. Sync files in stages (see Common Patterns below for detailed examples)
+git diff --stat foundation-tags/v0.9.1 -- . ':!src/' ':!tests/'   # Review what to sync (customize ':!<path>' ignores)
+git checkout foundation-tags/v0.9.1 -- docs/                      # Review changes with git status, edit as needed
+git commit -m "docs: sync with v0.9.1"
+
+git checkout foundation-tags/v0.9.1 -- .github/workflows/
+git commit -m "ci: sync workflows from v0.9.1"
+
+git checkout foundation-tags/v0.9.1 -- terraform/
+git commit -m "infra: sync terraform from v0.9.1"
+
+# 5. Resolve conflicts if needed
+git status
+git mergetool
+git add <resolved-files>
+git commit --amend
+
+# 6. Restore custom files if needed
+git checkout HEAD~1 -- docs/custom-tools.md
+git commit --amend
+
+# 7. Add manual changes for heavily customized files
+git diff foundation-tags/v0.9.1 -- README.md
+# Manually edit README.md to incorporate improvements
+git add README.md
+git commit -m "docs: incorporate upstream README improvements from v0.9.1"
+
+# 8. Verify sync
+git diff --stat foundation-tags/v0.9.1 -- . ':!src/' ':!tests/' ':!README.md'
+
+# 9. Test thoroughly
+uv run ruff format && uv run ruff check --fix && uv run mypy
+uv run pytest --cov
+docker compose up --build
+terraform -chdir=terraform/bootstrap/dev plan
+
+# 10. Create PR and merge
+git push -u origin sync/foundation-v0.9.1
+gh pr create --title "Sync with foundation template v0.9.1"
+# Review and merge via GitHub
 ```
+
+**Advanced:** Use `foundation/main` for unreleased changes. Examples above use tagged releases.
 
 ## Common Patterns
 
+Detailed examples for step 4 (sync files) in the workflow above.
+
 ### Pull Entire Directory
 
-Update an entire directory to latest template version.
-
-**WARNING:** This overwrites ALL files in the directory with template versions and deletes local files not in the upstream. See [Example: Restore Custom Files](#example-restore-custom-files-after-sync) for how to recover files if needed.
+**WARNING:** Overwrites ALL files in directory and deletes local files not in foundation.
 
 ```bash
-# Update main and create feature branch
-git checkout main && git pull origin main
-git checkout -b sync-docs-v0.9.1
+# Review changes
+git diff foundation-tags/v0.9.1 -- docs/
 
-# Fetch tags from template
-git fetch upstream --tags
-
-# Check what changed in the directory
-git diff v0.9.1 -- docs/
-
-# Pull the directory from tagged version
-git checkout v0.9.1 -- docs/
-
-# Verify what you're about to commit
-git status
-
-# Commit the sync
-git commit -m "docs: sync with template v0.9.1"
-
-# Push and create PR
-git push -u origin sync-docs-v0.9.1
-gh pr create --title "docs: sync with template v0.9.1"
+# Sync directory
+git checkout foundation-tags/v0.9.1 -- docs/
+git commit -m "docs: sync with foundation v0.9.1"
 ```
 
 ### Pull Specific File
 
-Update a single file:
-
 ```bash
-# Create feature branch
-git checkout main && git pull origin main
-git checkout -b sync-deployment-docs-v0.9.1
+# Review changes
+git diff foundation-tags/v0.9.1 -- docs/deployment.md
 
-# Fetch tags
-git fetch upstream --tags
-
-# Check what changed
-git diff v0.9.1 -- docs/deployment.md
-
-# Pull specific file
-git checkout v0.9.1 -- docs/deployment.md
+# Sync file
+git checkout foundation-tags/v0.9.1 -- docs/deployment.md
 git commit -m "docs: sync deployment.md from v0.9.1"
-
-# Push and create PR
-git push -u origin sync-deployment-docs-v0.9.1
-gh pr create --title "docs: sync deployment.md from v0.9.1"
 ```
 
 ### Pull Multiple Related Files
 
-Update related files as a group:
-
 ```bash
-# Create feature branch
-git checkout main && git pull origin main
-git checkout -b sync-infrastructure-v0.9.1
-
-# Fetch tags
-git fetch upstream --tags
-
-# Pull workflow files
-git checkout v0.9.1 -- .github/workflows/
+# Sync workflows
+git checkout foundation-tags/v0.9.1 -- .github/workflows/
 git commit -m "ci: sync workflows from v0.9.1"
 
-# Pull Terraform bootstrap
-git checkout v0.9.1 -- terraform/bootstrap/
+# Sync Terraform
+git checkout foundation-tags/v0.9.1 -- terraform/bootstrap/
 git commit -m "infra: sync bootstrap from v0.9.1"
-
-# Push and create PR
-git push -u origin sync-infrastructure-v0.9.1
-gh pr create --title "infra: sync infrastructure from v0.9.1"
 ```
 
-### Pull Code Changes Selectively
-
-Review and cherry-pick specific improvements:
+### Cherry-Pick Specific Commits
 
 ```bash
-# Create feature branch
-git checkout main && git pull origin main
-git checkout -b cherry-pick-improvements
-
-# Fetch tags
-git fetch upstream --tags
-
 # View commits between versions
-git log --oneline v0.9.0..v0.9.1
+git log --oneline foundation-tags/v0.9.0..foundation-tags/v0.9.1
 
 # Cherry-pick specific commit
 git cherry-pick <commit-sha>
 
-# Or: create patch and review before applying
+# Or: create patch and review
 git format-patch -1 <commit-sha>
 git apply --check 0001-*.patch  # Test first
 git apply 0001-*.patch          # Apply if clean
 git commit -m "feat: cherry-pick improvement from v0.9.1"
-
-# Push and create PR
-git push -u origin cherry-pick-improvements
-gh pr create --title "Cherry-pick improvements from v0.9.1"
-```
-
-### Check Available Updates
-
-See what's new in template versions without pulling:
-
-```bash
-# Fetch tags
-git fetch upstream --tags
-
-# List available versions
-git tag -l 'v*' --sort=-version:refname | head -10
-
-# View CHANGELOG for a version
-git show v0.9.1:CHANGELOG.md
-
-# Compare versions
-git log --oneline v0.9.0..v0.9.1
-
-# Detailed diff between versions
-git diff v0.9.0 v0.9.1
-
-# Changes to specific directory
-git diff v0.9.0 v0.9.1 -- terraform/
-
-# File-by-file summary
-git diff --stat v0.9.0 v0.9.1
 ```
 
 ### Resolve Conflicts
 
-When updates conflict with customizations:
-
 ```bash
-# Create feature branch
-git checkout main && git pull origin main
-git checkout -b resolve-sync-conflicts
-
-# Fetch tags
-git fetch upstream --tags
-
-# Attempt pull
-git checkout v0.9.1 -- docs/deployment.md
+# Attempt sync
+git checkout foundation-tags/v0.9.1 -- docs/deployment.md
 
 # If conflicts occur
 git status  # Shows conflicted files
 
-# Resolve manually in editor (look for <<<< ==== >>>>)
-# Or: use merge tool
+# Resolve manually (look for <<<< ==== >>>>) or use merge tool
 git mergetool
 
 # After resolving
 git add docs/deployment.md
 git commit -m "docs: merge deployment.md from v0.9.1"
-
-# Push and create PR
-git push -u origin resolve-sync-conflicts
-gh pr create --title "docs: merge deployment.md from v0.9.1"
 ```
 
-## Sync Carefully
+### Restore Custom Files
 
-- Review changes before pulling
-- Test in development environment first
-- Understand what each change does
+If you accidentally overwrite custom files:
+
+```bash
+# Sync directory
+git checkout foundation-tags/v0.9.1 -- docs/
+git commit -m "docs: sync with v0.9.1"
+
+# Restore custom file from previous commit
+git checkout HEAD~1 -- docs/custom-tools.md
+git commit --amend
+```
+
+### Add Manual Changes
+
+For heavily customized files (README, CLAUDE.md), manually incorporate improvements:
+
+```bash
+# View upstream changes
+git diff foundation-tags/v0.9.1 -- README.md
+git show foundation-tags/v0.9.1:README.md  # Or view full file
+
+# Manually edit your file to incorporate useful changes, then commit
+git add README.md
+git commit -m "docs: incorporate upstream README improvements from v0.9.1"
+```
+
+## Sync Safety
 
 **Don't sync:**
 - `src/` - Your agent code
 - `tests/` - Your tests
+- `uv.lock` - Always generate your own after syncing pyproject.toml
 - Any file with project-specific customizations
 
 **Safe to sync:**
 - `docs/` - Documentation (if you haven't customized)
 - `.github/workflows/` - CI/CD workflows (unless customized)
 - `terraform/bootstrap/module/` - Shared Terraform modules
-- `Dockerfile`, `docker-compose.yml` - If using template versions
 
-**When in doubt:**
-- `git diff upstream/main -- <file>` to see changes
-- Cherry-pick specific improvements
-- Keep your customizations in separate files
+**Files with project-specific references:** `agent-foundation` -> `your-agent-name`
+- `Dockerfile`, `docker-compose.yml`
+- `.env.example`
 
-## Example: Restore Custom Files After Sync
+**Dependencies (sync with caution):**
+- `pyproject.toml` - If synced, MUST run `uv lock` to regenerate your lockfile
+- **NEVER sync `uv.lock`** - Always generate your own with `uv lock` after pyproject.toml changes
+- Test thoroughly after dependency updates
 
-Template reorganized docs/ directory:
+**When in doubt:** `git diff foundation-tags/v0.9.1 -- <file>` to review changes first.
+
+## Troubleshooting
 
 ```bash
-# Create feature branch
-git checkout main && git pull origin main
-git checkout -b sync-docs-restructure-v0.9.1
+# Check for accidental local tag conflicts
+git show-ref | grep -E 'refs/tags/(v[0-9])'
 
-# Review changes
-git fetch upstream --tags
-git diff v0.9.1 -- docs/
+# Delete specific local foundation tags
+git tag -d v0.9.0 v0.9.1
 
-# Major restructure, better to pull all docs
-git checkout v0.9.1 -- docs/
-git commit -m "docs: sync with template v0.9.1 restructure
+# Reset all local tags to origin (verify first: git ls-remote --tags origin)
+git tag -d $(git tag -l)
+git fetch origin --tags
 
-- Adopt new flat structure (removed base-infra/)
-- Update cross-references
-- Add new troubleshooting guide
-"
-
-# Oh no! Forgot about custom-tools.md - restore it
-git checkout HEAD~1 -- docs/custom-tools.md
-git commit --amend -m "docs: sync with template v0.9.1 restructure
-
-- Adopt new flat structure (removed base-infra/)
-- Update cross-references
-- Add new troubleshooting guide
-- Preserve custom-tools.md
-"
-
-# Push and create PR
-git push -u origin sync-docs-restructure-v0.9.1
-gh pr create --title "docs: sync with template v0.9.1 restructure"
+# Reset foundation-tags namespace
+git for-each-ref refs/foundation-tags --format='%(refname)' | xargs -n 1 git update-ref -d
+git fetch foundation 'refs/tags/*:refs/foundation-tags/*' --no-tags
 ```
-
-## Workflow for Major Updates
-
-When template has significant changes (e.g., v0.9.0 → v0.9.1):
-
-1. **Create feature branch:**
-   ```bash
-   git checkout main && git pull origin main
-   git checkout -b sync-upstream-v0.9.1
-   ```
-
-2. **Review changes:**
-   ```bash
-   # Fetch tags
-   git fetch upstream --tags
-
-   # View what's new
-   git log --oneline v0.9.0..v0.9.1
-   git diff --stat v0.9.0 v0.9.1
-
-   # Read CHANGELOG
-   git show v0.9.1:CHANGELOG.md
-   ```
-
-3. **Pull updates incrementally:**
-   ```bash
-   # Docs first (safest)
-   git checkout v0.9.1 -- docs/
-   git commit -m "docs: sync with v0.9.1"
-
-   # Workflows next
-   git checkout v0.9.1 -- .github/workflows/
-   git commit -m "ci: sync workflows from v0.9.1"
-
-   # Infrastructure last (most critical)
-   git checkout v0.9.1 -- terraform/
-   git commit -m "infra: sync terraform from v0.9.1"
-   ```
-
-4. **Review and resolve:**
-   ```bash
-   # Check what changed
-   git log --oneline -3  # Last 3 commits
-
-   # If conflicts occurred during checkout
-   git status  # Shows conflicted files
-
-   # Resolve conflicts manually or with merge tool
-   git mergetool
-   git add <resolved-files>
-   git commit --amend
-
-   # Restore any custom files you need to keep
-   git checkout HEAD~3 -- docs/custom-tools.md
-   git commit --amend
-   ```
-
-5. **Test thoroughly:**
-   ```bash
-   # Run code quality checks
-   uv run ruff format && uv run ruff check --fix && uv run mypy
-
-   # Run tests
-   uv run pytest --cov
-
-   # Test server locally
-   docker compose up --build  # or: uv run server
-
-   # Verify Terraform plans (if infrastructure changed)
-   terraform -chdir=terraform/bootstrap/dev plan
-   ```
-
-6. **Push and create PR:**
-   ```bash
-   git push -u origin sync-upstream-v0.9.1
-   gh pr create --title "Sync with upstream template v0.9.1" --body "$(cat <<'EOF'
-## What
-Sync infrastructure, workflows, and docs from template v0.9.1.
-
-## Why
-- Keep template updates current
-- Includes fixes and improvements from upstream
-
-## How
-- Sync docs/ from v0.9.1
-- Sync .github/workflows/ from v0.9.1
-- Sync terraform/ from v0.9.1
-- Preserve custom-tools.md
-
-## Tests
-- [ ] Code quality checks pass
-- [ ] Tests pass
-- [ ] Server starts successfully
-- [ ] Terraform plans validate
-EOF
-)"
-   ```
-
-7. **Review and merge:**
-   - Review changes in GitHub UI
-   - Ensure CI passes
-   - Test in development environment
-   - Merge when confident
 
 ---
 
