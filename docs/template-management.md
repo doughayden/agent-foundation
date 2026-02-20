@@ -147,9 +147,9 @@ Sync strategy by file type. Complete [Setup](#setup) and [Prepare](#prepare) to 
 ```bash
 git checkout foundation-tags/$VERSION -- .github/workflows/
 git checkout foundation-tags/$VERSION -- terraform/
-git checkout foundation-tags/$VERSION -- docs/
+git checkout foundation-tags/$VERSION -- docs/ mkdocs.yml
 git checkout foundation-tags/$VERSION -- notebooks/
-git checkout foundation-tags/$VERSION -- .gitignore .dockerignore mkdocs.yml
+git checkout foundation-tags/$VERSION -- .gitignore .dockerignore
 # Review: git status && git diff --cached
 ```
 
@@ -162,14 +162,6 @@ git diff foundation-tags/$VERSION -- Dockerfile docker-compose.yml .env.example
 git diff foundation-tags/$VERSION -- pyproject.toml
 ```
 
-**Never sync (your code):**
-- `src/` - Your agent implementation
-- `tests/` - Your test suite
-- `CHANGELOG.md` - Your version history
-- `init_template.py` - Removed from your project after first use
-- `LICENSE` - Your project license
-- `uv.lock` - Regenerate with `uv lock` after syncing pyproject.toml
-
 **Review upstream patterns (apply manually):**
 
 Foundation may enhance reusable code patterns. Review diffs and selectively apply improvements:
@@ -181,6 +173,14 @@ git diff foundation-tags/$VERSION -- src/agent_foundation/utils/
 # Review test patterns (pytest fixtures, ADK mocks)
 git diff foundation-tags/$VERSION -- tests/conftest.py
 ```
+
+**Never sync (your code):**
+- `src/` - Your agent implementation
+- `tests/` - Your test suite
+- `CHANGELOG.md` - Your version history
+- `init_template.py` - Removed from your project after first use
+- `LICENSE` - Your project license
+- `uv.lock` - Regenerate with `uv lock` after syncing pyproject.toml
 
 > [!WARNING]
 > After syncing `pyproject.toml`, run `uv lock` to regenerate lockfile. Never sync `uv.lock` - CI uses `uv sync --locked` which fails on stale lockfile.
