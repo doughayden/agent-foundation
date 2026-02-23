@@ -157,7 +157,7 @@ git checkout foundation-tags/$VERSION -- .gitignore .dockerignore
 
 ```bash
 # Review diffs, manually edit files to incorporate changes
-git diff foundation-tags/$VERSION -- README.md CLAUDE.md
+git diff foundation-tags/$VERSION -- README.md AGENTS.md
 git diff foundation-tags/$VERSION -- Dockerfile docker-compose.yml .env.example
 git diff foundation-tags/$VERSION -- pyproject.toml
 ```
@@ -275,7 +275,7 @@ git commit --amend
 
 ### Add Manual Changes
 
-For heavily customized files (README, CLAUDE.md), manually incorporate improvements:
+For heavily customized files (README, AGENTS.md), manually incorporate improvements:
 
 ```bash
 # View upstream changes
