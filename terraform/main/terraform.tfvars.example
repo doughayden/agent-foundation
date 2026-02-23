@@ -1,6 +1,7 @@
 ### ===========================================
 ### Shared Configuration
 ### ===========================================
+environment                                        = "dev"
 project                                            = "project-id"
 location                                           = "us-central1"
 agent_name                                         = "agent-name"

@@ -45,7 +45,7 @@ output "artifact_service_uri" {
 
 output "cloud_run_services" {
   description = "Agent app Cloud Run service details per location"
-  value = { for loc, svc in data.google_cloud_run_v2_service.app_actual :
+  value = { for loc, svc in data.google_cloud_run_v2_service.app :
     loc => {
       latest_ready_revision = split("revisions/", svc.latest_ready_revision)[1]
       update_time           = svc.update_time

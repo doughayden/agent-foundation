@@ -74,6 +74,7 @@ resource "google_project_iam_member" "app" {
 resource "google_vertex_ai_reasoning_engine" "session_and_memory" {
   display_name = "${local.resource_name} Sessions and Memory"
   description  = "Managed Session and Memory Bank Service for the ${local.resource_name} app"
+  region       = var.location
 
   # Prevent plan and apply diffs with an empty spec for managed sessions and memory bank only (no runtime code)
   spec {}
@@ -162,7 +163,7 @@ resource "google_cloud_run_v2_service" "app" {
 # Read Cloud Run service state after resource modification completes to work around GCP API eventual
 # consistency - Terraform's dependency graph ensures this data source is read after the resource is
 # updated, guaranteeing outputs reflect the actual deployed revision rather than stale cached data.
-data "google_cloud_run_v2_service" "app_actual" {
+data "google_cloud_run_v2_service" "app" {
   for_each = local.locations
   name     = google_cloud_run_v2_service.app[each.key].name
   location = each.key
