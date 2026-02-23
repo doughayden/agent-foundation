@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Support ADK eval command with PEP 562 lazy loading pattern
+
 ## [0.9.2] - 2026-02-20
 
 ### Changed

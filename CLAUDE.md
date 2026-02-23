@@ -35,7 +35,7 @@ terraform -chdir=terraform/main init/plan/apply           # Deploy (TF_VAR_envir
 - `LoggingPlugin`: Agent lifecycle logging
 - `root_agent` (LlmAgent): gemini-2.5-flash (configurable `ROOT_AGENT_MODEL`), custom tools, callbacks
 
-**Package exports** (`src/agent_foundation/__init__.py`): Intentionally does NOT export `agent` module (breaks from ADK recommendations). Forces ADK to use fallback discovery pattern, enabling lazy loading. Ensures .env loads before module-level code executes. Agent discovery still works correctly.
+**Package exports** (`src/agent_foundation/__init__.py`): Uses PEP 562 `__getattr__` for explicit lazy loading. Declares `agent` in `__all__` but defers import until first access. Supports both ADK eval CLI and web server workflows while ensuring .env loads before agent.py executes module-level code.
 
 **Key modules:**
 - `agent.py`: App/LlmAgent config
