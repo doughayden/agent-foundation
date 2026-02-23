@@ -228,7 +228,8 @@ your-agent-name/
   pyproject.toml          # Project configuration
   docker-compose.yml      # Local development
   Dockerfile              # Container image
-  CLAUDE.md               # LLM Agent instructions
+  AGENTS.md               # LLM Agent instructions
+  CLAUDE.md               # Imports AGENTS.md for Claude Code
   README.md               # Main documentation
 ```
 
