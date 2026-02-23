@@ -26,7 +26,7 @@ Lazy loading workflow:
 import importlib
 from types import ModuleType
 
-__all__ = ["agent"] # pyright: ignore[reportUnsupportedDunderAll]
+__all__ = ["agent"]
 
 
 def __getattr__(name: str) -> ModuleType:
