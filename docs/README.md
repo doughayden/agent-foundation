@@ -21,28 +21,28 @@ Built for teams who need to move beyond prototypes and ship production AI agents
 
 ## First Time Setup
 
-- [Getting Started](getting-started.md) - Bootstrap CI/CD, first deployment
+- [Getting Started](getting-started.md) - Prerequisites, bootstrap, first deployment
 - [Environment Variables](environment-variables.md) - Complete configuration reference
 
 ## Development
 
-- [Development](development.md) - Docker, testing, code quality
-- [Infrastructure](infrastructure.md) - Deployment, CI/CD, multi-environment
+- [Development](development.md) - Local workflow, Docker, testing, code quality
+- [Infrastructure](infrastructure.md) - Deployment modes, CI/CD, protection strategies, IaC
 
 ## Operations
 
-- [Observability](observability.md) - Traces and logs
-- [Troubleshooting](troubleshooting.md) - Common issues
+- [Observability](observability.md) - OpenTelemetry traces and logs
+- [Troubleshooting](troubleshooting.md) - Common issues and solutions
 
-## Template Management
+## Syncing Upstream Changes
 
-- [Syncing Upstream Changes](template-management.md) - Pull updates from template
+- [Template Management](template-management.md) - Syncing upstream agent-foundation changes
 
 ## References
 
 Deep dives for optional follow-up:
 
-- [Bootstrap](references/bootstrap.md) - Complete bootstrap setup for both modes
+- [Bootstrap](references/bootstrap.md) - Complete bootstrap setup for both deployment modes
 - [Protection Strategies](references/protection-strategies.md) - Branch, tag, environment protection
 - [Deployment Modes](references/deployment.md) - Multi-environment strategy and infrastructure
 - [CI/CD Workflows](references/cicd.md) - Workflow architecture and mechanics
