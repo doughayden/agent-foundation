@@ -40,7 +40,7 @@ terraform -chdir=terraform/bootstrap/dev init
 terraform -chdir=terraform/bootstrap/dev apply
 
 # 3. Verify
-gh variable list
+gh variable list --env dev
 ```
 
 **Production Mode:** Bootstrap dev → stage → prod sequentially. Stage and prod require promotion source variables from previous environment.

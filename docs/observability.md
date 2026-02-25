@@ -12,7 +12,7 @@ This project includes production-ready OpenTelemetry observability that provides
 
 - **Consistent Setup**: Single `setup_opentelemetry()` function used across all environments (local and deployed)
 - **Instance-Level Tracking**: Unique `SERVICE_INSTANCE_ID` per process (PID + UUID) for collision-free identification
-- **Environment Grouping**: `SERVICE_NAMESPACE` automatically set to Terraform workspace in deployed environments (`default`, `dev`, `stage`, `prod`)
+- **Environment Grouping**: `SERVICE_NAMESPACE` automatically set to environment name in deployed environments (`dev`, `stage`, `prod`)
 - **Version Tracking**: `SERVICE_VERSION` set to Cloud Run revision ID for deployment correlation
 - **Google Cloud Integration**: Direct export to Google Cloud Trace (OTLP) and Cloud Logging
 - **Trace Correlation**: Logs automatically include trace context via `LoggingInstrumentor`
@@ -78,7 +78,7 @@ OpenTelemetry resource attributes uniquely identify your service instances in tr
 | Attribute | Source | Example | Description |
 |-----------|--------|---------|-------------|
 | `service.name` | `AGENT_NAME` env var | `your-agent-name` | Service identifier (set explicitly in `.env`) |
-| `service.namespace` | `TELEMETRY_NAMESPACE` env var | `default`/`dev`/`stage`/`prod` (deployed) or `local` (dev) | Environment (via Terraform workspace) grouping for traces |
+| `service.namespace` | `TELEMETRY_NAMESPACE` env var | `dev`/`stage`/`prod` (deployed) or `local` (dev) | Environment name grouping for traces |
 | `service.version` | `K_REVISION` env var | `your-agent-name-00042-abc` (deployed) or `local` (dev) | Cloud Run revision or local dev indicator |
 | `service.instance.id` | Generated | `worker-1234-a1b2c3d4e5f6` | Unique process instance (PID + UUID) |
 | `gcp.project_id` | `GOOGLE_CLOUD_PROJECT` env var | `my-project-id` | GCP project for resource correlation |

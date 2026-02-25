@@ -62,7 +62,7 @@ terraform -chdir=terraform/bootstrap/dev apply
 
 **Check GitHub Variables:**
 ```bash
-gh variable list
+gh variable list --env dev
 ```
 
 Expected variables: `GCP_PROJECT_ID`, `IMAGE_NAME`, `ARTIFACT_REGISTRY_URI`, `TERRAFORM_STATE_BUCKET`, etc.

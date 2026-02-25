@@ -76,7 +76,7 @@ terraform -chdir=terraform/bootstrap/dev apply
 
 ```bash
 # Check GitHub Variables
-gh variable list
+gh variable list --env dev
 ```
 
 See [Bootstrap Reference](references/bootstrap.md) for complete bootstrap setup instructions.
