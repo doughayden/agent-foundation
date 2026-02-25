@@ -26,46 +26,43 @@ This project distills proven patterns from the Starter Pack while prioritizing b
 ## Features
 
 ### ⚙️ Development & Build Optimization
-- **Optimized Docker builds**: Multi-stage builds with uv package manager (~200MB images, 5-10s rebuilds)
+- **Optimized Docker builds**: Multi-stage builds with uv (~200MB images, fast rebuilds with layer caching)
 - **Developer experience**: Hot reloading with Docker Compose watch mode for instant feedback
-- **Code quality**: Strict type checking (mypy), comprehensive testing (100% coverage), modern linting (ruff)
+- **Code quality**: Strict type checking (mypy), 100% test coverage, modern linting (ruff)
 - **Template-ready**: One-command initialization script for rapid project setup
 
 ### 🏗️ Production Infrastructure
-- **Automated CI/CD**: GitHub Actions workflows with Terraform IaC, smart PR automation with plan comments
-- **Automated code reviews**: Claude Code integration in CI for quality assurance
+- **Automated CI/CD**: GitHub Actions with Terraform IaC, smart PR automation with plan comments
+- **Automated code reviews**: Claude Code integration in CI
 - **Cloud Run deployment**: Production-grade hosting with regional redundancy and autoscaling
-- **Environment isolation**: Production-grade multi-environment deployments (dev/stage/prod)
-- **Global scalability**: Clear path to multi-region deployments via external Application Load Balancer
+- **Environment isolation**: Multi-environment deployments (dev/stage/prod)
+- **Global scalability**: Create multi-region deployments by adding External Application Load Balancer
 
 ### 🤖 Agent Capabilities
-- **Managed sessions**: Vertex AI Agent Engine for durable conversation state and memory bank
+- **Managed sessions**: Vertex AI Agent Engine for durable conversation state and memory
 - **Artifact storage**: GCS-backed persistent storage for session artifacts
-- **Custom observability**: 🔭 OpenTelemetry instrumentation with full trace-log correlation in Cloud Trace and Cloud Logging
+- **Custom observability**: OpenTelemetry instrumentation with full trace-log correlation
 
 ### 🔒 Security & Reliability
-- **Workload Identity Federation**: Keyless authentication for CI/CD (no service account keys)
-- **Non-root containers**: Security-hardened runtime with least privilege
+- **Workload Identity Federation**: Keyless CI/CD authentication (no service account keys)
+- **Non-root containers**: Security-hardened runtime with least-privilege IAM
 - **Health checks**: Kubernetes-style probes with startup grace periods
 
 ## Getting Started
 
 > [!IMPORTANT]
-> You must complete deployment first to create required resources (Agent Engine, GCS buckets, other agent-specific resources) before running locally.
+> Complete deployment first to create required resources (Agent Engine, GCS buckets, other agent-specific resources) before running locally with cloud persistence.
 
 > [!NOTE]
 > The project starts in **dev-only mode** (single environment) by default. To enable production mode with staged deployments (dev → stage → prod), see [Infrastructure: Deployment Modes](docs/infrastructure.md#deployment-modes).
 
-Provision CI/CD infrastructure and deploy cloud resources.
-
 ### Bootstrap CI/CD Infrastructure
-
-Set up the foundation for automated deployments:
 
 ```bash
 # 1. Configure bootstrap for dev environment
 cp terraform/bootstrap/dev/terraform.tfvars.example terraform/bootstrap/dev/terraform.tfvars
-# Edit terraform/bootstrap/dev/terraform.tfvars REQUIRED variables: project, location, agent_name, repository_owner, repository_name
+# Edit terraform/bootstrap/dev/terraform.tfvars:
+#   REQUIRED variables: project, location, agent_name, repository_owner, repository_name
 
 # 2. Authenticate
 gcloud auth application-default login
@@ -76,7 +73,7 @@ terraform -chdir=terraform/bootstrap/dev init
 terraform -chdir=terraform/bootstrap/dev apply
 
 # 4. Verify
-gh variable list --env dev  # or view in GitHub repo Settings > Environments > dev
+gh variable list --env dev  # or GitHub repo Settings > Environments > dev
 ```
 
 **Production Mode Setup:**
@@ -88,7 +85,7 @@ To enable full production deployment (dev/stage/prod):
 
 Bootstrap creates: Workload Identity Federation, Artifact Registry, GCS state bucket, GitHub Environments, GitHub Variables.
 
-See [Getting Started](docs/getting-started.md) for detailed first-time setup and [Infrastructure: Switching Modes](docs/infrastructure.md#switching-deployment-modes) for production mode configuration.
+See [Getting Started](docs/getting-started.md) for detailed setup and [Infrastructure: Switching Modes](docs/infrastructure.md#switching-deployment-modes) for production mode configuration.
 
 ---
 
@@ -115,9 +112,10 @@ gh run view --log
 Deployment creates:
 - Agent Engine for session and memory persistence (`AGENT_ENGINE`)
 - GCS bucket for artifact storage (`ARTIFACT_SERVICE_URI`)
-- Cloud Run service (automatically configured with `AGENT_ENGINE` and `ARTIFACT_SERVICE_URI`)
+- Cloud Run service (auto-configured with all resources)
+- Service account with least-privilege IAM bindings
 
-See [Infrastructure](docs/infrastructure.md) for deployment and CI/CD automation details.
+See [Infrastructure](docs/infrastructure.md) for CI/CD and provisioning details.
 
 ---
 
@@ -150,9 +148,9 @@ See [Development](docs/development.md) for workflow, testing, and code quality s
 Test the deployed Cloud Run service via proxy:
 
 ```bash
-# Local proxy to dev environment (http://localhost:8000)
-# Service name format: ${AGENT_NAME}-dev
+# Service name format: ${AGENT_NAME}-${environment} (e.g., agent-foundation-dev)
 gcloud run services proxy <agent-name>-dev --project <project-id> --region <region> --port 8000
+# Access at: http://localhost:8000
 ```
 
 ---
@@ -161,15 +159,15 @@ gcloud run services proxy <agent-name>-dev --project <project-id> --region <regi
 
 See [docs/](docs/) for complete documentation.
 
-### Core Documentation
-- **[Getting Started](docs/getting-started.md)** - Bootstrap and first deployment
+### Core
+- **[Getting Started](docs/getting-started.md)** - Prerequisites, bootstrap, first deployment
 - **[Development](docs/development.md)** - Local workflow, Docker, testing, code quality
-- **[Infrastructure](docs/infrastructure.md)** - Deployment, CI/CD, multi-environment
+- **[Infrastructure](docs/infrastructure.md)** - Deployment modes, CI/CD, protection strategies, IaC
 - **[Environment Variables](docs/environment-variables.md)** - Complete configuration reference
 
 ### Operations
 - **[Observability](docs/observability.md)** - OpenTelemetry traces and logs
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
 
-### Template Management
-- **[Syncing Upstream](docs/template-management.md)** - Pull updates from template
+### Syncing Upstream Changes
+- **[Template Management](docs/template-management.md)** - Syncing upstream agent-foundation changes
