@@ -230,7 +230,7 @@ GitHub Environment Variables pass overrides to Terraform as `TF_VAR_*` inputs. D
 Update GitHub Environment variables (no code changes):
 
 1. Settings → Environments → {environment} → Environment variables
-2. Edit variable (e.g., `LOG_LEVEL=DEBUG`)
+2. Edit or add unset variable (e.g., `LOG_LEVEL=DEBUG` or `SERVE_WEB_INTERFACE=TRUE`)
 3. Re-run latest workflow or push new commit
 
 Changes apply on next deployment.

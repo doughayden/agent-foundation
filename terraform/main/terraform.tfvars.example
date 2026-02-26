@@ -22,8 +22,5 @@ terraform_state_bucket = "terraform-state-agent-name-abcd1234"
 ### ===========================================
 # log_level                                  = "DEBUG"
 # serve_web_interface                        = "TRUE"
-# agent_engine                               = "value"
-# artifact_service_uri                       = "value"
-# allow_origins                              = "value"
 # root_agent_model                           = "value"
 # adk_suppress_experimental_feature_warnings = "TRUE"

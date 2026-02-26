@@ -3,7 +3,7 @@
 First-time setup: from zero to deployed.
 
 > [!NOTE]
-> This is a one-time setup. After successful bootstrap and first deployment, use the feature branch workflow described in [Development](development.md).
+> Bootstrap is a one-time setup per GitHub Environment. After successful bootstrap and first deployment, use the feature branch workflow described in [Development](development.md).
 
 ## Prerequisites
 
@@ -21,27 +21,17 @@ First-time setup: from zero to deployed.
 
 **GitHub Repository:**
 - Create a new repository from this template
-- Admin access (for GitHub Variables and Environments)
+- Admin access (for GitHub Environments and Variables)
 
 ## Bootstrap CI/CD
 
-Bootstrap creates the infrastructure for automated deployments.
+Bootstrap creates the infrastructure for automated deployments:
+- Workload Identity Federation for keyless GitHub Actions authentication
+- Artifact Registry for Docker image storage with cleanup policies
+- Terraform State Bucket for main module remote state (GCS)
+- GitHub Environment and Variables for CI/CD
 
-**What gets created:**
-1. **Workload Identity Federation** - Keyless GitHub Actions authentication
-2. **Artifact Registry** - Docker image storage with cleanup policies
-3. **Terraform State Bucket** - Remote state for main module (GCS)
-4. **GitHub Variables** - Auto-configured repository variables for CI/CD
-
-### 1. Authenticate
-
-```bash
-gcloud auth application-default login
-gcloud config set project YOUR_PROJECT_ID
-gh auth login
-```
-
-### 2. Configure Bootstrap
+### 1. Configure
 
 Dev-only mode (default): bootstrap only the dev environment.
 
@@ -57,33 +47,46 @@ Required variables in `terraform/bootstrap/dev/terraform.tfvars`:
 - `repository_owner` - GitHub username or organization
 - `repository_name` - GitHub repository name
 
-**Note:** For production mode (dev → stage → prod), see [Infrastructure](infrastructure.md).
+**Refer to `terraform.tfvars.example` for required variables you customized for your agent**
 
-### 3. Run Bootstrap
+> [!NOTE]
+> For production mode (dev → stage → prod), see [Infrastructure](infrastructure.md).
+
+### 2. Authenticate
+
+```bash
+gcloud auth application-default login
+gcloud config set project YOUR_PROJECT_ID  # Optional
+gh auth login
+```
+
+### 3. Bootstrap
 
 ```bash
 # Initialize Terraform
 terraform -chdir=terraform/bootstrap/dev init
 
-# Preview changes
-terraform -chdir=terraform/bootstrap/dev plan
-
-# Apply (typically completes in 2-3 minutes)
+# Preview and Approve to Apply
 terraform -chdir=terraform/bootstrap/dev apply
 ```
 
-### 4. Verify Bootstrap
+### 4. Verify
 
 ```bash
 # Check GitHub Variables
-gh variable list
+gh variable list --env dev  # or GitHub repo Settings > Environments > dev
 ```
 
 See [Bootstrap Reference](references/bootstrap.md) for complete bootstrap setup instructions.
 
-## First Deployment
+## Deploy
 
-Deploy the agent to Cloud Run using GitHub Actions.
+GitHub Actions deploy the agent resources:
+- Agent Engine for session and memory persistence (`AGENT_ENGINE`)
+- GCS bucket for artifact storage (`ARTIFACT_SERVICE_URI`)
+- Cloud Run service (auto-configured with all resources)
+- Service account with least-privilege IAM bindings
+- Additional cloud resources you customized for your agent
 
 ### 1. Create Pull Request
 
@@ -134,19 +137,58 @@ Deployment flow:
 gh run view <run-id>
 ```
 
-Save cloud resource values from the job summary to use in your local `.env`. See [Development](development.md) for details and [Environment Variables](environment-variables.md) for a complete reference.
+Save cloud resource values from the job summary to use in the next step.
 
-## Verify Deployment
+## Run the Agent
 
-Test the deployed agent using Cloud Run proxy (handles authentication automatically).
+Configure your local `.env` with cloud resource values from the deployment, then run the agent.
+
+### 1. Create .env File
 
 ```bash
-# Service name format: ${agent_name}-dev (or ${agent_name}-default for single env)
-# Get service name, project, and region from deployment summary
-gcloud run services proxy <service-name> \
-  --project <project-id> \
-  --region <region> \
-  --port 8000
+cp .env.example .env
+```
+
+### 2. Add Cloud Resource Values for the Local Agent
+
+Add the values from the deployment job summary to `.env`:
+
+```bash
+AGENT_ENGINE=projects/YOUR_PROJECT_ID/locations/YOUR_LOCATION/reasoningEngines/YOUR_ENGINE_ID
+ARTIFACT_SERVICE_URI=gs://YOUR_BUCKET_NAME
+# Add values for resources you customized for your agent
+```
+
+Enable the development web interface in your `.env`:
+
+```bash
+SERVE_WEB_INTERFACE=TRUE
+```
+
+See [Environment Variables: Cloud Resources](environment-variables.md#cloud-resources) for where to find each value and a complete configuration reference.
+
+### 3. Run the Local Agent
+
+```bash
+# Authenticate with GCP (if not already done)
+gcloud auth application-default login
+
+# Run server (http://localhost:8000)
+uv run server
+
+# Or with Docker Compose (hot reloading, matches production)
+docker compose up --build --watch
+```
+
+See [Development](development.md) for the full local development workflow including testing and code quality.
+
+### 4. Run the Remote Agent
+
+Authenticate to the deployed agent service using the Cloud Run proxy.
+
+```bash
+# Service name format: ${AGENT_NAME}-${environment} (e.g., agent-foundation-dev)
+gcloud run services proxy <service-name> --project <project-id> --region <region> --port 8000
 
 # In another terminal, test the health endpoint
 curl http://localhost:8000/health
@@ -156,30 +198,33 @@ curl http://localhost:8000/health
 # Stop proxy: Ctrl+C
 ```
 
-**Why use proxy?** Cloud Run services enforce authentication. The proxy handles auth automatically using your gcloud credentials.
+> [!TIP]
+> ### Enable the deployed remote agent web interface (optional)
+> 
+> To access the same dev UI available locally, set `SERVE_WEB_INTERFACE=TRUE` in the `dev` GitHub Environment variables and re-deploy:
+> 
+> ```bash
+> gh variable set SERVE_WEB_INTERFACE --env dev --body "TRUE"  # Or change in GitHub on the web
+> ```
+> 
+> Then re-run the latest CI/CD workflow (Actions tab → CI/CD Pipeline → Re-run jobs).
+>
+> Once deployed, the web UI is available at `http://localhost:8000` via the proxy.
 
 See [Cloud Run proxy documentation](https://cloud.google.com/run/docs/authenticating/developers#proxy) for details.
 
 ## Next Steps
 
 **Local Development:**
-1. Update `.env` with cloud resources from deployment
-2. See [Development](development.md) for feature branch workflow
+- See [Development](development.md) for feature branch workflow, testing, and code quality
 
-**Multi-Environment:**
-- Default: Dev-only mode (deploys to default environment on merge to main)
-- Optional: Enable production mode for dev → stage → prod workflow
-- See [Infrastructure](infrastructure.md) for multi-environment strategy
+**Infrastructure & CI/CD:**
+- See [Infrastructure](infrastructure.md) for deployment modes, pipeline behavior, and operations
 
 **Observability:**
 - View traces in [Cloud Trace](https://console.cloud.google.com/traces)
 - View logs in [Logs Explorer](https://console.cloud.google.com/logs)
 - See [Observability](observability.md) for query examples
-
-**CI/CD:**
-- Understand GitHub Actions workflows
-- Customize deployment triggers
-- See [CI/CD](references/cicd.md) for workflow reference
 
 ---
 

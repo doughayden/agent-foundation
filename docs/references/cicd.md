@@ -83,6 +83,8 @@ Tag triggers (`v*`) always run regardless of paths.
 
 ## Workflow Flows
 
+Job-level dependency graphs showing how GitHub Actions jobs chain together. For the higher-level deployment strategy view, see [Deployment Modes: Deployment Flow](deployment.md#deployment-flow).
+
 ### PR Flow
 
 **Trigger:** Push to feature branch with open PR

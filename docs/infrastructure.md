@@ -5,47 +5,18 @@ Deployment, CI/CD, and infrastructure management.
 > [!IMPORTANT]
 > Complete bootstrap setup and configure protection rules before deploying in Production Mode.
 
-## Deployment Modes
-
-**Dev-Only Mode:**
-- Single GCP project, single environment
-- Workflow: PR → plan, Merge → deploy to dev
-- Use: Experiments, prototypes, internal tools
-
-**Production Mode:**
-- Three GCP projects (dev/stage/prod)
-- Workflow: PR → plan, Merge → dev+stage, Tag → prod (approval required)
-- Use: Production services, staged deployment, compliance
-
-**Switch modes:** Edit `production_mode` in `.github/workflows/ci-cd.yml` (see [Deployment Modes](references/deployment.md))
-
 ## Bootstrap Setup
 
-Bootstrap creates CI/CD infrastructure (one-time per environment):
+Bootstrap creates CI/CD infrastructure one time per environment:
 - Workload Identity Federation (keyless GitHub Actions auth)
-- Artifact Registry (Docker images)
+- Artifact Registry (Docker images with cleanup policies)
+- Terraform State Bucket (remote state for main module)
 - GitHub Environments and Variables
-- Tag protection (production mode)
-- Cross-project IAM (production mode)
+- Tag protection and cross-project IAM (production mode)
 
-**Dev-Only Mode:**
-```bash
-# 1. Configure
-cp terraform/bootstrap/dev/terraform.tfvars.example \
-   terraform/bootstrap/dev/terraform.tfvars
-# Edit with your project/repo details
+First time? See [Getting Started](getting-started.md) for complete walkthrough including prerequisites.
 
-# 2. Bootstrap
-terraform -chdir=terraform/bootstrap/dev init
-terraform -chdir=terraform/bootstrap/dev apply
-
-# 3. Verify
-gh variable list
-```
-
-**Production Mode:** Bootstrap dev → stage → prod sequentially. Stage and prod require promotion source variables from previous environment.
-
-See [Bootstrap](references/bootstrap.md) for complete instructions including promotion variables.
+Setting up production mode or need full detail? See [Bootstrap Reference](references/bootstrap.md).
 
 ## Protection Strategies
 
@@ -67,6 +38,47 @@ Configure protection rules after bootstrap (manual setup):
 3. Add users/teams who can approve production deployments
 
 See [Protection Strategies](references/protection-strategies.md) for detailed UI setup and rationale.
+
+## Deployment Modes
+
+**Dev-Only Mode:**
+- Single GCP project, single environment
+- Workflow: PR → plan, Merge → deploy to dev
+- Use: Experiments, prototypes, internal tools
+
+**Production Mode:**
+- Three GCP projects (dev/stage/prod)
+- Workflow: PR → plan, Merge → dev+stage, Tag → prod (approval required)
+- Use: Production services, staged deployment, compliance
+
+**Switch modes:** Edit `production_mode` in `.github/workflows/ci-cd.yml`
+
+See [Deployment Modes](references/deployment.md) for mode comparison, workflow details, and switching instructions.
+
+## Workflow Behavior
+
+What GitHub Actions does at each trigger:
+
+**PR Flow:**
+- Builds Docker image → pushes to dev registry as `pr-{number}-{sha}`
+- Runs Terraform plan for dev
+- Comments plan on PR
+- No deployment
+
+**Merge Flow (dev-only mode):**
+- Builds image → pushes as `{sha}`, `latest`
+- Deploys to dev
+
+**Merge Flow (production mode):**
+- Builds image → pushes to dev registry
+- Deploys to dev and stage (parallel after build)
+
+**Tag Flow (production mode):**
+- Resolves image from stage registry
+- Promotes to prod registry
+- Deploys to prod (requires approval in prod-apply environment)
+
+See [CI/CD Workflows](references/cicd.md) for workflow architecture, job details, and customization.
 
 ## Deployment Operations
 
@@ -215,78 +227,28 @@ gcloud artifacts docker images describe "$IMAGE" \
 
 See [Observability](observability.md) for query examples and trace analysis.
 
-## Workflow Behavior
-
-**PR Flow:**
-- Builds Docker image → pushes to dev registry as `pr-{number}-{sha}`
-- Runs Terraform plan for dev
-- Comments plan on PR
-- No deployment
-
-**Merge Flow (dev-only mode):**
-- Builds image → pushes as `{sha}`, `latest`
-- Deploys to dev
-
-**Merge Flow (production mode):**
-- Builds image → pushes to dev registry
-- Deploys to dev and stage (parallel after build)
-
-**Tag Flow (production mode):**
-- Resolves image from stage registry
-- Promotes to prod registry
-- Deploys to prod (requires approval in prod-apply environment)
-
-See [CI/CD Workflows](references/cicd.md) for detailed workflow architecture.
-
-## Switching Deployment Modes
-
-Edit `.github/workflows/ci-cd.yml`:
-
-```yaml
-jobs:
-  config:
-    uses: ./.github/workflows/config-summary.yml
-    with:
-      production_mode: true  # or false for dev-only
-```
-
-**Requirements:**
-1. Bootstrap Github Environment(s) and Google Cloud project(s) for target mode
-2. Configure protection rules (production mode)
-3. PR with mode change
-4. Merge to apply
-
-See [Deployment Modes](references/deployment.md) for mode comparison and strategy.
-
 ## Terraform Structure
 
 **Bootstrap Module** (`terraform/bootstrap/{dev,stage,prod}/`):
-- One-time CI/CD infrastructure per environment
-- Creates: WIF, Artifact Registry, state bucket, GitHub environments/variables
-- Local state
+- One-time CI/CD infrastructure per environment (WIF, Artifact Registry, state bucket, GitHub environments/variables)
+- Local state, runs manually by infrastructure owners
 
 **Main Module** (`terraform/main/`):
-- Application deployment (runs in CI/CD)
-- Creates: Cloud Run, service account, Agent Engine, GCS bucket
-- Remote state (bucket created per environment project in bootstrap)
+- Application deployment: Cloud Run, service account, Agent Engine, GCS bucket
+- Remote state (bucket created by bootstrap), runs automatically in CI/CD
 
-See [Deployment Modes](references/deployment.md) for infrastructure details.
+See [Deployment Modes: Terraform Structure](references/deployment.md#terraform-structure) for resource details and naming conventions.
 
 ## Image Promotion (Production Mode)
 
-Production mode promotes images between registries instead of rebuilding:
+Production mode promotes images between registries instead of rebuilding, ensuring exact tested bytes deploy across environments:
 
 **Dev → Stage:** Triggered on merge to main
-**Stage → Prod:** Triggered on tag push
+**Stage → Prod:** Triggered on tag push (requires manual approval)
 
-**Why promote?**
-- Deploy exact bytes tested in previous environment
-- Faster (no rebuild)
-- Guaranteed consistency
+Cross-project IAM for promotion is configured automatically during bootstrap.
 
-**Cross-project IAM:** Stage/prod bootstrap grant registry-scoped reader access to source environment.
-
-See [Deployment Modes](references/deployment.md) for promotion details.
+See [Deployment Modes: Image Promotion](references/deployment.md#image-promotion) for promotion details and cross-project IAM.
 
 ---
 
