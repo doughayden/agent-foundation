@@ -21,7 +21,7 @@ Built for teams who need to move beyond prototypes and ship production AI agents
 
 ## First Time Setup
 
-- [Getting Started](getting-started.md) - Prerequisites, bootstrap, first deployment
+- [Getting Started](getting-started.md) - Prerequisites, bootstrap, deploy, run
 - [Environment Variables](environment-variables.md) - Complete configuration reference
 
 ## Development
