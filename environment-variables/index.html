@@ -1,0 +1,2005 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://doughayden.github.io/agent-foundation/environment-variables/">
+      
+      
+        <link rel="prev" href="../getting-started/">
+      
+      
+        <link rel="next" href="../development/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Environment Variables - Agent Foundation Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#environment-variables" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Agent Foundation Docs" class="md-header__button md-logo" aria-label="Agent Foundation Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Agent Foundation Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Environment Variables
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/doughayden/agent-foundation" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../getting-started/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../development/" class="md-tabs__link">
+          
+  
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../template-management/" class="md-tabs__link">
+          
+  
+  
+  Template
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../references/" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Agent Foundation Docs" class="md-nav__button md-logo" aria-label="Agent Foundation Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5"/></svg>
+
+    </a>
+    Agent Foundation Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/doughayden/agent-foundation" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Required
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Required">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#google-cloud-vertex-ai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Google Cloud Vertex AI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-identification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Identification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opentelemetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenTelemetry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cloud-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cloud Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#runtime-configuration-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Configuration (Optional)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Runtime Configuration (Optional)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Logging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CORS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloud-run-auto-set-read-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cloud Run Auto-Set (Read-Only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cicd-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI/CD Only
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CI/CD Only">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#terraform-inputs-tf_var_" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Terraform Inputs (TF_VAR_*)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-configuration-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Configuration Overrides
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#where-variables-are-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where Variables Are Set
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure & Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Template
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Template
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../template-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syncing Upstream Changes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/bootstrap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bootstrap Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/protection-strategies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Protection Strategies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/cicd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing Patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/code-quality/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code Quality Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/docker-compose-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/dockerfile-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dockerfile Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/mkdocs-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MkDocs Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Required
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Required">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#google-cloud-vertex-ai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Google Cloud Vertex AI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-identification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Identification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opentelemetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenTelemetry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cloud-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cloud Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#runtime-configuration-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Configuration (Optional)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Runtime Configuration (Optional)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Logging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CORS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloud-run-auto-set-read-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cloud Run Auto-Set (Read-Only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cicd-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI/CD Only
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CI/CD Only">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#terraform-inputs-tf_var_" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Terraform Inputs (TF_VAR_*)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-configuration-overrides" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Configuration Overrides
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#where-variables-are-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where Variables Are Set
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="environment-variables">Environment Variables</h1>
+<p>Complete configuration reference. Single source of truth.</p>
+<p>See <code>.env.example</code> in the repository root for template configuration with inline comments.</p>
+<h2 id="quick-reference">Quick Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Required</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><a href="#google-cloud-vertex-ai">GOOGLE_GENAI_USE_VERTEXAI</a></strong></td>
+<td>✅</td>
+<td>-</td>
+<td>Enable Vertex AI authentication</td>
+</tr>
+<tr>
+<td><strong><a href="#google-cloud-vertex-ai">GOOGLE_CLOUD_PROJECT</a></strong></td>
+<td>✅</td>
+<td>-</td>
+<td>GCP project ID</td>
+</tr>
+<tr>
+<td><strong><a href="#google-cloud-vertex-ai">GOOGLE_CLOUD_LOCATION</a></strong></td>
+<td>✅</td>
+<td>-</td>
+<td>GCP region</td>
+</tr>
+<tr>
+<td><strong><a href="#agent-identification">AGENT_NAME</a></strong></td>
+<td>✅</td>
+<td>-</td>
+<td>Unique agent identifier</td>
+</tr>
+<tr>
+<td><strong><a href="#opentelemetry">OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT</a></strong></td>
+<td>✅</td>
+<td>-</td>
+<td>Capture LLM content in traces</td>
+</tr>
+<tr>
+<td><strong><a href="#cloud-resources">AGENT_ENGINE</a></strong></td>
+<td>Recommended</td>
+<td>in-memory</td>
+<td>Session/memory persistence</td>
+</tr>
+<tr>
+<td><strong><a href="#cloud-resources">ARTIFACT_SERVICE_URI</a></strong></td>
+<td>Recommended</td>
+<td>in-memory</td>
+<td>Artifact storage</td>
+</tr>
+<tr>
+<td><a href="#logging">LOG_LEVEL</a></td>
+<td>Optional</td>
+<td><code>INFO</code></td>
+<td>Logging verbosity</td>
+</tr>
+<tr>
+<td><a href="#logging">TELEMETRY_NAMESPACE</a></td>
+<td>Optional</td>
+<td><code>local</code></td>
+<td>Trace grouping</td>
+</tr>
+<tr>
+<td><a href="#agent-features">SERVE_WEB_INTERFACE</a></td>
+<td>Optional</td>
+<td><code>FALSE</code></td>
+<td>Enable ADK web UI</td>
+</tr>
+<tr>
+<td><a href="#agent-features">RELOAD_AGENTS</a></td>
+<td>Optional</td>
+<td><code>FALSE</code></td>
+<td>Hot-reload on file changes</td>
+</tr>
+<tr>
+<td><a href="#agent-features">ROOT_AGENT_MODEL</a></td>
+<td>Optional</td>
+<td><code>gemini-2.5-flash</code></td>
+<td>Override default model</td>
+</tr>
+<tr>
+<td><a href="#cors">ALLOW_ORIGINS</a></td>
+<td>Optional</td>
+<td><code>["http://localhost", "http://localhost:8000"]</code></td>
+<td>CORS allowed origins</td>
+</tr>
+<tr>
+<td><a href="#advanced">AGENT_DIR</a></td>
+<td>Optional</td>
+<td>Auto-detected</td>
+<td>Override agent directory</td>
+</tr>
+<tr>
+<td><a href="#advanced">HOST</a></td>
+<td>Optional</td>
+<td><code>127.0.0.1</code></td>
+<td>Server bind address</td>
+</tr>
+<tr>
+<td><a href="#advanced">PORT</a></td>
+<td>Optional</td>
+<td><code>8000</code></td>
+<td>Server listening port</td>
+</tr>
+<tr>
+<td><a href="#advanced">ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS</a></td>
+<td>Optional</td>
+<td><code>FALSE</code></td>
+<td>Suppress ADK warnings</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Cloud Run auto-set:</strong> <a href="#cloud-run-auto-set-read-only">K_REVISION</a></p>
+<p><strong>CI/CD only:</strong> <a href="#cicd-only">TF_VAR_*</a> variables (GitHub Actions)</p>
+<hr />
+<h2 id="required">Required</h2>
+<p>These must be set for the agent to function.</p>
+<h3 id="google-cloud-vertex-ai">Google Cloud Vertex AI</h3>
+<p><strong>GOOGLE_GENAI_USE_VERTEXAI</strong><br />
+- <strong>Value:</strong> <code>TRUE</code><br />
+- <strong>Purpose:</strong> Enables Vertex AI authentication for Gemini models<br />
+- <strong>Where:</strong> Set locally in <code>.env</code>, auto-configured in Cloud Run</p>
+<p><strong>GOOGLE_CLOUD_PROJECT</strong><br />
+- <strong>Value:</strong> Your GCP project ID (e.g., <code>your-project-id</code>)<br />
+- <strong>Purpose:</strong> Identifies the Google Cloud project for Vertex AI and other GCP services<br />
+- <strong>Where:</strong> Set locally in <code>.env</code>, configured via Terraform for Cloud Run</p>
+<p><strong>GOOGLE_CLOUD_LOCATION</strong><br />
+- <strong>Value:</strong> GCP region (e.g., <code>us-central1</code>)<br />
+- <strong>Purpose:</strong> Sets the region for Vertex AI model calls and resource deployment<br />
+- <strong>Where:</strong> Set locally in <code>.env</code>, configured via Terraform for Cloud Run</p>
+<h3 id="agent-identification">Agent Identification</h3>
+<p><strong>AGENT_NAME</strong><br />
+- <strong>Value:</strong> Unique identifier (e.g., <code>your-agent</code>)<br />
+- <strong>Purpose:</strong> Identifies cloud resources, logs, and traces<br />
+- <strong>Where:</strong> Set locally in <code>.env</code>, set before bootstrap (used for Terraform resource naming)<br />
+- <strong>Note:</strong> Used as base name for Terraform resources (<code>{agent_name}-{environment}</code>)</p>
+<h3 id="opentelemetry">OpenTelemetry</h3>
+<p><strong>OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT</strong><br />
+- <strong>Options:</strong><br />
+  - <code>TRUE</code> - Capture full prompts and responses in traces<br />
+  - <code>FALSE</code> - Capture metadata only (no message content)<br />
+- <strong>Purpose:</strong> Controls LLM message content capture in OpenTelemetry traces<br />
+- <strong>Where:</strong> Set locally in <code>.env</code>, set before bootstrap<br />
+- <strong>Reference:</strong> <a href="https://opentelemetry.io/blog/2024/otel-generative-ai/#example-usage">OpenTelemetry GenAI Instrumentation</a><br />
+- <strong>Security:</strong> Set to <code>FALSE</code> if handling sensitive data</p>
+<hr />
+<h2 id="cloud-resources">Cloud Resources</h2>
+<p>Production-ready persistence for sessions, memory, and artifacts. Configure after first deployment.</p>
+<p><strong>AGENT_ENGINE</strong><br />
+- <strong>Value:</strong> Agent Engine resource name (e.g., <code>projects/123/locations/us-central1/reasoningEngines/456</code>)<br />
+- <strong>Purpose:</strong> Session and memory persistence (production-consistent behavior)<br />
+- <strong>Where:</strong> Set locally in <code>.env</code> after first deployment, auto-configured in Cloud Run<br />
+- <strong>How to get:</strong> GitHub Actions job summary (<code>gh run view &lt;run-id&gt;</code>) or GCP Console (Vertex AI → Agent Builder → Agent Engines)<br />
+- <strong>Note:</strong> Defaults to in-memory if unset (not recommended for development)</p>
+<p><strong>ARTIFACT_SERVICE_URI</strong><br />
+- <strong>Value:</strong> GCS bucket URI (e.g., <code>gs://your-artifact-bucket</code>)<br />
+- <strong>Purpose:</strong> Artifact storage persistence (production-consistent behavior)<br />
+- <strong>Where:</strong> Set locally in <code>.env</code> after first deployment, auto-configured in Cloud Run<br />
+- <strong>How to get:</strong> GitHub Actions job summary (<code>gh run view &lt;run-id&gt;</code>) or GCP Console (Cloud Storage → Buckets)<br />
+- <strong>Note:</strong> Defaults to in-memory if unset (not recommended for development)</p>
+<hr />
+<h2 id="runtime-configuration-optional">Runtime Configuration (Optional)</h2>
+<h3 id="logging">Logging</h3>
+<p><strong>LOG_LEVEL</strong><br />
+- <strong>Options:</strong> <code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>, <code>ERROR</code>, <code>CRITICAL</code><br />
+- <strong>Default:</strong> <code>INFO</code><br />
+- <strong>Purpose:</strong> Controls logging verbosity<br />
+- <strong>Where:</strong> Set locally via <code>.env</code> or command line, configure via GitHub Environment Variables for Cloud Run<br />
+- <strong>Usage:</strong><br />
+  <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">LOG_LEVEL</span><span class="o">=</span>DEBUG<span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>server
+</span></code></pre></div></p>
+<p><strong>TELEMETRY_NAMESPACE</strong><br />
+- <strong>Default:</strong> <code>local</code><br />
+- <strong>Purpose:</strong> Groups traces and logs by developer or environment in Cloud Trace<br />
+- <strong>Where:</strong> Set locally via <code>.env</code>, auto-set to environment name in Cloud Run deployments (dev/stage/prod)<br />
+- <strong>Usage:</strong> Filter traces in Cloud Trace by namespace to isolate your development traces<br />
+- <strong>Example:</strong> <code>TELEMETRY_NAMESPACE=alice-local</code></p>
+<h3 id="agent-features">Agent Features</h3>
+<p><strong>SERVE_WEB_INTERFACE</strong><br />
+- <strong>Default:</strong> <code>FALSE</code><br />
+- <strong>Purpose:</strong> Enables ADK web UI at http://127.0.0.1:8000<br />
+- <strong>Where:</strong> Set locally via <code>.env</code>, configure via GitHub Environment Variables for Cloud Run<br />
+- <strong>Options:</strong><br />
+  - <code>FALSE</code> - API-only mode<br />
+  - <code>TRUE</code> - Enable web interface</p>
+<p><strong>RELOAD_AGENTS</strong><br />
+- <strong>Default:</strong> <code>FALSE</code><br />
+- <strong>Purpose:</strong> Enable agent hot-reloading on file changes (development only)<br />
+- <strong>Where:</strong> Local development only<br />
+- <strong>WARNING:</strong> Set to <code>FALSE</code> in production (Cloud Run forces <code>FALSE</code>)</p>
+<p><strong>ROOT_AGENT_MODEL</strong><br />
+- <strong>Default:</strong> <code>gemini-2.5-flash</code><br />
+- <strong>Options:</strong> Any Gemini model (e.g., <code>gemini-2.5-pro</code>, <code>gemini-2.0-flash-exp</code>)<br />
+- <strong>Purpose:</strong> Override default root agent model<br />
+- <strong>Where:</strong> Set locally via <code>.env</code>, configure via GitHub Environment Variables for Cloud Run</p>
+<h3 id="cors">CORS</h3>
+<p><strong>ALLOW_ORIGINS</strong><br />
+- <strong>Default:</strong> <code>'["http://localhost", "http://localhost:8000"]'</code><br />
+- <strong>Format:</strong> JSON array string<br />
+- <strong>Purpose:</strong> Configure CORS allowed origins<br />
+- <strong>Where:</strong> Hard-coded in Terraform for Cloud Run, configurable locally via <code>.env</code><br />
+- <strong>Example:</strong> <code>ALLOW_ORIGINS='["https://your-domain.com", "http://127.0.0.1:3000"]'</code></p>
+<h3 id="advanced">Advanced</h3>
+<p><strong>AGENT_DIR</strong><br />
+- <strong>Default:</strong> Auto-detected (parent directory of <code>server.py</code>)<br />
+- <strong>Purpose:</strong> Override agent directory path for ADK<br />
+- <strong>Where:</strong> Set in Dockerfile (<code>/app/src</code>), rarely needed locally<br />
+- <strong>Note:</strong> Only override if you need non-standard directory structure</p>
+<p><strong>HOST</strong><br />
+- <strong>Default:</strong> <code>127.0.0.1</code><br />
+- <strong>Purpose:</strong> Server bind address<br />
+- <strong>Where:</strong> Rarely needs override - defaults work for most use cases<br />
+- <strong>Note:</strong> Docker Compose overrides to <code>0.0.0.0</code> in container for host access, Cloud Run manages internally</p>
+<p><strong>PORT</strong><br />
+- <strong>Default:</strong> <code>8000</code><br />
+- <strong>Purpose:</strong> Server listening port<br />
+- <strong>Where:</strong> Rarely needs override - Cloud Run always uses 8000, Docker Compose maps to host port 8000<br />
+- <strong>Note:</strong> Only override if you have port conflicts on your local machine</p>
+<p><strong>ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS</strong><br />
+- <strong>Default:</strong> <code>FALSE</code><br />
+- <strong>Purpose:</strong> Suppress ADK experimental feature warnings<br />
+- <strong>Options:</strong><br />
+  - <code>FALSE</code> - Show warnings<br />
+  - <code>TRUE</code> - Suppress warnings</p>
+<h3 id="cloud-run-auto-set-read-only">Cloud Run Auto-Set (Read-Only)</h3>
+<p>These variables are automatically set by Cloud Run. Do not set manually.</p>
+<p><strong>K_REVISION</strong><br />
+- <strong>Purpose:</strong> Cloud Run revision identifier<br />
+- <strong>Where:</strong> Auto-set by Cloud Run (used for <code>service.version</code> in traces)<br />
+- <strong>Example:</strong> <code>your-agent-dev-00042-abc</code></p>
+<hr />
+<h2 id="cicd-only">CI/CD Only</h2>
+<p>These variables are used exclusively in GitHub Actions workflows. Do not set locally.</p>
+<h3 id="terraform-inputs-tf_var_">Terraform Inputs (TF_VAR_*)</h3>
+<p>GitHub Environment Variables are mapped to Terraform inputs via <code>TF_VAR_*</code> prefix:</p>
+<p><strong>TF_VAR_project</strong><br />
+- <strong>Source:</strong> <code>${{ vars.GCP_PROJECT_ID }}</code> (GitHub Environment Variable)<br />
+- <strong>Purpose:</strong> GCP project ID for Terraform</p>
+<p><strong>TF_VAR_location</strong><br />
+- <strong>Source:</strong> <code>${{ vars.GCP_LOCATION }}</code> (GitHub Environment Variable)<br />
+- <strong>Purpose:</strong> GCP region for Terraform</p>
+<p><strong>TF_VAR_agent_name</strong><br />
+- <strong>Source:</strong> <code>${{ vars.IMAGE_NAME }}</code> (GitHub Environment Variable)<br />
+- <strong>Purpose:</strong> Agent name for resource naming</p>
+<p><strong>TF_VAR_terraform_state_bucket</strong><br />
+- <strong>Source:</strong> <code>${{ vars.TERRAFORM_STATE_BUCKET }}</code> (GitHub Environment Variable)<br />
+- <strong>Purpose:</strong> GCS bucket for Terraform state</p>
+<p><strong>TF_VAR_docker_image</strong><br />
+- <strong>Source:</strong> <code>${{ inputs.docker_image }}</code> (workflow input)<br />
+- <strong>Purpose:</strong> Immutable image digest for deployment</p>
+<p><strong>TF_VAR_environment</strong><br />
+- <strong>Source:</strong> Set by workflow (dev/stage/prod)<br />
+- <strong>Purpose:</strong> Environment-specific resource naming</p>
+<h3 id="runtime-configuration-overrides">Runtime Configuration Overrides</h3>
+<p>Override runtime config via GitHub Environment Variables (mapped to <code>TF_VAR_*</code>):</p>
+<p><strong>TF_VAR_log_level</strong><br />
+- <strong>Source:</strong> <code>${{ vars.LOG_LEVEL }}</code> (optional GitHub Environment Variable)<br />
+- <strong>Purpose:</strong> Override LOG_LEVEL for Cloud Run deployment</p>
+<p><strong>TF_VAR_root_agent_model</strong><br />
+- <strong>Source:</strong> <code>${{ vars.ROOT_AGENT_MODEL }}</code> (optional GitHub Environment Variable)<br />
+- <strong>Purpose:</strong> Override ROOT_AGENT_MODEL for Cloud Run deployment</p>
+<p><strong>TF_VAR_serve_web_interface</strong><br />
+- <strong>Source:</strong> <code>${{ vars.SERVE_WEB_INTERFACE }}</code> (optional GitHub Environment Variable)<br />
+- <strong>Purpose:</strong> Override SERVE_WEB_INTERFACE for Cloud Run deployment</p>
+<p><strong>TF_VAR_otel_instrumentation_genai_capture_message_content</strong><br />
+- <strong>Source:</strong> <code>${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}</code> (optional GitHub Environment Variable)<br />
+- <strong>Purpose:</strong> Override OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT for Cloud Run deployment</p>
+<hr />
+<h2 id="reference">Reference</h2>
+<h3 id="where-variables-are-set">Where Variables Are Set</h3>
+<p><strong>Local Development:</strong><br />
+- <code>.env</code> file (loaded via <code>python-dotenv</code>)<br />
+- Command line (e.g., <code>LOG_LEVEL=DEBUG uv run server</code>)<br />
+- <code>docker-compose.yml</code> (Docker Compose)</p>
+<p><strong>Cloud Run:</strong><br />
+- Terraform <code>main</code> module (<code>terraform/main/main.tf</code>)<br />
+- GitHub Environment Variables → <code>TF_VAR_*</code> → Terraform → Cloud Run environment</p>
+<p><strong>CI/CD:</strong><br />
+- GitHub Environment Variables (auto-created by bootstrap)<br />
+- Workflow inputs and outputs</p>
+<h3 id="security">Security</h3>
+<ul>
+<li><strong>Never commit <code>.env</code> files</strong> to version control - Already gitignored</li>
+<li><strong>Workload Identity Federation</strong> - No service account keys needed for CI/CD</li>
+<li><strong>Sensitive data</strong> - Set <code>OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=FALSE</code> when handling sensitive information</li>
+</ul>
+<hr />
+<p>← <a href="../">Back to Documentation</a></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

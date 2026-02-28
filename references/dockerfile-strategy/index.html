@@ -1,0 +1,2692 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://doughayden.github.io/agent-foundation/references/dockerfile-strategy/">
+      
+      
+        <link rel="prev" href="../docker-compose-workflow/">
+      
+      
+        <link rel="next" href="../mkdocs-setup/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Dockerfile Strategy - Agent Foundation Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#dockerfile-strategy-explained" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Agent Foundation Docs" class="md-header__button md-logo" aria-label="Agent Foundation Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Agent Foundation Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Dockerfile Strategy
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/doughayden/agent-foundation" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../development/" class="md-tabs__link">
+          
+  
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../template-management/" class="md-tabs__link">
+          
+  
+  
+  Template
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Agent Foundation Docs" class="md-nav__button md-logo" aria-label="Agent Foundation Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5"/></svg>
+
+    </a>
+    Agent Foundation Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/doughayden/agent-foundation" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../environment-variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure & Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Template
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Template
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../template-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syncing Upstream Changes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bootstrap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bootstrap Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../protection-strategies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Protection Strategies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cicd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing Patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../code-quality/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code Quality Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docker-compose-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dockerfile Strategy
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dockerfile Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dockerfile-breakdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dockerfile Breakdown
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dockerfile Breakdown">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#buildkit-directive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BuildKit Directive
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#builder-stage-base-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Builder Stage Base Image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copy-uv-binary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Copy UV Binary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#working-directory-builder-stage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Working Directory (Builder Stage)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uv-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UV Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copy-source-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Copy Source Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install Project
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-stage-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Stage Base
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#non-root-user" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-Root User
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#working-directory-runtime-stage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Working Directory (Runtime Stage)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copy-application-from-builder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Copy Application from Builder
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent_dir-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AGENT_DIR Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#switch-to-non-root" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Switch to Non-Root
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expose-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expose Port
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#startup-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Startup Command
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-not-use-uv-image-directly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Not Use UV Image Directly?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why Not Use UV Image Directly?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-uv-image-directly-wont-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ❌ Using UV Image Directly (Won't Work)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#our-approach-multi-stage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ✅ Our Approach (Multi-Stage)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-we-copy-instead-of-using-bind-mounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why We COPY Instead of Using Bind Mounts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why We COPY Instead of Using Bind Mounts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-question-should-we-optimize-further" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Question: Should We Optimize Further?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copy-approach-what-we-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        COPY Approach (What We Use)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bind-mount-alternative-what-we-dont-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bind Mount Alternative (What We Don't Use)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#our-philosophy-explicit-over-implicit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Our Philosophy: Explicit Over Implicit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#benefits-of-copy-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benefits of COPY Approach
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Comparison
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#local-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local Development
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="References">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uv-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UV Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker Compose
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mkdocs-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MkDocs Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dockerfile-breakdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dockerfile Breakdown
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dockerfile Breakdown">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#buildkit-directive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BuildKit Directive
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#builder-stage-base-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Builder Stage Base Image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copy-uv-binary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Copy UV Binary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#working-directory-builder-stage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Working Directory (Builder Stage)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uv-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UV Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copy-source-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Copy Source Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install Project
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-stage-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Stage Base
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#non-root-user" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-Root User
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#working-directory-runtime-stage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Working Directory (Runtime Stage)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copy-application-from-builder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Copy Application from Builder
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent_dir-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AGENT_DIR Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#switch-to-non-root" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Switch to Non-Root
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expose-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expose Port
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#startup-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Startup Command
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-not-use-uv-image-directly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Not Use UV Image Directly?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why Not Use UV Image Directly?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-uv-image-directly-wont-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ❌ Using UV Image Directly (Won't Work)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#our-approach-multi-stage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ✅ Our Approach (Multi-Stage)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-we-copy-instead-of-using-bind-mounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why We COPY Instead of Using Bind Mounts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why We COPY Instead of Using Bind Mounts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-question-should-we-optimize-further" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Question: Should We Optimize Further?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copy-approach-what-we-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        COPY Approach (What We Use)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bind-mount-alternative-what-we-dont-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bind Mount Alternative (What We Don't Use)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#our-philosophy-explicit-over-implicit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Our Philosophy: Explicit Over Implicit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#benefits-of-copy-approach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benefits of COPY Approach
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Comparison
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#local-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local Development
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="References">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uv-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UV Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker Compose
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="dockerfile-strategy-explained">Dockerfile Strategy Explained</h1>
+<p>This document explains our multi-stage Docker build strategy and why we chose this approach for containerizing the agent.</p>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#dockerfile-breakdown">Dockerfile Breakdown</a></li>
+<li><a href="#why-not-use-uv-image-directly">Why Not Use UV Image Directly</a></li>
+<li><a href="#performance-comparison">Performance Comparison</a></li>
+<li><a href="#summary">Summary</a></li>
+</ul>
+<h2 id="overview">Overview</h2>
+<p>Our Dockerfile uses a <strong>multi-stage build</strong> with the following architecture:</p>
+<ol>
+<li><strong>Builder Stage</strong>: <code>python:3.13-slim</code> + uv binary (copied from Astral's distroless image)</li>
+<li><strong>Runtime Stage</strong>: Clean <code>python:3.13-slim</code> + only the virtual environment</li>
+</ol>
+<p>This approach gives us:<br />
+- ✅ Official uv binary (always latest)<br />
+- ✅ Full build capabilities (shell, Python, package manager)<br />
+- ✅ Minimal runtime image (~200MB vs ~500MB)<br />
+- ✅ Fast rebuilds (5-10s for code changes)<br />
+- ✅ Maximum security (non-root, minimal attack surface)</p>
+<hr />
+<h2 id="dockerfile-breakdown">Dockerfile Breakdown</h2>
+<h3 id="buildkit-directive">BuildKit Directive</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c"># syntax=docker/dockerfile:1</span>
+</span></code></pre></div><br />
+<strong>What:</strong> Tells Docker to use BuildKit parser (modern Docker build engine)<br />
+<strong>Why:</strong> Enables advanced features like <code>--mount=type=cache</code> and parallel builds</p>
+<hr />
+<h3 id="builder-stage-base-image">Builder Stage Base Image</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">FROM</span><span class="w"> </span><span class="s">python:3.13-slim</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="s">builder</span>
+</span></code></pre></div><br />
+<strong>What:</strong> Start builder stage with official Python 3.13 slim image (Debian-based)<br />
+<strong>Why:</strong> We need:<br />
+- Python runtime for <code>uv sync</code> to work<br />
+- Shell and basic utilities (cp, mkdir, etc.) for build commands</p>
+<p><strong>Why not <code>ghcr.io/astral-sh/uv:latest</code> as base?</strong><br />
+- Astral's uv image is <strong>distroless</strong> (no shell, no package manager)<br />
+- You can't run <code>RUN</code> commands in distroless images<br />
+- It's designed to copy the binary FROM, not build FROM</p>
+<hr />
+<h3 id="copy-uv-binary">Copy UV Binary</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">COPY</span><span class="w"> </span>--from<span class="o">=</span>ghcr.io/astral-sh/uv:latest<span class="w"> </span>/uv<span class="w"> </span>/uvx<span class="w"> </span>/bin/
+</span></code></pre></div><br />
+<strong>What:</strong> Extract just the <code>uv</code> and <code>uvx</code> binaries from Astral's image<br />
+<strong>Why:</strong><br />
+- Gets latest uv version without manually tracking releases<br />
+- Copies only ~10MB of binaries (not a whole base image)<br />
+- Puts them in <code>/bin/</code> so they're in PATH</p>
+<p><strong>Key insight:</strong> We get official uv without the distroless constraints.</p>
+<hr />
+<h3 id="working-directory-builder-stage">Working Directory (Builder Stage)</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">WORKDIR</span><span class="w"> </span><span class="s">/app</span>
+</span></code></pre></div><br />
+<strong>What:</strong> Set working directory to <code>/app</code><br />
+<strong>Why:</strong><br />
+- All subsequent commands run from this directory<br />
+- Creates the directory if it doesn't exist<br />
+- Standard convention for application code</p>
+<hr />
+<h3 id="uv-environment-variables">UV Environment Variables</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">ENV</span><span class="w"> </span><span class="nv">UV_LINK_MODE</span><span class="o">=</span>copy<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="nv">UV_COMPILE_BYTECODE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="nv">UV_PYTHON_DOWNLOADS</span><span class="o">=</span>never
+</span></code></pre></div><br />
+<strong>What:</strong> Configure uv behavior<br />
+<strong>Why:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Value</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UV_LINK_MODE=copy</code></td>
+<td>Copy files instead of hardlinking</td>
+<td>Safer for Docker layers, works across filesystems</td>
+</tr>
+<tr>
+<td><code>UV_COMPILE_BYTECODE=1</code></td>
+<td>Pre-compile .py → .pyc files</td>
+<td>Faster startup (no compilation at runtime)</td>
+</tr>
+<tr>
+<td><code>UV_PYTHON_DOWNLOADS=never</code></td>
+<td>Don't download Python</td>
+<td>Use system Python from base image</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="install-dependencies">Install Dependencies</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c"># Copy dependency files - explicit cache invalidation when either file changes</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">COPY</span><span class="w"> </span>pyproject.toml<span class="w"> </span>uv.lock<span class="w"> </span>./
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c"># Install dependencies (cache mount provides the performance optimization)</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">RUN</span><span class="w"> </span>--mount<span class="o">=</span><span class="nv">type</span><span class="o">=</span>cache,target<span class="o">=</span>/root/.cache/uv<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span>uv<span class="w"> </span>sync<span class="w"> </span>--locked<span class="w"> </span>--no-install-project<span class="w"> </span>--no-dev
+</span></code></pre></div><br />
+<strong>What:</strong> Install dependencies WITHOUT installing the project itself<br />
+<strong>Why:</strong> Key optimization strategy</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Meaning</th>
+<th>Benefit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--mount=type=cache</code></td>
+<td>Persist <code>/root/.cache/uv</code> across builds</td>
+<td>Don't re-download packages if already cached (~80% speedup)</td>
+</tr>
+<tr>
+<td><code>--locked</code></td>
+<td>Validate lockfile matches pyproject.toml</td>
+<td>Catches mistakes, prevents silent failures (our standard)</td>
+</tr>
+<tr>
+<td><code>--no-install-project</code></td>
+<td>Skip installing <code>src/may_package</code></td>
+<td>Separates dependencies (slow) from code (fast)</td>
+</tr>
+<tr>
+<td><code>--no-dev</code></td>
+<td>Skip dev dependencies</td>
+<td>Smaller image</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why COPY both files?</strong><br />
+- ✅ <strong>Explicit cache invalidation</strong> - When dependencies change, this layer rebuilds (as it should)<br />
+- ✅ <strong>Predictable</strong> - Standard Docker caching behavior, no surprises<br />
+- ✅ <strong>Simple</strong> - Easy to understand and maintain<br />
+- ✅ <strong>Fast anyway</strong> - Cache mount makes rebuilds quick (~2-5s even on version bumps)</p>
+<p><strong>Why <code>--locked</code> (not <code>--frozen</code>)?</strong></p>
+<p>We <strong>standardize on <code>--locked</code></strong> for all builds. Here's why:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Behavior</th>
+<th>When to Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--locked</code></td>
+<td><strong>Validates lockfile matches pyproject.toml</strong></td>
+<td>✅ <strong>Always</strong> (our standard)</td>
+</tr>
+<tr>
+<td><code>--frozen</code></td>
+<td>Skips validation, silently uses stale lockfile</td>
+<td>❌ <strong>Avoid</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why avoid <code>--frozen</code>:</strong><br />
+- ❌ Silently installs wrong dependencies if lockfile is stale<br />
+- ❌ Even UV's official CI/CD examples use <code>--locked</code><br />
+- ❌ Hides developer mistakes instead of catching them</p>
+<p><strong>Why use <code>--locked</code> everywhere:</strong><br />
+- ✅ Catches developer mistakes (forgot to run <code>uv lock</code>)<br />
+- ✅ Ensures lockfile and pyproject.toml stay synchronized<br />
+- ✅ Fails fast with clear error message<br />
+- ✅ Validation is negligible cost (~milliseconds)<br />
+- ✅ Enforces correct workflow: change deps → <code>uv lock</code> → commit both files</p>
+<p><strong>Example of <code>--locked</code> preventing bugs:</strong><br />
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Developer adds pandas to pyproject.toml but forgets to run uv lock</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>$<span class="w"> </span>docker<span class="w"> </span>build<span class="w"> </span>.
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>ERROR:<span class="w"> </span>The<span class="w"> </span>lockfile<span class="w"> </span>is<span class="w"> </span>out<span class="w"> </span>of<span class="w"> </span>sync<span class="w"> </span>with<span class="w"> </span>pyproject.toml
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Developer: &quot;Oh right, I need to run uv lock first!&quot;</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>$<span class="w"> </span>uv<span class="w"> </span>lock
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>$<span class="w"> </span>docker<span class="w"> </span>build<span class="w"> </span>.<span class="w">  </span><span class="c1"># Now succeeds with correct dependencies</span>
+</span></code></pre></div></p>
+<p><strong>Bottom line:</strong> We use <code>--locked</code> in development, CI/CD, and production. We'll only consider <code>--frozen</code> if we encounter a very specific use case that requires skipping validation (none identified yet).</p>
+<p><strong>Cache mount is the real optimization</strong> - It persists across builds, so even "unnecessary" rebuilds are fast.</p>
+<hr />
+<h3 id="copy-source-code">Copy Source Code</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c"># Copy only source code (documentation changes won&#39;t invalidate this layer)</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="k">COPY</span><span class="w"> </span>src<span class="w"> </span>./src
+</span></code></pre></div><br />
+<strong>What:</strong> Copy only the application source code<br />
+<strong>Why:</strong><br />
+- Done AFTER dependencies to maximize cache hits<br />
+- <strong>Optimization</strong>: Only copies source code, not documentation (README.md)<br />
+- Documentation updates won't invalidate this layer or trigger project reinstall<br />
+- Code changes trigger rebuild as expected<br />
+- This layer rebuilds only on source code changes (~5-10s)<br />
+- More targeted than <code>COPY . /app</code> - avoids redundant pyproject.toml/uv.lock copy</p>
+<hr />
+<h3 id="install-project">Install Project</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c"># Install project itself (create empty README to satisfy package metadata requirements)</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="k">RUN</span><span class="w"> </span>--mount<span class="o">=</span><span class="nv">type</span><span class="o">=</span>cache,target<span class="o">=</span>/root/.cache/uv<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span>touch<span class="w"> </span>README.md<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">    </span>uv<span class="w"> </span>sync<span class="w"> </span>--locked<span class="w"> </span>--no-editable<span class="w"> </span>--no-dev
+</span></code></pre></div><br />
+<strong>What:</strong> Install the project itself (now that source code exists)<br />
+<strong>Why:</strong><br />
+- <code>touch README.md</code>: Creates empty README to satisfy package metadata requirements<br />
+  - <strong>Performance optimization</strong>: README changes won't trigger this layer rebuild<br />
+  - Only source code changes (<code>src/</code>) invalidate this layer<br />
+  - Intentional trade-off: runtime container won't have real README (not needed for execution)<br />
+- <code>--locked</code>: Validates lockfile matches pyproject.toml (catches mistakes)<br />
+- <code>--no-editable</code>: Install as a regular package (not editable/develop mode)<br />
+- Reuses dependencies from previous step (already in .venv)<br />
+- Fast because dependencies already installed (~5-10s)</p>
+<hr />
+<h3 id="runtime-stage-base">Runtime Stage Base</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">FROM</span><span class="w"> </span><span class="s">python:3.13-slim</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="s">runtime</span>
+</span></code></pre></div><br />
+<strong>What:</strong> Start fresh with clean Python image for runtime<br />
+<strong>Why:</strong> Multi-stage build benefits:<br />
+- Builder stage has uv, build tools, cache → ~500MB<br />
+- Runtime stage only has Python and your .venv → ~200MB<br />
+- 50%+ size reduction by discarding build tools</p>
+<hr />
+<h3 id="non-root-user">Non-Root User</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">RUN</span><span class="w"> </span>groupadd<span class="w"> </span>-r<span class="w"> </span>app<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>useradd<span class="w"> </span>-r<span class="w"> </span>-g<span class="w"> </span>app<span class="w"> </span>app
+</span></code></pre></div><br />
+<strong>What:</strong> Create a non-root system user named <code>app</code><br />
+<strong>Why:</strong> Security best practice<br />
+- Containers shouldn't run as root<br />
+- Limits damage if container is compromised<br />
+- Standard container orchestration pattern</p>
+<p><strong>Command breakdown:</strong><br />
+- <code>groupadd -r app</code>: Create system group (<code>-r</code> assigns GID &lt; 1000 automatically)<br />
+- <code>useradd -r -g app app</code>: Create system user (<code>-r</code> assigns UID &lt; 1000, <code>-g app</code> assigns to group)<br />
+- No home directory created, shell defaults to <code>/usr/sbin/nologin</code> (prevents login)</p>
+<p><strong>Alternative approach:</strong> Some Dockerfiles use explicit UIDs (e.g., <code>useradd -u 1001 -g appgroup -m -d /app</code>) for traditional volume sharing (NFS, Docker volumes). We use system users (<code>-r</code>) because:<br />
+- <strong>GCS fuse authentication</strong> uses service account IAM, not file UIDs<br />
+- <strong>Simpler</strong> - fewer flags, system assigns non-conflicting IDs<br />
+- <strong>No home directory needed</strong> - app doesn't write to <code>~/</code></p>
+<p>For traditional shared volumes with POSIX permissions, explicit UIDs are needed. For object storage (GCS), system users are sufficient.</p>
+<p><strong>Reference:</strong> <a href="https://depot.dev/docs/container-builds/how-to-guides/optimal-dockerfiles/python-uv-dockerfile">Depot.dev Python UV Dockerfile</a> shows explicit UID approach</p>
+<hr />
+<h3 id="working-directory-runtime-stage">Working Directory (Runtime Stage)</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">WORKDIR</span><span class="w"> </span><span class="s">/app</span>
+</span></code></pre></div><br />
+<strong>What:</strong> Set working directory again (new stage = new filesystem)<br />
+<strong>Why:</strong> Container starts in <code>/app</code> when it runs</p>
+<hr />
+<h3 id="copy-application-from-builder">Copy Application from Builder</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">COPY</span><span class="w"> </span>--from<span class="o">=</span>builder<span class="w"> </span>--chown<span class="o">=</span>app:app<span class="w"> </span>/app<span class="w"> </span>.
+</span></code></pre></div><br />
+<strong>What:</strong> Copy entire application directory from builder stage<br />
+<strong>Why:</strong><br />
+- <code>--from=builder</code>: Get everything from builder's <code>/app</code><br />
+- <code>--chown=app:app</code>: Make the <code>app</code> user own it<br />
+- Destination <code>.</code> uses WORKDIR context (copies to <code>/app</code>)<br />
+- Includes <code>.venv/</code> (all dependencies + installed package)<br />
+- Includes <code>src/</code> (application code)<br />
+- Includes metadata (pyproject.toml, uv.lock, README.md)<br />
+- <strong>Simple, conventional pattern</strong> - one COPY instead of multiple<br />
+- Metadata files are tiny (~30 KB) and harmless<br />
+- <strong>uv is NOT copied</strong> (only in builder stage, not needed at runtime)</p>
+<hr />
+<h3 id="runtime-environment">Runtime Environment</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="k">ENV</span><span class="w"> </span><span class="nv">VIRTUAL_ENV</span><span class="o">=</span>/app/.venv<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">    </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">&quot;/app/.venv/bin:</span><span class="nv">$PATH</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">    </span><span class="nv">PYTHONUNBUFFERED</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">    </span><span class="nv">AGENT_DIR</span><span class="o">=</span>/app/src<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">    </span><span class="nv">HOST</span><span class="o">=</span><span class="m">0</span>.0.0.0<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="w">    </span><span class="nv">PORT</span><span class="o">=</span><span class="m">8000</span>
+</span></code></pre></div><br />
+<strong>What:</strong> Configure runtime environment<br />
+<strong>Why:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>VIRTUAL_ENV=/app/.venv</code></td>
+<td>Tell Python which venv to use</td>
+</tr>
+<tr>
+<td><code>PATH="/app/.venv/bin:$PATH"</code></td>
+<td>Make venv binaries available (python, uvicorn)</td>
+</tr>
+<tr>
+<td><code>PYTHONUNBUFFERED=1</code></td>
+<td>Don't buffer stdout/stderr (better logs in Docker)</td>
+</tr>
+<tr>
+<td><code>HOST=0.0.0.0</code></td>
+<td>Explicitly bind all interfaces for containers (server.py defaults to 127.0.0.1)</td>
+</tr>
+<tr>
+<td><code>PORT=8000</code></td>
+<td>Explicitly set default port (matches EXPOSE and server.py default)</td>
+</tr>
+<tr>
+<td><code>AGENT_DIR=/app/src</code></td>
+<td>Override agent directory path (see AGENT_DIR section below)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="agent_dir-configuration">AGENT_DIR Configuration</h3>
+<p><strong>The Problem:</strong></p>
+<p>When the package is installed in <strong>non-editable mode</strong> (Docker), the source code is copied to the virtual environment's site-packages:<br />
+- Local (editable): <code>Path(__file__)</code> → <code>/path/to/project/src/your_agent_name/server.py</code><br />
+- Docker (non-editable): <code>Path(__file__)</code> → <code>/app/.venv/lib/python3.13/site-packages/your_agent_name/server.py</code></p>
+<p>Using <code>Path(__file__).parent.parent</code> for <code>AGENT_DIR</code>:<br />
+- Local: Resolves to <code>/path/to/project/src/</code> ✅ Correct (contains only your_agent_name/)<br />
+- Docker: Resolves to <code>/app/.venv/lib/python3.13/site-packages/</code> ❌ Wrong (contains all packages)</p>
+<p>This causes the ADK web UI to show all installed packages (.dist-info directories) instead of just our agent.</p>
+<p><strong>The Solution:</strong></p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># In server.py - configurable with smart default</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="n">AGENT_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AGENT_DIR&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="p">))</span>
+</span></code></pre></div>
+<div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c"># In Dockerfile - override for Docker environment</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="k">ENV</span><span class="w"> </span><span class="nv">AGENT_DIR</span><span class="o">=</span>/app/src
+</span></code></pre></div>
+<p><strong>Why this works:</strong><br />
+- Local dev: No <code>AGENT_DIR</code> env var → uses <code>Path(__file__).parent.parent</code> → <code>/path/to/project/src/</code> ✅<br />
+- Docker: <code>AGENT_DIR=/app/src</code> env var set → overrides default → <code>/app/src/</code> ✅<br />
+- Both point to directory containing only the agent source code<br />
+- Configurable via environment variable for other deployment scenarios</p>
+<hr />
+<h3 id="switch-to-non-root">Switch to Non-Root</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="k">USER</span><span class="w"> </span><span class="s">app</span>
+</span></code></pre></div><br />
+<strong>What:</strong> All subsequent commands run as <code>app</code> user<br />
+<strong>Why:</strong><br />
+- Container starts as <code>app</code> user at runtime<br />
+- Can't escalate to root<br />
+- Security best practice</p>
+<hr />
+<h3 id="expose-port">Expose Port</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="k">EXPOSE</span><span class="w"> </span><span class="s">8000</span>
+</span></code></pre></div><br />
+<strong>What:</strong> Document that container listens on port 8000<br />
+<strong>Why:</strong><br />
+- Documentation only (doesn't actually publish port)<br />
+- Tools like docker-compose read this for defaults<br />
+- Good practice for clarity</p>
+<hr />
+<h3 id="startup-command">Startup Command</h3>
+<p><div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c"># Run the FastAPI server via main() for unified startup logic (logging, etc.)</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="k">CMD</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;-m&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;your_agent_name.server&quot;</span><span class="p">]</span>
+</span></code></pre></div><br />
+<strong>What:</strong> Default command when container starts<br />
+<strong>Why:</strong><br />
+- Calls <code>server.main()</code> for unified startup logic<br />
+  - Sets up OpenTelemetry observability (traces and logs to Google Cloud)<br />
+  - Consistent entry point for both local dev (<code>uv run server</code>) and Docker<br />
+- <code>main()</code> calls <code>uvicorn.run(app, host=os.getenv("HOST", "127.0.0.1"), port=...)</code><br />
+  - Secure default: 127.0.0.1 (only local connections)<br />
+  - Dockerfile sets <code>HOST=0.0.0.0</code> to explicitly bind all interfaces for containers<br />
+  - Respects HOST and PORT environment variables for flexibility<br />
+- JSON array format (exec form, not shell form) → more efficient<br />
+- Can be overridden at runtime</p>
+<hr />
+<h2 id="why-not-use-uv-image-directly">Why Not Use UV Image Directly?</h2>
+<p>Let's compare the approaches:</p>
+<h3 id="using-uv-image-directly-wont-work">❌ Using UV Image Directly (Won't Work)</h3>
+<div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="k">FROM</span><span class="w"> </span><span class="s">ghcr.io/astral-sh/uv:latest</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="c"># ERROR: No shell to run these commands!</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="k">RUN</span><span class="w"> </span>uv<span class="w"> </span>sync<span class="w">  </span>#<span class="w"> </span>FAILS<span class="w"> </span>-<span class="w"> </span>distroless<span class="w"> </span>has<span class="w"> </span>no<span class="w"> </span>/bin/sh
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="k">COPY</span><span class="w"> </span>src<span class="w"> </span>./src<span class="w">  </span>#<span class="w"> </span>Works,<span class="w"> </span>but<span class="w"> </span><span class="k">then</span><span class="w"> </span>what?
+</span></code></pre></div>
+<p><strong>Problems:</strong><br />
+- Distroless = no shell → can't run <code>RUN</code> commands<br />
+- No package manager → can't install system dependencies if needed<br />
+- Image is ~100MB but you can't build anything with it<br />
+- Designed for copying FROM, not building FROM</p>
+<h3 id="our-approach-multi-stage">✅ Our Approach (Multi-Stage)</h3>
+<div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c"># Builder: Use python:3.13-slim + uv binary</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="k">FROM</span><span class="w"> </span><span class="s">python:3.13-slim</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="s">builder</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="k">COPY</span><span class="w"> </span>--from<span class="o">=</span>ghcr.io/astral-sh/uv:latest<span class="w"> </span>/uv<span class="w"> </span>/bin/
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="c"># ... build with full shell/utilities ...</span>
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="c"># Runtime: Clean python:3.13-slim + only .venv</span>
+</span><span id="__span-20-7"><a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="k">FROM</span><span class="w"> </span><span class="s">python:3.13-slim</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="s">runtime</span>
+</span><span id="__span-20-8"><a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="k">COPY</span><span class="w"> </span>--from<span class="o">=</span>builder<span class="w"> </span>/app/.venv<span class="w"> </span>/app/.venv
+</span></code></pre></div>
+<p><strong>Benefits:</strong><br />
+- Builder has shell + Python + uv → can build anything<br />
+- Runtime is minimal → small image size<br />
+- Gets official uv binary → always latest<br />
+- Best of both worlds</p>
+<hr />
+<h2 id="why-we-copy-instead-of-using-bind-mounts">Why We COPY Instead of Using Bind Mounts</h2>
+<h3 id="the-question-should-we-optimize-further">The Question: Should We Optimize Further?</h3>
+<p>You might wonder: "Why not use bind mounts to avoid copying dependency files into layers?"</p>
+<p>UV's documentation shows bind mount examples, but we deliberately chose the simpler COPY approach. Here's why:</p>
+<h3 id="copy-approach-what-we-use">COPY Approach (What We Use)</h3>
+<div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="k">COPY</span><span class="w"> </span>pyproject.toml<span class="w"> </span>uv.lock<span class="w"> </span>./
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="k">RUN</span><span class="w"> </span>--mount<span class="o">=</span><span class="nv">type</span><span class="o">=</span>cache,target<span class="o">=</span>/root/.cache/uv<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="w">    </span>uv<span class="w"> </span>sync<span class="w"> </span>--locked<span class="w"> </span>--no-install-project
+</span></code></pre></div>
+<p><strong>What happens:</strong><br />
+- Both files copied into builder layer<br />
+- Docker tracks both files for cache invalidation<br />
+- When either file changes, layer rebuilds<br />
+- Cache mount makes rebuilds fast (~2-5s)</p>
+<h3 id="bind-mount-alternative-what-we-dont-use">Bind Mount Alternative (What We Don't Use)</h3>
+<div class="language-dockerfile highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="k">RUN</span><span class="w"> </span>--mount<span class="o">=</span><span class="nv">type</span><span class="o">=</span>cache,target<span class="o">=</span>/root/.cache/uv<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w">    </span>--mount<span class="o">=</span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span>pyproject.toml,target<span class="o">=</span>pyproject.toml<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="w">    </span>--mount<span class="o">=</span><span class="nv">type</span><span class="o">=</span>bind,source<span class="o">=</span>uv.lock,target<span class="o">=</span>uv.lock<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="w">    </span>uv<span class="w"> </span>sync<span class="w"> </span>--locked<span class="w"> </span>--no-install-project
+</span></code></pre></div>
+<p><strong>Potential issues:</strong><br />
+- Docker doesn't track bind-mounted files<br />
+- Layer might stay cached even when dependencies change<br />
+- Requires careful hybrid strategies (COPY some, bind others)<br />
+- More complex to understand and debug</p>
+<h3 id="our-philosophy-explicit-over-implicit">Our Philosophy: Explicit Over Implicit</h3>
+<p><strong>Dependency changes SHOULD trigger rebuilds:</strong><br />
+- ✅ Clear signal that something material changed<br />
+- ✅ Validates that dependencies actually update<br />
+- ✅ Predictable Docker caching behavior<br />
+- ✅ Easy to understand and debug</p>
+<p><strong>The "penalty" for this explicitness is negligible:</strong><br />
+- Version bump in pyproject.toml → rebuilds layer → cache mount makes it ~2-5s<br />
+- The cache mount provides 90% of the performance benefit<br />
+- Simplicity is worth more than saving 3 seconds</p>
+<h3 id="benefits-of-copy-approach">Benefits of COPY Approach</h3>
+<ul>
+<li>✅ <strong>Simple</strong> - Standard Docker pattern, easy to understand</li>
+<li>✅ <strong>Explicit</strong> - Cache invalidation happens when it should</li>
+<li>✅ <strong>Reliable</strong> - Dependencies always update correctly</li>
+<li>✅ <strong>Fast</strong> - Cache mount handles performance optimization</li>
+<li>✅ <strong>Maintainable</strong> - Less explanation needed, easier debugging</li>
+</ul>
+<h2 id="performance-comparison">Performance Comparison</h2>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Builder Size</th>
+<th>Runtime Size</th>
+<th>Rebuild Time (code change)</th>
+<th>Simplicity</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Single-stage</td>
+<td>500MB</td>
+<td>500MB</td>
+<td>2-5 minutes</td>
+<td>✅ Simple</td>
+<td>No separation, slow rebuilds</td>
+</tr>
+<tr>
+<td><strong>Multi-stage + COPY (ours)</strong></td>
+<td><strong>~500MB</strong></td>
+<td><strong>~200MB</strong></td>
+<td><strong>5-10 seconds</strong></td>
+<td><strong>✅ Simple</strong></td>
+<td><strong>Best balance of performance and clarity</strong></td>
+</tr>
+<tr>
+<td>Multi-stage + bind mounts</td>
+<td>~480MB</td>
+<td>~200MB</td>
+<td>5-10 seconds</td>
+<td>❌ Complex</td>
+<td>Marginal savings, complex caching</td>
+</tr>
+<tr>
+<td>UV distroless base</td>
+<td>Won't work</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>No shell for build commands</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key insight:</strong> The multi-stage build and cache mount provide 95% of the optimization. Bind mounts add complexity for minimal additional benefit (~20MB, ~2-3s).</p>
+<hr />
+<h2 id="summary">Summary</h2>
+<p><strong>Why our multi-stage COPY approach?</strong></p>
+<ol>
+<li><strong>We can't use distroless uv image as base</strong> → no shell to run build commands</li>
+<li><strong>We still want official uv binary</strong> → copy it from distroless image into python:slim</li>
+<li><strong>We separate build from runtime</strong> → smaller final image, faster rebuilds</li>
+<li><strong>Layer caching optimization</strong> → dependencies cached separately from code</li>
+<li><strong>Simple COPY over bind mounts</strong> → explicit, reliable, maintainable</li>
+</ol>
+<p><strong>Key architectural decisions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Approach</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uv</code> binary</td>
+<td>Copy from distroless</td>
+<td>Get official binary without distroless constraints</td>
+</tr>
+<tr>
+<td>Base image</td>
+<td><code>python:3.13-slim</code></td>
+<td>Need shell + Python for build, minimal for runtime</td>
+</tr>
+<tr>
+<td>Build pattern</td>
+<td>Multi-stage</td>
+<td>50% size reduction (discard build tools)</td>
+</tr>
+<tr>
+<td>Dependency caching</td>
+<td>Cache mount</td>
+<td>Persist packages across builds (~80% speedup)</td>
+</tr>
+<tr>
+<td>Dependency files</td>
+<td><strong>COPY both</strong></td>
+<td>Explicit cache invalidation, predictable, simple</td>
+</tr>
+<tr>
+<td>Code separation</td>
+<td><code>--no-install-project</code></td>
+<td>Dependencies (slow) separate from code (fast)</td>
+</tr>
+<tr>
+<td>Source copy</td>
+<td><strong>Copy src/ only</strong></td>
+<td>Documentation changes don't trigger code layer rebuild</td>
+</tr>
+<tr>
+<td>README file</td>
+<td><strong>touch in RUN</strong></td>
+<td>Optimization: README updates don't invalidate install layer</td>
+</tr>
+</tbody>
+</table>
+<p>This gives us:<br />
+- ✅ Official uv binary (always latest)<br />
+- ✅ Full build capabilities (shell, Python, package manager)<br />
+- ✅ Minimal runtime image (~200MB vs ~500MB)<br />
+- ✅ Fast rebuilds (5-10s for code changes, ~2-5s for dependency changes with cache)<br />
+- ✅ Documentation updates don't trigger code/install layer rebuilds<br />
+- ✅ Reliable dependency updates (explicit cache invalidation)<br />
+- ✅ Simple and maintainable (standard Docker patterns)<br />
+- ✅ Maximum security (non-root, minimal attack surface)</p>
+<h2 id="local-development">Local Development</h2>
+<p>For local development workflow using Docker Compose (recommended), see <a href="../docker-compose-workflow/">Docker Compose Workflow Guide</a>.</p>
+<p>For direct Docker builds without Compose:<br />
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="nv">DOCKER_BUILDKIT</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>your-agent-name:latest<span class="w"> </span>.
+</span></code></pre></div></p>
+<hr />
+<h2 id="references">References</h2>
+<h3 id="uv-documentation">UV Documentation</h3>
+<ul>
+<li><a href="https://docs.astral.sh/uv/guides/integration/docker/">UV Docker Integration Guide</a></li>
+<li><a href="https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers">UV Docker Intermediate Layers (Bind Mounts)</a></li>
+<li><a href="https://docs.astral.sh/uv/">UV Documentation</a></li>
+</ul>
+<h3 id="docker-documentation">Docker Documentation</h3>
+<ul>
+<li><a href="https://docs.docker.com/build/building/best-practices/">Docker Best Practices</a></li>
+<li><a href="https://docs.docker.com/build/building/multi-stage/">Docker Multi-Stage Builds</a></li>
+<li><a href="https://docs.docker.com/reference/dockerfile/#run">Docker RUN Command Reference</a></li>
+<li><a href="https://docs.docker.com/build/cache/optimize/">BuildKit Cache Mounts</a></li>
+<li><a href="https://docs.docker.com/build/building/best-practices/#use-bind-mounts">Docker Bind Mounts</a></li>
+</ul>
+<h3 id="docker-compose">Docker Compose</h3>
+<ul>
+<li><a href="../docker-compose-workflow/">Docker Compose Workflow Guide</a> - Local development workflow</li>
+<li><a href="https://docs.docker.com/compose/file-watch/">Docker Compose Watch Mode</a></li>
+</ul>
+<hr />
+<p>← <a href="../">Back to References</a> | <a href="../../">Documentation</a></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
