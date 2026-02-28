@@ -66,23 +66,6 @@ resource "google_project_iam_member" "github" {
   member   = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.repository_owner}/${var.repository_name}"
 }
 
-resource "random_id" "bucket_suffix" {
-  byte_length = 4
-}
-
-resource "google_storage_bucket" "terraform_state" {
-  project  = var.project
-  name     = "terraform-state-${var.agent_name}-${var.environment}-${random_id.bucket_suffix.hex}"
-  location = "US"
-
-  uniform_bucket_level_access = true
-  public_access_prevention    = "enforced"
-
-  versioning {
-    enabled = true
-  }
-}
-
 resource "google_artifact_registry_repository" "docker" {
   project                = var.project
   repository_id          = "${var.agent_name}-${var.environment}"

@@ -45,7 +45,7 @@ output "workload_identity_roles" {
 
 output "terraform_state_bucket" {
   description = "Terraform state GCS bucket name for main module"
-  value       = module.gcp.terraform_state_bucket
+  value       = var.terraform_state_bucket
 }
 
 output "artifact_registry_name" {

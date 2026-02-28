@@ -13,6 +13,11 @@ variable "agent_name" {
   type        = string
 }
 
+variable "terraform_state_bucket" {
+  description = "Terraform state GCS bucket name"
+  type        = string
+}
+
 variable "repository_owner" {
   description = "GitHub repository owner"
   type        = string

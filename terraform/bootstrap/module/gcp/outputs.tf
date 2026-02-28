@@ -43,11 +43,6 @@ output "workload_identity_roles" {
   value       = [for role in google_project_iam_member.github : role.role]
 }
 
-output "terraform_state_bucket" {
-  description = "Terraform state GCS bucket name for main module"
-  value       = google_storage_bucket.terraform_state.name
-}
-
 output "artifact_registry_name" {
   description = "Artifact Registry repository name"
   value       = google_artifact_registry_repository.docker.name

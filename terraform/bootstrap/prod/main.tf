@@ -25,7 +25,7 @@ module "github" {
   artifact_registry_location                         = module.gcp.artifact_registry_location
   artifact_registry_uri                              = module.gcp.artifact_registry_uri
   workload_identity_provider_name                    = module.gcp.workload_identity_provider_name
-  terraform_state_bucket                             = module.gcp.terraform_state_bucket
+  terraform_state_bucket                             = var.terraform_state_bucket
 }
 
 module "github_protected" {
@@ -41,7 +41,7 @@ module "github_protected" {
   artifact_registry_location                         = module.gcp.artifact_registry_location
   artifact_registry_uri                              = module.gcp.artifact_registry_uri
   workload_identity_provider_name                    = module.gcp.workload_identity_provider_name
-  terraform_state_bucket                             = module.gcp.terraform_state_bucket
+  terraform_state_bucket                             = var.terraform_state_bucket
 }
 
 
