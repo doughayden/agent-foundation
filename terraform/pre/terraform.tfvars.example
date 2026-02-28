@@ -1,0 +1,9 @@
+agent_name = "your-agent-name" # NOTE: USE THE SAME AGENT NAME ACROSS ALL ENVIRONMENTS
+projects = {
+  ### Always required
+  dev = "your-project-dev"
+
+  ### Optional, but must use stage + prod together (not one or the other)
+  # stage = "your-project-stage"
+  # prod  = "your-project-prod"
+}

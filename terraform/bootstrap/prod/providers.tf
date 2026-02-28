@@ -6,5 +6,3 @@ provider "google" {
 provider "github" {
   owner = var.repository_owner
 }
-
-provider "random" {}

@@ -2,10 +2,11 @@
 # REQUIRED: set to your GCP and GitHub values
 #==============================================
 
-# GCP Configuration
-project    = "your-project-stage"  # NOTE: USE A DIFFERENT PROJECT FOR EACH ENVIRONMENT
-location   = "us-central1"
-agent_name = "your-agent-name"  # NOTE: USE THE SAME AGENT NAME ACROSS ALL ENVIRONMENTS
+# GCP Configuration: stage environment
+project                = "your-project-stage"  # NOTE: USE A DIFFERENT PROJECT FOR EACH ENVIRONMENT
+location               = "us-central1"
+agent_name             = "your-agent-name"                       # NOTE: USE THE SAME AGENT NAME ACROSS ALL ENVIRONMENTS
+terraform_state_bucket = "terraform-state-your-agent-name-stage" # NOTE: PRE-BOOTSTRAP CREATES A DIFFERENT BUCKET FOR EACH ENVIRONMENT
 
 # Cross-project Artifact Registry docker image promotion
 # - Set to null for dev bootstrap (images built in dev, no promotion)

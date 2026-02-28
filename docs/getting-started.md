@@ -13,6 +13,7 @@ First-time setup: from zero to deployed.
 - [GitHub CLI](https://cli.github.com/) (gh)
 - Python 3.13+
 - `uv` package manager
+- `jq` command-line JSON processor (for parsing Terraform output)
 
 **GCP Project:**
 - Create a new GCP project (or use existing)
@@ -28,10 +29,24 @@ First-time setup: from zero to deployed.
 Bootstrap creates the infrastructure for automated deployments:
 - Workload Identity Federation for keyless GitHub Actions authentication
 - Artifact Registry for Docker image storage with cleanup policies
-- Terraform State Bucket for main module remote state (GCS)
+- Remote Terraform state (GCS) for bootstrap and main module — bucket created by pre-bootstrap
 - GitHub Environment and Variables for CI/CD
 
-### 1. Configure
+### 1. Create State Buckets (Pre-Bootstrap)
+
+Pre-bootstrap creates the GCS state buckets used by bootstrap and the main module. Run it before bootstrapping each environment — start with dev only, or provision all three environments at once.
+
+```bash
+cp terraform/pre/terraform.tfvars.example terraform/pre/terraform.tfvars
+# Edit terraform.tfvars: set agent_name and GCP project IDs
+
+terraform -chdir=terraform/pre init
+terraform -chdir=terraform/pre apply
+```
+
+See [Bootstrap Reference: Pre-Bootstrap](references/bootstrap.md#pre-bootstrap) for scope options (dev-only, full production, incremental) and how to skip pre-bootstrap if you already have a GCS bucket.
+
+### 2. Configure
 
 Dev-only mode (default): bootstrap only the dev environment.
 
@@ -43,7 +58,8 @@ cp terraform/bootstrap/dev/terraform.tfvars.example terraform/bootstrap/dev/terr
 Required variables in `terraform/bootstrap/dev/terraform.tfvars`:
 - `project` - GCP project ID for dev environment
 - `location` - GCP region (e.g., `us-central1`)
-- `agent_name` - Unique identifier (e.g., `my-agent`)
+- `agent_name` - Unique identifier (e.g., `my-agent`) — must match pre-bootstrap
+- `terraform_state_bucket` - Bucket name from pre-bootstrap output (`terraform_state_buckets.dev`)
 - `repository_owner` - GitHub username or organization
 - `repository_name` - GitHub repository name
 
@@ -52,7 +68,7 @@ Required variables in `terraform/bootstrap/dev/terraform.tfvars`:
 > [!NOTE]
 > For production mode (dev → stage → prod), see [Infrastructure](infrastructure.md).
 
-### 2. Authenticate
+### 3. Authenticate
 
 ```bash
 gcloud auth application-default login
@@ -60,17 +76,15 @@ gcloud config set project YOUR_PROJECT_ID  # Optional
 gh auth login
 ```
 
-### 3. Bootstrap
+### 4. Bootstrap
 
 ```bash
-# Initialize Terraform
-terraform -chdir=terraform/bootstrap/dev init
-
-# Preview and Approve to Apply
+terraform -chdir=terraform/bootstrap/dev init \
+  -backend-config="bucket=$(terraform -chdir=terraform/pre output -json terraform_state_buckets | jq -r '.dev')"
 terraform -chdir=terraform/bootstrap/dev apply
 ```
 
-### 4. Verify
+### 5. Verify
 
 ```bash
 # Check GitHub Variables

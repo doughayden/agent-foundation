@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `terraform/pre/` module creates GCS state buckets (one per environment) before bootstrap — supports incremental provisioning
+
+### Changed
+- Bootstrap environments now use GCS remote state with `bootstrap/` prefix; `terraform_state_bucket` is now a required input in all bootstrap roots
+
 ## [0.9.4] - 2026-02-25
 
 ### Changed

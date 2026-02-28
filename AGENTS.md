@@ -23,8 +23,11 @@ uv run pytest --cov --cov-report=term-missing  # Tests + 100% coverage required
 # Code quality (all required)
 uv run ruff format && uv run ruff check && uv run mypy
 
-# Terraform (dev-only mode)
-terraform -chdir=terraform/bootstrap/dev init/plan/apply  # One-time CI/CD setup
+# Terraform (dev-only mode) - configure terraform.tfvars files first for pre and bootstrap
+terraform -chdir=terraform/pre init && terraform -chdir=terraform/pre apply  # One-time state buckets (all envs)
+terraform -chdir=terraform/bootstrap/dev init \           # One-time CI/CD setup — see backend.tf comment for full -backend-config command
+  -backend-config="bucket=$(terraform -chdir=terraform/pre output -json terraform_state_buckets | jq -r '.dev')"
+terraform -chdir=terraform/bootstrap/dev apply
 terraform -chdir=terraform/main init/plan/apply           # Deploy (TF_VAR_environment=dev)
 ```
 
@@ -138,7 +141,9 @@ uv lock --upgrade               # Update all
 
 ## Terraform
 
-**Bootstrap Structure:** Each environment is a separate terraform root (`terraform/bootstrap/dev/`, `terraform/bootstrap/stage/`, `terraform/bootstrap/prod/`) calling shared modules (`terraform/bootstrap/module/gcp/` for GCP infrastructure, `terraform/bootstrap/module/github/` for GitHub automation). Each environment uses local state and terraform.tfvars for configuration. Creates: WIF, Artifact Registry, GCS state bucket, GitHub Environments, GitHub Environment Variables.
+**Pre-Bootstrap:** `terraform/pre/` — single-file Terraform root, run once before any bootstrap environment. Uses terraform.tfvars for configuration. Creates one GCS bucket per environment (`terraform-state-{agent_name}-{env}-{suffix}`). Local state only — do not lose `terraform/pre/terraform.tfstate`. Outputs `terraform_state_buckets` map used for bootstrap `-backend-config` and `terraform_state_bucket` input variable.
+
+**Bootstrap Structure:** Each environment is a separate terraform root (`terraform/bootstrap/dev/`, `terraform/bootstrap/stage/`, `terraform/bootstrap/prod/`) calling shared modules (`terraform/bootstrap/module/gcp/` for GCP infrastructure, `terraform/bootstrap/module/github/` for GitHub automation). Each environment uses GCS remote state (bucket from pre-bootstrap) and terraform.tfvars for configuration. `terraform_state_bucket` is an input variable (created by pre). Creates: WIF, Artifact Registry, GitHub Environments, GitHub Environment Variables.
 
 **Cross-Project IAM (Production Mode):** Stage and prod bootstrap roots grant cross-project Artifact Registry reader access for image promotion:
 - `stage/main.tf`: Grants stage's WIF principal `roles/artifactregistry.reader` on dev's registry (for stage-promote: dev → stage)
@@ -189,6 +194,8 @@ uv lock --upgrade               # Update all
 - Single source of truth: env vars only in docs/environment-variables.md
 - Update docs/README.md when adding docs
 - Keep guides digestible (<300 lines). Move details to references/.
+
+**Callouts:** Use GFM callout blocks (`> [!TYPE]`) sparingly — only when content genuinely warrants elevated attention. Don't use callouts for normal information. (`NOTE` = you should know this, `TIP` = this could help you, `IMPORTANT` = do this, `WARNING` = don't do that, `CAUTION` = this will destroy something)
 
 ## Documentation References
 
