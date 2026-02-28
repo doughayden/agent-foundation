@@ -33,8 +33,7 @@ Pre-bootstrap creates GCS state buckets used by both bootstrap and the main modu
 terraform -chdir=terraform/bootstrap/dev init -backend-config="bucket=your-existing-bucket-name"
 ```
 
-> [!WARNING]
-> Pre-bootstrap uses local state only — do not lose `terraform/pre/terraform.tfstate`. The bucket names and random suffixes are embedded in this file. Without it, you cannot manage your remote state buckets with Terraform.
+Pre-bootstrap uses local state only (`terraform/pre/terraform.tfstate` — gitignored).
 
 ### Configure (Option A)
 
@@ -314,6 +313,16 @@ gh api repos/:owner/:repo/rulesets | jq '.[] | {name, enforcement, target}'
 See [Protection Strategies](protection-strategies.md) for detailed setup instructions.
 
 ## Important Notes
+
+**Migrating Existing Local Bootstrap State:**
+- If you bootstrapped before this change, your existing state is local (`terraform/bootstrap/{env}/terraform.tfstate`)
+- Pass `-migrate-state` to copy it to GCS during init:
+  ```bash
+  terraform -chdir=terraform/bootstrap/dev init \
+    -backend-config="bucket=$(terraform -chdir=terraform/pre output -json terraform_state_buckets | jq -r '.dev')" \
+    -migrate-state
+  ```
+- Delete the local state file after successful migration
 
 **Sequential Bootstrap:**
 - Production mode requires bootstrapping in order: dev → stage → prod
