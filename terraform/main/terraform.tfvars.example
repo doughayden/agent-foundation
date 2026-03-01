@@ -6,6 +6,7 @@ project                                            = "project-id"
 location                                           = "us-central1"
 agent_name                                         = "agent-name"
 otel_instrumentation_genai_capture_message_content = "TRUE"
+workload_identity_pool_principal_identifier        = "principalSet://iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/your-wif-pool/attribute.repository/your-github-username-or-org/your-agent-repository"
 
 
 ### ===========================================

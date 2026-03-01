@@ -27,6 +27,11 @@ variable "terraform_state_bucket" {
   type        = string
 }
 
+variable "workload_identity_pool_principal_identifier" {
+  description = "WIF principal identifier for additional IAM role bindings"
+  type        = string
+}
+
 variable "docker_image" {
   description = "Docker image URI to deploy (defaults to previous deployment)"
   type        = string

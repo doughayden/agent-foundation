@@ -169,6 +169,17 @@ git commit -m "chore: bump version to X.Y.Z"
 
 **Why:** CI uses `uv sync --locked` which will fail if lockfile is out of sync.
 
+### Custom GCP Services or IAM Roles
+
+Need a new GCP API or WIF IAM role for your feature? Add it to the designated main module extension points — no bootstrap re-run or admin required.
+
+- **`terraform/main/services.tf`** — add to the `services` set to enable a GCP API
+- **`terraform/main/iam.tf`** — add to the `wif_additional_roles` set to grant the GitHub Actions WIF principal a new role
+
+Add the roles or services AND the resources that use them in the same PR. The `time_sleep` resources handle propagation within the apply — declare `depends_on` on the correct sleep instance(s) for any resource that requires a newly-enabled service or role.
+
+See [Extending the Main Module](references/bootstrap.md#extending-the-main-module) for the full pattern, code examples, and rationale.
+
 ### Test Deployed Service
 
 Proxy Cloud Run service to test locally:

@@ -8,7 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `terraform/pre/` module creates GCS state buckets (one per environment) before bootstrap — supports incremental provisioning
+- `terraform/bootstrap/pre/` module creates GCS state buckets (one per environment) before bootstrap — supports incremental provisioning
+- `terraform/main/services.tf` — consumer extension point for additional GCP API enablement; `time_sleep.service_enablement_propagation` (120s, `for_each` per service) guards against async backend initialization after API enablement
+- `terraform/main/iam.tf` — consumer extension point for additional WIF principal IAM roles; `time_sleep.wif_iam_propagation` (120s, `for_each` per role) sequences role grants before dependent resource creation
+- Bootstrap exports `WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER` as a GitHub Environment Variable, enabling `iam.tf` to bind additional roles to the WIF principal in CI/CD
 
 ### Changed
 - Bootstrap environments now use GCS remote state with `bootstrap/` prefix; `terraform_state_bucket` is now a required input in all bootstrap roots

@@ -8,6 +8,7 @@ locals {
     IMAGE_NAME                                         = var.agent_name
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = var.otel_instrumentation_genai_capture_message_content
     TERRAFORM_STATE_BUCKET                             = var.terraform_state_bucket
+    WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER        = var.workload_identity_pool_principal_identifier
   }
 }
 

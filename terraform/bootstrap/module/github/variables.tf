@@ -57,3 +57,8 @@ variable "terraform_state_bucket" {
   description = "Terraform state GCS bucket name for main module"
   type        = string
 }
+
+variable "workload_identity_pool_principal_identifier" {
+  description = "GitHub Actions workload identity pool principalSet identifier"
+  type        = string
+}

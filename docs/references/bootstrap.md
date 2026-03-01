@@ -24,26 +24,26 @@ Pre-bootstrap creates GCS state buckets used by both bootstrap and the main modu
 
 ### State Bucket Options
 
-**Option A — Use `terraform/pre` (recommended):** Creates buckets automatically and outputs their names. Enables the `jq`-based `terraform init` commands throughout this guide.
+**Option A — Use `terraform/bootstrap/pre` (recommended):** Creates buckets automatically and outputs their names. Enables the `jq`-based `terraform init` commands throughout this guide.
 
-**Option B — Bring your own bucket:** Skip `terraform/pre` entirely. Pass an existing GCS bucket name directly to `-backend-config` when initializing each bootstrap environment:
+**Option B — Bring your own bucket:** Skip `terraform/bootstrap/pre` entirely. Pass an existing GCS bucket name directly to `-backend-config` when initializing each bootstrap environment:
 
 ```bash
 # Replace the jq subshell with a literal bucket name
 terraform -chdir=terraform/bootstrap/dev init -backend-config="bucket=your-existing-bucket-name"
 ```
 
-Pre-bootstrap uses local state only (`terraform/pre/terraform.tfstate` — gitignored).
+Pre-bootstrap uses local state only (`terraform/bootstrap/pre/terraform.tfstate` — gitignored).
 
 ### Configure (Option A)
 
 Define only the environments you plan to bootstrap — you can always add more later.
 
 ```bash
-cp terraform/pre/terraform.tfvars.example terraform/pre/terraform.tfvars
+cp terraform/bootstrap/pre/terraform.tfvars.example terraform/bootstrap/pre/terraform.tfvars
 ```
 
-`terraform/pre/terraform.tfvars`:
+`terraform/bootstrap/pre/terraform.tfvars`:
 
 ```hcl
 agent_name = "your-agent-name"  # Must match agent_name in bootstrap tfvars
@@ -66,14 +66,14 @@ projects = {
 ### Apply (Option A)
 
 ```bash
-terraform -chdir=terraform/pre init
-terraform -chdir=terraform/pre apply
+terraform -chdir=terraform/bootstrap/pre init
+terraform -chdir=terraform/bootstrap/pre apply
 ```
 
 ### Note Outputs
 
 ```bash
-terraform -chdir=terraform/pre output
+terraform -chdir=terraform/bootstrap/pre output
 ```
 
 The `terraform_state_buckets` output provides bucket names for:
@@ -99,7 +99,7 @@ cp terraform/bootstrap/dev/terraform.tfvars.example \
 # GCP Configuration
 project                = "your-dev-project-id"
 location               = "us-central1"
-agent_name             = "your-agent-name"
+agent_name             = "your-agent-name"                      # MUST match pre-bootstrap agent_name
 terraform_state_bucket = "terraform-state-your-agent-name-dev"  # From pre-bootstrap output
 
 # Cross-project IAM (null for dev - no promotion source)
@@ -139,7 +139,7 @@ terraform -chdir=terraform/bootstrap/dev apply
 gh variable list --env dev
 ```
 
-Expected variables: `GCP_PROJECT_ID`, `IMAGE_NAME`, `ARTIFACT_REGISTRY_URI`, `TERRAFORM_STATE_BUCKET`, etc.
+Expected variables: `GCP_PROJECT_ID`, `IMAGE_NAME`, `ARTIFACT_REGISTRY_URI`, `TERRAFORM_STATE_BUCKET`, `WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER`, etc.
 
 **Check GitHub Environment:**
 1. Go to Settings → Environments
@@ -192,7 +192,7 @@ repository_name  = "your-agent-repository"
 
 ```bash
 terraform -chdir=terraform/bootstrap/dev init \
-  -backend-config="bucket=$(terraform -chdir=terraform/pre output -json terraform_state_buckets | jq -r '.dev')"
+  -backend-config="bucket=$(terraform -chdir=terraform/bootstrap/pre output -json terraform_state_buckets | jq -r '.dev')"
 terraform -chdir=terraform/bootstrap/dev apply
 ```
 
@@ -233,7 +233,7 @@ repository_name  = "your-agent-repository"
 
 ```bash
 terraform -chdir=terraform/bootstrap/stage init \
-  -backend-config="bucket=$(terraform -chdir=terraform/pre output -json terraform_state_buckets | jq -r '.stage')"
+  -backend-config="bucket=$(terraform -chdir=terraform/bootstrap/pre output -json terraform_state_buckets | jq -r '.stage')"
 terraform -chdir=terraform/bootstrap/stage apply
 ```
 
@@ -274,7 +274,7 @@ repository_name  = "your-agent-repository"
 
 ```bash
 terraform -chdir=terraform/bootstrap/prod init \
-  -backend-config="bucket=$(terraform -chdir=terraform/pre output -json terraform_state_buckets | jq -r '.prod')"
+  -backend-config="bucket=$(terraform -chdir=terraform/bootstrap/pre output -json terraform_state_buckets | jq -r '.prod')"
 terraform -chdir=terraform/bootstrap/prod apply
 ```
 
@@ -315,14 +315,19 @@ See [Protection Strategies](protection-strategies.md) for detailed setup instruc
 ## Important Notes
 
 **Migrating Existing Local Bootstrap State:**
-- If you bootstrapped before this change, your existing state is local (`terraform/bootstrap/{env}/terraform.tfstate`)
-- Pass `-migrate-state` to copy it to GCS during init:
+- If you bootstrapped before remote state was introduced, your existing state is local (`terraform/bootstrap/{env}/terraform.tfstate`)
+- Pass `-migrate-state` to copy it to GCS during init (example shown for the `dev` environment):
   ```bash
   terraform -chdir=terraform/bootstrap/dev init \
-    -backend-config="bucket=$(terraform -chdir=terraform/pre output -json terraform_state_buckets | jq -r '.dev')" \
+    -backend-config="bucket=$(terraform -chdir=terraform/bootstrap/pre output -json terraform_state_buckets | jq -r '.dev')" \
     -migrate-state
   ```
 - Delete the local state file after successful migration
+
+**Terraform State Bucket Names:**
+- Each bootstrap environment requires its GCS bucket name in two places: `terraform.tfvars` (`terraform_state_bucket`) and the `-backend-config` flag on `terraform init`
+- Record the `terraform_state_buckets` output after running pre-bootstrap — you need these names when bootstrapping each environment, including when adding environments incrementally later. If you've lost track, re-run `terraform -chdir=terraform/bootstrap/pre output` to retrieve them
+- Bringing your own bucket: set it in `terraform.tfvars` and pass it directly to `-backend-config`; skip pre-bootstrap entirely
 
 **Sequential Bootstrap:**
 - Production mode requires bootstrapping in order: dev → stage → prod
@@ -347,6 +352,98 @@ See [Protection Strategies](protection-strategies.md) for detailed setup instruc
 **GitHub Environments (Production Mode):**
 - `dev`, `stage`, `prod` - Standard deployment environments
 - `prod-apply` - Separate environment for approval gate (manual reviewers)
+
+## Extending the Main Module
+
+> [!WARNING]
+> Bootstrap is frozen after initial setup. The services and IAM roles in `terraform/bootstrap/module/gcp/main.tf` are the minimum required to setup the CI/CD pipeline and are **NOT MANAGED** by any automation. Changes there will not be provisioned by GitHub Actions. Use `terraform/main/services.tf` and `terraform/main/iam.tf` instead.
+
+Two extension points in `terraform/main/` exist for post-bootstrap customization:
+
+- **`services.tf`** — Enable additional GCP APIs
+- **`iam.tf`** — Grant additional IAM roles to the GitHub Actions WIF principal so CI/CD can provision your agent's custom resources
+
+Both use the same `for_each` + `triggers` pattern: one `time_sleep` instance per entry, created only when that entry is added. When the sets are empty (the default), no sleep resources are created and no delay occurs on apply.
+
+> [!WARNING]
+> Any resource that requires a newly-enabled service or role MUST declare `depends_on` on the corresponding `time_sleep` instance(s), or it may fail on the first apply before the service or binding has propagated.
+
+### Adding GCP APIs (`services.tf`)
+
+`google_project_service` is synchronous with respect to the Service Usage API, but some GCP services have async backend initialization after that confirmation (Artifact Registry is a known example). The `time_sleep.service_enablement_propagation` (120s) guards against this.
+
+```hcl
+# terraform/main/services.tf
+locals {
+  services = toset([
+    "bigquery.googleapis.com",
+    "pubsub.googleapis.com",
+  ])
+}
+```
+
+Then in any resource that requires the enabled API:
+
+```hcl
+resource "google_bigquery_dataset" "example" {
+  # ...
+  depends_on = [time_sleep.service_enablement_propagation["bigquery.googleapis.com"]]
+}
+```
+
+If a resource requires multiple newly-enabled services:
+
+```hcl
+resource "google_pubsub_subscription" "example" {
+  # ...
+  depends_on = [
+    time_sleep.service_enablement_propagation["bigquery.googleapis.com"],
+    time_sleep.service_enablement_propagation["pubsub.googleapis.com"],
+  ]
+}
+```
+
+### Adding WIF Principal IAM Roles (`iam.tf`)
+
+Adding a role to `wif_additional_roles` grants that role to the GitHub Actions WIF principal. Because GCP IAM propagation is eventually consistent, the template includes `time_sleep.wif_iam_propagation` (120s) to sequence role grants before dependent resource creation. One sleep instance is created per role — when `wif_additional_roles` is empty (the default), no sleep instances are created and no delay occurs.
+
+```hcl
+# terraform/main/iam.tf
+locals {
+  wif_additional_roles = toset([
+    "roles/bigquery.admin",
+  ])
+}
+```
+
+Then in any resource that requires the new role:
+
+```hcl
+resource "google_bigquery_dataset" "example" {
+  # ...
+  depends_on = [time_sleep.wif_iam_propagation["roles/bigquery.admin"]]
+}
+```
+
+If a resource requires multiple new roles, list each sleep instance explicitly — the resource will wait until all specified roles have propagated:
+
+```hcl
+resource "google_pubsub_subscription" "example" {
+  # ...
+  depends_on = [
+    time_sleep.wif_iam_propagation["roles/bigquery.admin"],
+    time_sleep.wif_iam_propagation["roles/pubsub.editor"],
+  ]
+}
+```
+
+### How the WIF Principal Identifier Flows
+
+Bootstrap creates the WIF principal and exports it as a GitHub Environment Variable (`WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER`). The CI/CD workflow passes it to Terraform as `TF_VAR_workload_identity_pool_principal_identifier`, making it available in `iam.tf` as `var.workload_identity_pool_principal_identifier` — no hardcoding or bootstrap output look-up needed.
+
+### Why Not Re-Run Bootstrap Instead?
+
+An admin re-running bootstrap to add services and IAM roles reintroduces a human dependency into the CI/CD pipeline: every future customization requires admin availability and coordination. The extension point pattern scales — any developer can add services and roles through a normal PR, and CI/CD applies them automatically on merge.
 
 ## Bootstrap Outputs
 

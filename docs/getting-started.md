@@ -37,11 +37,11 @@ Bootstrap creates the infrastructure for automated deployments:
 Pre-bootstrap creates the GCS state buckets used by bootstrap and the main module. Run it before bootstrapping each environment — start with dev only, or provision all three environments at once.
 
 ```bash
-cp terraform/pre/terraform.tfvars.example terraform/pre/terraform.tfvars
+cp terraform/bootstrap/pre/terraform.tfvars.example terraform/bootstrap/pre/terraform.tfvars
 # Edit terraform.tfvars: set agent_name and GCP project IDs
 
-terraform -chdir=terraform/pre init
-terraform -chdir=terraform/pre apply
+terraform -chdir=terraform/bootstrap/pre init
+terraform -chdir=terraform/bootstrap/pre apply
 ```
 
 See [Bootstrap Reference: Pre-Bootstrap](references/bootstrap.md#pre-bootstrap) for scope options (dev-only, full production, incremental) and how to skip pre-bootstrap if you already have a GCS bucket.
@@ -80,7 +80,7 @@ gh auth login
 
 ```bash
 terraform -chdir=terraform/bootstrap/dev init \
-  -backend-config="bucket=$(terraform -chdir=terraform/pre output -json terraform_state_buckets | jq -r '.dev')"
+  -backend-config="bucket=$(terraform -chdir=terraform/bootstrap/pre output -json terraform_state_buckets | jq -r '.dev')"
 terraform -chdir=terraform/bootstrap/dev apply
 ```
 
