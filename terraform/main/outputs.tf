@@ -58,3 +58,8 @@ output "configured_environment_variables" {
   description = "Configured Cloud Run service environment variables"
   value       = local.run_app_env
 }
+
+output "workload_identity_pool_principal_identifier" {
+  description = "GitHub Actions workload identity pool principalSet identifier"
+  value       = var.workload_identity_pool_principal_identifier
+}

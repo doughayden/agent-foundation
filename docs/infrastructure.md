@@ -236,6 +236,7 @@ See [Observability](observability.md) for query examples and trace analysis.
 **Main Module** (`terraform/main/`):
 - Application deployment: Cloud Run, service account, Agent Engine, GCS bucket
 - Remote state (bucket created by bootstrap), runs automatically in CI/CD
+- Extend with custom GCP APIs (`services.tf`) and WIF IAM roles (`iam.tf`) via Pull Requests — see [Extending the Main Module](references/bootstrap.md#extending-the-main-module)
 
 See [Deployment Modes: Terraform Structure](references/deployment.md#terraform-structure) for resource details and naming conventions.
 

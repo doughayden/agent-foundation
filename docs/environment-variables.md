@@ -216,6 +216,10 @@ GitHub Environment Variables are mapped to Terraform inputs via `TF_VAR_*` prefi
 - **Source:** Set by workflow (dev/stage/prod)
 - **Purpose:** Environment-specific resource naming
 
+**TF_VAR_workload_identity_pool_principal_identifier**
+- **Source:** `${{ vars.WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER }}` (GitHub Environment Variable, auto-created by bootstrap)
+- **Purpose:** WIF principal identifier for binding additional IAM roles in `terraform/main/iam.tf`
+
 ### Runtime Configuration Overrides
 
 Override runtime config via GitHub Environment Variables (mapped to `TF_VAR_*`):

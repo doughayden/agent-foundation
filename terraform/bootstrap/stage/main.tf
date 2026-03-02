@@ -25,6 +25,7 @@ module "github" {
   artifact_registry_location                         = module.gcp.artifact_registry_location
   artifact_registry_uri                              = module.gcp.artifact_registry_uri
   workload_identity_provider_name                    = module.gcp.workload_identity_provider_name
+  workload_identity_pool_principal_identifier        = module.gcp.workload_identity_pool_principal_identifier
   terraform_state_bucket                             = var.terraform_state_bucket
 }
 

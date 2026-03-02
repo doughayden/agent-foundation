@@ -24,9 +24,9 @@ uv run pytest --cov --cov-report=term-missing  # Tests + 100% coverage required
 uv run ruff format && uv run ruff check && uv run mypy
 
 # Terraform (dev-only mode) - configure terraform.tfvars files first for pre and bootstrap
-terraform -chdir=terraform/pre init && terraform -chdir=terraform/pre apply  # One-time state buckets (all envs)
+terraform -chdir=terraform/bootstrap/pre init && terraform -chdir=terraform/bootstrap/pre apply  # One-time state buckets (all envs)
 terraform -chdir=terraform/bootstrap/dev init \           # One-time CI/CD setup — see backend.tf comment for full -backend-config command
-  -backend-config="bucket=$(terraform -chdir=terraform/pre output -json terraform_state_buckets | jq -r '.dev')"
+  -backend-config="bucket=$(terraform -chdir=terraform/bootstrap/pre output -json terraform_state_buckets | jq -r '.dev')"
 terraform -chdir=terraform/bootstrap/dev apply
 terraform -chdir=terraform/main init/plan/apply           # Deploy (TF_VAR_environment=dev)
 ```
@@ -135,15 +135,15 @@ uv lock --upgrade               # Update all
 
 **Workflows:** ci-cd.yml (orchestrator), config-summary.yml, docker-build.yml, metadata-extract.yml, pull-and-promote.yml, resolve-image-digest.yml, terraform-plan-apply.yml, code-quality.yml. PR: build `pr-{sha}`, dev-plan, comment. Main: build `{sha}`+`latest`, deploy dev (+ stage in prod mode). Tag: prod deploy (prod mode only). **Deploy by immutable digest** (not tag) to guarantee new Cloud Run revision. **Option to deploy to dev on all PRs:** single-line change to ci-cd.yml deploys on PR (remove `&& github.event_name == 'push'` from dev-apply condition).
 
-**Auth:** WIF (no SA keys). GitHub Variables auto-created: GCP_PROJECT_ID, GCP_LOCATION, IMAGE_NAME, GCP_WORKLOAD_IDENTITY_PROVIDER, ARTIFACT_REGISTRY_URI, ARTIFACT_REGISTRY_LOCATION, TERRAFORM_STATE_BUCKET.
+**Auth:** WIF (no SA keys). GitHub Variables auto-created: GCP_PROJECT_ID, GCP_LOCATION, IMAGE_NAME, GCP_WORKLOAD_IDENTITY_PROVIDER, ARTIFACT_REGISTRY_URI, ARTIFACT_REGISTRY_LOCATION, TERRAFORM_STATE_BUCKET, WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER.
 
 **Job Summaries:** Use `$GITHUB_STEP_SUMMARY` for formatted output. Export GitHub context to shell, capture once, check for empty output.
 
 ## Terraform
 
-**Pre-Bootstrap:** `terraform/pre/` — single-file Terraform root, run once before any bootstrap environment. Uses terraform.tfvars for configuration. Creates one GCS bucket per environment (`terraform-state-{agent_name}-{env}-{suffix}`). Local state only — do not lose `terraform/pre/terraform.tfstate`. Outputs `terraform_state_buckets` map used for bootstrap `-backend-config` and `terraform_state_bucket` input variable.
+**Pre-Bootstrap:** `terraform/bootstrap/pre/` — single-file Terraform root, run once before any bootstrap environment. Uses terraform.tfvars for configuration. Creates one GCS bucket per environment (`terraform-state-{agent_name}-{env}-{suffix}`). Local state only — do not lose `terraform/bootstrap/pre/terraform.tfstate`. Outputs `terraform_state_buckets` map used for bootstrap `-backend-config` and `terraform_state_bucket` input variable.
 
-**Bootstrap Structure:** Each environment is a separate terraform root (`terraform/bootstrap/dev/`, `terraform/bootstrap/stage/`, `terraform/bootstrap/prod/`) calling shared modules (`terraform/bootstrap/module/gcp/` for GCP infrastructure, `terraform/bootstrap/module/github/` for GitHub automation). Each environment uses GCS remote state (bucket from pre-bootstrap) and terraform.tfvars for configuration. `terraform_state_bucket` is an input variable (created by pre). Creates: WIF, Artifact Registry, GitHub Environments, GitHub Environment Variables.
+**Bootstrap Structure:** Each environment is a separate terraform root (`terraform/bootstrap/dev/`, `terraform/bootstrap/stage/`, `terraform/bootstrap/prod/`) calling shared modules (`terraform/bootstrap/module/gcp/` for GCP infrastructure, `terraform/bootstrap/module/github/` for GitHub automation). Each environment uses GCS remote state (bucket from pre-bootstrap) and terraform.tfvars for configuration. `terraform_state_bucket` is an input variable (created by pre). Creates: WIF, Artifact Registry, GitHub Environments, GitHub Environment Variables. Enables APIs and grants WIF IAM roles sufficient for the base template ONLY — do not modify to add custom services or roles (use `terraform/main/services.tf` and `terraform/main/iam.tf` instead).
 
 **Cross-Project IAM (Production Mode):** Stage and prod bootstrap roots grant cross-project Artifact Registry reader access for image promotion:
 - `stage/main.tf`: Grants stage's WIF principal `roles/artifactregistry.reader` on dev's registry (for stage-promote: dev → stage)
@@ -159,7 +159,12 @@ uv lock --upgrade               # Update all
 
 **Runtime Variable Overrides:** GitHub Environment Variables → `TF_VAR_*`. `coalesce()` skips empty/null. Overridable runtime config: log_level, serve_web_interface, root_agent_model, otel_instrumentation_genai_capture_message_content, adk_suppress_experimental_feature_warnings. `docker_image` nullable (defaults to previous for infra-only updates). **Infrastructure resources (AGENT_ENGINE, ARTIFACT_SERVICE_URI, CORS origins) are hard-coded in Terraform** (no variable overrides).
 
-**IAM:** Dedicated GCP project per env. Project-level WIF roles same-project only (in terraform/bootstrap/module/gcp/main.tf). Cross-project Artifact Registry IAM grants in environment bootstrap roots (stage/main.tf, prod/main.tf) for image promotion. App SA roles in terraform/main/main.tf.
+**IAM:** Dedicated GCP project per env. Project-level WIF roles same-project only (in terraform/bootstrap/module/gcp/main.tf). Cross-project Artifact Registry IAM grants in environment bootstrap roots (stage/main.tf, prod/main.tf) for image promotion. App SA roles in terraform/main/main.tf. Additional WIF principal roles in terraform/main/iam.tf (consumer-defined, applied via CI/CD).
+
+**Main Module Extension Points (consumer-defined):**
+- `terraform/main/services.tf` — add GCP APIs using `google_project_service`; `time_sleep.service_enablement_propagation` uses `for_each` over `services` — one 120s sleep per service, created only when that service is added (zero overhead when empty); some GCP services have async backend initialization after the API is marked enabled; resources needing a new service declare `depends_on = [time_sleep.service_enablement_propagation["api.googleapis.com"]]`
+- `terraform/main/iam.tf` — add WIF principal IAM roles using `google_project_iam_member`; `time_sleep.wif_iam_propagation` uses `for_each` over `wif_additional_roles` — one 120s sleep per role, created only when that role is added (zero overhead when empty); resources needing a new role declare `depends_on = [time_sleep.wif_iam_propagation["roles/example"]]`; list multiple instances explicitly when a resource needs more than one new role
+- WIF principal identifier available via `var.workload_identity_pool_principal_identifier` (passed from bootstrap's `WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER` GitHub Variable)
 
 **Cloud Run probe:** Config failure_threshold=5, period_seconds=20, initial_delay_seconds=20, timeout_seconds=15 (total 120s). Allow credential init (~30-60s). Debug: local works but Cloud Run fails = credential/timing issue.
 

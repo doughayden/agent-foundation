@@ -25,7 +25,7 @@ output "github_repository_id" {
 
 output "enabled_services" {
   description = "Enabled Google Cloud services"
-  value       = [for service in google_project_service.main : service.service]
+  value       = [for service in google_project_service.bootstrap : service.service]
 }
 
 output "workload_identity_pool_principal_identifier" {

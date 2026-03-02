@@ -22,7 +22,7 @@ locals {
   ])
 }
 
-resource "google_project_service" "main" {
+resource "google_project_service" "bootstrap" {
   for_each           = toset(local.services)
   project            = var.project
   service            = each.value
@@ -126,5 +126,5 @@ resource "google_artifact_registry_repository" "docker" {
     }
   }
 
-  depends_on = [google_project_service.main["artifactregistry.googleapis.com"]]
+  depends_on = [google_project_service.bootstrap["artifactregistry.googleapis.com"]]
 }
