@@ -118,7 +118,7 @@ repository_name  = "your-agent-repository"
 **Option A - Using the bucket name created in pre-bootstrap:**
 ```bash
 terraform -chdir=terraform/bootstrap/dev init \
-  -backend-config="bucket=$(terraform -chdir=terraform/pre output -json terraform_state_buckets | jq -r '.dev')"
+  -backend-config="bucket=$(terraform -chdir=terraform/bootstrap/pre output -json terraform_state_buckets | jq -r '.dev')"
 terraform -chdir=terraform/bootstrap/dev apply
 ```
 
@@ -358,7 +358,7 @@ See [Protection Strategies](protection-strategies.md) for detailed setup instruc
 > [!WARNING]
 > Bootstrap is frozen after initial setup. The services and IAM roles in `terraform/bootstrap/module/gcp/main.tf` are the minimum required to setup the CI/CD pipeline and are **NOT MANAGED** by any automation. Changes there will not be provisioned by GitHub Actions. Use `terraform/main/services.tf` and `terraform/main/iam.tf` instead.
 
-Two extension points in `terraform/main/` exist for post-bootstrap customization:
+Two extension points in `terraform/main/` exist for post-bootstrap customization. Only grant roles and enable services your agent strictly requires — prefer narrow, least-privilege, resource-scoped roles over broad project-level grants.
 
 - **`services.tf`** — Enable additional GCP APIs
 - **`iam.tf`** — Grant additional IAM roles to the GitHub Actions WIF principal so CI/CD can provision your agent's custom resources
