@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-03-01
+
 ### Added
 - `terraform/bootstrap/pre/` module creates GCS state buckets (one per environment) before bootstrap — supports incremental provisioning
 - `terraform/main/services.tf` — consumer extension point for additional GCP API enablement; `time_sleep.service_enablement_propagation` (120s, `for_each` per service) guards against async backend initialization after API enablement
@@ -297,7 +299,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.9.4...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/doughayden/agent-foundation/compare/v0.9.4...v0.10.0
 [0.9.4]: https://github.com/doughayden/agent-foundation/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/doughayden/agent-foundation/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/doughayden/agent-foundation/compare/v0.9.1...v0.9.2
