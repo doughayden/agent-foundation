@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Bootstrap environments now use GCS remote state with `bootstrap/` prefix; `terraform_state_bucket` is now a required input in all bootstrap roots
+- `terraform/main/.terraform.lock.hcl` committed with multi-platform hashes (`linux_amd64`, `darwin_arm64`); locks provider versions for CI/CD stability
 
 ## [0.9.4] - 2026-02-25
 
