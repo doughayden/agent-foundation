@@ -34,7 +34,7 @@ async def add_session_to_memory(callback_context: CallbackContext) -> None:
     except Exception as e:
         logger.warning(f"Failed to add session to memory: {type(e).__name__}: {e}")
 
-    return None
+    return
 
 
 class LoggingCallbacks:
@@ -76,7 +76,7 @@ class LoggingCallbacks:
             content_data = user_content.model_dump(exclude_none=True, mode="json")
             self.logger.debug(f"User Content: {content_data}")
 
-        return None
+        return
 
     def after_agent(self, callback_context: CallbackContext) -> None:
         """Callback executed after agent processing completes.
@@ -95,7 +95,7 @@ class LoggingCallbacks:
             content_data = user_content.model_dump(exclude_none=True, mode="json")
             self.logger.debug(f"User Content: {content_data}")
 
-        return None
+        return
 
     def before_model(
         self,
@@ -126,7 +126,7 @@ class LoggingCallbacks:
                 f"Content {i}: {content.model_dump(exclude_none=True, mode='json')}"
             )
 
-        return None
+        return
 
     def after_model(
         self,
@@ -154,7 +154,7 @@ class LoggingCallbacks:
             response_data = llm_content.model_dump(exclude_none=True, mode="json")
             self.logger.debug(f"LLM response: {response_data}")
 
-        return None
+        return
 
     def before_tool(
         self,
@@ -186,7 +186,7 @@ class LoggingCallbacks:
         self.logger.debug(f"EventActions: {actions_data}")
         self.logger.debug(f"args: {args}")
 
-        return None
+        return
 
     def after_tool(
         self,
@@ -221,4 +221,4 @@ class LoggingCallbacks:
         self.logger.debug(f"args: {args}")
         self.logger.debug(f"Tool response: {tool_response}")
 
-        return None
+        return

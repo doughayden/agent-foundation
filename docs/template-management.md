@@ -214,6 +214,19 @@ git checkout foundation-tags/$VERSION -- docs/deployment.md
 git commit -m "docs: sync deployment.md from $VERSION"
 ```
 
+### Sync a File at a Different Local Path
+
+`git checkout` requires the same path in both the source and destination. When the foundation uses a different package directory name (e.g., `agent_foundation/` vs. `your_agent/`), use `git show` to redirect the content instead:
+
+```bash
+# Review the diff across different paths
+git diff foundation-tags/$VERSION:src/agent_foundation/utils/observability.py -- src/your_agent/utils/observability.py
+
+# Write the foundation version to your local path
+git show foundation-tags/$VERSION:src/agent_foundation/utils/observability.py > src/your_agent/utils/observability.py
+git commit -m "chore: sync observability.py from foundation $VERSION"
+```
+
 ### Pull Multiple Related Files
 
 ```bash

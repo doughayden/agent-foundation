@@ -86,11 +86,9 @@ Prefer fixtures from `conftest.py` for standard mocks:
 - `mock_session` - ADK session
 - `mock_context` - ReadonlyContext with user_id
 
-### When to Import Mock Classes
+### Never Import Mock Classes
 
-Import mock classes directly only when:
-- Creating fixtures for many variants adds more complexity than value
-- Guideline: >3 variants → import class; standard cases → use/add fixture
+Never import mock classes directly in test files. Always use or add a fixture in `conftest.py`. For edge cases requiring custom internal structure, add a specific named fixture (e.g., `mock_event_non_text_content`) rather than importing the class.
 
 ### Mirror Real Interfaces
 

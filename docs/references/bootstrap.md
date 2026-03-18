@@ -305,9 +305,14 @@ gh api repos/:owner/:repo/rulesets | jq '.[] | {name, enforcement, target}'
 ### 8. Configure prod-apply Reviewers (REQUIRED)
 
 1. Settings → Environments → prod-apply
-2. Under **Environment protection rules**, check **Required reviewers**
-3. Click **Add reviewers**
-4. Search for and add users or teams who can approve production deployments
+2. Under **Deployment protection rules**, check **Required reviewers**
+  - Click **Add reviewers** search box
+  - Search for and add users or teams who can approve production deployments
+3. Click **Save protection rules**
+4. Under **Deployment branches and tags**:
+  - Click dropdown → Select **Selected branches and tags**
+  - Add branch rule: `main` (only main branch can trigger prod deployments)
+  - Add tag rule: `v*.*.*` or `v*` (version tags can trigger prod deployments)
 5. Click **Save protection rules**
 
 See [Protection Strategies](protection-strategies.md) for detailed setup instructions.
@@ -459,7 +464,7 @@ terraform -chdir=terraform/bootstrap/dev output -raw artifact_registry_name
 terraform -chdir=terraform/bootstrap/dev output -raw terraform_state_bucket
 ```
 
-**Note:** `terraform_state_bucket` is an input to bootstrap (sourced from pre-bootstrap outputs via `terraform.tfvars`) that bootstrap passes through to GitHub Environment Variables. Bootstrap does not create this bucket — pre-bootstrap does.
+> [!NOTE] `terraform_state_bucket` is an input to bootstrap (sourced from pre-bootstrap outputs via `terraform.tfvars`) that bootstrap passes through to GitHub Environment Variables. Bootstrap does not create this bucket — pre-bootstrap does.
 
 **Use cases:**
 - Promotion variables for next environment bootstrap

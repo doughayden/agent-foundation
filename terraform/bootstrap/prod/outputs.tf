@@ -68,6 +68,16 @@ output "github_actions_environment_variables" {
   value       = module.github.github_actions_environment_variables
 }
 
+output "promotion_source_project" {
+  description = "Artifact Registry source for docker image promotion Google Cloud project ID"
+  value       = var.promotion_source_project
+}
+
+output "promotion_source_artifact_registry_name" {
+  description = "Artifact Registry source for docker image promotion repository name"
+  value       = var.promotion_source_artifact_registry_name
+}
+
 output "production_tag_ruleset_rules" {
   description = "GitHub tag protection ruleset rules for production"
   value       = github_repository_ruleset.production_tags.rules

@@ -69,6 +69,7 @@ select = [
     "S",   # flake8-bandit
     "SIM", # flake8-simplify
     "PTH", # flake8-use-pathlib
+    "RET", # flake8-return
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -101,16 +102,17 @@ disable_error_code = "arg-type"
 source = ["src"]
 branch = true
 omit = [
-    # __init__.py files: namespace marker, no logic
-    "src/agent_foundation/**/__init__.py",
+    # __init__.py / __main__.py: namespace markers and entrypoints, no business logic
+    "src/**/__init__.py",
+    "src/**/__main__.py",
     # server.py: FastAPI setup and ADK initialization (integration tested via CI/CD)
-    "src/agent_foundation/server.py",
+    "src/**/server.py",
     # agent.py: LlmAgent instantiation (tested through callbacks, not in isolation)
-    "src/agent_foundation/**/agent.py",
+    "src/**/agent.py",
     # prompt.py: Prompt text and formatting (integration tested via agent runs)
-    "src/agent_foundation/**/prompt.py",
+    "src/**/prompt.py",
     # observability.py: OpenTelemetry setup (infrastructure initialization)
-    "src/agent_foundation/utils/observability.py",
+    "src/**/utils/observability.py",
 ]
 
 [tool.coverage.report]

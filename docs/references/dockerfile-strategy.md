@@ -174,21 +174,41 @@ COPY src ./src
 
 ---
 
+### Editable Install Build Argument
+```dockerfile
+# Build argument: set to "true" for editable install (local dev with file sync)
+ARG editable=false
+```
+**What:** Declares a build argument that controls whether the project is installed in editable mode
+**Why:**
+- Defaults to `false` — production builds via CI/CD pass no build arg, so behavior is unchanged
+- Docker Compose sets `editable: "true"` to enable file sync with auto-restart for local development
+- Editable install creates a `.pth` file pointing Python to `/app/src` instead of copying code into `.venv/site-packages`
+- When Docker Compose syncs changed files to `/app/src`, the restarted process picks them up immediately (~2-5s vs 20-120s full rebuild)
+- `ARG` adds nothing to the final image — it's a build-time variable that doesn't persist in image metadata (unlike `ENV`) and is completely invisible at runtime. In a multi-stage build this is even clearer: the runtime stage starts from a fresh `FROM` with no knowledge the ARG ever existed
+
+---
+
 ### Install Project
 ```dockerfile
-# Install project itself (create empty README to satisfy package metadata requirements)
+# Install project (create empty README to satisfy package metadata requirements)
 RUN --mount=type=cache,target=/root/.cache/uv \
     touch README.md && \
-    uv sync --locked --no-editable --no-dev
+    if [ "$editable" = "true" ]; then \
+        uv sync --locked --no-dev; \
+    else \
+        uv sync --locked --no-editable --no-dev; \
+    fi
 ```
-**What:** Install the project itself (now that source code exists)
+**What:** Install the project itself (now that source code exists), conditionally in editable or non-editable mode
 **Why:**
 - `touch README.md`: Creates empty README to satisfy package metadata requirements
   - **Performance optimization**: README changes won't trigger this layer rebuild
   - Only source code changes (`src/`) invalidate this layer
   - Intentional trade-off: runtime container won't have real README (not needed for execution)
 - `--locked`: Validates lockfile matches pyproject.toml (catches mistakes)
-- `--no-editable`: Install as a regular package (not editable/develop mode)
+- **When `editable=false` (default/production):** `--no-editable` installs as a regular package (copied into `.venv/site-packages`)
+- **When `editable=true` (local dev):** Omits `--no-editable`, creating a `.pth` file that points Python to `/app/src` — enables Docker Compose `sync+restart` to pick up file changes without a full image rebuild
 - Reuses dependencies from previous step (already in .venv)
 - Fast because dependencies already installed (~5-10s)
 
@@ -487,6 +507,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 | Dependency files | **COPY both** | Explicit cache invalidation, predictable, simple |
 | Code separation | `--no-install-project` | Dependencies (slow) separate from code (fast) |
 | Source copy | **Copy src/ only** | Documentation changes don't trigger code layer rebuild |
+| Editable install | **ARG editable=false** | Conditional install mode — production uses `--no-editable`, local dev omits it for file sync |
 | README file | **touch in RUN** | Optimization: README updates don't invalidate install layer |
 
 This gives us:

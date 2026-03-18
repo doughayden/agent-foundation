@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Editable install build argument (`ARG editable=false`) in Dockerfile for Docker Compose file sync with auto-restart (~2-5s feedback vs 20-120s rebuild)
+- Factory fixtures in conftest.py (`create_mock_*`) for flexible mock creation
+- Promotion source outputs to bootstrap environments (dev/stage/prod)
+- Cross-path file sync instructions in template-management guide
+- `RET` ruff rule for consistent return statement style
+
+### Changed
+- Docker Compose watch uses `sync+restart` for source files instead of full rebuild
+- Replace "hot reload" language with "file sync with auto-restart" across all documentation
+- Refactor agent.py and prompt.py to use constants instead of wrapper functions
+- Enforce strict mock fixture usage in tests (no direct mock class imports)
+- Generalize coverage omit patterns in pyproject.toml for downstream portability
+- Upgrade WIF role to `serviceUsageAdmin` for main module API enablement
+- Update bootstrap docs with deployment branch and tag protection rules
+- Update job summaries pattern and project structure descriptions
+
 ## [0.10.0] - 2026-03-01
 
 ### Added

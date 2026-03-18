@@ -27,7 +27,7 @@ This project distills proven patterns from the Starter Pack while prioritizing b
 
 ### ⚙️ Development & Build Optimization
 - **Optimized Docker builds**: Multi-stage builds with uv (~200MB images, fast rebuilds with layer caching)
-- **Developer experience**: Hot reloading with Docker Compose watch mode for instant feedback
+- **Developer experience**: File sync with auto-restart via Docker Compose watch mode for fast feedback
 - **Code quality**: Strict type checking (mypy), 100% test coverage, modern linting (ruff)
 - **Template-ready**: One-command initialization script for rapid project setup
 

@@ -190,7 +190,7 @@ gcloud auth application-default login
 # Run server (http://localhost:8000)
 uv run server
 
-# Or with Docker Compose (hot reloading, matches production)
+# Or with Docker Compose (file sync + auto-restart, matches production)
 docker compose up --build --watch
 ```
 
