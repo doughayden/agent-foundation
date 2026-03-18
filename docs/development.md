@@ -109,7 +109,7 @@ See [Testing Strategy](references/testing.md) and [Code Quality](references/code
 
 ## Docker Development
 
-**Recommended:** Docker Compose matches production environment and enables hot reloading.
+**Recommended:** Docker Compose matches production environment with file sync and auto-restart (~2-5s feedback loop).
 
 **Alternative:** Use `uv run server` if Docker is unavailable (device policies, etc.). You'll need to manually restart the server when making changes.
 
@@ -220,26 +220,24 @@ See [Observability](observability.md) for querying, filtering, and trace analysi
 ```
 your-agent-name/
   src/your_agent_name/
-    agent.py              # LlmAgent configuration
-    callbacks.py          # Agent callbacks
-    prompt.py             # Agent prompts
-    tools.py              # Custom tools
-    server.py             # FastAPI development server
-    utils/
-      config.py           # Configuration and environment parsing
-      observability.py    # OpenTelemetry setup
+    agent.py              # ADK App and LlmAgent configuration
+    callbacks.py          # Agent lifecycle callbacks (logging, safety, tool augmentation)
+    prompt.py             # Agent instructions (InstructionProvider pattern)
+    server.py             # FastAPI composition root (services, DI, routing)
+    tools.py              # Custom FunctionTools for agent use
+    utils/                # Config validation, common helpers, observability
   tests/                  # Test suite
-    conftest.py           # Shared fixtures
-    test_*.py             # Unit and integration tests
+    conftest.py           # Shared fixtures, test env setup
+    test_*.py             # Tests mirror source module structure
   terraform/              # Infrastructure as code
-    bootstrap/{env}       # One-time CI/CD setup (per environment)
-    main/                 # Cloud Run deployment
+    bootstrap/{env}       # One-time CI/CD setup per environment
+    main/                 # Agent cloud resource deployment
   docs/                   # Documentation
   .env.example            # Environment template
   pyproject.toml          # Project configuration
   docker-compose.yml      # Local development
   Dockerfile              # Container image
-  AGENTS.md               # LLM Agent instructions
+  AGENTS.md               # AI Coding Agent instructions
   CLAUDE.md               # Imports AGENTS.md for Claude Code
   README.md               # Main documentation
 ```

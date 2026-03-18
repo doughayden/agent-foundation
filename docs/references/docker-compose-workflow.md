@@ -12,7 +12,7 @@ docker compose up --build --watch
 
 **Why both flags?**
 - `--build`: Ensures you have the latest code and dependencies
-- `--watch`: Enables hot reloading for instant feedback
+- `--watch`: Enables file sync with auto-restart for fast feedback
 
 **What happens:**
 - Container starts with your latest code
@@ -26,7 +26,7 @@ docker compose up --build --watch
 
 ## Common Commands
 
-### Start with hot reloading (default workflow)
+### Start with file sync and auto-restart (default workflow)
 ```bash
 docker compose up --build --watch
 ```

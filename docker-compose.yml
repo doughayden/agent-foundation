@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        editable: "true"
     image: agent-foundation:latest
     container_name: agent-foundation-local
     ports:
@@ -21,20 +23,16 @@ services:
     environment:
       # Use mounted Application Default Credentials
       GOOGLE_APPLICATION_CREDENTIALS: "/gcloud/application_default_credentials.json"
-
-    # Watch configuration for hot reloading
     develop:
+      # Watch configuration for file sync with auto-restart
       watch:
-        # Sync Python source files for instant updates (uvicorn auto-reloads)
-        - action: sync
+        # Sync source files and restart — editable install resolves imports from /app/src
+        - action: sync+restart
           path: ./src
           target: /app/src
-
-        # Rebuild when dependencies change
+        # Rebuild on dependency changes — requires full image rebuild
         - action: rebuild
           path: ./pyproject.toml
-
         - action: rebuild
           path: ./uv.lock
-
     restart: unless-stopped

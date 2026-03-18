@@ -17,7 +17,7 @@ locals {
     "roles/iam.serviceAccountUser", # Required for Cloud Run to attach service accounts during deployment
     "roles/resourcemanager.projectIamAdmin",
     "roles/run.admin",
-    "roles/serviceusage.serviceUsageConsumer",
+    "roles/serviceusage.serviceUsageAdmin", # Required to enable additional APIs in the main module
     "roles/storage.admin",
   ])
 }

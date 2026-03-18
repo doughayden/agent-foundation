@@ -10,21 +10,22 @@ from google.adk.tools.preload_memory_tool import PreloadMemoryTool
 
 from .callbacks import LoggingCallbacks, add_session_to_memory
 from .prompt import (
-    return_description_root,
+    DESCRIPTION_ROOT,
+    INSTRUCTION_ROOT,
     return_global_instruction,
-    return_instruction_root,
 )
 from .tools import example_tool
 
+APP_NAME = "example_agent"
 logging_callbacks = LoggingCallbacks()
 
 root_agent = LlmAgent(
-    name="example_agent",
-    description=return_description_root(),
+    name=APP_NAME,
+    description=DESCRIPTION_ROOT,
     before_agent_callback=logging_callbacks.before_agent,
     after_agent_callback=[logging_callbacks.after_agent, add_session_to_memory],
     model=os.getenv("ROOT_AGENT_MODEL", "gemini-2.5-flash"),
-    instruction=return_instruction_root(),
+    instruction=INSTRUCTION_ROOT,
     tools=[PreloadMemoryTool(), example_tool],
     before_model_callback=logging_callbacks.before_model,
     after_model_callback=logging_callbacks.after_model,
@@ -32,7 +33,6 @@ root_agent = LlmAgent(
     after_tool_callback=logging_callbacks.after_tool,
 )
 
-# Optional App configs explicitly set to None for template documentation
 app = App(
     name="agent_foundation",
     root_agent=root_agent,
@@ -40,7 +40,4 @@ app = App(
         GlobalInstructionPlugin(return_global_instruction),
         LoggingPlugin(),
     ],
-    events_compaction_config=None,
-    context_cache_config=None,
-    resumability_config=None,
 )

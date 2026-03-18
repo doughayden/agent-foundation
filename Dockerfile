@@ -26,10 +26,17 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Copy only source code (documentation changes won't invalidate this layer)
 COPY src ./src
 
+# Build argument: set to "true" for editable install (local dev with file sync)
+ARG editable=false
+
 # Install project (create empty README to satisfy package metadata requirements)
 RUN --mount=type=cache,target=/root/.cache/uv \
     touch README.md && \
-    uv sync --locked --no-editable --no-dev
+    if [ "$editable" = "true" ]; then \
+        uv sync --locked --no-dev; \
+    else \
+        uv sync --locked --no-editable --no-dev; \
+    fi
 
 # ============================================================================
 # Runtime Stage: Minimal production image

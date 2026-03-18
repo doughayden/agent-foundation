@@ -17,7 +17,7 @@ Base template repo. Run `uv run init_template.py --dry-run` (preview) or `uv run
 # Local
 uv run server                               # API at 127.0.0.1:8000
 LOG_LEVEL=DEBUG uv run server               # Debug mode
-docker compose up --build --watch           # Hot reload
+docker compose up --build --watch           # File sync + auto-restart
 uv run pytest --cov --cov-report=term-missing  # Tests + 100% coverage required
 
 # Code quality (all required)
@@ -98,7 +98,7 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 - MockMemoryCallbackContext (controlled behavior via constructor)
 - MockLoggingCallbackContext, MockLlmRequest/Response, MockToolContext, MockBaseTool
 
-**Mock Usage:** Fixtures first. Import mock classes only when creating fixtures for every variant adds more complexity than direct instantiation. Guideline: >3 variants → import class; standard cases → use/add fixture.
+**Mock Usage:** Never import mock classes directly in test files — always use or add a fixture in `conftest.py`. For edge cases requiring custom internal structure, add a specific named fixture.
 
 **Organization:** Mirror source (`src/X.py` → `tests/test_X.py`). Class grouping. Descriptive names (`test_<what>_<condition>_<expected>`).
 
@@ -137,7 +137,7 @@ uv lock --upgrade               # Update all
 
 **Auth:** WIF (no SA keys). GitHub Variables auto-created: GCP_PROJECT_ID, GCP_LOCATION, IMAGE_NAME, GCP_WORKLOAD_IDENTITY_PROVIDER, ARTIFACT_REGISTRY_URI, ARTIFACT_REGISTRY_LOCATION, TERRAFORM_STATE_BUCKET, WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER.
 
-**Job Summaries:** Use `$GITHUB_STEP_SUMMARY` for formatted output. Export GitHub context to shell, capture once, check for empty output.
+**Job Summaries:** Use `mktemp`, `tee "$FILE"`, `${PIPESTATUS[0]}` for streaming + capture. Export GitHub context to shell vars, capture once, check for empty outputs.
 
 ## Terraform
 
@@ -178,7 +178,7 @@ uv lock --upgrade               # Update all
 
 **Config:** Pydantic `initialize_environment(ServerEnv)` in `utils/config.py`. Type-safe, fail-fast validation.
 
-**Docker Compose:** Volumes: `/app/src` (synced), `/app/data` (read-only), `/gcloud/application_default_credentials.json` (from `~/.config/gcloud/`). Windows: update GCP creds path. Binds `127.0.0.1:8000`.
+**Docker Compose:** Editable install via `ARG editable=true` build arg (`.pth` file points Python to `/app/src`). Watch: `sync+restart` for `src/`, `rebuild` for `pyproject.toml`/`uv.lock`. Volumes: `/app/data` (read-only), `/gcloud/application_default_credentials.json` (from `~/.config/gcloud/`). Windows: update GCP creds path. Binds `127.0.0.1:8000`.
 
 **Test Deployed:** `gcloud run services proxy <service-name> --project <project> --region <region> --port 8000`. Service name: `${agent_name}-${environment}` (e.g., `my-agent-dev`).
 

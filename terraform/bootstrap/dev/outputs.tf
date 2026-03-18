@@ -67,3 +67,13 @@ output "github_actions_environment_variables" {
   description = "GitHub Actions environment variables configured"
   value       = module.github.github_actions_environment_variables
 }
+
+output "promotion_source_project" {
+  description = "Artifact Registry source for docker image promotion Google Cloud project ID"
+  value       = var.promotion_source_project
+}
+
+output "promotion_source_artifact_registry_name" {
+  description = "Artifact Registry source for docker image promotion repository name"
+  value       = var.promotion_source_artifact_registry_name
+}

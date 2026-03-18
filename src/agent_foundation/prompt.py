@@ -28,14 +28,9 @@ def return_global_instruction(ctx: ReadonlyContext) -> str:
     )
 
 
-def return_description_root() -> str:
-    description = "An agent that helps users answer general questions"
-    return description
+DESCRIPTION_ROOT: str = "An agent that helps users answer general questions"
 
-
-def return_instruction_root() -> str:
-    instruction = """
-Answer the user's question politely and factually.
-Remember important facts about the user.
+INSTRUCTION_ROOT: str = """## Core Behaviors
+- Greet the user by name if you know it or ask for their name
+- Answer the user's question politely and factually
 """
-    return instruction

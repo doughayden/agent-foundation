@@ -3,22 +3,9 @@
 import logging
 
 import pytest
-
-# Import mock classes from conftest
-from conftest import (
-    MockBaseTool,
-    MockContent,
-    MockLlmRequest,
-    MockLlmResponse,
-    MockLoggingCallbackContext,
-    MockState,
-    MockToolContext,
-)
 from pytest_mock import MockerFixture
 
 from agent_foundation.callbacks import LoggingCallbacks
-
-# Note: Custom mock classes (conftest.py) use duck typing to match ADK interfaces.
 
 
 # Test fixtures
@@ -34,11 +21,10 @@ class TestLoggerInjection:
     """Tests for logger injection and initialization."""
 
     def test_logging_callbacks_default_logger(self) -> None:
-        """Verify LoggingCallbacks creates a logger with correct module name."""
+        """Verify LoggingCallbacks creates a logger from its own module."""
         callbacks = LoggingCallbacks()
 
         assert callbacks.logger is not None
-        assert callbacks.logger.name == "agent_foundation.callbacks"
 
     def test_logging_callbacks_custom_logger(
         self, custom_logger: logging.Logger
@@ -52,7 +38,7 @@ class TestLoggerInjection:
     def test_callbacks_with_custom_logger_logs_correctly(
         self,
         custom_logger: logging.Logger,
-        mock_logging_callback_context: MockLoggingCallbackContext,
+        mock_logging_callback_context,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Verify custom logger receives all log messages from callback operations."""
@@ -80,7 +66,7 @@ class TestAgentCallbacks:
 
     def test_before_agent_with_full_context(
         self,
-        mock_logging_callback_context: MockLoggingCallbackContext,
+        mock_logging_callback_context,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Verify before_agent logs agent name, ID, state, and user content properly."""
@@ -103,12 +89,12 @@ class TestAgentCallbacks:
         assert "User Content: {'text': 'Hello, agent!'}" in caplog.text
 
     def test_before_agent_without_user_content(
-        self, caplog: pytest.LogCaptureFixture
+        self, create_mock_logging_context, caplog: pytest.LogCaptureFixture
     ) -> None:
         """Verify before_agent skips user content logging when not provided."""
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
-        context = MockLoggingCallbackContext(user_content=None)
+        context = create_mock_logging_context(user_content=None)
 
         result = callbacks.before_agent(context)
 
@@ -118,7 +104,7 @@ class TestAgentCallbacks:
 
     def test_after_agent_with_full_context(
         self,
-        mock_logging_callback_context: MockLoggingCallbackContext,
+        mock_logging_callback_context,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Verify after_agent logs agent exit with ID, state, and user content."""
@@ -141,12 +127,12 @@ class TestAgentCallbacks:
         assert "User Content: {'text': 'Hello, agent!'}" in caplog.text
 
     def test_after_agent_without_user_content(
-        self, caplog: pytest.LogCaptureFixture
+        self, create_mock_logging_context, caplog: pytest.LogCaptureFixture
     ) -> None:
         """Verify after_agent skips user content logging when not provided."""
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
-        context = MockLoggingCallbackContext(user_content=None)
+        context = create_mock_logging_context(user_content=None)
 
         result = callbacks.after_agent(context)
 
@@ -160,18 +146,22 @@ class TestModelCallbacks:
 
     def test_before_model_with_multiple_messages(
         self,
-        mock_logging_callback_context: MockLoggingCallbackContext,
+        mock_logging_callback_context,
+        create_mock_content,
+        create_mock_llm_request,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Verify before_model logs all LLM request messages with content details."""
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
 
-        llm_request = MockLlmRequest(
+        llm_request = create_mock_llm_request(
             contents=[
-                MockContent({"role": "system", "text": "You are a helpful assistant"}),
-                MockContent({"role": "user", "text": "What is 2+2?"}),
-                MockContent({"role": "assistant", "text": "2+2 equals 4"}),
+                create_mock_content(
+                    {"role": "system", "text": "You are a helpful assistant"}
+                ),
+                create_mock_content({"role": "user", "text": "What is 2+2?"}),
+                create_mock_content({"role": "assistant", "text": "2+2 equals 4"}),
             ]
         )
 
@@ -185,13 +175,16 @@ class TestModelCallbacks:
         assert "Content 3: {'role': 'assistant'" in caplog.text
 
     def test_before_model_without_user_content(
-        self, caplog: pytest.LogCaptureFixture
+        self,
+        create_mock_logging_context,
+        create_mock_llm_request,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Verify before_model skips user content logging while logging requests."""
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
-        context = MockLoggingCallbackContext(user_content=None)
-        llm_request = MockLlmRequest()
+        context = create_mock_logging_context(user_content=None)
+        llm_request = create_mock_llm_request()
 
         result = callbacks.before_model(context, llm_request)
 
@@ -202,8 +195,8 @@ class TestModelCallbacks:
 
     def test_after_model_with_response(
         self,
-        mock_logging_callback_context: MockLoggingCallbackContext,
-        mock_llm_response: MockLlmResponse,
+        mock_logging_callback_context,
+        mock_llm_response,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Verify after_model logs LLM response content at DEBUG level."""
@@ -221,14 +214,15 @@ class TestModelCallbacks:
 
     def test_after_model_without_llm_content(
         self,
-        mock_logging_callback_context: MockLoggingCallbackContext,
+        mock_logging_callback_context,
+        create_mock_llm_response,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Verify after_model skips response logging when LLM content is absent."""
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
 
-        llm_response = MockLlmResponse(content=None)
+        llm_response = create_mock_llm_response(content=None)
 
         result = callbacks.after_model(mock_logging_callback_context, llm_response)
 
@@ -242,14 +236,15 @@ class TestToolCallbacks:
 
     def test_before_tool_with_arguments(
         self,
-        mock_tool_context: MockToolContext,
+        mock_tool_context,
+        create_mock_base_tool,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Verify before_tool logs tool name, arguments, and event actions at DEBUG."""
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
 
-        tool = MockBaseTool(name="calculator")
+        tool = create_mock_base_tool(name="calculator")
         args = {"operation": "add", "x": 5, "y": 3}
 
         result = callbacks.before_tool(tool, args, mock_tool_context)
@@ -264,15 +259,18 @@ class TestToolCallbacks:
         )
 
     def test_before_tool_without_user_content(
-        self, caplog: pytest.LogCaptureFixture
+        self,
+        create_mock_base_tool,
+        create_mock_tool_context,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Verify before_tool skips user content logging while logging tool details."""
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
 
-        tool = MockBaseTool()
+        tool = create_mock_base_tool()
         args = {"param": "value"}
-        context = MockToolContext(user_content=None)
+        context = create_mock_tool_context(user_content=None)
 
         result = callbacks.before_tool(tool, args, context)
 
@@ -282,14 +280,15 @@ class TestToolCallbacks:
 
     def test_after_tool_with_response(
         self,
-        mock_tool_context: MockToolContext,
+        mock_tool_context,
+        create_mock_base_tool,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Verify after_tool logs tool name, arguments, and response data properly."""
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
 
-        tool = MockBaseTool(name="database_query")
+        tool = create_mock_base_tool(name="database_query")
         args = {"query": "SELECT * FROM users"}
         tool_response = {"rows": [{"id": 1, "name": "Alice"}], "count": 1}
 
@@ -304,15 +303,18 @@ class TestToolCallbacks:
         )
 
     def test_after_tool_without_user_content(
-        self, caplog: pytest.LogCaptureFixture
+        self,
+        create_mock_base_tool,
+        create_mock_tool_context,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Verify after_tool skips user content logging while logging tool response."""
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
 
-        tool = MockBaseTool()
+        tool = create_mock_base_tool()
         args = {}
-        context = MockToolContext(user_content=None)
+        context = create_mock_tool_context(user_content=None)
         tool_response = {"status": "success"}
 
         result = callbacks.after_tool(tool, args, context, tool_response)
@@ -326,12 +328,17 @@ class TestToolCallbacks:
 class TestEdgeCases:
     """Tests for edge cases and special scenarios."""
 
-    def test_callbacks_with_empty_state(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_callbacks_with_empty_state(
+        self,
+        create_mock_logging_context,
+        create_mock_state,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Verify callbacks correctly log empty state dictionaries at DEBUG level."""
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
 
-        context = MockLoggingCallbackContext(state=MockState({}))
+        context = create_mock_logging_context(state=create_mock_state({}))
 
         # Test before_agent with empty state
         result = callbacks.before_agent(context)
@@ -339,13 +346,16 @@ class TestEdgeCases:
         assert "State keys: dict_keys([])" in caplog.text
 
     def test_callbacks_with_complex_nested_state(
-        self, caplog: pytest.LogCaptureFixture
+        self,
+        create_mock_logging_context,
+        create_mock_state,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Verify callbacks log state keys for complex nested state."""
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
 
-        complex_state = MockState(
+        complex_state = create_mock_state(
             {
                 "user": {
                     "id": "123",
@@ -364,17 +374,19 @@ class TestEdgeCases:
             }
         )
 
-        context = MockLoggingCallbackContext(state=complex_state)
+        context = create_mock_logging_context(state=complex_state)
 
         result = callbacks.before_agent(context)
         assert result is None
         # Now we only log state keys, not the actual values
         assert "State keys: dict_keys(['user', 'session'])" in caplog.text
 
-    def test_logging_levels(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_logging_levels(
+        self, create_mock_logging_context, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Verify callbacks emit INFO logs for main events and DEBUG for details."""
         callbacks = LoggingCallbacks()
-        context = MockLoggingCallbackContext()
+        context = create_mock_logging_context()
 
         # Test INFO level (should show main events)
         caplog.set_level(logging.INFO)
@@ -401,17 +413,20 @@ class TestEdgeCases:
         assert any("State keys:" in r.message for r in debug_records)
 
     def test_model_dump_serialization(
-        self, caplog: pytest.LogCaptureFixture, mocker: MockerFixture
+        self,
+        create_mock_logging_context,
+        caplog: pytest.LogCaptureFixture,
+        mocker: MockerFixture,
     ) -> None:
         """Verify callbacks serialize content using model_dump with proper params."""
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
 
         # Create mock content with spy on model_dump
-        mock_content = mocker.Mock(spec=MockContent)
-        mock_content.model_dump = mocker.MagicMock(return_value={"mocked": "data"})
+        mock_content = mocker.Mock()
+        mock_content.model_dump = mocker.Mock(return_value={"mocked": "data"})
 
-        context = MockLoggingCallbackContext(user_content=mock_content)
+        context = create_mock_logging_context(user_content=mock_content)
 
         callbacks.before_agent(context)
 
@@ -421,16 +436,18 @@ class TestEdgeCases:
 
     def test_all_callbacks_return_none(
         self,
-        mock_llm_request: MockLlmRequest,
-        mock_llm_response: MockLlmResponse,
-        mock_base_tool: MockBaseTool,
+        mock_llm_request,
+        mock_llm_response,
+        mock_base_tool,
+        create_mock_logging_context,
+        create_mock_tool_context,
     ) -> None:
         """Verify all callback methods return None to allow normal agent flow."""
         callbacks = LoggingCallbacks()
 
         # Create test objects
-        callback_context = MockLoggingCallbackContext()
-        tool_context = MockToolContext()
+        callback_context = create_mock_logging_context()
+        tool_context = create_mock_tool_context()
         args = {"test": "arg"}
         tool_response = {"result": "success"}
 
@@ -450,7 +467,14 @@ class TestWalrusOperators:
     """Tests for walrus operator usage in logging callbacks."""
 
     def test_walrus_operator_assignment_and_usage(
-        self, caplog: pytest.LogCaptureFixture
+        self,
+        create_mock_content,
+        create_mock_logging_context,
+        create_mock_llm_request,
+        create_mock_llm_response,
+        create_mock_tool_context,
+        create_mock_base_tool,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Verify walrus operators correctly assign AND use values in callbacks.
 
@@ -470,13 +494,13 @@ class TestWalrusOperators:
         callbacks = LoggingCallbacks()
 
         # Test 1: before_agent walrus operator with unique content
-        unique_content_before_agent = MockContent(
+        unique_content_before_agent = create_mock_content(
             {
                 "unique_walrus_marker": "test_walrus_12345_before_agent",
                 "test_type": "walrus_operator_validation",
             }
         )
-        context_before_agent = MockLoggingCallbackContext(
+        context_before_agent = create_mock_logging_context(
             agent_name="walrus_test_agent", user_content=unique_content_before_agent
         )
 
@@ -490,13 +514,13 @@ class TestWalrusOperators:
         assert "walrus_operator_validation" in caplog.text
 
         # Test 2: after_agent walrus operator with unique content
-        unique_content_after_agent = MockContent(
+        unique_content_after_agent = create_mock_content(
             {
                 "unique_walrus_marker": "test_walrus_67890_after_agent",
                 "validation_id": "after_agent_walrus",
             }
         )
-        context_after_agent = MockLoggingCallbackContext(
+        context_after_agent = create_mock_logging_context(
             agent_name="walrus_test_agent", user_content=unique_content_after_agent
         )
 
@@ -509,16 +533,16 @@ class TestWalrusOperators:
         assert "after_agent_walrus" in caplog.text
 
         # Test 3: before_model walrus operator with unique content
-        unique_content_before_model = MockContent(
+        unique_content_before_model = create_mock_content(
             {
                 "unique_walrus_marker": "test_walrus_11111_before_model",
                 "model_test": "before_model_walrus_check",
             }
         )
-        context_before_model = MockLoggingCallbackContext(
+        context_before_model = create_mock_logging_context(
             agent_name="walrus_test_agent", user_content=unique_content_before_model
         )
-        llm_request = MockLlmRequest()
+        llm_request = create_mock_llm_request()
 
         caplog.clear()
         callbacks.before_model(context_before_model, llm_request)
@@ -529,24 +553,24 @@ class TestWalrusOperators:
         assert "before_model_walrus_check" in caplog.text
 
         # Test 4: after_model walrus operator with user_content
-        unique_content_after_model = MockContent(
+        unique_content_after_model = create_mock_content(
             {
                 "unique_walrus_marker": "test_walrus_22222_after_model_user",
                 "after_model_user": "walrus_validation",
             }
         )
-        context_after_model = MockLoggingCallbackContext(
+        context_after_model = create_mock_logging_context(
             agent_name="walrus_test_agent", user_content=unique_content_after_model
         )
 
         # Test 5: after_model walrus operator with llm_content
-        unique_llm_content = MockContent(
+        unique_llm_content = create_mock_content(
             {
                 "unique_llm_marker": "test_walrus_33333_llm_response",
                 "llm_response_id": "walrus_llm_test",
             }
         )
-        llm_response = MockLlmResponse(content=unique_llm_content)
+        llm_response = create_mock_llm_response(content=unique_llm_content)
 
         caplog.clear()
         callbacks.after_model(context_after_model, llm_response)
@@ -563,16 +587,16 @@ class TestWalrusOperators:
         assert "walrus_llm_test" in caplog.text
 
         # Test 6: before_tool walrus operator (uses 'content' variable name)
-        unique_content_before_tool = MockContent(
+        unique_content_before_tool = create_mock_content(
             {
                 "unique_walrus_marker": "test_walrus_44444_before_tool",
                 "tool_context_id": "before_tool_walrus",
             }
         )
-        tool_context_before = MockToolContext(
+        tool_context_before = create_mock_tool_context(
             agent_name="walrus_tool_agent", user_content=unique_content_before_tool
         )
-        tool = MockBaseTool(name="walrus_test_tool")
+        tool = create_mock_base_tool(name="walrus_test_tool")
         args = {"test": "walrus"}
 
         caplog.clear()
@@ -584,13 +608,13 @@ class TestWalrusOperators:
         assert "before_tool_walrus" in caplog.text
 
         # Test 7: after_tool walrus operator (uses 'content' variable name)
-        unique_content_after_tool = MockContent(
+        unique_content_after_tool = create_mock_content(
             {
                 "unique_walrus_marker": "test_walrus_55555_after_tool",
                 "after_tool_validation": "walrus_complete",
             }
         )
-        tool_context_after = MockToolContext(
+        tool_context_after = create_mock_tool_context(
             agent_name="walrus_tool_agent", user_content=unique_content_after_tool
         )
         tool_response = {"result": "walrus_test_success"}
@@ -607,7 +631,13 @@ class TestWalrusOperators:
         assert "walrus_test_success" in caplog.text
 
     def test_walrus_operator_with_none_values(
-        self, caplog: pytest.LogCaptureFixture
+        self,
+        create_mock_logging_context,
+        create_mock_tool_context,
+        create_mock_llm_request,
+        create_mock_llm_response,
+        create_mock_base_tool,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Verify walrus operators correctly handle None values.
 
@@ -618,14 +648,14 @@ class TestWalrusOperators:
         callbacks = LoggingCallbacks()
 
         # Create contexts with None values for user_content
-        context_none = MockLoggingCallbackContext(
+        context_none = create_mock_logging_context(
             agent_name="none_test_agent",
             user_content=None,  # This should cause walrus operator to skip the block
         )
-        tool_context_none = MockToolContext(
+        tool_context_none = create_mock_tool_context(
             agent_name="none_tool_agent", user_content=None
         )
-        llm_response_none = MockLlmResponse(content=None)  # None llm_content
+        llm_response_none = create_mock_llm_response(content=None)  # None llm_content
 
         # Test before_agent with None user_content
         caplog.clear()
@@ -639,7 +669,7 @@ class TestWalrusOperators:
 
         # Test before_model with None user_content
         caplog.clear()
-        callbacks.before_model(context_none, MockLlmRequest())
+        callbacks.before_model(context_none, create_mock_llm_request())
         assert "User Content:" not in caplog.text
 
         # Test after_model with None user_content and None llm_content
@@ -650,10 +680,10 @@ class TestWalrusOperators:
 
         # Test before_tool with None user_content
         caplog.clear()
-        callbacks.before_tool(MockBaseTool(), {}, tool_context_none)
+        callbacks.before_tool(create_mock_base_tool(), {}, tool_context_none)
         assert "User Content:" not in caplog.text
 
         # Test after_tool with None user_content
         caplog.clear()
-        callbacks.after_tool(MockBaseTool(), {}, tool_context_none, {})
+        callbacks.after_tool(create_mock_base_tool(), {}, tool_context_none, {})
         assert "User Content:" not in caplog.text

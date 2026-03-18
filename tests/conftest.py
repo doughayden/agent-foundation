@@ -312,9 +312,29 @@ def mock_state() -> MockState:
 
 
 @pytest.fixture
+def create_mock_state() -> Callable[..., MockState]:
+    """Factory for MockState with custom data."""
+
+    def _factory(data: dict[str, Any] | None = None) -> MockState:
+        return MockState(data)
+
+    return _factory
+
+
+@pytest.fixture
 def mock_content() -> MockContent:
     """Create a mock content with test data."""
     return MockContent({"text": "Hello, agent!"})
+
+
+@pytest.fixture
+def create_mock_content() -> Callable[..., MockContent]:
+    """Factory for MockContent with custom data."""
+
+    def _factory(data: dict[str, Any] | None = None) -> MockContent:
+        return MockContent(data)
+
+    return _factory
 
 
 @pytest.fixture
@@ -331,6 +351,16 @@ def mock_logging_callback_context(
 
 
 @pytest.fixture
+def create_mock_logging_context() -> Callable[..., MockLoggingCallbackContext]:
+    """Factory for MockLoggingCallbackContext with custom parameters."""
+
+    def _factory(**kwargs: Any) -> MockLoggingCallbackContext:
+        return MockLoggingCallbackContext(**kwargs)
+
+    return _factory
+
+
+@pytest.fixture
 def mock_llm_request() -> MockLlmRequest:
     """Create a mock LLM request with default messages."""
     return MockLlmRequest(
@@ -342,11 +372,31 @@ def mock_llm_request() -> MockLlmRequest:
 
 
 @pytest.fixture
+def create_mock_llm_request() -> Callable[..., MockLlmRequest]:
+    """Factory for MockLlmRequest with custom contents."""
+
+    def _factory(contents: list[MockContent] | None = None) -> MockLlmRequest:
+        return MockLlmRequest(contents)
+
+    return _factory
+
+
+@pytest.fixture
 def mock_llm_response() -> MockLlmResponse:
     """Create a mock LLM response with content."""
     return MockLlmResponse(
         content=MockContent({"text": "The answer is 42", "confidence": 0.95})
     )
+
+
+@pytest.fixture
+def create_mock_llm_response() -> Callable[..., MockLlmResponse]:
+    """Factory for MockLlmResponse with custom content."""
+
+    def _factory(content: MockContent | None = None) -> MockLlmResponse:
+        return MockLlmResponse(content)
+
+    return _factory
 
 
 @pytest.fixture
@@ -370,6 +420,16 @@ def mock_tool_context(
 
 
 @pytest.fixture
+def create_mock_tool_context() -> Callable[..., MockToolContext]:
+    """Factory for MockToolContext with custom parameters."""
+
+    def _factory(**kwargs: Any) -> MockToolContext:
+        return MockToolContext(**kwargs)
+
+    return _factory
+
+
+@pytest.fixture
 def mock_tool_context_empty_state(
     mock_event_actions: MockEventActions,
 ) -> MockToolContext:
@@ -387,6 +447,16 @@ def mock_tool_context_empty_state(
 def mock_base_tool() -> MockBaseTool:
     """Create a mock tool with default name."""
     return MockBaseTool(name="test_tool")
+
+
+@pytest.fixture
+def create_mock_base_tool() -> Callable[..., MockBaseTool]:
+    """Factory for MockBaseTool with custom name."""
+
+    def _factory(name: str = "test_tool") -> MockBaseTool:
+        return MockBaseTool(name)
+
+    return _factory
 
 
 @pytest.fixture
@@ -445,11 +515,6 @@ def valid_server_env() -> dict[str, str]:
         "AGENT_NAME": "test-agent",
         "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
     }
-
-
-# Note: clean_environment fixture removed because pytest_configure now sets
-# all test environment variables and prevents .env loading. Test isolation is
-# achieved by explicit test values set at session start.
 
 
 @pytest.fixture
