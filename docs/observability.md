@@ -106,6 +106,43 @@ OpenTelemetry resource attributes uniquely identify your service instances in tr
 > [!IMPORTANT]
 > Must be explicitly set to `TRUE` for ADK to capture conversation content
 
+## Background Task Context Propagation
+
+FastAPI `BackgroundTasks` (via Starlette) does not propagate Python's `contextvars` across the async boundary. Any OpenTelemetry spans started in a background task are orphaned from the parent trace unless the OTel context is manually forwarded.
+
+**Pattern:**
+
+```python
+from opentelemetry import context as otel_context
+
+# In the request handler — capture context before scheduling
+current_ctx = otel_context.get_current()
+background_tasks.add_task(my_background_fn, ..., parent_otel_context=current_ctx)
+
+# In the background function — attach and detach in try/finally
+async def my_background_fn(..., parent_otel_context=None):
+    token = (
+        otel_context.attach(parent_otel_context)
+        if parent_otel_context is not None
+        else None
+    )
+    try:
+        with tracer.start_as_current_span("my_span"):
+            ...  # spans are linked to the parent trace
+    finally:
+        if token is not None:
+            with contextlib.suppress(ValueError):
+                otel_context.detach(token)
+```
+
+**Why suppress `ValueError` on detach:**
+
+Python's [`ContextVar.reset()`](https://docs.python.org/3/library/contextvars.html#contextvars.ContextVar.reset) raises `ValueError` when the token was created in a different `contextvars.Context`. Starlette runs background tasks in a separate context copy, so the OTel token from `attach()` cannot be cleanly detached. This is a [known issue](https://github.com/open-telemetry/opentelemetry-python/issues/2606) in the OpenTelemetry Python SDK. The suppress is safe because:
+
+- The `attach()` succeeded — spans are correctly linked to the parent trace
+- The background task is about to exit — no leaked context to clean up
+- OTel's own `detach()` implementation also catches all exceptions internally
+
 ## Resources
 
 - [Vertex AI | Agent Engine | Trace an Agent](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/manage/tracing)

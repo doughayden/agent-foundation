@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-03-19
+
 ### Added
 - Editable install build argument (`ARG editable=false`) in Dockerfile for Docker Compose file sync with auto-restart (~2-5s feedback vs 20-120s rebuild)
 - Factory fixtures in conftest.py (`create_mock_*`) for flexible mock creation
 - Promotion source outputs to bootstrap environments (dev/stage/prod)
 - Cross-path file sync instructions in template-management guide
 - `RET` ruff rule for consistent return statement style
+- OpenTelemetry background task context propagation pattern in observability docs
 
 ### Changed
 - Docker Compose watch uses `sync+restart` for source files instead of full rebuild
@@ -21,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enforce strict mock fixture usage in tests (no direct mock class imports)
 - Generalize coverage omit patterns in pyproject.toml for downstream portability
 - Upgrade WIF role to `serviceUsageAdmin` for main module API enablement
+- Upgrade main module providers (google 7.12.0 → 7.21.0, random 3.7.2 → 3.8.1)
 - Update bootstrap docs with deployment branch and tag protection rules
 - Update job summaries pattern and project structure descriptions
 
@@ -316,7 +320,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/doughayden/agent-foundation/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/doughayden/agent-foundation/compare/v0.9.4...v0.10.0
 [0.9.4]: https://github.com/doughayden/agent-foundation/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/doughayden/agent-foundation/compare/v0.9.2...v0.9.3
