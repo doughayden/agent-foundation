@@ -80,7 +80,8 @@ class ServerEnv(BaseModel):
         log_level: Logging verbosity level.
         serve_web_interface: Whether to serve the ADK web interface.
         reload_agents: Whether to reload agents on file changes (local dev only).
-        agent_engine: Agent Engine instance ID for session and memory persistence.
+        session_service_uri: Full URI for session service (e.g., agentengine://...).
+        memory_service_uri: Full URI for memory service (e.g., agentengine://...).
         artifact_service_uri: GCS bucket URI for artifact storage.
         allow_origins: JSON array string of allowed CORS origins.
         host: Server host (127.0.0.1 for local, 0.0.0.0 for containers).
@@ -124,10 +125,16 @@ class ServerEnv(BaseModel):
         description="Whether to reload agents on file changes (local dev only)",
     )
 
-    agent_engine: str | None = Field(
+    session_service_uri: str | None = Field(
         default=None,
-        alias="AGENT_ENGINE",
-        description="Agent Engine instance ID for session and memory persistence",
+        alias="SESSION_SERVICE_URI",
+        description="Full URI for session service (e.g., agentengine://...)",
+    )
+
+    memory_service_uri: str | None = Field(
+        default=None,
+        alias="MEMORY_SERVICE_URI",
+        description="Full URI for memory service (e.g., agentengine://...)",
     )
 
     artifact_service_uri: str | None = Field(
@@ -210,17 +217,13 @@ class ServerEnv(BaseModel):
         print(f"LOG_LEVEL:             {self.log_level}")
         print(f"SERVE_WEB_INTERFACE:   {self.serve_web_interface}")
         print(f"RELOAD_AGENTS:         {self.reload_agents}")
-        print(f"AGENT_ENGINE:          {self.agent_engine}")
+        print(f"SESSION_SERVICE_URI:   {self.session_service_uri}")
+        print(f"MEMORY_SERVICE_URI:    {self.memory_service_uri}")
         print(f"ARTIFACT_SERVICE_URI:  {self.artifact_service_uri}")
         print(f"HOST:                  {self.host}")
         print(f"PORT:                  {self.port}")
         print(f"ALLOW_ORIGINS:         {self.allow_origins}")
         print(f"OTEL_CAPTURE_CONTENT:  {self.otel_capture_content}\n\n")
-
-    @property
-    def agent_engine_uri(self) -> str | None:
-        """Agent Engine URI with protocol prefix."""
-        return f"agentengine://{self.agent_engine}" if self.agent_engine else None
 
     @property
     def allow_origins_list(self) -> list[str]:

@@ -38,9 +38,9 @@ AGENT_DIR = os.getenv("AGENT_DIR", str(Path(__file__).resolve().parent.parent))
 # ADK fastapi app will set up OTel using resource attributes from env vars
 app: FastAPI = get_fast_api_app(
     agents_dir=AGENT_DIR,
-    session_service_uri=env.agent_engine_uri,
+    session_service_uri=env.session_service_uri,
     artifact_service_uri=env.artifact_service_uri,
-    memory_service_uri=env.agent_engine_uri,
+    memory_service_uri=env.memory_service_uri,
     allow_origins=env.allow_origins_list,
     web=env.serve_web_interface,
     reload_agents=env.reload_agents,
@@ -84,7 +84,8 @@ def main() -> None:
         LOG_LEVEL: Logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         SERVE_WEB_INTERFACE: Whether to serve the web interface (true/false)
         RELOAD_AGENTS: Whether to reload agents on file changes (true/false)
-        AGENT_ENGINE: Agent Engine instance for session and memory
+        SESSION_SERVICE_URI: Full URI for session service (e.g., agentengine://...)
+        MEMORY_SERVICE_URI: Full URI for memory service (e.g., agentengine://...)
         ARTIFACT_SERVICE_URI: GCS bucket for artifact storage
         ALLOW_ORIGINS: JSON array string of allowed CORS origins
         HOST: Server host (default: 127.0.0.1, set to 0.0.0.0 for containers)
