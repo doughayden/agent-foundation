@@ -14,7 +14,7 @@ from .prompt import (
     INSTRUCTION_ROOT,
     return_global_instruction,
 )
-from .tools import example_tool
+from .tools import get_current_time, list_timezones
 
 APP_NAME = "example_agent"
 logging_callbacks = LoggingCallbacks()
@@ -26,7 +26,7 @@ root_agent = LlmAgent(
     after_agent_callback=[logging_callbacks.after_agent, add_session_to_memory],
     model=os.getenv("ROOT_AGENT_MODEL", "gemini-2.5-flash"),
     instruction=INSTRUCTION_ROOT,
-    tools=[PreloadMemoryTool(), example_tool],
+    tools=[PreloadMemoryTool(), get_current_time, list_timezones],
     before_model_callback=logging_callbacks.before_model,
     after_model_callback=logging_callbacks.after_model,
     before_tool_callback=logging_callbacks.before_tool,
