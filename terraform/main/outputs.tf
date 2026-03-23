@@ -33,6 +33,11 @@ output "service_account_roles" {
   value       = local.app_iam_roles
 }
 
+output "cloud_sql_instance_connection_name" {
+  description = "Cloud SQL instance connection name (for Auth Proxy)"
+  value       = google_sql_database_instance.sessions.connection_name
+}
+
 output "session_service_uri" {
   description = "Session service URI for ADK get_fast_api_app() factory"
   value       = local.run_app_env.SESSION_SERVICE_URI
@@ -46,11 +51,6 @@ output "memory_service_uri" {
 output "artifact_service_uri" {
   description = "Artifact service GCS bucket URL (for local .env ARTIFACT_SERVICE_URI)"
   value       = google_storage_bucket.artifact_service.url
-}
-
-output "cloud_sql_instance_connection_name" {
-  description = "Cloud SQL instance connection name (for Auth Proxy)"
-  value       = google_sql_database_instance.sessions.connection_name
 }
 
 output "cloud_run_services" {

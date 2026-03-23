@@ -65,7 +65,8 @@ def main() -> None:
     - Environment variable loading and validation via Pydantic
     - Custom OpenTelemetry setup with trace correlation and Google Cloud export
     - Optional ADK web interface for interactive agent testing
-    - Session and memory persistence with Agent Engine
+    - Session persistence with Cloud SQL via DatabaseSessionService
+    - Memory persistence with Agent Engine
     - Cloud trace and log export
     - CORS configuration
 
@@ -84,8 +85,8 @@ def main() -> None:
         LOG_LEVEL: Logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         SERVE_WEB_INTERFACE: Whether to serve the web interface (true/false)
         RELOAD_AGENTS: Whether to reload agents on file changes (true/false)
-        SESSION_SERVICE_URI: Full URI for session service (e.g., agentengine://...)
-        MEMORY_SERVICE_URI: Full URI for memory service (e.g., agentengine://...)
+        SESSION_SERVICE_URI: Session service URI (e.g., postgresql+asyncpg://user@host:5432/db)
+        MEMORY_SERVICE_URI: Memory service URI (e.g., agentengine://...)
         ARTIFACT_SERVICE_URI: GCS bucket for artifact storage
         ALLOW_ORIGINS: JSON array string of allowed CORS origins
         HOST: Server host (default: 127.0.0.1, set to 0.0.0.0 for containers)
