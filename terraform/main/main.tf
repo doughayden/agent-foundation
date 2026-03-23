@@ -78,8 +78,10 @@ resource "google_sql_database_instance" "sessions" {
   database_version = "POSTGRES_18"
   region           = var.region
 
+  # ref: https://docs.cloud.google.com/sql/docs/postgres/machine-series-overview
   settings {
-    tier = "db-f1-micro"
+    edition = "ENTERPRISE"
+    tier    = "db-f1-micro"
 
     database_flags {
       name  = "cloudsql.iam_authentication"
