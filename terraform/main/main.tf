@@ -96,9 +96,9 @@ resource "google_sql_database" "sessions" {
 resource "google_sql_user" "app" {
   # Note: for Postgres only, GCP requires omitting the ".gserviceaccount.com" suffix
   # from the service account email due to length limits on database usernames.
-  name           = trimsuffix(google_service_account.app.email, ".gserviceaccount.com")
-  instance       = google_sql_database_instance.sessions.name
-  type           = "CLOUD_IAM_SERVICE_ACCOUNT"
+  name     = trimsuffix(google_service_account.app.email, ".gserviceaccount.com")
+  instance = google_sql_database_instance.sessions.name
+  type     = "CLOUD_IAM_SERVICE_ACCOUNT"
   # cloudsqlsuperuser is Cloud SQL's standard IAM database role (not Postgres SUPERUSER).
   # Grants DDL + DML ownership — required for ADK DatabaseSessionService auto-schema creation.
   database_roles = ["cloudsqlsuperuser"]
