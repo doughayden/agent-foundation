@@ -94,7 +94,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
@@ -103,7 +103,7 @@ jobs:
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "~> 1.14.0"
           terraform_wrapper: false  # Better output handling
@@ -159,7 +159,7 @@ jobs:
 
       - name: Download Saved Plan
         if: inputs.use_saved_plan
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.PLAN_FILE }}
           path: terraform/main
@@ -200,7 +200,7 @@ jobs:
 
       - name: Upload Plan Artifact
         if: inputs.save_plan && steps.plan.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.PLAN_FILE }}
           path: terraform/main/${{ env.PLAN_FILE }}
@@ -209,6 +209,9 @@ jobs:
       - name: Generate Plan Summary
         if: always() && inputs.use_saved_plan == false
         uses: actions/github-script@v8
+        env:
+          VALIDATE_OUTPUT: ${{ steps.validate.outputs.stdout || 'No output' }}
+          PLAN_OUTPUT: ${{ steps.plan.outputs.stdout || 'No plan available' }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -239,7 +242,7 @@ jobs:
             <details><summary>Validation Output</summary>
 
             \`\`\`
-            ${{ steps.validate.outputs.stdout || 'No output' }}
+            ${process.env.VALIDATE_OUTPUT}
             \`\`\`
 
             </details>
@@ -261,7 +264,7 @@ jobs:
             <details><summary>Plan Output</summary>
 
             \`\`\`terraform
-            ${{ steps.plan.outputs.stdout || 'No plan available' }}
+            ${process.env.PLAN_OUTPUT}
             \`\`\`
 
             </details>
@@ -319,6 +322,8 @@ jobs:
       - name: Generate Apply Summary
         if: always() && steps.apply.outcome != 'skipped'
         uses: actions/github-script@v8
+        env:
+          APPLY_OUTPUT: ${{ steps.apply.outputs.stdout || 'No output' }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -360,7 +365,7 @@ jobs:
             <details><summary>Apply Output</summary>
 
             \`\`\`terraform
-            ${{ steps.apply.outputs.stdout || 'No output' }}
+            ${process.env.APPLY_OUTPUT}
             \`\`\`
 
             </details>
