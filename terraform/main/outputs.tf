@@ -48,6 +48,11 @@ output "artifact_service_uri" {
   value       = google_storage_bucket.artifact_service.url
 }
 
+output "cloud_sql_instance_connection_name" {
+  description = "Cloud SQL instance connection name (for Auth Proxy)"
+  value       = google_sql_database_instance.sessions.connection_name
+}
+
 output "cloud_run_services" {
   description = "Agent app Cloud Run service details per location"
   value = { for loc, svc in data.google_cloud_run_v2_service.app :

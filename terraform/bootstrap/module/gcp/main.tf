@@ -6,6 +6,7 @@ locals {
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "run.googleapis.com",
+    "sqladmin.googleapis.com",
     "sts.googleapis.com",
     "telemetry.googleapis.com",
   ])
@@ -13,6 +14,7 @@ locals {
   github_workload_iam_roles = toset([
     "roles/aiplatform.user",
     "roles/artifactregistry.writer",
+    "roles/cloudsql.admin",
     "roles/iam.serviceAccountAdmin",
     "roles/iam.serviceAccountUser", # Required for Cloud Run to attach service accounts during deployment
     "roles/resourcemanager.projectIamAdmin",

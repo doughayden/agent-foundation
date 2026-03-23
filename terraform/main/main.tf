@@ -12,6 +12,8 @@ locals {
   # Run app service account roles
   app_iam_roles = toset([
     "roles/aiplatform.user",
+    "roles/cloudsql.client",
+    "roles/cloudsql.instanceUser",
     "roles/cloudtrace.agent",
     "roles/logging.logWriter",
     "roles/serviceusage.serviceUsageConsumer",
@@ -33,11 +35,11 @@ locals {
     GOOGLE_CLOUD_PROJECT                               = var.project
     GOOGLE_GENAI_USE_VERTEXAI                          = "TRUE"
     LOG_LEVEL                                          = coalesce(var.log_level, "INFO")
-    MEMORY_SERVICE_URI                                 = "agentengine://${google_vertex_ai_reasoning_engine.session_and_memory.id}"
+    MEMORY_SERVICE_URI                                 = "agentengine://${google_vertex_ai_reasoning_engine.memory_bank.id}"
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = coalesce(var.otel_instrumentation_genai_capture_message_content, "FALSE")
     RELOAD_AGENTS                                      = "FALSE"
     SERVE_WEB_INTERFACE                                = coalesce(var.serve_web_interface, "FALSE")
-    SESSION_SERVICE_URI                                = "agentengine://${google_vertex_ai_reasoning_engine.session_and_memory.id}"
+    SESSION_SERVICE_URI                                = "postgresql+asyncpg://${google_sql_user.app.name}@localhost:5432/${google_sql_database.sessions.name}"
     TELEMETRY_NAMESPACE                                = var.environment
   }
 
@@ -71,9 +73,38 @@ resource "google_project_iam_member" "app" {
   member   = google_service_account.app.member
 }
 
-resource "google_vertex_ai_reasoning_engine" "session_and_memory" {
-  display_name = "${local.resource_name} Sessions and Memory"
-  description  = "Managed Session and Memory Bank Service for the ${local.resource_name} app"
+resource "google_sql_database_instance" "sessions" {
+  name             = "${local.resource_name}-sessions"
+  database_version = "POSTGRES_18"
+  region           = var.region
+
+  settings {
+    tier = "db-f1-micro"
+    
+    database_flags {
+      name  = "cloudsql.iam_authentication"
+      value = "on"
+    }
+  }
+}
+
+resource "google_sql_database" "sessions" {
+  name     = "agent_sessions"
+  instance = google_sql_database_instance.sessions.name
+}
+
+resource "google_sql_user" "app" {
+  # Note: for Postgres only, GCP requires omitting the ".gserviceaccount.com" suffix
+  # from the service account email due to length limits on database usernames.
+  name     = trimsuffix(google_service_account.app.email, ".gserviceaccount.com")
+  instance = google_sql_database_instance.sessions.name
+  type     = "CLOUD_IAM_SERVICE_ACCOUNT"
+  database_roles = ["cloudsqlsuperuser"]
+}
+
+resource "google_vertex_ai_reasoning_engine" "memory_bank" {
+  display_name = "${local.resource_name} Memory Bank"
+  description  = "Memory Bank Service for the ${local.resource_name} app"
   region       = var.region
 
   # Prevent plan and apply diffs with an empty spec for managed sessions and memory bank only (no runtime code)
@@ -153,6 +184,16 @@ resource "google_cloud_run_v2_service" "app" {
           value = env.value
         }
       }
+    }
+
+    # Cloud SQL Auth Proxy sidecar
+    containers {
+      image = "gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.21.2"
+      args = [
+        "${var.project}:${google_sql_database_instance.sessions.region}:${google_sql_database_instance.sessions.name}",
+        "--port=5432",
+        "--auto-iam-authn",
+      ]
     }
 
     # Explicitly set the concurrency (defaults to 80 for CPU >= 1).
