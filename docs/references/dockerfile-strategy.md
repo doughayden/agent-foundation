@@ -18,7 +18,7 @@ Our Dockerfile uses a **multi-stage build** with the following architecture:
 2. **Runtime Stage**: Clean `python:3.13-slim` + only the virtual environment
 
 This approach gives us:
-- ✅ Official uv binary (always latest)
+- ✅ Official uv binary (pinned for reproducible builds)
 - ✅ Full build capabilities (shell, Python, package manager)
 - ✅ Minimal runtime image (~200MB vs ~500MB)
 - ✅ Fast rebuilds (5-10s for code changes)
@@ -55,11 +55,12 @@ FROM python:3.13-slim AS builder
 
 ### Copy UV Binary
 ```dockerfile
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Install uv from official distroless image (pinned for reproducible builds)
+COPY --from=ghcr.io/astral-sh/uv:X.Y.Z /uv /uvx /bin/
 ```
 **What:** Extract just the `uv` and `uvx` binaries from Astral's image
 **Why:**
-- Gets latest uv version without manually tracking releases
+- Pinned to specific version X.Y.Z (i.e., `0.10.11`) for reproducible, deterministic builds
 - Copies only ~10MB of binaries (not a whole base image)
 - Puts them in `/bin/` so they're in PATH
 
@@ -385,7 +386,7 @@ Let's compare the approaches:
 
 ### ❌ Using UV Image Directly (Won't Work)
 ```dockerfile
-FROM ghcr.io/astral-sh/uv:latest
+FROM ghcr.io/astral-sh/uv:X.Y.Z
 
 # ERROR: No shell to run these commands!
 RUN uv sync  # FAILS - distroless has no /bin/sh
@@ -402,7 +403,7 @@ COPY src ./src  # Works, but then what?
 ```dockerfile
 # Builder: Use python:3.13-slim + uv binary
 FROM python:3.13-slim AS builder
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
+COPY --from=ghcr.io/astral-sh/uv:X.Y.Z /uv /bin/
 # ... build with full shell/utilities ...
 
 # Runtime: Clean python:3.13-slim + only .venv
@@ -413,7 +414,7 @@ COPY --from=builder /app/.venv /app/.venv
 **Benefits:**
 - Builder has shell + Python + uv → can build anything
 - Runtime is minimal → small image size
-- Gets official uv binary → always latest
+- Gets official uv binary → pinned for reproducibility
 - Best of both worlds
 
 ---
@@ -500,7 +501,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 | Component | Approach | Why |
 |-----------|----------|-----|
-| `uv` binary | Copy from distroless | Get official binary without distroless constraints |
+| `uv` binary | Copy from distroless (pinned) | Reproducible builds, bump manually |
 | Base image | `python:3.13-slim` | Need shell + Python for build, minimal for runtime |
 | Build pattern | Multi-stage | 50% size reduction (discard build tools) |
 | Dependency caching | Cache mount | Persist packages across builds (~80% speedup) |
@@ -511,7 +512,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 | README file | **touch in RUN** | Optimization: README updates don't invalidate install layer |
 
 This gives us:
-- ✅ Official uv binary (always latest)
+- ✅ Official uv binary (pinned for reproducible builds)
 - ✅ Full build capabilities (shell, Python, package manager)
 - ✅ Minimal runtime image (~200MB vs ~500MB)
 - ✅ Fast rebuilds (5-10s for code changes, ~2-5s for dependency changes with cache)
