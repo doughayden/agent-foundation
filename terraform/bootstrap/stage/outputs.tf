@@ -3,9 +3,9 @@ output "project" {
   value       = module.gcp.project
 }
 
-output "location" {
-  description = "Google Cloud location (Compute region)"
-  value       = module.gcp.location
+output "region" {
+  description = "Google Cloud Compute region"
+  value       = module.gcp.region
 }
 
 output "agent_name" {

@@ -3,7 +3,8 @@
 ### ===========================================
 environment                                        = "dev"
 project                                            = "project-id"
-location                                           = "us-central1"
+region                                             = "us-central1"
+google_cloud_location                              = "global"
 agent_name                                         = "agent-name"
 otel_instrumentation_genai_capture_message_content = "TRUE"
 workload_identity_pool_principal_identifier        = "principalSet://iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/your-wif-pool/attribute.repository/your-github-username-or-org/your-agent-repository"
@@ -23,5 +24,4 @@ terraform_state_bucket = "terraform-state-agent-name-abcd1234"
 ### ===========================================
 # log_level                                  = "DEBUG"
 # serve_web_interface                        = "TRUE"
-# root_agent_model                           = "value"
 # adk_suppress_experimental_feature_warnings = "TRUE"

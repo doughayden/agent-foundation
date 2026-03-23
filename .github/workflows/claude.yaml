@@ -41,8 +41,8 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v3
         with:
-          project_id: ${{ vars.GCP_PROJECT_ID }}
-          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Run Claude Auto Review
         uses: anthropics/claude-code-action@v1
@@ -88,8 +88,8 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v3
         with:
-          project_id: ${{ vars.GCP_PROJECT_ID }}
-          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Run Claude Manual Action
         uses: anthropics/claude-code-action@v1
@@ -121,5 +121,5 @@ jobs:
 # 
 # Configure Repository Variables
 # https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables
-# Set the GitHub Actions > Repository variables GCP_PROJECT_ID to the Google Cloud project ID
-# Set the GitHub Actions > Repository variables GCP_WORKLOAD_IDENTITY_PROVIDER to the workload ID federation principal identifier
+# Set the GitHub Actions > Repository variables GOOGLE_CLOUD_PROJECT to the Google Cloud project ID
+# Set the GitHub Actions > Repository variables WORKLOAD_IDENTITY_PROVIDER to the workload ID federation principal identifier

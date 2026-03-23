@@ -21,31 +21,31 @@ locals {
   ])
 
   # Prepare for future regional Cloud Run redundancy
-  locations = toset([var.location])
+  locations = toset([var.region])
 
   # Cloud Run service environment variables
   run_app_env = {
     ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS         = coalesce(var.adk_suppress_experimental_feature_warnings, "TRUE")
-    AGENT_ENGINE                                       = google_vertex_ai_reasoning_engine.session_and_memory.id
     AGENT_NAME                                         = var.agent_name
     ALLOW_ORIGINS                                      = jsonencode(["http://127.0.0.1", "http://127.0.0.1:8000"]) # Localhost-only for gcloud proxy access (add client service origins when UI is deployed)
     ARTIFACT_SERVICE_URI                               = google_storage_bucket.artifact_service.url
-    GOOGLE_CLOUD_LOCATION                              = var.location
+    GOOGLE_CLOUD_LOCATION                              = var.google_cloud_location
     GOOGLE_CLOUD_PROJECT                               = var.project
     GOOGLE_GENAI_USE_VERTEXAI                          = "TRUE"
     LOG_LEVEL                                          = coalesce(var.log_level, "INFO")
+    MEMORY_SERVICE_URI                                 = "agentengine://${google_vertex_ai_reasoning_engine.session_and_memory.id}"
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = coalesce(var.otel_instrumentation_genai_capture_message_content, "FALSE")
     RELOAD_AGENTS                                      = "FALSE"
-    ROOT_AGENT_MODEL                                   = coalesce(var.root_agent_model, "gemini-2.5-flash")
     SERVE_WEB_INTERFACE                                = coalesce(var.serve_web_interface, "FALSE")
+    SESSION_SERVICE_URI                                = "agentengine://${google_vertex_ai_reasoning_engine.session_and_memory.id}"
     TELEMETRY_NAMESPACE                                = var.environment
   }
 
   # Create a unique Agent resource name per deployment environment
   resource_name = "${var.agent_name}-${var.environment}"
 
-  # Service account ID has 30 character limit - truncate agent_name but preserve environment
-  sa_max_agent_length = 30 - length(var.environment) - 1 # Reserve space for "-environment"
+  # Service account ID has 30 character limit - truncate agent_name but preserve "-environment"
+  sa_max_agent_length = 30 - length(var.environment) - 1
   sa_id               = "${substr(var.agent_name, 0, local.sa_max_agent_length)}-${var.environment}"
 
   # Create labels for billing organization
@@ -74,7 +74,7 @@ resource "google_project_iam_member" "app" {
 resource "google_vertex_ai_reasoning_engine" "session_and_memory" {
   display_name = "${local.resource_name} Sessions and Memory"
   description  = "Managed Session and Memory Bank Service for the ${local.resource_name} app"
-  region       = var.location
+  region       = var.region
 
   # Prevent plan and apply diffs with an empty spec for managed sessions and memory bank only (no runtime code)
   spec {}

@@ -3,9 +3,9 @@ output "project" {
   value       = var.project
 }
 
-output "location" {
-  description = "Google Cloud location (Compute region)"
-  value       = var.location
+output "region" {
+  description = "Google Cloud Compute region"
+  value       = var.region
 }
 
 output "agent_name" {
@@ -33,9 +33,14 @@ output "service_account_roles" {
   value       = local.app_iam_roles
 }
 
-output "agent_engine" {
-  description = "Vertex AI Agent Engine resource name (for local .env AGENT_ENGINE)"
-  value       = google_vertex_ai_reasoning_engine.session_and_memory.id
+output "session_service_uri" {
+  description = "Session service URI for ADK get_fast_api_app() factory"
+  value       = local.run_app_env.SESSION_SERVICE_URI
+}
+
+output "memory_service_uri" {
+  description = "Memory service URI for ADK get_fast_api_app() factory"
+  value       = local.run_app_env.MEMORY_SERVICE_URI
 }
 
 output "artifact_service_uri" {

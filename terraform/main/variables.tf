@@ -12,8 +12,13 @@ variable "project" {
   type        = string
 }
 
-variable "location" {
-  description = "Google Cloud location (Compute region)"
+variable "region" {
+  description = "Google Cloud Compute region"
+  type        = string
+}
+
+variable "google_cloud_location" {
+  description = "Vertex AI model endpoint location"
   type        = string
 }
 
@@ -56,13 +61,6 @@ variable "otel_instrumentation_genai_capture_message_content" {
 
 variable "serve_web_interface" {
   description = "Enable web UI"
-  type        = string
-  nullable    = true
-  default     = null
-}
-
-variable "root_agent_model" {
-  description = "Root agent Vertex AI model name"
   type        = string
   nullable    = true
   default     = null

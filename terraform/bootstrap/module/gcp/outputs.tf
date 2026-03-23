@@ -3,9 +3,9 @@ output "project" {
   value       = var.project
 }
 
-output "location" {
-  description = "Google Cloud location (Compute region)"
-  value       = var.location
+output "region" {
+  description = "Google Cloud Compute region"
+  value       = var.region
 }
 
 output "agent_name" {

@@ -78,8 +78,9 @@ jobs:
 
       # Required Terraform variables (loaded from GitHub Environment automatically)
       TF_VAR_environment: ${{ needs.resolve-env.outputs.terraform_environment }}
-      TF_VAR_project: ${{ vars.GCP_PROJECT_ID }}
-      TF_VAR_location: ${{ vars.GCP_LOCATION }}
+      TF_VAR_project: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+      TF_VAR_region: ${{ vars.REGION }}
+      TF_VAR_google_cloud_location: ${{ vars.GOOGLE_CLOUD_LOCATION }}
       TF_VAR_agent_name: ${{ vars.IMAGE_NAME }}
       TF_VAR_otel_instrumentation_genai_capture_message_content: ${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}
       TF_VAR_terraform_state_bucket: ${{ vars.TERRAFORM_STATE_BUCKET }}
@@ -89,7 +90,6 @@ jobs:
       # Optional runtime app config variables (loaded from GitHub Environment, override Terraform defaults)
       TF_VAR_adk_suppress_experimental_feature_warnings: ${{ vars.ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS }}
       TF_VAR_log_level: ${{ vars.LOG_LEVEL }}
-      TF_VAR_root_agent_model: ${{ vars.ROOT_AGENT_MODEL }}
       TF_VAR_serve_web_interface: ${{ vars.SERVE_WEB_INTERFACE }}
 
     steps:
@@ -99,8 +99,8 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
         with:
-          project_id: ${{ vars.GCP_PROJECT_ID }}
-          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
