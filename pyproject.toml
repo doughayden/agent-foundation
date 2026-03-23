@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.13,<3.14"
 dependencies = [
+    "asyncpg>=0.31.0,<0.32.0",
     # Pin ADK to test releases before locking upgrades
     "google-adk==1.25.1",
     "google-auth>=2.40.3,<3.0.0",

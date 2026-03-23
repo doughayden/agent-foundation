@@ -39,7 +39,7 @@ This project distills proven patterns from the Starter Pack while prioritizing b
 - **Global scalability**: Create multi-region deployments by adding External Application Load Balancer
 
 ### 🤖 Agent Capabilities
-- **Managed sessions**: Vertex AI Agent Engine for durable conversation state and memory
+- **Database sessions**: Cloud SQL Postgres with IAM auth for durable conversation state
 - **Artifact storage**: GCS-backed persistent storage for session artifacts
 - **Custom observability**: OpenTelemetry instrumentation with full trace-log correlation
 
@@ -51,14 +51,14 @@ This project distills proven patterns from the Starter Pack while prioritizing b
 ## Getting Started
 
 > [!IMPORTANT]
-> Complete deployment first to create required resources (Agent Engine, GCS buckets, other agent-specific resources) before running locally with cloud persistence.
+> Complete deployment first to create required resources (Cloud SQL, Agent Engine, GCS buckets, other agent-specific resources) before running locally with cloud persistence.
 
 > [!NOTE]
 > The project starts in **dev-only mode** (single environment) by default. To enable production mode with staged deployments (dev → stage → prod), see [Infrastructure: Deployment Modes](docs/infrastructure.md#deployment-modes).
 
 Follow three steps to get started:
 1. **Bootstrap CI/CD** — provision WIF, Artifact Registry, GCS state bucket, and GitHub Environments
-2. **Deploy** — merge a PR to trigger deployment to Cloud Run with Agent Engine session and memory persistence
+2. **Deploy** — merge a PR to trigger deployment to Cloud Run with Cloud SQL sessions, Agent Engine memory, and artifact storage
 3. **Run the Agent** — start a local agent or test the remote agent via the Cloud Run proxy
 
 See [Getting Started](docs/getting-started.md) for the complete walkthrough.

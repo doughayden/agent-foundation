@@ -8,20 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Cloud SQL Postgres instance with IAM database auth for session persistence via ADK `DatabaseSessionService`
+- Cloud SQL Auth Proxy sidecar on Cloud Run and docker-compose for IAM-authenticated database connectivity
+- `asyncpg` runtime dependency for async Postgres connectivity
+- `cloud_sql_instance_connection_name` Terraform output for local development Auth Proxy configuration
+- `CLOUD_SQL_INSTANCE_CONNECTION_NAME` environment variable for docker-compose Auth Proxy target
 - `google_cloud_location` Terraform variable — decouples Vertex AI model endpoint routing from infrastructure region (#118)
-- `SESSION_SERVICE_URI` and `MEMORY_SERVICE_URI` environment variables — separate session and memory service configuration with full `agentengine://` URIs (#116)
+- `SESSION_SERVICE_URI` and `MEMORY_SERVICE_URI` environment variables — separate session and memory service configuration (#116)
 - `Gemini` model wrapper with retry options in `agent.py`
 
 ### Changed
+- **BREAKING**: Replace Agent Engine session service with Cloud SQL Postgres (`SESSION_SERVICE_URI` now `postgresql+asyncpg://` instead of `agentengine://`)
 - **BREAKING**: Rename GitHub Environment Variables: `GCP_PROJECT_ID` → `GOOGLE_CLOUD_PROJECT`, `GCP_LOCATION` → `REGION`, `GCP_WORKLOAD_IDENTITY_PROVIDER` → `WORKLOAD_IDENTITY_PROVIDER`
 - **BREAKING**: Rename Terraform variable `location` → `region` across all modules
 - **BREAKING**: Replace `AGENT_ENGINE` env var with `SESSION_SERVICE_URI` and `MEMORY_SERVICE_URI` (full URIs with protocol prefix)
+- Rename `session_and_memory` reasoning engine to `memory_bank` (memory only, sessions moved to Cloud SQL)
 - Rename agent.py constants to `ROOT_AGENT_*` prefix (`ROOT_AGENT_NAME`, `ROOT_AGENT_MODEL`, `ROOT_AGENT_DESCRIPTION`, `ROOT_AGENT_INSTRUCTION`)
+- Add `roles/cloudsql.client` and `roles/cloudsql.instanceUser` to app service account
+- Add `roles/cloudsql.admin` for WIF principal in bootstrap module
+- Enable `sqladmin.googleapis.com` API in bootstrap module
 
 ### Removed
 - `ROOT_AGENT_MODEL` environment variable — model selection is now a module constant in `agent.py` (#114)
 - `agent_engine_uri` property from `ServerEnv` — URI construction moved to Terraform
 - `root_agent_model` Terraform variable and CI/CD mapping
+- `data/` volume mount from docker-compose (unused)
 
 ## [0.10.1] - 2026-03-19
 

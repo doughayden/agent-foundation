@@ -24,7 +24,6 @@ gcloud auth application-default login
 - If stuck: Stop and restart with `docker compose up --build --watch`
 
 **Permission errors:**
-- Data directory: Mounted read-only, should not need write access
 - Credentials: Ensure `~/.config/gcloud/application_default_credentials.json` exists and is readable
 
 **Port already in use:**

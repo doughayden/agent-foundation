@@ -80,8 +80,8 @@ class ServerEnv(BaseModel):
         log_level: Logging verbosity level.
         serve_web_interface: Whether to serve the ADK web interface.
         reload_agents: Whether to reload agents on file changes (local dev only).
-        session_service_uri: Full URI for session service (e.g., agentengine://...).
-        memory_service_uri: Full URI for memory service (e.g., agentengine://...).
+        session_service_uri: Session service URI (e.g., postgresql+asyncpg://user@host:5432/db).
+        memory_service_uri: Memory service URI (e.g., agentengine://...).
         artifact_service_uri: GCS bucket URI for artifact storage.
         allow_origins: JSON array string of allowed CORS origins.
         host: Server host (127.0.0.1 for local, 0.0.0.0 for containers).
@@ -128,7 +128,7 @@ class ServerEnv(BaseModel):
     session_service_uri: str | None = Field(
         default=None,
         alias="SESSION_SERVICE_URI",
-        description="Full URI for session service (e.g., agentengine://...)",
+        description="Session service URI (e.g., postgresql+asyncpg://user@host:5432/db)",
     )
 
     memory_service_uri: str | None = Field(

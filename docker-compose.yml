@@ -1,4 +1,33 @@
 services:
+  cloud-sql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
+    container_name: agent-foundation-cloud-sql-proxy
+    env_file:
+      - .env
+    command:
+      - "${CLOUD_SQL_INSTANCE_CONNECTION_NAME}"
+      - "--port=5432"
+      - "--auto-iam-authn"
+      - "--credentials-file=/gcloud/application_default_credentials.json"
+      - "--health-check"
+      - "--http-port=9090"
+      - "--structured-logs"
+      - "--exit-zero-on-sigterm"
+    volumes:
+      # Mount Application Default Credentials for local development
+      # Windows users: Replace ${HOME} with Windows path, e.g.:
+      #   C:\Users\YourUsername\AppData\Roaming\gcloud\application_default_credentials.json:/gcloud/application_default_credentials.json:ro
+      - ${HOME}/.config/gcloud/application_default_credentials.json:/gcloud/application_default_credentials.json:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/cloud-sql-proxy", "wait", "--max=5s"]
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
   app:
     build:
       context: .
@@ -14,8 +43,6 @@ services:
     env_file:
       - .env
     volumes:
-      # Mount local data directory for development
-      - ./data:/app/data:ro
       # Mount Application Default Credentials for local development
       # Windows users: Replace ${HOME} with Windows path, e.g.:
       #   C:\Users\YourUsername\AppData\Roaming\gcloud\application_default_credentials.json:/gcloud/application_default_credentials.json:ro
@@ -23,6 +50,9 @@ services:
     environment:
       # Use mounted Application Default Credentials
       GOOGLE_APPLICATION_CREDENTIALS: "/gcloud/application_default_credentials.json"
+    depends_on:
+      cloud-sql-proxy:
+        condition: service_healthy
     develop:
       # Watch configuration for file sync with auto-restart
       watch:

@@ -3,7 +3,7 @@
 Day-to-day development workflow, code quality, testing, and Docker.
 
 > [!IMPORTANT]
-> Configure `SESSION_SERVICE_URI`, `MEMORY_SERVICE_URI`, and `ARTIFACT_SERVICE_URI` in `.env` after first deployment for production-ready persistence (sessions, memory, artifacts). See [Environment Variables](environment-variables.md) and [Getting Started](getting-started.md).
+> Configure `CLOUD_SQL_INSTANCE_CONNECTION_NAME`, `SESSION_SERVICE_URI`, `MEMORY_SERVICE_URI`, and `ARTIFACT_SERVICE_URI` in `.env` after first deployment. Sessions use Cloud SQL (via Auth Proxy sidecar in docker-compose), memory uses Agent Engine. See [Environment Variables](environment-variables.md) and [Getting Started](getting-started.md).
 
 ## Quick Start
 
@@ -43,8 +43,9 @@ Edit `.env` and configure required values. The `.env.example` file includes inli
 - OpenTelemetry settings
 
 **Recommended (after first deployment):**
-- `SESSION_SERVICE_URI` - Session persistence
-- `MEMORY_SERVICE_URI` - Memory persistence
+- `CLOUD_SQL_INSTANCE_CONNECTION_NAME` - Cloud SQL Auth Proxy target (docker-compose)
+- `SESSION_SERVICE_URI` - Session persistence (Cloud SQL)
+- `MEMORY_SERVICE_URI` - Memory persistence (Agent Engine)
 - `ARTIFACT_SERVICE_URI` - Artifact storage
 
 See [Environment Variables](environment-variables.md) for complete reference.
@@ -125,6 +126,8 @@ docker compose up --build --watch
 ```
 
 **Key details:**
+- Cloud SQL Auth Proxy sidecar connects to your Cloud SQL instance via IAM auth
+- App container waits for proxy healthcheck before starting
 - Source files sync to container without rebuild (instant feedback)
 - Loads `.env` automatically for configuration
 - Multi-stage Dockerfile optimized with uv cache mounts (~80% faster rebuilds)

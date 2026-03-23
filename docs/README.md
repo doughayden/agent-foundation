@@ -11,7 +11,7 @@ Built for teams who need to move beyond prototypes and ship production AI agents
 - 🐳 **Optimized Docker builds** - Multi-stage builds with uv (~200MB images, 5-10s rebuilds)
 - 🏗️ **Automated CI/CD** - GitHub Actions + Terraform with smart PR automation
 - 🌎 **Multi-environment deployments** - Production-grade dev/stage/prod isolation
-- 💾 **Managed sessions** - Vertex AI Agent Engine for durable conversation state
+- 💾 **Database sessions** - Cloud SQL Postgres with IAM auth for durable conversation state
 - 🔭 **Custom observability** - OpenTelemetry with full trace-log correlation
 - 🔐 **Security** - Workload Identity Federation (no service account keys)
 

@@ -66,8 +66,8 @@ Watch mode uses the configuration in `docker-compose.yml`:
 ```yaml
 develop:
   watch:
-    # Sync: Instant file copy, no rebuild
-    - action: sync
+    # Sync + restart: Instant file copy, editable install resolves imports
+    - action: sync+restart
       path: ./src
       target: /app/src
 
@@ -79,10 +79,10 @@ develop:
       path: ./uv.lock
 ```
 
-### Sync Action
+### Sync + Restart Action
 - **Triggers when:** You edit files in `src/`
-- **What happens:** Files are copied into running container instantly
-- **Speed:** Immediate (no rebuild)
+- **What happens:** Files are synced into running container, then container restarts
+- **Speed:** ~2-5 seconds (no rebuild)
 - **Use case:** Code changes during development
 
 ### Rebuild Action
@@ -90,6 +90,27 @@ develop:
 - **What happens:** Full image rebuild, container recreated
 - **Speed:** ~5-10 seconds (with cache)
 - **Use case:** Dependency changes
+
+---
+
+## Cloud SQL Auth Proxy Sidecar
+
+Docker Compose runs a Cloud SQL Auth Proxy sidecar alongside the app container, matching the Cloud Run deployment architecture 1:1. The proxy provides IAM-authenticated connectivity to Cloud SQL without database passwords.
+
+**Proxy flags:**
+- `--auto-iam-authn` — IAM database auth via Application Default Credentials
+- `--health-check` + `--http-port=9090` — enables `/startup`, `/liveness`, `/readiness` endpoints
+- `--structured-logs` — JSON logging (matches Cloud Logging format)
+- `--exit-zero-on-sigterm` — clean shutdown (exit code 0 on SIGTERM)
+- `--credentials-file` — mounted ADC file (Cloud Run uses SA identity natively instead)
+
+**Healthcheck:** Uses the proxy's built-in `wait` subcommand (`cloud-sql-proxy wait --max=5s`), which checks the `/startup` endpoint. Works in distroless images (no `wget`/`curl` needed). App container starts only after the proxy confirms connectivity to Cloud SQL.
+
+**Port:** `5432` on localhost (mapped to host for optional direct database access via `psql`).
+
+**Startup timing:** `start_period=5s`, `interval=5s`, `timeout=5s`, `retries=3` (~20s total). The proxy typically connects within 2-5s (TLS handshake + IAM token exchange). The 5s start period allows for initial startup, and 3 retries at 5s intervals provide headroom for slow networks or cold Cloud SQL instances. Values match the Cloud Run sidecar probe (`initial_delay_seconds=5`, `period_seconds=5`, `failure_threshold=3`) for dev/prod parity.
+
+**Requires:** `CLOUD_SQL_INSTANCE_CONNECTION_NAME` set in `.env` (get from deployment job summary or `terraform output cloud_sql_instance_connection_name`).
 
 ---
 
@@ -105,11 +126,6 @@ develop:
 - **Container:** `/gcloud/`
 - **Mount:** Read-only volume
 - **Purpose:** Secure access for the local development to Application Default Credentials for Google authentication
-
-### Data Directory
-- **Host:** `./data/`
-- **Container:** `/app/data` (read-only)
-- **Purpose:** Optional data files for agent
 
 ---
 
@@ -134,7 +150,6 @@ Docker Compose loads `.env` automatically. See [Environment Variables Guide](../
 - **If stuck:** Stop and restart with `docker compose up --build --watch`
 
 ### Permission errors
-- Data directory: Mounted read-only, should not need write access
 - Credentials: Ensure `~/.config/gcloud/application_default_credentials.json` exists and is readable
 
 ### Port already in use
@@ -175,7 +190,6 @@ docker compose run -e IMAGE=$REGISTRY_IMAGE app
 **Alternative - direct run:**
 ```bash
 docker run --rm \
-  -v ./data:/app/data:ro \
   -v ~/.config/gcloud/application_default_credentials.json:/gcloud/application_default_credentials.json:ro \
   -e GOOGLE_APPLICATION_CREDENTIALS=/gcloud/application_default_credentials.json \
   -p 127.0.0.1:8000:8000 \
@@ -195,7 +209,6 @@ DOCKER_BUILDKIT=1 docker build -t your-agent-name:latest .
 
 # Run directly
 docker run \
-  -v ./data:/app/data:ro \
   -p 127.0.0.1:8000:8000 \
   --env-file .env \
   your-agent-name:latest

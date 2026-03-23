@@ -97,9 +97,10 @@ See [Bootstrap Reference](references/bootstrap.md) for complete bootstrap setup 
 ## Deploy
 
 GitHub Actions deploy the agent resources:
-- Agent Engine for session and memory persistence (`SESSION_SERVICE_URI`, `MEMORY_SERVICE_URI`)
+- Cloud SQL instance for session persistence (`SESSION_SERVICE_URI`) with Cloud SQL Auth Proxy sidecar
+- Agent Engine for memory persistence (`MEMORY_SERVICE_URI`)
 - GCS bucket for artifact storage (`ARTIFACT_SERVICE_URI`)
-- Cloud Run service (auto-configured with all resources)
+- Cloud Run service (auto-configured with all resources, including Auth Proxy sidecar)
 - Service account with least-privilege IAM bindings
 - Additional cloud resources you customized for your agent
 
@@ -169,7 +170,8 @@ cp .env.example .env
 Add the values from the deployment job summary to `.env`:
 
 ```bash
-SESSION_SERVICE_URI=agentengine://projects/YOUR_PROJECT_ID/locations/YOUR_LOCATION/reasoningEngines/YOUR_ENGINE_ID
+CLOUD_SQL_INSTANCE_CONNECTION_NAME=project-id:region:instance-name
+SESSION_SERVICE_URI=postgresql+asyncpg://YOUR_SERVICE_ACCOUNT@project.iam:@localhost:5432/agent_sessions
 MEMORY_SERVICE_URI=agentengine://projects/YOUR_PROJECT_ID/locations/YOUR_LOCATION/reasoningEngines/YOUR_ENGINE_ID
 ARTIFACT_SERVICE_URI=gs://YOUR_BUCKET_NAME
 # Add values for resources you customized for your agent
