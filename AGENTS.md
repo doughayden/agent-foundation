@@ -49,6 +49,8 @@ terraform -chdir=terraform/main init/plan/apply           # Deploy (TF_VAR_envir
 - `utils/config.py`: Pydantic ServerEnv (type-safe, fail-fast)
 - `utils/observability.py`: OpenTelemetry (Cloud Trace/Logging, trace correlation)
 
+**Session Service:** Cloud SQL Postgres via ADK `DatabaseSessionService`. `get_fast_api_app()` routes `postgresql://` URIs to `DatabaseSessionService` automatically — no application code needed. Connection via Cloud SQL Auth Proxy sidecar (IAM database auth, no passwords). `DatabaseSessionService` uses SQLAlchemy async engine with `asyncpg` driver: `pool_pre_ping=True` (auto-set for non-SQLite), default pool_size=5, max_overflow=10. Auto-creates V1 schema tables on first operation (no migration needed). PostgreSQL gets `JSONB` columns and `SELECT ... FOR UPDATE` row locking. Scale path: bump instance tier first, then managed connection pooling (requires Enterprise Plus edition) when autoscaling demands it.
+
 **Docker:** Multi-stage (builder + runtime). uv pinned in Dockerfile for reproducible builds (bump manually). Cache mount in builder (~80% speedup), dependency layer on `pyproject.toml`/`uv.lock` changes only, code layer on `src/` changes. Non-root `app:app`, ~200MB final.
 
 **Observability:** OpenTelemetry OTLP→Cloud Trace, structured logs→Cloud Logging. Resource attributes: `service.name` (AGENT_NAME), `service.instance.id` (worker-{PID}-{UUID}), `service.namespace` (TELEMETRY_NAMESPACE), `service.version` (K_REVISION).
