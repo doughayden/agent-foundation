@@ -5,7 +5,7 @@
 # ============================================================================
 FROM python:3.13-slim AS builder
 
-# Install uv from official distroless image
+# Install uv from official distroless image (pinned for reproducible builds)
 COPY --from=ghcr.io/astral-sh/uv:0.10.11 /uv /uvx /bin/
 
 # Set working directory
