@@ -57,7 +57,8 @@ cp terraform/bootstrap/dev/terraform.tfvars.example terraform/bootstrap/dev/terr
 
 Required variables in `terraform/bootstrap/dev/terraform.tfvars`:
 - `project` - GCP project ID for dev environment
-- `location` - GCP region (e.g., `us-central1`)
+- `region` - GCP Compute region (e.g., `us-central1`)
+- `google_cloud_location` - Vertex AI model endpoint location (e.g., `global`)
 - `agent_name` - Unique identifier (e.g., `my-agent`) — must match pre-bootstrap
 - `terraform_state_bucket` - Bucket name from pre-bootstrap output (`terraform_state_buckets.dev`)
 - `repository_owner` - GitHub username or organization
@@ -96,7 +97,7 @@ See [Bootstrap Reference](references/bootstrap.md) for complete bootstrap setup 
 ## Deploy
 
 GitHub Actions deploy the agent resources:
-- Agent Engine for session and memory persistence (`AGENT_ENGINE`)
+- Agent Engine for session and memory persistence (`SESSION_SERVICE_URI`, `MEMORY_SERVICE_URI`)
 - GCS bucket for artifact storage (`ARTIFACT_SERVICE_URI`)
 - Cloud Run service (auto-configured with all resources)
 - Service account with least-privilege IAM bindings
@@ -168,7 +169,8 @@ cp .env.example .env
 Add the values from the deployment job summary to `.env`:
 
 ```bash
-AGENT_ENGINE=projects/YOUR_PROJECT_ID/locations/YOUR_LOCATION/reasoningEngines/YOUR_ENGINE_ID
+SESSION_SERVICE_URI=agentengine://projects/YOUR_PROJECT_ID/locations/YOUR_LOCATION/reasoningEngines/YOUR_ENGINE_ID
+MEMORY_SERVICE_URI=agentengine://projects/YOUR_PROJECT_ID/locations/YOUR_LOCATION/reasoningEngines/YOUR_ENGINE_ID
 ARTIFACT_SERVICE_URI=gs://YOUR_BUCKET_NAME
 # Add values for resources you customized for your agent
 ```

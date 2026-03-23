@@ -3,7 +3,7 @@
 Day-to-day development workflow, code quality, testing, and Docker.
 
 > [!IMPORTANT]
-> Configure `AGENT_ENGINE` and `ARTIFACT_SERVICE_URI` in `.env` after first deployment for production-ready persistence (sessions, memory, artifacts). See [Environment Variables](environment-variables.md) and [Getting Started](getting-started.md).
+> Configure `SESSION_SERVICE_URI`, `MEMORY_SERVICE_URI`, and `ARTIFACT_SERVICE_URI` in `.env` after first deployment for production-ready persistence (sessions, memory, artifacts). See [Environment Variables](environment-variables.md) and [Getting Started](getting-started.md).
 
 ## Quick Start
 
@@ -43,7 +43,8 @@ Edit `.env` and configure required values. The `.env.example` file includes inli
 - OpenTelemetry settings
 
 **Recommended (after first deployment):**
-- `AGENT_ENGINE` - Session and memory persistence
+- `SESSION_SERVICE_URI` - Session persistence
+- `MEMORY_SERVICE_URI` - Memory persistence
 - `ARTIFACT_SERVICE_URI` - Artifact storage
 
 See [Environment Variables](environment-variables.md) for complete reference.

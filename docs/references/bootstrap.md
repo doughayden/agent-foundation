@@ -140,7 +140,7 @@ terraform -chdir=terraform/bootstrap/dev apply
 gh variable list --env dev
 ```
 
-Expected variables: `GCP_PROJECT_ID`, `IMAGE_NAME`, `ARTIFACT_REGISTRY_URI`, `TERRAFORM_STATE_BUCKET`, `WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER`, etc.
+Expected variables: `GOOGLE_CLOUD_PROJECT`, `REGION`, `GOOGLE_CLOUD_LOCATION`, `IMAGE_NAME`, `ARTIFACT_REGISTRY_URI`, `TERRAFORM_STATE_BUCKET`, `WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER`, etc.
 
 **Check GitHub Environment:**
 1. Go to Settings → Environments

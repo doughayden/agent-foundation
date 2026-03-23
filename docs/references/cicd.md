@@ -29,10 +29,11 @@ GitHub Actions workflow architecture, mechanics, and customization.
 
 | Variable Name | Description |
 |---------------|-------------|
-| `GCP_PROJECT_ID` | GCP project ID |
-| `GCP_LOCATION` | GCP region |
+| `GOOGLE_CLOUD_PROJECT` | GCP project ID |
+| `REGION` | GCP Compute region |
+| `GOOGLE_CLOUD_LOCATION` | Vertex AI model endpoint routing |
 | `IMAGE_NAME` | Docker image name (also agent_name) |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | WIF provider resource name |
+| `WORKLOAD_IDENTITY_PROVIDER` | WIF provider resource name |
 | `ARTIFACT_REGISTRY_URI` | Registry URI |
 | `ARTIFACT_REGISTRY_LOCATION` | Registry location |
 | `TERRAFORM_STATE_BUCKET` | GCS bucket for main module state |
@@ -395,7 +396,7 @@ See [Deployment Modes](deployment.md) for complete instructions.
 
 ### Add Environment Variables
 
-**Runtime config** (LOG_LEVEL, ROOT_AGENT_MODEL, etc.):
+**Runtime config** (LOG_LEVEL, SERVE_WEB_INTERFACE, etc.):
 1. Settings → Environments → {environment} → Environment variables
 2. Add or edit variable
 3. Re-run deployment or push new commit
