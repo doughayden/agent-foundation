@@ -80,7 +80,7 @@ resource "google_sql_database_instance" "sessions" {
 
   settings {
     tier = "db-f1-micro"
-    
+
     database_flags {
       name  = "cloudsql.iam_authentication"
       value = "on"
@@ -96,9 +96,9 @@ resource "google_sql_database" "sessions" {
 resource "google_sql_user" "app" {
   # Note: for Postgres only, GCP requires omitting the ".gserviceaccount.com" suffix
   # from the service account email due to length limits on database usernames.
-  name     = trimsuffix(google_service_account.app.email, ".gserviceaccount.com")
-  instance = google_sql_database_instance.sessions.name
-  type     = "CLOUD_IAM_SERVICE_ACCOUNT"
+  name           = trimsuffix(google_service_account.app.email, ".gserviceaccount.com")
+  instance       = google_sql_database_instance.sessions.name
+  type           = "CLOUD_IAM_SERVICE_ACCOUNT"
   database_roles = ["cloudsqlsuperuser"]
 }
 
@@ -188,12 +188,26 @@ resource "google_cloud_run_v2_service" "app" {
 
     # Cloud SQL Auth Proxy sidecar
     containers {
-      image = "gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.21.2"
+      image = "gcr.io/cloud-sql-connectors/cloud-sql-proxy:2"
       args = [
-        "${var.project}:${google_sql_database_instance.sessions.region}:${google_sql_database_instance.sessions.name}",
+        google_sql_database_instance.sessions.connection_name,
         "--port=5432",
         "--auto-iam-authn",
+        "--health-check",
+        "--http-port=9090",
+        "--structured-logs",
+        "--exit-zero-on-sigterm",
       ]
+
+      startup_probe {
+        http_get {
+          path = "/readiness"
+          port = 9090
+        }
+        initial_delay_seconds = 5
+        period_seconds        = 5
+        failure_threshold     = 3
+      }
     }
 
     # Explicitly set the concurrency (defaults to 80 for CPU >= 1).

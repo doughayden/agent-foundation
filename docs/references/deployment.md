@@ -214,7 +214,7 @@ Production mode uses **image promotion** (pull from source, push to target) inst
 GitHub Environment Variables pass overrides to Terraform as `TF_VAR_*` inputs. Default values managed in Terraform.
 
 **Infrastructure config** (managed exclusively in Terraform files):
-- `SESSION_SERVICE_URI` - Session persistence URI (auto-created, `agentengine://` protocol)
+- `SESSION_SERVICE_URI` - Session persistence URI (auto-created, `postgresql+asyncpg://` protocol via Cloud SQL)
 - `MEMORY_SERVICE_URI` - Memory persistence URI (auto-created, `agentengine://` protocol)
 - `ARTIFACT_SERVICE_URI` - GCS bucket URL (auto-created)
 - `ALLOW_ORIGINS` - CORS origins for Cloud Run
@@ -279,7 +279,9 @@ gh pr create
 **Resources created:**
 - Cloud Run Service (containerized agent deployment)
 - Service Account (IAM identity for Cloud Run)
-- Vertex AI Agent Engine (session/memory persistence)
+- Cloud SQL instance (session persistence via DatabaseSessionService)
+- Cloud SQL Auth Proxy sidecar (IAM-authenticated database connectivity)
+- Vertex AI Agent Engine (memory persistence)
 - GCS Bucket (artifact storage)
 
 **State management:** Remote state in GCS (bucket created by bootstrap)

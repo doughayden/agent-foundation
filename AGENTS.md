@@ -43,7 +43,7 @@ terraform -chdir=terraform/main init/plan/apply           # Deploy (TF_VAR_envir
 **Key modules:**
 - `agent.py`: App/LlmAgent config
 - `tools.py`: Custom tools
-- `callbacks.py`: Lifecycle logging + session memory (all return `None`, non-intrusive)
+- `callbacks.py`: Lifecycle logging + memory callback (all return `None`, non-intrusive)
 - `prompt.py`: Instructions (InstructionProvider pattern for dynamic generation)
 - `server.py`: FastAPI + ADK (`get_fast_api_app()`, optional web UI, health check)
 - `utils/config.py`: Pydantic ServerEnv (type-safe, fail-fast)
@@ -129,6 +129,10 @@ uv add --group dev pkg          # Dev
 uv lock --upgrade               # Update all
 ```
 
+**Key runtime dependencies:** `asyncpg` (async PostgreSQL for Cloud SQL sessions), ADK (core framework), google-cloud libraries (auth, observability).
+
+**When updating versions:** Both `pyproject.toml` and `uv.lock` must be committed together for CI `--locked` to pass.
+
 ## CI/CD & Deployment
 
 **Deployment Modes:** Dev-only (default, `production_mode: false` in ci-cd.yml config job) deploys to dev on merge. Production mode (`production_mode: true`) deploys dev+stage on merge, prod on git tag with approval gate. See [Infrastructure Guide](docs/infrastructure.md).
@@ -153,7 +157,7 @@ uv lock --upgrade               # Update all
 - Variables: `promotion_source_project` (source GCP project ID), `promotion_source_artifact_registry_name` (source registry name, e.g., `agent-name-dev`)
 - IAM binding: `google_artifact_registry_repository_iam_member` with `member = module.gcp.workload_identity_pool_principal_identifier`
 
-**Main Module:** Cloud Run deployment (`terraform/main/`). Service account, Vertex AI Agent Engine, GCS bucket, Cloud Run service. Remote state in GCS. Inputs via `TF_VAR_*` from GitHub Environment variables. Runs in GitHub Actions. Requires `TF_VAR_environment` (dev/stage/prod) to set resource naming. `region` for compute placement, `google_cloud_location` for Vertex AI model endpoint routing.
+**Main Module:** Cloud Run deployment (`terraform/main/`). Service account, Cloud SQL Postgres (sessions), Vertex AI Agent Engine (memory), GCS bucket, Cloud Run service with Cloud SQL Auth Proxy sidecar. Remote state in GCS. Inputs via `TF_VAR_*` from GitHub Environment variables. Runs in GitHub Actions. Requires `TF_VAR_environment` (dev/stage/prod) to set resource naming. `region` for compute placement, `google_cloud_location` for Vertex AI model endpoint routing.
 
 **Naming:** Resources `${var.agent_name}-${var.environment}`. Service account IDs truncate agent_name to 30 chars (GCP limit). Cloud Run auto-sets `TELEMETRY_NAMESPACE=var.environment`.
 
@@ -166,19 +170,19 @@ uv lock --upgrade               # Update all
 - `terraform/main/iam.tf` — add WIF principal IAM roles using `google_project_iam_member`; `time_sleep.wif_iam_propagation` uses `for_each` over `wif_additional_roles` — one 120s sleep per role, created only when that role is added (zero overhead when empty); resources needing a new role declare `depends_on = [time_sleep.wif_iam_propagation["roles/example"]]`; list multiple instances explicitly when a resource needs more than one new role
 - WIF principal identifier available via `var.workload_identity_pool_principal_identifier` (passed from bootstrap's `WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER` GitHub Variable)
 
-**Cloud Run probe:** Config failure_threshold=5, period_seconds=20, initial_delay_seconds=20, timeout_seconds=15 (total 120s). Allow credential init (~30-60s). Debug: local works but Cloud Run fails = credential/timing issue.
+**Cloud Run probes:** App container: failure_threshold=5, period_seconds=20, initial_delay_seconds=20, timeout_seconds=15 (total 120s). Allow credential init (~30-60s). Cloud SQL Auth Proxy sidecar: startup_probe on `/readiness:9090`, initial_delay_seconds=5, period_seconds=5, failure_threshold=3. Proxy flags: `--auto-iam-authn`, `--health-check`, `--http-port=9090`, `--structured-logs`, `--exit-zero-on-sigterm`. Debug: local works but Cloud Run fails = credential/timing issue.
 
 ## Project-Specific Patterns
 
 **Custom Tools:** Create in `src/agent_foundation/tools.py`, register in `agent.py`. Tool(name, description, func).
 
-**Callbacks:** `LoggingCallbacks` (lifecycle), `add_session_to_memory` (session persist). All return `None` (observe-only).
+**Callbacks:** `LoggingCallbacks` (lifecycle), `add_session_to_memory` (persist sessions to Agent Engine memory). All return `None` (observe-only).
 
 **InstructionProvider:** `def fn(ctx: ReadonlyContext) -> str`. Pass function ref (not called) to `GlobalInstructionPlugin(fn)`. Plugin calls at runtime. Test with `MockReadonlyContext`.
 
 **Config:** Pydantic `initialize_environment(ServerEnv)` in `utils/config.py`. Type-safe, fail-fast validation.
 
-**Docker Compose:** Editable install via `ARG editable=true` build arg (`.pth` file points Python to `/app/src`). Watch: `sync+restart` for `src/`, `rebuild` for `pyproject.toml`/`uv.lock`. Volumes: `/app/data` (read-only), `/gcloud/application_default_credentials.json` (from `~/.config/gcloud/`). Windows: update GCP creds path. Binds `127.0.0.1:8000`.
+**Docker Compose:** Cloud SQL Auth Proxy sidecar (`gcr.io/cloud-sql-connectors/cloud-sql-proxy:2`, floating tag). Proxy flags: `--auto-iam-authn` (IAM database auth), `--health-check` + `--http-port=9090` (readiness endpoint), `--structured-logs` (JSON), `--exit-zero-on-sigterm` (clean shutdown). Healthcheck uses `cloud-sql-proxy wait --max=5s` (built-in subcommand, works in distroless image). App depends on proxy healthcheck. `CLOUD_SQL_INSTANCE_CONNECTION_NAME` env var specifies Cloud SQL instance (docker-compose only; Cloud Run uses Terraform-injected value). Matches Cloud Run sidecar config 1:1 except credentials (ADC file mount locally vs SA identity in Cloud Run). Editable install via `ARG editable=true` build arg (`.pth` file points Python to `/app/src`). Watch: `sync+restart` for `src/`, `rebuild` for `pyproject.toml`/`uv.lock`. Volumes: `/gcloud/application_default_credentials.json` (from `~/.config/gcloud/`). Windows: update GCP creds path. Binds `127.0.0.1:8000`.
 
 **Test Deployed:** `gcloud run services proxy <service-name> --project <project> --region <region> --port 8000`. Service name: `${agent_name}-${environment}` (e.g., `my-agent-dev`).
 

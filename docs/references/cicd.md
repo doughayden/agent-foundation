@@ -345,7 +345,7 @@ Workflows generate formatted summaries in GitHub Actions UI:
 - Environment and action (plan/apply)
 - Docker image being deployed
 - Step outcomes (format, init, validate, plan, apply)
-- Deployed resources (Cloud Run URL, Agent Engine, GCS bucket)
+- Deployed resources (Cloud Run URL, Cloud SQL, Agent Engine, GCS bucket)
 - Collapsible plan output
 
 Job summaries provide quick insight without log analysis.

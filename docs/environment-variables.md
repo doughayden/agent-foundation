@@ -13,6 +13,7 @@ See `.env.example` in the repository root for template configuration with inline
 | **[GOOGLE_CLOUD_LOCATION](#google-cloud-vertex-ai)** | ✅ | - | GCP region |
 | **[AGENT_NAME](#agent-identification)** | ✅ | - | Unique agent identifier |
 | **[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT](#opentelemetry)** | ✅ | - | Capture LLM content in traces |
+| **[CLOUD_SQL_INSTANCE_CONNECTION_NAME](#cloud-resources)** | Recommended | - | Cloud SQL Auth Proxy target (docker-compose) |
 | **[SESSION_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Session persistence |
 | **[MEMORY_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Memory persistence |
 | **[ARTIFACT_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Artifact storage |
@@ -78,18 +79,25 @@ These must be set for the agent to function.
 
 Production-ready persistence for sessions, memory, and artifacts. Configure after first deployment.
 
+**CLOUD_SQL_INSTANCE_CONNECTION_NAME**
+- **Value:** `project-id:region:instance-name` (e.g., `my-project:us-central1:my-agent-dev-sessions`)
+- **Purpose:** Cloud SQL Auth Proxy connection target
+- **Where:** Set locally in `.env` for docker-compose (the proxy sidecar uses this to connect)
+- **How to get:** GitHub Actions job summary or `terraform output cloud_sql_instance_connection_name`
+- **Note:** Only used by docker-compose, not by the application. Cloud Run's proxy sidecar gets this from Terraform directly.
+
 **SESSION_SERVICE_URI**
-- **Value:** Full URI with protocol prefix (e.g., `agentengine://projects/123/locations/us-central1/reasoningEngines/456`)
+- **Value:** Service-specific URI with protocol prefix (e.g., `postgresql+asyncpg://sa-name@project.iam:@localhost:5432/agent_sessions`)
 - **Purpose:** Session persistence (production-consistent behavior)
 - **Where:** Set locally in `.env` after first deployment, auto-configured in Cloud Run
-- **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or GCP Console
-- **Note:** Defaults to in-memory if unset (not recommended for development)
+- **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or `terraform output session_service_uri`
+- **Note:** Database Session Service connects through Cloud SQL Auth Proxy on localhost. IAM database auth — no password needed. Defaults to in-memory if unset.
 
 **MEMORY_SERVICE_URI**
-- **Value:** Full URI with protocol prefix (e.g., `agentengine://projects/123/locations/us-central1/reasoningEngines/456`)
+- **Value:** Service-specific URI with protocol prefix (e.g., `agentengine://projects/123/locations/us-central1/reasoningEngines/456`)
 - **Purpose:** Memory persistence (production-consistent behavior)
 - **Where:** Set locally in `.env` after first deployment, auto-configured in Cloud Run
-- **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or GCP Console
+- **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or `terraform output memory_service_uri`
 - **Note:** Defaults to in-memory if unset (not recommended for development)
 
 **ARTIFACT_SERVICE_URI**
