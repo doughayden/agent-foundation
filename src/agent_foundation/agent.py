@@ -12,7 +12,7 @@ from .prompt import (
     ROOT_AGENT_INSTRUCTION,
     return_global_instruction,
 )
-from .tools import example_tool
+from .tools import get_current_time
 
 APP_NAME = "agent_foundation"
 ROOT_AGENT_NAME = "agent_foundation"
@@ -27,7 +27,7 @@ root_agent = LlmAgent(
     after_agent_callback=[logging_callbacks.after_agent, add_session_to_memory],
     model=ROOT_AGENT_MODEL,
     instruction=ROOT_AGENT_INSTRUCTION,
-    tools=[PreloadMemoryTool(), example_tool],
+    tools=[PreloadMemoryTool(), get_current_time],
     before_model_callback=logging_callbacks.before_model,
     after_model_callback=logging_callbacks.after_model,
     before_tool_callback=logging_callbacks.before_tool,
