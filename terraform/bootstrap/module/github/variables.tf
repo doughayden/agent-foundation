@@ -12,8 +12,13 @@ variable "project" {
   type        = string
 }
 
-variable "location" {
-  description = "Google Cloud location (Compute region)"
+variable "region" {
+  description = "Google Cloud Compute region"
+  type        = string
+}
+
+variable "google_cloud_location" {
+  description = "Vertex AI model endpoint location"
   type        = string
 }
 

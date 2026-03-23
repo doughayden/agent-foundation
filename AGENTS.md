@@ -36,7 +36,7 @@ terraform -chdir=terraform/main init/plan/apply           # Deploy (TF_VAR_envir
 **ADK App Structure** (`src/agent_foundation/agent.py`):
 - `GlobalInstructionPlugin`: Dynamic instruction generation (InstructionProvider pattern)
 - `LoggingPlugin`: Agent lifecycle logging
-- `root_agent` (LlmAgent): gemini-2.5-flash (configurable `ROOT_AGENT_MODEL`), custom tools, callbacks
+- `root_agent` (LlmAgent): gemini-2.5-flash via `Gemini` wrapper with retry options, custom tools, callbacks
 
 **Package exports** (`src/agent_foundation/__init__.py`): Uses PEP 562 `__getattr__` for explicit lazy loading. Declares `agent` in `__all__` but defers import until first access. Supports both ADK eval CLI and web server workflows while ensuring .env loads before agent.py executes module-level code.
 
@@ -57,7 +57,7 @@ terraform -chdir=terraform/main init/plan/apply           # Deploy (TF_VAR_envir
 
 **Required:** GOOGLE_GENAI_USE_VERTEXAI=TRUE, GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION, AGENT_NAME, OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT (+ gcloud auth).
 
-**Key optional:** SERVE_WEB_INTERFACE, LOG_LEVEL (DEBUG/INFO/WARNING/ERROR/CRITICAL), TELEMETRY_NAMESPACE (default "local", auto-set to environment in deployments), ROOT_AGENT_MODEL, AGENT_ENGINE, ARTIFACT_SERVICE_URI, ALLOW_ORIGINS (JSON array).
+**Key optional:** SERVE_WEB_INTERFACE, LOG_LEVEL (DEBUG/INFO/WARNING/ERROR/CRITICAL), TELEMETRY_NAMESPACE (default "local", auto-set to environment in deployments), SESSION_SERVICE_URI, MEMORY_SERVICE_URI, ARTIFACT_SERVICE_URI, ALLOW_ORIGINS (JSON array).
 
 **CRITICAL:** Any new environment variable introduced to the codebase MUST be documented in `docs/environment-variables.md`. No exceptions. Include: purpose, default value, where to set, and whether required or optional.
 
@@ -135,7 +135,7 @@ uv lock --upgrade               # Update all
 
 **Workflows:** ci-cd.yml (orchestrator), config-summary.yml, docker-build.yml, metadata-extract.yml, pull-and-promote.yml, resolve-image-digest.yml, terraform-plan-apply.yml, code-quality.yml. PR: build `pr-{sha}`, dev-plan, comment. Main: build `{sha}`+`latest`, deploy dev (+ stage in prod mode). Tag: prod deploy (prod mode only). **Deploy by immutable digest** (not tag) to guarantee new Cloud Run revision. **Option to deploy to dev on all PRs:** single-line change to ci-cd.yml deploys on PR (remove `&& github.event_name == 'push'` from dev-apply condition).
 
-**Auth:** WIF (no SA keys). GitHub Variables auto-created: GCP_PROJECT_ID, GCP_LOCATION, IMAGE_NAME, GCP_WORKLOAD_IDENTITY_PROVIDER, ARTIFACT_REGISTRY_URI, ARTIFACT_REGISTRY_LOCATION, TERRAFORM_STATE_BUCKET, WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER.
+**Auth:** WIF (no SA keys). GitHub Variables auto-created: GOOGLE_CLOUD_PROJECT, REGION, IMAGE_NAME, WORKLOAD_IDENTITY_PROVIDER, ARTIFACT_REGISTRY_URI, ARTIFACT_REGISTRY_LOCATION, TERRAFORM_STATE_BUCKET, WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER.
 
 **Job Summaries:** Use `mktemp`, `tee "$FILE"`, `${PIPESTATUS[0]}` for streaming + capture. Export GitHub context to shell vars, capture once, check for empty outputs.
 
@@ -153,11 +153,11 @@ uv lock --upgrade               # Update all
 - Variables: `promotion_source_project` (source GCP project ID), `promotion_source_artifact_registry_name` (source registry name, e.g., `agent-name-dev`)
 - IAM binding: `google_artifact_registry_repository_iam_member` with `member = module.gcp.workload_identity_pool_principal_identifier`
 
-**Main Module:** Cloud Run deployment (`terraform/main/`). Service account, Vertex AI Agent Engine, GCS bucket, Cloud Run service. Remote state in GCS. Inputs via `TF_VAR_*` from GitHub Environment variables. Runs in GitHub Actions. Requires `TF_VAR_environment` (dev/stage/prod) to set resource naming.
+**Main Module:** Cloud Run deployment (`terraform/main/`). Service account, Vertex AI Agent Engine, GCS bucket, Cloud Run service. Remote state in GCS. Inputs via `TF_VAR_*` from GitHub Environment variables. Runs in GitHub Actions. Requires `TF_VAR_environment` (dev/stage/prod) to set resource naming. `region` for compute placement, `google_cloud_location` for Vertex AI model endpoint routing.
 
 **Naming:** Resources `${var.agent_name}-${var.environment}`. Service account IDs truncate agent_name to 30 chars (GCP limit). Cloud Run auto-sets `TELEMETRY_NAMESPACE=var.environment`.
 
-**Runtime Variable Overrides:** GitHub Environment Variables → `TF_VAR_*`. `coalesce()` skips empty/null. Overridable runtime config: log_level, serve_web_interface, root_agent_model, otel_instrumentation_genai_capture_message_content, adk_suppress_experimental_feature_warnings. `docker_image` nullable (defaults to previous for infra-only updates). **Infrastructure resources (AGENT_ENGINE, ARTIFACT_SERVICE_URI, CORS origins) are hard-coded in Terraform** (no variable overrides).
+**Runtime Variable Overrides:** GitHub Environment Variables → `TF_VAR_*`. `coalesce()` skips empty/null. Overridable runtime config: log_level, serve_web_interface, otel_instrumentation_genai_capture_message_content, adk_suppress_experimental_feature_warnings. `docker_image` nullable (defaults to previous for infra-only updates). **Infrastructure resources (SESSION_SERVICE_URI, MEMORY_SERVICE_URI, ARTIFACT_SERVICE_URI, CORS origins) are hard-coded in Terraform** (no variable overrides).
 
 **IAM:** Dedicated GCP project per env. Project-level WIF roles same-project only (in terraform/bootstrap/module/gcp/main.tf). Cross-project Artifact Registry IAM grants in environment bootstrap roots (stage/main.tf, prod/main.tf) for image promotion. App SA roles in terraform/main/main.tf. Additional WIF principal roles in terraform/main/iam.tf (consumer-defined, applied via CI/CD).
 

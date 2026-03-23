@@ -60,6 +60,11 @@ output "bucket_suffix_attributes" {
   }
 }
 
+output "projects" {
+  description = "Google Cloud project IDs mapped by environment"
+  value       = var.projects
+}
+
 output "terraform_state_buckets" {
   description = "Terraform state GCS bucket names"
   value       = { for key, bucket in google_storage_bucket.terraform_state : key => bucket.name }

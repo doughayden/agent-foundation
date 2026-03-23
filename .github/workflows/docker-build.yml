@@ -55,8 +55,8 @@ jobs:
         if: ${{ inputs.push }}
         uses: google-github-actions/auth@v3
         with:
-          project_id: ${{ vars.GCP_PROJECT_ID }}
-          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Configure Docker for Artifact Registry
         if: ${{ inputs.push }}

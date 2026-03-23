@@ -1,6 +1,6 @@
 provider "google" {
   project = var.project
-  region  = var.location
+  region  = var.region
 }
 
 provider "github" {

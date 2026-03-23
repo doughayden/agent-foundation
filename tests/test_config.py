@@ -52,7 +52,8 @@ class TestServerEnv:
         assert env.log_level == "INFO"
         assert env.serve_web_interface is False
         assert env.reload_agents is False
-        assert env.agent_engine is None
+        assert env.session_service_uri is None
+        assert env.memory_service_uri is None
         assert env.artifact_service_uri is None
         assert env.allow_origins == '["http://localhost", "http://localhost:8000"]'
         assert env.host == "127.0.0.1"
@@ -69,7 +70,8 @@ class TestServerEnv:
             "LOG_LEVEL": "DEBUG",
             "SERVE_WEB_INTERFACE": "true",
             "RELOAD_AGENTS": "true",
-            "AGENT_ENGINE": "test-engine-id",
+            "SESSION_SERVICE_URI": "agentengine://test-engine-id",
+            "MEMORY_SERVICE_URI": "agentengine://test-engine-id",
             "ARTIFACT_SERVICE_URI": "gs://test-bucket",
             "ALLOW_ORIGINS": '["http://localhost:3000"]',
             "HOST": "0.0.0.0",  # noqa: S104
@@ -84,23 +86,13 @@ class TestServerEnv:
         assert env.log_level == "DEBUG"
         assert env.serve_web_interface is True
         assert env.reload_agents is True
-        assert env.agent_engine == "test-engine-id"
+        assert env.session_service_uri == "agentengine://test-engine-id"
+        assert env.memory_service_uri == "agentengine://test-engine-id"
         assert env.artifact_service_uri == "gs://test-bucket"
         assert env.allow_origins == '["http://localhost:3000"]'
         assert env.host == "0.0.0.0"  # noqa: S104
         assert env.port == 9000
         assert env.otel_capture_content is False
-
-    def test_agent_engine_uri_property(self, valid_server_env: dict[str, str]) -> None:
-        """Test that agent_engine_uri property is computed correctly."""
-        # Without agent_engine
-        env = ServerEnv.model_validate(valid_server_env)
-        assert env.agent_engine_uri is None
-
-        # With agent_engine
-        data = {**valid_server_env, "AGENT_ENGINE": "test-engine-id"}
-        env = ServerEnv.model_validate(data)
-        assert env.agent_engine_uri == "agentengine://test-engine-id"
 
     def test_allow_origins_list_property(
         self, valid_server_env: dict[str, str]

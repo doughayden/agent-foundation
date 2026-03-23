@@ -1,6 +1,6 @@
 provider "google" {
   project               = var.project
-  region                = var.location
+  region                = var.region
   billing_project       = var.project
   user_project_override = true
 }

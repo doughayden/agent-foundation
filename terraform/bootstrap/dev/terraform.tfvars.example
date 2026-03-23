@@ -4,7 +4,8 @@
 
 # GCP Configuration: dev environment
 project                = "your-project-dev" # NOTE: USE A DIFFERENT PROJECT FOR EACH ENVIRONMENT
-location               = "us-central1"
+region                 = "us-central1"
+google_cloud_location  = "global"
 agent_name             = "your-agent-name"                     # NOTE: USE THE SAME AGENT NAME ACROSS ALL ENVIRONMENTS
 terraform_state_bucket = "terraform-state-your-agent-name-dev" # NOTE: PRE-BOOTSTRAP CREATES A DIFFERENT BUCKET FOR EACH ENVIRONMENT
 

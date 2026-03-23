@@ -13,13 +13,13 @@ See `.env.example` in the repository root for template configuration with inline
 | **[GOOGLE_CLOUD_LOCATION](#google-cloud-vertex-ai)** | ✅ | - | GCP region |
 | **[AGENT_NAME](#agent-identification)** | ✅ | - | Unique agent identifier |
 | **[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT](#opentelemetry)** | ✅ | - | Capture LLM content in traces |
-| **[AGENT_ENGINE](#cloud-resources)** | Recommended | in-memory | Session/memory persistence |
+| **[SESSION_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Session persistence |
+| **[MEMORY_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Memory persistence |
 | **[ARTIFACT_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Artifact storage |
 | [LOG_LEVEL](#logging) | Optional | `INFO` | Logging verbosity |
 | [TELEMETRY_NAMESPACE](#logging) | Optional | `local` | Trace grouping |
 | [SERVE_WEB_INTERFACE](#agent-features) | Optional | `FALSE` | Enable ADK web UI |
 | [RELOAD_AGENTS](#agent-features) | Optional | `FALSE` | Hot-reload on file changes |
-| [ROOT_AGENT_MODEL](#agent-features) | Optional | `gemini-2.5-flash` | Override default model |
 | [ALLOW_ORIGINS](#cors) | Optional | `["http://localhost", "http://localhost:8000"]` | CORS allowed origins |
 | [AGENT_DIR](#advanced) | Optional | Auto-detected | Override agent directory |
 | [HOST](#advanced) | Optional | `127.0.0.1` | Server bind address |
@@ -78,11 +78,18 @@ These must be set for the agent to function.
 
 Production-ready persistence for sessions, memory, and artifacts. Configure after first deployment.
 
-**AGENT_ENGINE**
-- **Value:** Agent Engine resource name (e.g., `projects/123/locations/us-central1/reasoningEngines/456`)
-- **Purpose:** Session and memory persistence (production-consistent behavior)
+**SESSION_SERVICE_URI**
+- **Value:** Full URI with protocol prefix (e.g., `agentengine://projects/123/locations/us-central1/reasoningEngines/456`)
+- **Purpose:** Session persistence (production-consistent behavior)
 - **Where:** Set locally in `.env` after first deployment, auto-configured in Cloud Run
-- **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or GCP Console (Vertex AI → Agent Builder → Agent Engines)
+- **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or GCP Console
+- **Note:** Defaults to in-memory if unset (not recommended for development)
+
+**MEMORY_SERVICE_URI**
+- **Value:** Full URI with protocol prefix (e.g., `agentengine://projects/123/locations/us-central1/reasoningEngines/456`)
+- **Purpose:** Memory persistence (production-consistent behavior)
+- **Where:** Set locally in `.env` after first deployment, auto-configured in Cloud Run
+- **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or GCP Console
 - **Note:** Defaults to in-memory if unset (not recommended for development)
 
 **ARTIFACT_SERVICE_URI**
@@ -130,12 +137,6 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
 - **Purpose:** Enable agent hot-reloading on file changes (development only)
 - **Where:** Local development only
 - **WARNING:** Set to `FALSE` in production (Cloud Run forces `FALSE`)
-
-**ROOT_AGENT_MODEL**
-- **Default:** `gemini-2.5-flash`
-- **Options:** Any Gemini model (e.g., `gemini-2.5-pro`, `gemini-2.0-flash-exp`)
-- **Purpose:** Override default root agent model
-- **Where:** Set locally via `.env`, configure via GitHub Environment Variables for Cloud Run
 
 ### CORS
 
@@ -193,12 +194,16 @@ These variables are used exclusively in GitHub Actions workflows. Do not set loc
 GitHub Environment Variables are mapped to Terraform inputs via `TF_VAR_*` prefix:
 
 **TF_VAR_project**
-- **Source:** `${{ vars.GCP_PROJECT_ID }}` (GitHub Environment Variable)
+- **Source:** `${{ vars.GOOGLE_CLOUD_PROJECT }}` (GitHub Environment Variable)
 - **Purpose:** GCP project ID for Terraform
 
-**TF_VAR_location**
-- **Source:** `${{ vars.GCP_LOCATION }}` (GitHub Environment Variable)
-- **Purpose:** GCP region for Terraform
+**TF_VAR_region**
+- **Source:** `${{ vars.REGION }}` (GitHub Environment Variable)
+- **Purpose:** GCP region for compute resource placement
+
+**TF_VAR_google_cloud_location**
+- **Source:** `${{ vars.GOOGLE_CLOUD_LOCATION }}` (GitHub Environment Variable, optional)
+- **Purpose:** Vertex AI model endpoint routing (recommended default `"global"` in bootstrap terraform.tfvars.example)
 
 **TF_VAR_agent_name**
 - **Source:** `${{ vars.IMAGE_NAME }}` (GitHub Environment Variable)
@@ -227,10 +232,6 @@ Override runtime config via GitHub Environment Variables (mapped to `TF_VAR_*`):
 **TF_VAR_log_level**
 - **Source:** `${{ vars.LOG_LEVEL }}` (optional GitHub Environment Variable)
 - **Purpose:** Override LOG_LEVEL for Cloud Run deployment
-
-**TF_VAR_root_agent_model**
-- **Source:** `${{ vars.ROOT_AGENT_MODEL }}` (optional GitHub Environment Variable)
-- **Purpose:** Override ROOT_AGENT_MODEL for Cloud Run deployment
 
 **TF_VAR_serve_web_interface**
 - **Source:** `${{ vars.SERVE_WEB_INTERFACE }}` (optional GitHub Environment Variable)

@@ -28,9 +28,9 @@ def return_global_instruction(ctx: ReadonlyContext) -> str:
     )
 
 
-DESCRIPTION_ROOT: str = "An agent that helps users answer general questions"
+ROOT_AGENT_DESCRIPTION: str = "An agent that helps users answer general questions"
 
-INSTRUCTION_ROOT: str = """## Core Behaviors
+ROOT_AGENT_INSTRUCTION: str = """## Core Behaviors
 - Greet the user by name if you know it or ask for their name
 - Answer the user's question politely and factually
 """

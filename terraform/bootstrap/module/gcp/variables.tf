@@ -12,8 +12,8 @@ variable "project" {
   type        = string
 }
 
-variable "location" {
-  description = "Google Cloud location (Compute region)"
+variable "region" {
+  description = "Google Cloud Compute region"
   type        = string
 }
 

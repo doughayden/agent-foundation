@@ -3,7 +3,7 @@ module "gcp" {
   environment = "prod"
 
   project                                 = var.project
-  location                                = var.location
+  region                                  = var.region
   agent_name                              = var.agent_name
   repository_owner                        = var.repository_owner
   repository_name                         = var.repository_name
@@ -17,7 +17,8 @@ module "github" {
   environment = "prod"
 
   project                                            = var.project
-  location                                           = var.location
+  region                                             = var.region
+  google_cloud_location                              = var.google_cloud_location
   agent_name                                         = var.agent_name
   repository_owner                                   = var.repository_owner
   repository_name                                    = var.repository_name
@@ -34,7 +35,8 @@ module "github_protected" {
   environment = "prod-apply"
 
   project                                            = var.project
-  location                                           = var.location
+  region                                             = var.region
+  google_cloud_location                              = var.google_cloud_location
   agent_name                                         = var.agent_name
   repository_owner                                   = var.repository_owner
   repository_name                                    = var.repository_name

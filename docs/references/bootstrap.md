@@ -97,8 +97,9 @@ cp terraform/bootstrap/dev/terraform.tfvars.example \
 
 ```hcl
 # GCP Configuration
-project                = "your-dev-project-id"
-location               = "us-central1"
+project                = "your-project-dev"
+region                 = "us-central1"
+google_cloud_location  = "global"
 agent_name             = "your-agent-name"                      # MUST match pre-bootstrap agent_name
 terraform_state_bucket = "terraform-state-your-agent-name-dev"  # From pre-bootstrap output
 
@@ -139,7 +140,7 @@ terraform -chdir=terraform/bootstrap/dev apply
 gh variable list --env dev
 ```
 
-Expected variables: `GCP_PROJECT_ID`, `IMAGE_NAME`, `ARTIFACT_REGISTRY_URI`, `TERRAFORM_STATE_BUCKET`, `WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER`, etc.
+Expected variables: `GOOGLE_CLOUD_PROJECT`, `REGION`, `GOOGLE_CLOUD_LOCATION`, `IMAGE_NAME`, `ARTIFACT_REGISTRY_URI`, `TERRAFORM_STATE_BUCKET`, `WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER`, etc.
 
 **Check GitHub Environment:**
 1. Go to Settings → Environments
@@ -174,8 +175,9 @@ cp terraform/bootstrap/prod/terraform.tfvars.example \
 
 ```hcl
 # GCP Configuration
-project                = "your-dev-project-id"
-location               = "us-central1"
+project                = "your-project-dev"
+region                 = "us-central1"
+google_cloud_location  = "global"
 agent_name             = "your-agent-name"                      # MUST match pre-bootstrap agent_name
 terraform_state_bucket = "terraform-state-your-agent-name-dev"  # From pre-bootstrap output
 
@@ -215,14 +217,15 @@ echo "Dev registry: $DEV_REGISTRY"
 
 ```hcl
 # GCP Configuration
-project                = "your-stage-project-id"
-location               = "us-central1"
+project                = "your-project-stage"
+region                 = "us-central1"
+google_cloud_location  = "global"
 agent_name             = "your-agent-name"                        # MUST match dev agent_name
 terraform_state_bucket = "terraform-state-your-agent-name-stage"  # From pre-bootstrap output
 
 # Cross-project IAM (use dev outputs from step 3)
-promotion_source_project                = "your-dev-project-id"
-promotion_source_artifact_registry_name = "your-agent-name-dev"
+promotion_source_project                = "your-project-dev"
+promotion_source_artifact_registry_name = "your-registry-dev"
 
 # GitHub Configuration
 repository_owner = "your-github-username-or-org"
@@ -256,14 +259,15 @@ echo "Stage registry: $STAGE_REGISTRY"
 
 ```hcl
 # GCP Configuration
-project                = "your-prod-project-id"
-location               = "us-central1"
+project                = "your-project-prod"
+region                 = "us-central1"
+google_cloud_location  = "global"
 agent_name             = "your-agent-name"                       # MUST match dev/stage agent_name
 terraform_state_bucket = "terraform-state-your-agent-name-prod"  # From pre-bootstrap output
 
 # Cross-project IAM (use stage outputs from step 5)
-promotion_source_project                = "your-stage-project-id"
-promotion_source_artifact_registry_name = "your-agent-name-stage"
+promotion_source_project                = "your-project-stage"
+promotion_source_artifact_registry_name = "your-registry-stage"
 
 # GitHub Configuration
 repository_owner = "your-github-username-or-org"

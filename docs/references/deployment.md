@@ -208,14 +208,14 @@ Production mode uses **image promotion** (pull from source, push to target) inst
 
 **Runtime app config** (configurable via GitHub Environment variables):
 - `LOG_LEVEL` - Logging verbosity
-- `ROOT_AGENT_MODEL` - Gemini model selection
 - `SERVE_WEB_INTERFACE` - Enable web UI
 - `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` - Capture LLM content in traces
 
 GitHub Environment Variables pass overrides to Terraform as `TF_VAR_*` inputs. Default values managed in Terraform.
 
 **Infrastructure config** (managed exclusively in Terraform files):
-- `AGENT_ENGINE` - Vertex AI Agent Engine ID (auto-created)
+- `SESSION_SERVICE_URI` - Session persistence URI (auto-created, `agentengine://` protocol)
+- `MEMORY_SERVICE_URI` - Memory persistence URI (auto-created, `agentengine://` protocol)
 - `ARTIFACT_SERVICE_URI` - GCS bucket URL (auto-created)
 - `ALLOW_ORIGINS` - CORS origins for Cloud Run
 - Terraform-managed values only (no variable overrides)
