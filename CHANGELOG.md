@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `google_cloud_location` Terraform variable — decouples Vertex AI model endpoint routing from infrastructure region (#118)
+- `SESSION_SERVICE_URI` and `MEMORY_SERVICE_URI` environment variables — separate session and memory service configuration with full `agentengine://` URIs (#116)
+- `Gemini` model wrapper with retry options in `agent.py`
+
+### Changed
+- **BREAKING**: Rename GitHub Environment Variables: `GCP_PROJECT_ID` → `GOOGLE_CLOUD_PROJECT`, `GCP_LOCATION` → `REGION`, `GCP_WORKLOAD_IDENTITY_PROVIDER` → `WORKLOAD_IDENTITY_PROVIDER`
+- **BREAKING**: Rename Terraform variable `location` → `region` across all modules
+- **BREAKING**: Replace `AGENT_ENGINE` env var with `SESSION_SERVICE_URI` and `MEMORY_SERVICE_URI` (full URIs with protocol prefix)
+- Rename agent.py constants to `ROOT_AGENT_*` prefix (`ROOT_AGENT_NAME`, `ROOT_AGENT_MODEL`, `ROOT_AGENT_DESCRIPTION`, `ROOT_AGENT_INSTRUCTION`)
+
+### Removed
+- `ROOT_AGENT_MODEL` environment variable — model selection is now a module constant in `agent.py` (#114)
+- `agent_engine_uri` property from `ServerEnv` — URI construction moved to Terraform
+- `root_agent_model` Terraform variable and CI/CD mapping
+
 ## [0.10.1] - 2026-03-19
 
 ### Added
