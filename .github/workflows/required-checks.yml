@@ -14,8 +14,8 @@ jobs:
     outputs:
       code-changed: ${{ steps.changes.outputs.code }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v4
         id: changes
         with:
           filters: |
