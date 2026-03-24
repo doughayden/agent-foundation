@@ -108,7 +108,7 @@ Docker Compose runs a Cloud SQL Auth Proxy sidecar alongside the app container, 
 
 **Port:** `5432` on localhost (mapped to host for optional direct database access via `psql`).
 
-**Startup timing:** `start_period=5s`, `interval=5s`, `timeout=5s`, `retries=3` (~20s total). The proxy typically connects within 2-5s (TLS handshake + IAM token exchange). The 5s start period allows for initial startup, and 3 retries at 5s intervals provide headroom for slow networks or cold Cloud SQL instances. Values match the Cloud Run sidecar probe (`initial_delay_seconds=5`, `period_seconds=5`, `failure_threshold=3`) for dev/prod parity.
+**Startup timing:** `start_period=10s`, `interval=10s`, `timeout=10s`, `retries=5` (~60s total). Cloud Run has a lag between the proxy process binding its health check port and the port being externally reachable. The generous budget accounts for container init, Cloud SQL connection establishment, and networking setup. Values match the Cloud Run sidecar probe (`initial_delay_seconds=10`, `period_seconds=10`, `failure_threshold=5`) for dev/prod parity.
 
 **Requires:** `CLOUD_SQL_INSTANCE_CONNECTION_NAME` set in `.env` (get from deployment job summary or `terraform output cloud_sql_instance_connection_name`).
 

@@ -22,11 +22,11 @@ services:
       - "127.0.0.1:5432:5432"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "/cloud-sql-proxy", "wait", "--max=5s"]
-      start_period: 5s
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      test: ["CMD", "/cloud-sql-proxy", "wait", "--max=10s"]
+      start_period: 10s
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   app:
     build:

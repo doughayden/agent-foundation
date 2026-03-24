@@ -100,6 +100,9 @@ gh api repos/:owner/:repo/branches/main/protection
 **Symptom:** Cloud Run service won't start, health check timeout
 
 **Common causes:**
+- Cloud SQL Auth Proxy sidecar probe failure (see below)
+- Missing or incorrect environment variables
+- Credential initialization timeout (~30-60s for first request)
 
 **Investigate:**
 
@@ -113,6 +116,23 @@ docker compose up --build  # or: uv run server
 # 3. Verify environment variables set correctly
 gcloud run services describe <service-name> --region <region> --format="value(spec.template.spec.containers[0].env)"
 ```
+
+### Cloud SQL Auth Proxy Sidecar Probe Failure
+
+**Symptom:** `HealthCheckContainerError` — startup probe fails for `cloud-sql-proxy` container on port 9090
+
+**Root cause:** Cloud Run has a lag between the proxy process binding its health check port and the port being reachable by Cloud Run's probe infrastructure. The proxy logs "ready for new connections" but the external probe can't connect yet.
+
+**Probe budget:** `initial_delay_seconds=10`, `period_seconds=10`, `failure_threshold=5` (~60s total). The proxy typically connects within 2-5s, but the budget accounts for container init lag, Cloud SQL connection variability, and Cloud Run networking setup.
+
+**If the probe still fails:**
+1. Check that `roles/cloudsql.client` is granted to the app service account
+2. Verify the Cloud SQL instance is running and accessible
+3. Check proxy container logs for connection errors:
+   ```bash
+   gcloud run services logs read <service-name> --region <region> --limit 50
+   ```
+4. If using `db-f1-micro`, the shared-core instance may have slow connection accept times under load — consider upgrading the instance tier
 
 ## Terraform
 

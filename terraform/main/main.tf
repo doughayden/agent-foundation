@@ -95,6 +95,11 @@ resource "google_sql_database" "sessions" {
   instance = google_sql_database_instance.sessions.name
 }
 
+resource "time_sleep" "cloud_sql_ready" {
+  depends_on      = [google_sql_database.sessions]
+  create_duration = "30s"
+}
+
 resource "google_sql_user" "app" {
   # Note: for Postgres only, GCP requires omitting the ".gserviceaccount.com" suffix
   # from the service account email due to length limits on database usernames.
@@ -104,6 +109,8 @@ resource "google_sql_user" "app" {
   # cloudsqlsuperuser is Cloud SQL's standard IAM database role (not Postgres SUPERUSER).
   # Grants DDL + DML ownership — required for ADK DatabaseSessionService auto-schema creation.
   database_roles = ["cloudsqlsuperuser"]
+
+  depends_on = [time_sleep.cloud_sql_ready]
 }
 
 resource "google_vertex_ai_reasoning_engine" "memory_bank" {
@@ -203,14 +210,17 @@ resource "google_cloud_run_v2_service" "app" {
         "--exit-zero-on-sigterm",
       ]
 
+      # Proxy needs headroom for container init + Cloud SQL connection establishment.
+      # Cloud Run coordinates sidecar probes with app container timing — budget must
+      # account for networking setup lag between process bind and external reachability.
       startup_probe {
         http_get {
           path = "/readiness"
           port = 9090
         }
-        initial_delay_seconds = 5
-        period_seconds        = 5
-        failure_threshold     = 3
+        initial_delay_seconds = 10
+        period_seconds        = 10
+        failure_threshold     = 5
       }
     }
 
