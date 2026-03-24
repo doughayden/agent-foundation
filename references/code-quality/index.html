@@ -1,0 +1,2159 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://doughayden.github.io/agent-foundation/references/code-quality/">
+      
+      
+        <link rel="prev" href="../testing/">
+      
+      
+        <link rel="next" href="../docker-compose-workflow/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Code Quality Tools - Agent Foundation Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#code-quality" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Agent Foundation Docs" class="md-header__button md-logo" aria-label="Agent Foundation Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Agent Foundation Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Code Quality Tools
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/doughayden/agent-foundation" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../development/" class="md-tabs__link">
+          
+  
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../template-management/" class="md-tabs__link">
+          
+  
+  
+  Template
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Agent Foundation Docs" class="md-nav__button md-logo" aria-label="Agent Foundation Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5"/></svg>
+
+    </a>
+    Agent Foundation Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/doughayden/agent-foundation" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../environment-variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure & Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Template
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Template
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../template-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syncing Upstream Changes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bootstrap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bootstrap Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../protection-strategies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Protection Strategies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cicd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing Patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code Quality Tools
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code Quality Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-quality-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running Quality Checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ruff-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ruff Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Ruff Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-enforce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Enforce
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-file-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-file Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inline-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inline Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ruff-auto-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ruff Auto-fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mypy-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mypy Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mypy Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-enforce_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Enforce
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-errors-and-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Errors and Fixes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-module-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-module Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inline-exclusions_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inline Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coverage-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coverage Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Coverage Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-enforce_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Enforce
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-level-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File-level Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inline-exclusions_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inline Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Workflow Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-run-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Run Checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#team-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Team Practices
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#philosophy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Philosophy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Philosophy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-these-standards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why These Standards?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-add-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Add Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docker-compose-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dockerfile-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dockerfile Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mkdocs-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MkDocs Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-quality-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running Quality Checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ruff-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ruff Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Ruff Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-enforce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Enforce
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-file-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-file Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inline-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inline Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ruff-auto-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ruff Auto-fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mypy-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mypy Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mypy Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-enforce_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Enforce
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-errors-and-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Errors and Fixes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-module-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-module Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inline-exclusions_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inline Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coverage-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coverage Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Coverage Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-enforce_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Enforce
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-level-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File-level Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inline-exclusions_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inline Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workflow-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workflow Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Workflow Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-run-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Run Checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#team-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Team Practices
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#philosophy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Philosophy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Philosophy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-these-standards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why These Standards?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-add-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Add Exclusions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="code-quality">Code Quality</h1>
+<p>Detailed code quality tools, enforcement strategies, and exclusion guidelines.</p>
+<h2 id="overview">Overview</h2>
+<p>Tools to enforce code quality:<br />
+1. <strong>Ruff</strong> - Fast linting and formatting (replaces flake8, isort, black)<br />
+2. <strong>Mypy</strong> - Static type checking<br />
+3. <strong>Pytest</strong> - Testing with coverage</p>
+<p>All configured in <code>pyproject.toml</code>.</p>
+<h2 id="running-quality-checks">Running Quality Checks</h2>
+<p><strong>Run before every commit:</strong><br />
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Use ruff to format code first (line length, quotes, whitespace)</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Then lint with ruff auto-fix (security, bugs, style violations)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>--fix
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># Type check</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>uv<span class="w"> </span>run<span class="w"> </span>mypy
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># Tests with coverage</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>--cov<span class="w"> </span>--cov-report<span class="o">=</span>term-missing
+</span></code></pre></div></p>
+<p><strong>One-liner for commit:</strong><br />
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>mypy<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>--cov
+</span></code></pre></div></p>
+<h2 id="ruff-configuration">Ruff Configuration</h2>
+<h3 id="what-we-enforce">What We Enforce</h3>
+<p>From <code>pyproject.toml</code>:<br />
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">[tool.ruff.lint]</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">select</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="s2">&quot;E&quot;</span><span class="p">,</span><span class="w">   </span><span class="c1"># pycodestyle errors (PEP 8 violations)</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="s2">&quot;W&quot;</span><span class="p">,</span><span class="w">   </span><span class="c1"># pycodestyle warnings</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="s2">&quot;F&quot;</span><span class="p">,</span><span class="w">   </span><span class="c1"># pyflakes (unused imports, undefined names)</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span><span class="s2">&quot;I&quot;</span><span class="p">,</span><span class="w">   </span><span class="c1"># isort (import sorting)</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="s2">&quot;B&quot;</span><span class="p">,</span><span class="w">   </span><span class="c1"># flake8-bugbear (common bugs and design problems)</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="s2">&quot;C4&quot;</span><span class="p">,</span><span class="w">  </span><span class="c1"># flake8-comprehensions (better list/dict comprehensions)</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="s2">&quot;UP&quot;</span><span class="p">,</span><span class="w">  </span><span class="c1"># pyupgrade (modern Python syntax)</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="s2">&quot;N&quot;</span><span class="p">,</span><span class="w">   </span><span class="c1"># pep8-naming (naming conventions)</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="s2">&quot;S&quot;</span><span class="p">,</span><span class="w">   </span><span class="c1"># flake8-bandit (security issues)</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="s2">&quot;SIM&quot;</span><span class="p">,</span><span class="w"> </span><span class="c1"># flake8-simplify (code simplification)</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">    </span><span class="s2">&quot;PTH&quot;</span><span class="p">,</span><span class="w"> </span><span class="c1"># flake8-use-pathlib (use Path instead of os.path)</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="p">]</span>
+</span></code></pre></div></p>
+<p><strong>Key enforcements:</strong><br />
+- <strong>E501</strong>: Line too long (88 characters)<br />
+- <strong>PTH (pathlib rules)</strong>: Use <code>pathlib.Path</code> instead of <code>os.path</code><br />
+  - <strong>PTH123</strong>: Use <code>Path.open()</code> instead of <code>open()</code><br />
+  - <strong>PTH118</strong>: Use <code>Path.joinpath()</code> instead of <code>os.path.join()</code><br />
+  - Why: Modern API, cross-platform, chainable (<code>path / "subdir"</code>), type-safe<br />
+  - Ruff auto-fixes many os.path calls to Path<br />
+- <strong>S (security rules)</strong>: Catch common security issues<br />
+  - <strong>S101</strong>: Use of <code>assert</code> (banned in production, allowed in tests via per-file ignore)<br />
+  - <strong>S104</strong>: Binding to 0.0.0.0 (flagged for security, intentional in containers)<br />
+  - <strong>S105</strong>: Possible hardcoded password (detects patterns like "password = 'secret'")</p>
+<h3 id="per-file-exclusions">Per-file Exclusions</h3>
+<p>From <code>pyproject.toml</code>:<br />
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">[tool.ruff.lint.per-file-ignores]</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="s2">&quot;tests/**/*.py&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;S101&quot;</span><span class="p">]</span><span class="w">  </span><span class="c1"># Allow assert statements in tests</span>
+</span></code></pre></div></p>
+<p><strong>Why:</strong> Tests use <code>assert</code> for validation. This is standard pytest practice and not a security concern.</p>
+<h3 id="inline-exclusions">Inline Exclusions</h3>
+<p><strong>Real example from our codebase:</strong><br />
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># tests/conftest.py:42</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">mock_credentials</span><span class="o">.</span><span class="n">token</span> <span class="o">=</span> <span class="s2">&quot;test-mock-token-totally-not-real&quot;</span>  <span class="c1"># noqa: S105</span>
+</span></code></pre></div></p>
+<p><strong>Rule:</strong> S105 (Possible hardcoded password)<br />
+<strong>Why excluded:</strong> This is a test mock credential, not a real secret. The string content makes it obvious it's not production.</p>
+<p><strong>Real example from tests:</strong><br />
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># tests/test_config.py</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="s2">&quot;HOST&quot;</span><span class="p">:</span> <span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span>  <span class="c1"># noqa: S104</span>
+</span></code></pre></div></p>
+<p><strong>Rule:</strong> S104 (Binding to all interfaces)<br />
+<strong>Why excluded:</strong> Docker containers need to bind to 0.0.0.0 to accept connections from the host. This is intentional and documented.</p>
+<p><strong>When to use <code># noqa</code>:</strong><br />
+- Security rules (S*) with false positives on test code<br />
+- Line length (E501) for URLs or data that can't be split<br />
+- Specific rule violation that's intentional and safe</p>
+<p><strong>Prefer specific rule codes:</strong><br />
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Good - clear what&#39;s being suppressed</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://example.com/very/long/api/path&quot;</span>  <span class="c1"># noqa: E501</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Avoid - unclear what&#39;s being allowed</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">some_code</span><span class="p">()</span>  <span class="c1"># noqa</span>
+</span></code></pre></div></p>
+<p>Use <code># noqa</code> only when:<br />
+- Rule violation is intentional and well-justified<br />
+- Auto-fix would make code less readable<br />
+- External constraint prevents compliance (e.g., third-party API format)</p>
+<h3 id="ruff-auto-fix">Ruff Auto-fix</h3>
+<p>Ruff can automatically fix many issues:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Auto-fix all fixable issues</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>--fix
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># Preview fixes without applying (safe mode)</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>--diff
+</span></code></pre></div>
+<p><strong>What gets auto-fixed:</strong><br />
+- Import sorting (rule I)<br />
+- Unused imports (rule F401)<br />
+- Whitespace and indentation (rules E, W)<br />
+- Quote style normalization (rules Q)<br />
+- Trailing commas (rules COM)<br />
+- Simple code transformations (e.g., <code>os.path.join()</code> → <code>Path.joinpath()</code>)</p>
+<p><strong>What requires manual fixing:</strong><br />
+- Complex logic issues<br />
+- Security concerns (rule S)<br />
+- Naming violations (rule N)<br />
+- Code simplification requiring logic changes (rule SIM)</p>
+<p><strong>Best practice:</strong><br />
+1. Run <code>uv run ruff format</code> first (formats code)<br />
+2. Run <code>uv run ruff check --fix</code> second (auto-fixes linting issues)<br />
+3. Review remaining issues and fix manually</p>
+<h2 id="mypy-configuration">Mypy Configuration</h2>
+<h3 id="what-we-enforce_1">What We Enforce</h3>
+<p>From <code>pyproject.toml</code>:<br />
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">[tool.mypy]</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">python_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;3.13&quot;</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">mypy_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;src&quot;</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">packages</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;agent_foundation&quot;</span><span class="p">]</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1"># Completeness checks</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">disallow_untyped_defs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">         </span><span class="c1"># All functions must have type hints</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="n">disallow_incomplete_defs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">      </span><span class="c1"># Complete type hints (all args and return)</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="n">disallow_untyped_decorators</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">   </span><span class="c1"># Decorators must preserve types</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="c1"># Type system strictness</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="n">no_implicit_optional</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">          </span><span class="c1"># Explicit Optional[] for None values</span>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="n">strict_equality</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">               </span><span class="c1"># Proper type checking in == comparisons</span>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="c1"># Warnings and errors</span>
+</span><span id="__span-8-16"><a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="n">warn_return_any</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">               </span><span class="c1"># Flag functions returning Any</span>
+</span><span id="__span-8-17"><a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="n">warn_unused_configs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">           </span><span class="c1"># Flag unused config options</span>
+</span><span id="__span-8-18"><a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a><span class="n">warn_redundant_casts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">          </span><span class="c1"># No unnecessary casts</span>
+</span><span id="__span-8-19"><a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a><span class="n">warn_unused_ignores</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">           </span><span class="c1"># Remove unused # type: ignore</span>
+</span><span id="__span-8-20"><a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="n">warn_no_return</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">                </span><span class="c1"># Functions must return or raise</span>
+</span><span id="__span-8-21"><a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="n">warn_unreachable</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">              </span><span class="c1"># Detect unreachable code</span>
+</span><span id="__span-8-22"><a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>
+</span><span id="__span-8-23"><a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="c1"># Additional strictness</span>
+</span><span id="__span-8-24"><a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a><span class="n">check_untyped_defs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">            </span><span class="c1"># Check function bodies even without annotations</span>
+</span><span id="__span-8-25"><a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a><span class="n">show_error_codes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">              </span><span class="c1"># Show error codes for easier suppression</span>
+</span></code></pre></div></p>
+<p><strong>This is stricter than mypy's default</strong> - every function, every parameter, every return value must be typed.</p>
+<p><strong>Key enforcements:</strong><br />
+- <strong>disallow_untyped_defs</strong>: Every function needs type hints (args + return)<br />
+- <strong>disallow_incomplete_defs</strong>: Can't mix typed and untyped parameters<br />
+- <strong>no_implicit_optional</strong>: <code>def foo(x: str = None)</code> is an error (must use <code>str | None</code>)<br />
+- <strong>warn_return_any</strong>: Flag when functions return <code>Any</code> (type safety leak)<br />
+- <strong>strict_equality</strong>: <code>if my_str == 5:</code> is an error (comparing incompatible types)<br />
+- <strong>warn_unreachable</strong>: Detect dead code after returns/raises</p>
+<h3 id="example-errors-and-fixes">Example Errors and Fixes</h3>
+<p><strong>Error: disallow_untyped_defs</strong><br />
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># mypy error: Function is missing a return type annotation</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">process_data</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]):</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1"># Fixed</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">process_data</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+</span></code></pre></div></p>
+<p><strong>Error: disallow_incomplete_defs</strong><br />
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># mypy error: Function is missing a type annotation for one or more arguments</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">fetch_user</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">cache</span><span class="p">):</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="k">return</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="c1"># Fixed</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">fetch_user</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">User</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">User</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="k">return</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+</span></code></pre></div></p>
+<p><strong>Error: no_implicit_optional</strong><br />
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># mypy error: Incompatible default for argument (expected str, got None)</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Hello, </span><span class="si">{</span><span class="n">name</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;stranger&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="c1"># Fixed - explicit None in union</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">greet</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Hello, </span><span class="si">{</span><span class="n">name</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;stranger&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+</span></code></pre></div></p>
+<h3 id="per-module-exclusions">Per-module Exclusions</h3>
+<p>From <code>pyproject.toml</code>:<br />
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">[[tool.mypy.overrides]]</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="n">module</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;tests.*&quot;</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">disable_error_code</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;arg-type&quot;</span><span class="w">  </span><span class="c1"># Allow duck-typed mocks in tests</span>
+</span></code></pre></div></p>
+<p><strong>Why:</strong> Test files can pass duck-typed mocks to functions without arg-type errors, enabling pragmatic testing patterns.</p>
+<p><strong>Important caveat:</strong> We still strictly type <code>conftest.py</code> fixture definitions as a team practice (see Team Practices section for rationale).</p>
+<h3 id="inline-exclusions_1">Inline Exclusions</h3>
+<p><strong>When you might need <code># type: ignore</code>:</strong><br />
+<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># Third-party library without type stubs</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">untyped_library</span>  <span class="c1"># type: ignore[import-untyped]</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="c1"># Mypy bug or limitation (add TODO)</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="n">result</span> <span class="o">=</span> <span class="n">complex_function</span><span class="p">()</span>  <span class="c1"># type: ignore[return-value]  # TODO: Fix when mypy supports this pattern</span>
+</span></code></pre></div></p>
+<p><strong>Always prefer:</strong><br />
+1. Fix the actual type issue (restructure code to make types clear)<br />
+2. Add type stubs for third-party libraries<br />
+3. <strong>Use type narrowing</strong> - validate types at runtime with <code>isinstance()</code> checks or type guards</p>
+<p><strong>Never use <code>cast()</code> - use type narrowing instead:</strong></p>
+<p>Why <code>cast()</code> is bad:<br />
+- <strong>Bypasses type safety:</strong> Tells mypy to trust you without verification<br />
+- <strong>Runtime risk:</strong> No runtime validation - type mismatch crashes at runtime<br />
+- <strong>Dishonest about code behavior:</strong> Hides the actual types being used<br />
+- <strong>Maintenance burden:</strong> Future changes break assumptions silently</p>
+<p><strong>Type narrowing is always better:</strong><br />
+<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># Bad - using cast() (DON&#39;T DO THIS)</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast</span>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">result</span> <span class="o">=</span> <span class="n">some_function</span><span class="p">()</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="n">value</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>  <span class="c1"># Trust me, it&#39;s a string! (no runtime check)</span>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="c1"># Good - type narrowing with isinstance()</span>
+</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="n">result</span> <span class="o">=</span> <span class="n">some_function</span><span class="p">()</span>
+</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="__span-14-9"><a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expected str, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">result</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="__span-14-10"><a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="n">value</span> <span class="o">=</span> <span class="n">result</span>  <span class="c1"># mypy knows this is str now, AND we validated at runtime</span>
+</span></code></pre></div></p>
+<p>Type narrowing keeps you honest about what the code actually does - it satisfies both mypy and provides runtime safety.</p>
+<h2 id="coverage-configuration">Coverage Configuration</h2>
+<h3 id="what-we-enforce_2">What We Enforce</h3>
+<p>From <code>pyproject.toml</code>:<br />
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="k">[tool.coverage.run]</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="n">source</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;src&quot;</span><span class="p">]</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="n">branch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">  </span><span class="c1"># Check both line and branch coverage</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="k">[tool.coverage.report]</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="n">fail_under</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">100</span><span class="w">  </span><span class="c1"># Require 100% coverage</span>
+</span></code></pre></div></p>
+<p><strong>100% coverage is non-negotiable</strong> for production code.</p>
+<h3 id="file-level-exclusions">File-level Exclusions</h3>
+<p>From <code>pyproject.toml</code>:<br />
+<div class="language-toml highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="k">[tool.coverage.run]</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="n">omit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">    </span><span class="c1"># __init__.py files: namespace marker, no logic</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">    </span><span class="s2">&quot;src/agent_foundation/**/__init__.py&quot;</span><span class="p">,</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="w">    </span><span class="c1"># server.py: FastAPI setup and ADK initialization (integration tested via CI/CD)</span>
+</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="w">    </span><span class="s2">&quot;src/agent_foundation/server.py&quot;</span><span class="p">,</span>
+</span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>
+</span><span id="__span-16-9"><a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="w">    </span><span class="c1"># agent.py: LlmAgent instantiation (tested through callbacks, not in isolation)</span>
+</span><span id="__span-16-10"><a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="w">    </span><span class="s2">&quot;src/agent_foundation/**/agent.py&quot;</span><span class="p">,</span>
+</span><span id="__span-16-11"><a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>
+</span><span id="__span-16-12"><a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="w">    </span><span class="c1"># prompt.py: Prompt text and formatting (integration tested via agent runs)</span>
+</span><span id="__span-16-13"><a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a><span class="w">    </span><span class="s2">&quot;src/agent_foundation/**/prompt.py&quot;</span><span class="p">,</span>
+</span><span id="__span-16-14"><a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>
+</span><span id="__span-16-15"><a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a><span class="w">    </span><span class="c1"># observability.py: OpenTelemetry setup (infrastructure initialization)</span>
+</span><span id="__span-16-16"><a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a><span class="w">    </span><span class="s2">&quot;src/agent_foundation/utils/observability.py&quot;</span><span class="p">,</span>
+</span><span id="__span-16-17"><a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a><span class="p">]</span>
+</span></code></pre></div></p>
+<p><strong>Rationale for each:</strong><br />
+- <strong><code>__init__.py</code></strong>: Pure namespace markers with no logic<br />
+- <strong><code>server.py</code></strong>: FastAPI entrypoint with ADK initialization - tested via integration tests in CI/CD<br />
+- <strong><code>agent.py</code></strong>: Pure ADK configuration (plugin registration, model selection) - tested through agent behavior<br />
+- <strong><code>prompt.py</code></strong>: Prompt templates and formatting - tested via agent evaluations, not unit tests<br />
+- <strong><code>observability.py</code></strong>: OpenTelemetry infrastructure setup - validated through trace output, not unit tests</p>
+<p><strong>Pattern:</strong> We exclude configuration and infrastructure initialization files. Business logic and utilities must have 100% coverage.</p>
+<h3 id="inline-exclusions_2">Inline Exclusions</h3>
+<p><strong>Real example from our codebase:</strong><br />
+<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># src/agent_foundation/utils/config.py:234</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>  <span class="c1"># pragma: no cover</span>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    <span class="c1"># Pydantic validation makes this unreachable</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>    <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Invalid allow_origins format&quot;</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</span></code></pre></div></p>
+<p><strong>Why:</strong> The <code>@field_validator</code> above this property ensures <code>result</code> is always a list. This defensive check exists for static type safety but is unreachable at runtime. Pydantic guarantees it.</p>
+<p><strong>When to use <code># pragma: no cover</code>:</strong><br />
+- Defensive code (provably unreachable) needed to satisfy the static type-checker<br />
+- Platform-specific branches not testable in CI (e.g., Windows-only code)<br />
+- Error paths that require external system failures (rare)</p>
+<p><strong>When NOT to use it:</strong><br />
+- "This is hard to test" - write better tests or use better code patterns to facilitate testing<br />
+- "Coverage is annoying" - coverage is finding gaps as intended<br />
+- Normal error handling - always test error paths</p>
+<h2 id="workflow-integration">Workflow Integration</h2>
+<h3 id="when-to-run-checks">When to Run Checks</h3>
+<p><strong>Before every commit:</strong><br />
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>mypy<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>--cov
+</span></code></pre></div></p>
+<p><strong>During development:</strong><br />
+- Run <code>ruff format</code> and <code>ruff check --fix</code> frequently as you code<br />
+- Run mypy after adding new functions or changing signatures<br />
+- Run tests after behavior changes</p>
+<p><strong>IDE Integration:</strong><br />
+- Configure your editor to run ruff format on save<br />
+- Enable mypy real-time checking for immediate feedback<br />
+- Use pytest plugin for test execution and debugging</p>
+<p><strong>CI Enforcement:</strong><br />
+All checks run automatically in GitHub Actions on every PR:<br />
+- Code quality workflow runs ruff, mypy, pytest<br />
+- Blocks merge if any check fails<br />
+- Ensures main branch always passes quality gates</p>
+<h3 id="team-practices">Team Practices</h3>
+<p><strong>Test Suite Typing Strategy:</strong></p>
+<p>We disable mypy <code>arg-type</code> checking for test files, but maintain strict discipline in <code>conftest.py</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1"># conftest.py - strictly typed even though mypy doesn&#39;t enforce it</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">mock_state</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">MockState</span><span class="p">:</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a mock state with test data.&quot;&quot;&quot;</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>    <span class="k">return</span> <span class="n">MockState</span><span class="p">({</span><span class="s2">&quot;user_id&quot;</span><span class="p">:</span> <span class="s2">&quot;user123&quot;</span><span class="p">,</span> <span class="s2">&quot;session_data&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;value&quot;</span><span class="p">}})</span>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="k">def</span><span class="w"> </span><span class="nf">mock_content</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">MockContent</span><span class="p">:</span>
+</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a mock content with test data.&quot;&quot;&quot;</span>
+</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>    <span class="k">return</span> <span class="n">MockContent</span><span class="p">({</span><span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;Hello, agent!&quot;</span><span class="p">})</span>
+</span></code></pre></div>
+<p><strong>Why this works:</strong><br />
+- Test files can pass duck-typed mocks without mypy errors (pragmatic testing)<br />
+- <code>conftest.py</code> fixtures have clear type contracts (self-documenting, IDE support)<br />
+- Best of both worlds: strict where it matters, flexible where it helps</p>
+<p>This is a <strong>team practice</strong>, not enforced by tooling. Maintain discipline when writing fixtures.</p>
+<h2 id="philosophy">Philosophy</h2>
+<h3 id="why-these-standards">Why These Standards?</h3>
+<p><strong>Strict typing (mypy):</strong><br />
+- Catch bugs before runtime<br />
+- Enable powerful IDE features<br />
+- Document code contracts<br />
+- Facilitate safe refactoring</p>
+<p><strong>100% coverage:</strong><br />
+- Confidence in changes<br />
+- Forces thinking about edge cases<br />
+- Documents all code paths<br />
+- Prevents untested code accumulation</p>
+<p><strong>Automated formatting (ruff):</strong><br />
+- Eliminates style debates<br />
+- Consistent codebase<br />
+- Fast code review<br />
+- Auto-fix reduces friction</p>
+<p><strong>Security checks (bandit via ruff):</strong><br />
+- Catch common security mistakes<br />
+- Enforce safe defaults<br />
+- Educate developers on risks</p>
+<h3 id="when-to-add-exclusions">When to Add Exclusions</h3>
+<p><strong>Never add exclusions:</strong><br />
+- To make broken code pass checks<br />
+- Because it's "too much work"<br />
+- For personal style preference<br />
+- To ship faster without fixing issues</p>
+<p><strong>Acceptable exclusions:</strong><br />
+- Third-party library limitations (document why, add TODO if fixable)<br />
+- Tool bugs (add TODO to fix when tool updates)<br />
+- Provably unreachable defensive code (rare, requires strong justification)<br />
+- Test-specific patterns (e.g., assert in tests, mock credentials)</p>
+<p><strong>Best practices:</strong><br />
+1. <strong>Be specific:</strong> Use rule codes (<code># noqa: S105</code>) not blanket suppression (<code># noqa</code>)<br />
+2. <strong>Document why:</strong> Add comment explaining the exclusion<br />
+3. <strong>Add TODOs:</strong> If it's a workaround, plan to fix it later<br />
+4. <strong>Review regularly:</strong> Remove exclusions when underlying issue is fixed</p>
+<p><strong>Always prefer fixing the issue over adding exclusions.</strong></p>
+<hr />
+<p>← <a href="../">Back to References</a> | <a href="../../">Documentation</a></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
