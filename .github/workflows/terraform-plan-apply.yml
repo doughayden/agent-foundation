@@ -80,6 +80,7 @@ jobs:
       TF_VAR_environment: ${{ needs.resolve-env.outputs.terraform_environment }}
       TF_VAR_project: ${{ vars.GOOGLE_CLOUD_PROJECT }}
       TF_VAR_region: ${{ vars.REGION }}
+      TF_VAR_zone: ${{ vars.ZONE }}
       TF_VAR_google_cloud_location: ${{ vars.GOOGLE_CLOUD_LOCATION }}
       TF_VAR_agent_name: ${{ vars.IMAGE_NAME }}
       TF_VAR_otel_instrumentation_genai_capture_message_content: ${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}

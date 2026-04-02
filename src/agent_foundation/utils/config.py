@@ -134,7 +134,7 @@ class ServerEnv(BaseModel):
     memory_service_uri: str | None = Field(
         default=None,
         alias="MEMORY_SERVICE_URI",
-        description="Full URI for memory service (e.g., agentengine://...)",
+        description="Memory service URI (e.g., agentengine://...)",
     )
 
     artifact_service_uri: str | None = Field(

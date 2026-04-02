@@ -11,9 +11,10 @@ Built for teams who need to move beyond prototypes and ship production AI agents
 - 🐳 **Optimized Docker builds** - Multi-stage builds with uv (~200MB images, 5-10s rebuilds)
 - 🏗️ **Automated CI/CD** - GitHub Actions + Terraform with smart PR automation
 - 🌎 **Multi-environment deployments** - Production-grade dev/stage/prod isolation
-- 💾 **Database sessions** - Cloud SQL Postgres with IAM auth for durable conversation state
+- 💾 **Database sessions** - Cloud SQL Postgres for durable conversation state
 - 🔭 **Custom observability** - OpenTelemetry with full trace-log correlation
-- 🔐 **Security** - Workload Identity Federation (no service account keys)
+- 🏰 **Hardened Cloud SQL** - Private IP only, IAM database auth, enforced TLS and Auth Proxy
+- 🔐 **Workload Identity Federation** - CI/CD authentication (no service account keys)
 
 ---
 
@@ -48,6 +49,7 @@ Deep dives for optional follow-up:
 - [CI/CD Workflows](references/cicd.md) - Workflow architecture and mechanics
 - [Testing Strategy](references/testing.md) - Detailed testing patterns and organization
 - [Code Quality](references/code-quality.md) - Tool usage and exclusion strategies
+- [Cloud Backend Options](references/cloud-backend-options.md) - Advanced options for uv run server with cloud backends
 - [Docker Compose Workflow](references/docker-compose-workflow.md) - Watch mode, volumes, and configuration
 - [Dockerfile Strategy](references/dockerfile-strategy.md) - Multi-stage builds and optimization
 - [MkDocs Setup](references/mkdocs-setup.md) - Documentation site setup and customization

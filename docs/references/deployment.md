@@ -277,10 +277,13 @@ gh pr create
 **Location:** `terraform/main/`
 
 **Resources created:**
-- Cloud Run Service (containerized agent deployment)
+- VPC network + subnet + Private Services Access (Cloud SQL private IP)
+- Cloud NAT router (bastion outbound connectivity)
+- IAP firewall rules (SSH + SQL proxy port to bastion)
+- Bastion host (e2-micro, COS, Auth Proxy via cloud-init, dedicated SA with `roles/iam.serviceAccountTokenCreator` on app SA for impersonation). COS cloud-init opens port 5432 via iptables (default INPUT policy is DROP), configures `--address=0.0.0.0` (accept IAP tunnel from non-loopback), and `--impersonate-service-account=<app-sa-email>` (IAM database auth as app SA).
+- Cloud Run Service (Auth Proxy sidecar + direct VPC egress)
 - Service Account (IAM identity for Cloud Run)
-- Cloud SQL instance (session persistence via DatabaseSessionService)
-- Cloud SQL Auth Proxy sidecar (IAM-authenticated database connectivity)
+- Cloud SQL instance (private IP only, session persistence via DatabaseSessionService)
 - Vertex AI Agent Engine (memory persistence)
 - GCS Bucket (artifact storage)
 

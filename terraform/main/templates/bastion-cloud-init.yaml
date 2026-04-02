@@ -1,0 +1,33 @@
+#cloud-config
+# Cloud SQL Auth Proxy on Container-Optimized OS (COS)
+# COS runs cloud-init on every boot — systemd service auto-starts on reboot.
+
+write_files:
+  - path: /etc/systemd/system/cloud-sql-proxy.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Cloud SQL Auth Proxy
+      After=docker.service
+      Requires=docker.service
+
+      [Service]
+      Restart=always
+      RestartSec=5
+      ExecStartPre=/usr/bin/docker pull gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
+      ExecStart=/usr/bin/docker run --rm --name cloud-sql-proxy \
+        --network host \
+        gcr.io/cloud-sql-connectors/cloud-sql-proxy:2 \
+        ${proxy_args} \
+        --address=0.0.0.0 \
+        --impersonate-service-account=${app_service_account}
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  # COS default INPUT policy is DROP — allow IAP tunnel traffic on proxy port
+  - iptables -A INPUT -p tcp --dport 5432 -j ACCEPT
+  - systemctl daemon-reload
+  - systemctl enable cloud-sql-proxy.service
+  - systemctl start cloud-sql-proxy.service

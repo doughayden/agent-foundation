@@ -8,31 +8,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Cloud SQL Postgres instance with IAM database auth for session persistence via ADK `DatabaseSessionService`
-- Cloud SQL Auth Proxy sidecar on Cloud Run and docker-compose for IAM-authenticated database connectivity
-- `asyncpg` runtime dependency for async Postgres connectivity
-- `cloud_sql_instance_connection_name` Terraform output for local development Auth Proxy configuration
-- `CLOUD_SQL_INSTANCE_CONNECTION_NAME` environment variable for docker-compose Auth Proxy target
+- Cloud SQL Postgres with private IP and IAM database auth for session persistence via ADK `DatabaseSessionService`
+- VPC network with Private Services Access peering for Cloud SQL private IP connectivity
+- Bastion host (e2-micro, COS) running Auth Proxy via cloud-init for local dev IAP tunnel access
+- Cloud Run direct VPC egress (`PRIVATE_RANGES_ONLY`) for Auth Proxy sidecar → Cloud SQL
+- IAP tunnel container in docker-compose (`network_mode: "service:app"`) for automatic Cloud SQL connectivity
+- DRY proxy config via `local.cloud_sql_proxy_args` shared between bastion and Cloud Run sidecar
+- `sqlalchemy[postgresql-asyncpg]` runtime dependency (async Postgres driver + greenlet)
+- `zone` Terraform variable threaded through bootstrap, CI/CD, and main module
+- `BASTION_INSTANCE` and `BASTION_ZONE` environment variables for docker-compose IAP tunnel
+- `bastion_instance` and `bastion_zone` Terraform outputs
 - `google_cloud_location` Terraform variable — decouples Vertex AI model endpoint routing from infrastructure region (#118)
 - `SESSION_SERVICE_URI` and `MEMORY_SERVICE_URI` environment variables — separate session and memory service configuration (#116)
-- `Gemini` model wrapper with retry options in `agent.py`
+- Cloud Backend Options reference doc (`docs/references/cloud-backend-options.md`) — manual IAP tunnel, Agent Engine sessions, selective service URIs
+- COS iptables rule in cloud-init for bastion port 5432 (default INPUT policy is DROP)
+- Bastion SA impersonation of app SA (`--impersonate-service-account`, `roles/iam.serviceAccountTokenCreator`)
+- Cloud SQL hardening: `connector_enforcement=REQUIRED`, `ssl_mode=TRUSTED_CLIENT_CERTIFICATE_REQUIRED`, `data_api_access=ALLOW_DATA_API`, password validation policy
+- Locked postgres built-in user with random 30-char password
+- IAP firewall rules (SSH + SQL proxy port) targeting bastion service account
+- Cloud NAT router for bastion outbound connectivity
 
 ### Changed
 - **BREAKING**: Replace Agent Engine session service with Cloud SQL Postgres (`SESSION_SERVICE_URI` now `postgresql+asyncpg://` instead of `agentengine://`)
 - **BREAKING**: Rename GitHub Environment Variables: `GCP_PROJECT_ID` → `GOOGLE_CLOUD_PROJECT`, `GCP_LOCATION` → `REGION`, `GCP_WORKLOAD_IDENTITY_PROVIDER` → `WORKLOAD_IDENTITY_PROVIDER`
 - **BREAKING**: Rename Terraform variable `location` → `region` across all modules
 - **BREAKING**: Replace `AGENT_ENGINE` env var with `SESSION_SERVICE_URI` and `MEMORY_SERVICE_URI` (full URIs with protocol prefix)
-- Rename `session_and_memory` reasoning engine to `memory_bank` (memory only, sessions moved to Cloud SQL)
+- Split `terraform/main/main.tf` into `vpc.tf`, `database.tf`, `bastion.tf` (main.tf remains composition root)
+- Replace docker-compose Auth Proxy sidecar with IAP tunnel container (`gcr.io/google.com/cloudsdktool/google-cloud-cli:stable`)
+- Docker-compose IAP tunnel uses `CLOUDSDK_CONFIG` with writable mount (gcloud CLI requires token cache writes)
+- Remove Auth Proxy sidecar startup probe on Cloud Run (unreliable — Cloud Run restarts on crash)
+- Replace `asyncpg` + `greenlet` deps with single `sqlalchemy[postgresql-asyncpg]` extra
 - Rename agent.py constants to `ROOT_AGENT_*` prefix (`ROOT_AGENT_NAME`, `ROOT_AGENT_MODEL`, `ROOT_AGENT_DESCRIPTION`, `ROOT_AGENT_INSTRUCTION`)
 - Add `roles/cloudsql.client` and `roles/cloudsql.instanceUser` to app service account
-- Add `roles/cloudsql.admin` for WIF principal in bootstrap module
-- Enable `sqladmin.googleapis.com` API in bootstrap module
+- Add `roles/cloudsql.admin`, `roles/compute.instanceAdmin.v1`, `roles/servicenetworking.networksAdmin` for WIF principal in bootstrap
+- Enable `compute.googleapis.com`, `servicenetworking.googleapis.com`, `iap.googleapis.com` APIs in bootstrap
+- Unify two-tier dev workflow: `uv run server` (local SQLite) and `docker compose` (cloud resources)
+- Emphasize `TELEMETRY_NAMESPACE` for collaborative team trace filtering
 
 ### Removed
 - `ROOT_AGENT_MODEL` environment variable — model selection is now a module constant in `agent.py` (#114)
 - `agent_engine_uri` property from `ServerEnv` — URI construction moved to Terraform
 - `root_agent_model` Terraform variable and CI/CD mapping
+- `CLOUD_SQL_INSTANCE_CONNECTION_NAME` environment variable (replaced by `BASTION_INSTANCE`/`BASTION_ZONE`)
 - `data/` volume mount from docker-compose (unused)
+- Auth Proxy sidecar from docker-compose (bastion runs proxy, IAP tunnel provides connectivity)
 
 ## [0.10.1] - 2026-03-19
 

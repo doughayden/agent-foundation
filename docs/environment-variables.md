@@ -13,7 +13,8 @@ See `.env.example` in the repository root for template configuration with inline
 | **[GOOGLE_CLOUD_LOCATION](#google-cloud-vertex-ai)** | ✅ | - | GCP region |
 | **[AGENT_NAME](#agent-identification)** | ✅ | - | Unique agent identifier |
 | **[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT](#opentelemetry)** | ✅ | - | Capture LLM content in traces |
-| **[CLOUD_SQL_INSTANCE_CONNECTION_NAME](#cloud-resources)** | Recommended | - | Cloud SQL Auth Proxy target (docker-compose) |
+| **[BASTION_INSTANCE](#cloud-resources)** | Recommended | - | Bastion host name for IAP tunnel (docker-compose) |
+| **[BASTION_ZONE](#cloud-resources)** | Recommended | - | Bastion host zone for IAP tunnel (docker-compose) |
 | **[SESSION_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Session persistence |
 | **[MEMORY_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Memory persistence |
 | **[ARTIFACT_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Artifact storage |
@@ -79,12 +80,19 @@ These must be set for the agent to function.
 
 Production-ready persistence for sessions, memory, and artifacts. Configure after first deployment.
 
-**CLOUD_SQL_INSTANCE_CONNECTION_NAME**
-- **Value:** `project-id:region:instance-name` (e.g., `my-project:us-central1:my-agent-dev-sessions`)
-- **Purpose:** Cloud SQL Auth Proxy connection target
-- **Where:** Set locally in `.env` for docker-compose (the proxy sidecar uses this to connect)
-- **How to get:** GitHub Actions job summary or `terraform output cloud_sql_instance_connection_name`
-- **Note:** Only used by docker-compose, not by the application. Cloud Run's proxy sidecar gets this from Terraform directly.
+**BASTION_INSTANCE**
+- **Value:** Bastion VM instance name (e.g., `my-agent-dev-bastion`)
+- **Purpose:** IAP tunnel target for docker-compose Cloud SQL connectivity
+- **Where:** Set locally in `.env` for docker-compose (the IAP tunnel container uses this)
+- **How to get:** GitHub Actions job summary or `terraform output bastion_instance`
+- **Note:** Only used by docker-compose, not by the application. Cloud Run connects to Cloud SQL via direct VPC egress.
+
+**BASTION_ZONE**
+- **Value:** GCE zone (e.g., `us-central1-b`)
+- **Purpose:** Zone of the bastion host for IAP tunnel
+- **Where:** Set locally in `.env` for docker-compose
+- **How to get:** GitHub Actions job summary or `terraform output bastion_zone`
+- **Note:** Only used by docker-compose.
 
 **SESSION_SERVICE_URI**
 - **Value:** Service-specific URI with protocol prefix (e.g., `postgresql+asyncpg://sa-name@project.iam:@localhost:5432/agent_sessions`)
@@ -125,10 +133,10 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
 
 **TELEMETRY_NAMESPACE**
 - **Default:** `local`
-- **Purpose:** Groups traces and logs by developer or environment in Cloud Trace
+- **Purpose:** Groups traces and logs by developer in Cloud Trace — set to a unique value (e.g., your name) so teammates can filter to your experiments for collaborative debugging and review
 - **Where:** Set locally via `.env`, auto-set to environment name in Cloud Run deployments (dev/stage/prod)
-- **Usage:** Filter traces in Cloud Trace by namespace to isolate your development traces
-- **Example:** `TELEMETRY_NAMESPACE=alice-local`
+- **Note:** Both `uv run server` and Docker Compose always export traces and structured logs to Cloud Trace and Cloud Logging. This is always on — there is no local-only telemetry mode.
+- **Example:** `TELEMETRY_NAMESPACE=alice`
 
 ### Agent Features
 
@@ -208,6 +216,10 @@ GitHub Environment Variables are mapped to Terraform inputs via `TF_VAR_*` prefi
 **TF_VAR_region**
 - **Source:** `${{ vars.REGION }}` (GitHub Environment Variable)
 - **Purpose:** GCP region for compute resource placement
+
+**TF_VAR_zone**
+- **Source:** `${{ vars.ZONE }}` (GitHub Environment Variable)
+- **Purpose:** GCP zone for bastion host placement
 
 **TF_VAR_google_cloud_location**
 - **Source:** `${{ vars.GOOGLE_CLOUD_LOCATION }}` (GitHub Environment Variable, optional)
