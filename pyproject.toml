@@ -47,7 +47,8 @@ build-backend = "uv_build"
 [tool.uv]
 # https://docs.astral.sh/uv/concepts/resolution/#dependency-cooldowns
 exclude-newer = "5 days"
-# TODO: bump litellm constraint once BerriAI publishes a verified safe release
+# Preventive constraint: if litellm ever enters the dependency tree (e.g., via ADK),
+# ensure we don't get compromised versions until BerriAI publishes a verified safe release
 # https://github.com/BerriAI/litellm/issues/24518
 # https://docs.astral.sh/uv/reference/settings/#constraint-dependencies
 constraint-dependencies = ["litellm<=1.82.6"]
