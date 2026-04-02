@@ -93,24 +93,29 @@ develop:
 
 ---
 
-## Cloud SQL Auth Proxy Sidecar
+## IAP Tunnel to Bastion
 
-Docker Compose runs a Cloud SQL Auth Proxy sidecar alongside the app container, matching the Cloud Run deployment architecture 1:1. The proxy provides IAM-authenticated connectivity to Cloud SQL without database passwords.
+Docker Compose uses an IAP tunnel container to reach the bastion host, which runs Cloud SQL Auth Proxy. This mirrors the production architecture where Cloud Run connects to Cloud SQL via private IP, but substitutes IAP tunneling for direct VPC egress.
 
-**Proxy flags:**
-- `--auto-iam-authn` — IAM database auth via Application Default Credentials
-- `--health-check` + `--http-port=9090` — enables `/startup`, `/liveness`, `/readiness` endpoints
-- `--structured-logs` — JSON logging (matches Cloud Logging format)
-- `--exit-zero-on-sigterm` — clean shutdown (exit code 0 on SIGTERM)
-- `--credentials-file` — mounted ADC file (Cloud Run uses SA identity natively instead)
+**Architecture:**
+```
+App container (localhost:5432) ──► IAP tunnel container ──► IAP ──► Bastion VM (Auth Proxy) ──► Cloud SQL private IP
+```
 
-**Healthcheck:** Uses the proxy's built-in `wait` subcommand (`cloud-sql-proxy wait --max=5s`), which checks the `/startup` endpoint. Works in distroless images (no `wget`/`curl` needed). App container starts only after the proxy confirms connectivity to Cloud SQL.
+The bastion Auth Proxy binds to `0.0.0.0` (not loopback) to accept IAP tunnel connections arriving from outside the loopback interface. It also uses `--impersonate-service-account=<app-sa-email>` to authenticate to Cloud SQL as the app SA, since the bastion runs under its own dedicated SA. These flags are bastion-specific — the Cloud Run sidecar uses the defaults (loopback binding, runs as app SA directly).
 
-**Port:** `5432` on localhost (mapped to host for optional direct database access via `psql`).
+**IAP tunnel container** (`gcr.io/google.com/cloudsdktool/google-cloud-cli:stable`):
+- Uses `network_mode: "service:app"` to share the app container's network namespace — the tunnel binds to `0.0.0.0:5432` which appears as `localhost:5432` from the app's perspective
+- Runs `gcloud compute start-iap-tunnel` targeting the bastion host on port 5432
+- Requires `BASTION_INSTANCE`, `BASTION_ZONE`, and `GOOGLE_CLOUD_PROJECT` in `.env`
 
-**Startup timing:** `start_period=10s`, `interval=10s`, `timeout=10s`, `retries=5` (~60s total). Cloud Run has a lag between the proxy process binding its health check port and the port being externally reachable. The generous budget accounts for container init, Cloud SQL connection establishment, and networking setup. Values match the Cloud Run sidecar probe (`initial_delay_seconds=10`, `period_seconds=10`, `failure_threshold=5`) for dev/prod parity.
+**Credentials:** Mounts `~/.config/gcloud` to `/gcloud-config` with `CLOUDSDK_CONFIG=/gcloud-config` (decouples from container home directory). IAP tunnel requires full gcloud CLI config, not just Application Default Credentials.
 
-**Requires:** `CLOUD_SQL_INSTANCE_CONNECTION_NAME` set in `.env` (get from deployment job summary or `terraform output cloud_sql_instance_connection_name`).
+**Developer IAM prerequisite:** `roles/iap.tunnelResourceAccessor` on your Google account. Without this role, the IAP tunnel fails with a permission denied error.
+
+**Port:** `5432` on the app container's localhost. The app connects to `localhost:5432` identically to Cloud Run, where the Auth Proxy sidecar also listens on the same address.
+
+**Requires:** `BASTION_INSTANCE` and `BASTION_ZONE` set in `.env` (get from deployment job summary or `terraform output bastion_instance` / `terraform output bastion_zone`).
 
 ---
 
@@ -122,10 +127,8 @@ Docker Compose runs a Cloud SQL Auth Proxy sidecar alongside the app container, 
 - **Sync:** Automatic via watch mode
 
 ### Credentials
-- **Host:** `~/.config/gcloud/`
-- **Container:** `/gcloud/`
-- **Mount:** Read-only volume
-- **Purpose:** Secure access for the local development to Application Default Credentials for Google authentication
+- **App container:** `~/.config/gcloud/application_default_credentials.json` mounted read-only at `/gcloud/application_default_credentials.json` — for Vertex AI and Cloud SQL IAM auth via `GOOGLE_APPLICATION_CREDENTIALS`
+- **IAP tunnel container:** Full `~/.config/gcloud/` directory mounted (writable) at `/gcloud-config/` with `CLOUDSDK_CONFIG=/gcloud-config` — decouples from container home directory, writable because gcloud CLI writes token cache and logs at runtime, IAP tunnel requires full gcloud CLI config beyond ADC
 
 ---
 
@@ -139,35 +142,7 @@ Docker Compose loads `.env` automatically. See [Environment Variables Guide](../
 
 ## Troubleshooting
 
-### Container keeps restarting
-- Check logs: `docker compose logs -f`
-- Verify `.env` file exists and has required variables
-- Ensure Application Default Credentials are configured: `gcloud auth application-default login`
-
-### Changes not appearing
-- **For code changes:** Should sync instantly via watch mode
-- **For dependency changes:** Watch should auto-rebuild
-- **If stuck:** Stop and restart with `docker compose up --build --watch`
-
-### Permission errors
-- Credentials: Ensure `~/.config/gcloud/application_default_credentials.json` exists and is readable
-
-### Port already in use
-```bash
-# Check what's using port 8000
-lsof -i :8000
-
-# Stop the conflicting process or change PORT in .env
-PORT=8001
-```
-
-### Windows path compatibility
-- The `docker-compose.yml` uses `${HOME}` which is Unix/Mac specific
-- Windows users need to update the volume path in `docker-compose.yml`:
-  - Replace `${HOME}/.config/gcloud/application_default_credentials.json`
-  - With your Windows path: `C:\Users\YourUsername\AppData\Roaming\gcloud\application_default_credentials.json`
-- Alternative: Use `%USERPROFILE%` environment variable in PowerShell
-- See the comment in `docker-compose.yml` for the exact syntax
+See [Troubleshooting: Docker Compose](../troubleshooting.md#docker-compose) for container restart issues, IAP tunnel failures, permission errors, port conflicts, and Windows path compatibility.
 
 ---
 

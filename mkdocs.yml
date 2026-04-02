@@ -72,6 +72,7 @@ nav:
     - CI/CD Workflows: references/cicd.md
     - Testing Patterns: references/testing.md
     - Code Quality Tools: references/code-quality.md
+    - Cloud Backend Options: references/cloud-backend-options.md
     - Docker Compose: references/docker-compose-workflow.md
     - Dockerfile Strategy: references/dockerfile-strategy.md
     - MkDocs Setup: references/mkdocs-setup.md

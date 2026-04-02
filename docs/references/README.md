@@ -13,6 +13,7 @@ Deep-dive technical documentation for optional follow-up.
 
 - [Testing Strategy](testing.md) - Detailed testing patterns and organization
 - [Code Quality](code-quality.md) - Tool usage and exclusion strategies
+- [Cloud Backend Options](cloud-backend-options.md) - Advanced options for uv run server with cloud backends
 - [Docker Compose Workflow](docker-compose-workflow.md) - Watch mode, volumes, and configuration
 - [Dockerfile Strategy](dockerfile-strategy.md) - Multi-stage builds and optimization
 - [MkDocs Setup](mkdocs-setup.md) - Documentation site setup and customization

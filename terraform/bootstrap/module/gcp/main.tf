@@ -3,9 +3,12 @@ locals {
     "aiplatform.googleapis.com",
     "artifactregistry.googleapis.com",
     "cloudresourcemanager.googleapis.com",
+    "compute.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
+    "iap.googleapis.com",
     "run.googleapis.com",
+    "servicenetworking.googleapis.com",
     "sqladmin.googleapis.com",
     "sts.googleapis.com",
     "telemetry.googleapis.com",
@@ -15,10 +18,12 @@ locals {
     "roles/aiplatform.user",
     "roles/artifactregistry.writer",
     "roles/cloudsql.admin",
+    "roles/compute.instanceAdmin.v1",
     "roles/iam.serviceAccountAdmin",
     "roles/iam.serviceAccountUser", # Required for Cloud Run to attach service accounts during deployment
     "roles/resourcemanager.projectIamAdmin",
     "roles/run.admin",
+    "roles/servicenetworking.networksAdmin",
     "roles/serviceusage.serviceUsageAdmin", # Required to enable additional APIs in the main module
     "roles/storage.admin",
   ])

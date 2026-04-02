@@ -17,6 +17,15 @@ variable "region" {
   type        = string
 }
 
+variable "zone" {
+  description = "Google Cloud Compute zone"
+  type        = string
+  validation {
+    condition     = startswith(var.zone, var.region)
+    error_message = "Zone must be within region (e.g., region=us-central1, zone=us-central1-a)"
+  }
+}
+
 variable "google_cloud_location" {
   description = "Vertex AI model endpoint location"
   type        = string

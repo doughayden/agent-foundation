@@ -39,11 +39,12 @@ This project distills proven patterns from the Starter Pack while prioritizing b
 - **Global scalability**: Create multi-region deployments by adding External Application Load Balancer
 
 ### 🤖 Agent Capabilities
-- **Database sessions**: Cloud SQL Postgres with IAM auth for durable conversation state
+- **Database sessions**: Cloud SQL Postgres for durable conversation state
 - **Artifact storage**: GCS-backed persistent storage for session artifacts
 - **Custom observability**: OpenTelemetry instrumentation with full trace-log correlation
 
 ### 🔒 Security & Reliability
+- **Hardened Cloud SQL**: Private IP only, IAM database auth (no passwords), enforced TLS, enforced Auth Proxy (no direct connections)
 - **Workload Identity Federation**: Keyless CI/CD authentication (no service account keys)
 - **Non-root containers**: Security-hardened runtime with least-privilege IAM
 - **Health checks**: Kubernetes-style probes with startup grace periods

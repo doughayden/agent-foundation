@@ -4,6 +4,7 @@
 environment                                        = "dev"
 project                                            = "project-id"
 region                                             = "us-central1"
+zone                                               = "us-central1-a"
 google_cloud_location                              = "global"
 agent_name                                         = "agent-name"
 otel_instrumentation_genai_capture_message_content = "TRUE"
