@@ -8,10 +8,9 @@ resource "google_compute_network" "main" {
 }
 
 resource "google_compute_subnetwork" "main" {
-  for_each                 = local.locations
   name                     = local.resource_name
   ip_cidr_range            = "10.0.0.0/24"
-  region                   = each.key
+  region                   = var.region
   network                  = google_compute_network.main.id
   private_ip_google_access = true
 }

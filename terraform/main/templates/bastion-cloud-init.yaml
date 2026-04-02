@@ -1,6 +1,7 @@
 #cloud-config
 # Cloud SQL Auth Proxy on Container-Optimized OS (COS)
-# COS runs cloud-init on every boot — systemd service auto-starts on reboot.
+# COS runs cloud-init on every boot — systemd service auto-starts on reboot
+# Using floating gcr.io/cloud-sql-connectors/cloud-sql-proxy:2 tag for automatic security patches
 
 write_files:
   - path: /etc/systemd/system/cloud-sql-proxy.service

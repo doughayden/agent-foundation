@@ -15,8 +15,8 @@ resource "google_sql_database_instance" "sessions" {
     tier                  = "db-f1-micro"
     connector_enforcement = "REQUIRED"
 
-    # Enable SQL Studio access
-    data_api_access = "ALLOW_DATA_API"
+    # Enable SQL Studio access in the dev environment
+    data_api_access = var.environment == "dev" ? "ALLOW_DATA_API" : "DISALLOW_DATA_API"
 
     ip_configuration {
       ipv4_enabled                                  = false

@@ -1,7 +1,8 @@
 locals {
   bastion_iam_roles = toset([
     "roles/cloudsql.client",
-    "roles/gkemulticloud.telemetryWriter", # Conveniently combines logs and metrics write permissions
+    "roles/logging.logWriter",
+    "roles/monitoring.metricWriter",
   ])
 }
 
@@ -39,7 +40,7 @@ resource "google_compute_instance" "bastion" {
   }
 
   network_interface {
-    subnetwork = google_compute_subnetwork.main[var.region].id
+    subnetwork = google_compute_subnetwork.main.id
     # No access_config — no public IP (IAP tunnel only)
   }
 

@@ -183,7 +183,7 @@ resource "google_cloud_run_v2_service" "app" {
     vpc_access {
       network_interfaces {
         network    = google_compute_network.main.id
-        subnetwork = google_compute_subnetwork.main[each.key].id
+        subnetwork = google_compute_subnetwork.main.id
       }
       egress = "PRIVATE_RANGES_ONLY"
     }
