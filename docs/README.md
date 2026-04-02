@@ -53,3 +53,4 @@ Deep dives for optional follow-up:
 - [Docker Compose Workflow](references/docker-compose-workflow.md) - Watch mode, volumes, and configuration
 - [Dockerfile Strategy](references/dockerfile-strategy.md) - Multi-stage builds and optimization
 - [MkDocs Setup](references/mkdocs-setup.md) - Documentation site setup and customization
+- [OpenTelemetry Architecture](references/opentelemetry-architecture.md) - ADK coexistence, instrumentation strategy, dependency management

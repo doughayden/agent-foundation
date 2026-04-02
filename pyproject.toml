@@ -9,12 +9,12 @@ authors = [
 requires-python = ">=3.13,<3.14"
 dependencies = [
     # Pin ADK to test releases before locking upgrades
-    "google-adk==1.25.1",
+    "google-adk==1.28.0",
     "google-auth>=2.40.3,<3.0.0",
     "google-cloud-logging>=3.12.1,<4.0.0",
-    "opentelemetry-exporter-gcp-logging>=1.9.0a0,<2.0.0",
-    "opentelemetry-exporter-otlp-proto-grpc==1.37.0",
-    "opentelemetry-instrumentation-google-genai>=0.4b0,<0.5",
+    "opentelemetry-exporter-gcp-logging>=1.11.0a0,<2.0.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.37.0,<2.0.0",
+    "opentelemetry-instrumentation-google-genai>=0.7b0,<0.8",
     "opentelemetry-instrumentation-logging>=0.58b0,<0.59",
     "pydantic>=2.11.0,<3.0.0",
     "python-dotenv>=1.0.0,<2.0.0",
@@ -43,6 +43,15 @@ docs = [
 [build-system]
 requires = ["uv_build>=0.8.21,<0.9.0"]
 build-backend = "uv_build"
+
+[tool.uv]
+# https://docs.astral.sh/uv/concepts/resolution/#dependency-cooldowns
+exclude-newer = "5 days"
+# Preventive constraint: if litellm ever enters the dependency tree (e.g., via ADK),
+# ensure we don't get compromised versions until BerriAI publishes a verified safe release
+# https://github.com/BerriAI/litellm/issues/24518
+# https://docs.astral.sh/uv/reference/settings/#constraint-dependencies
+constraint-dependencies = ["litellm<=1.82.6"]
 
 [tool.ruff]
 src = ["src"]
