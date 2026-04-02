@@ -242,6 +242,17 @@ See [Observability](observability.md) for query examples and trace analysis.
 
 See [Deployment Modes: Terraform Structure](references/deployment.md#terraform-structure) for resource details and naming conventions.
 
+## Cloud SQL Scaling
+
+The template ships with `db-custom-1-3840` (1 vCPU, 3.75 GB RAM) — should handle ~100 concurrent database connections. Each Cloud Run instance maintains a connection pool (default 5 + 10 overflow = 15 max), so this supports ~6 concurrent instances comfortably.
+
+**Scaling path:**
+
+1. **Bump instance tier** — change `tier` in `database.tf` (e.g., `db-custom-2-7680` for ~200 connections). One-line change, applies via in-place restart (~5 minutes).
+2. **Managed connection pooling** — if autoscaling demands exceed tier capacity, enable [Cloud SQL connection pooling](https://cloud.google.com/sql/docs/postgres/connection-pooling) (requires Enterprise Plus edition). No app code changes — Auth Proxy handles routing automatically.
+
+See the [Cloud SQL planning guide](https://cloud.google.com/sql/docs/postgres/plan-prepare-overview) for tiers, editions, storage, availability, and cache options.
+
 ## Image Promotion (Production Mode)
 
 Production mode promotes images between registries instead of rebuilding, ensuring exact tested bytes deploy across environments:

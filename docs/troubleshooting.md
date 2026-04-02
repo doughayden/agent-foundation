@@ -138,7 +138,7 @@ gcloud run services describe <service-name> --region <region> --format="value(sp
    ```bash
    gcloud run services logs read <service-name> --region <region> --limit 50
    ```
-5. If using `db-f1-micro`, the shared-core instance may have slow connection accept times under load — consider upgrading the instance tier
+5. If connection timeouts occur under load, upgrade the instance tier in `database.tf` or enable managed connection pooling (Enterprise Plus edition). See [Cloud SQL Scaling](./infrastructure.md#cloud-sql-scaling)
 
 ### Bastion Host Health
 

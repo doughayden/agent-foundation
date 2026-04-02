@@ -12,7 +12,7 @@ resource "google_sql_database_instance" "sessions" {
   # ref: https://docs.cloud.google.com/sql/docs/postgres/machine-series-overview
   settings {
     edition               = "ENTERPRISE"
-    tier                  = "db-f1-micro"
+    tier                  = "db-custom-1-3840"
     connector_enforcement = "REQUIRED"
 
     # Enable SQL Studio access in the dev environment
