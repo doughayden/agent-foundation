@@ -23,8 +23,16 @@ gcloud auth application-default login
 - Dependency changes: Watch should auto-rebuild
 - If stuck: Stop and restart with `docker compose up --build --watch`
 
+**IAP tunnel connection failures:**
+- Verify `roles/iap.tunnelResourceAccessor` is granted on your Google account
+- Check `BASTION_INSTANCE` and `BASTION_ZONE` in `.env` match deployment outputs
+- Confirm bastion VM is running: `gcloud compute instances describe $BASTION_INSTANCE --zone=$BASTION_ZONE`
+- Check IAP tunnel container logs: `docker compose logs iap-tunnel`
+- Verify gcloud config directory is readable: `ls -la ~/.config/gcloud/`
+
 **Permission errors:**
-- Credentials: Ensure `~/.config/gcloud/application_default_credentials.json` exists and is readable
+- App container: Ensure `~/.config/gcloud/application_default_credentials.json` exists and is readable
+- IAP tunnel: Ensure `~/.config/gcloud/` directory is readable (mounted as `/gcloud-config` via `CLOUDSDK_CONFIG`)
 
 **Port already in use:**
 ```bash
@@ -37,9 +45,9 @@ lsof -i :8000
 
 **Windows path compatibility:**
 - `docker-compose.yml` uses `${HOME}` (Unix/Mac specific)
-- Windows users need to update volume path:
-  - Replace `${HOME}/.config/gcloud/application_default_credentials.json`
-  - With Windows path: `C:\Users\YourUsername\AppData\Roaming\gcloud\application_default_credentials.json`
+- Windows users need to update volume paths:
+  - App container ADC: Replace `${HOME}/.config/gcloud/application_default_credentials.json` with Windows equivalent
+  - IAP tunnel gcloud config: Replace `${HOME}/.config/gcloud` with Windows equivalent
   - Or use `%USERPROFILE%` in PowerShell
 
 ### Direct Execution (uv run server)
@@ -100,7 +108,8 @@ gh api repos/:owner/:repo/branches/main/protection
 **Symptom:** Cloud Run service won't start, health check timeout
 
 **Common causes:**
-- Cloud SQL Auth Proxy sidecar probe failure (see below)
+- Auth Proxy sidecar crash (Cloud Run restarts automatically, check logs)
+- VPC egress misconfiguration (Cloud SQL private IP unreachable)
 - Missing or incorrect environment variables
 - Credential initialization timeout (~30-60s for first request)
 
@@ -117,22 +126,35 @@ docker compose up --build  # or: uv run server
 gcloud run services describe <service-name> --region <region> --format="value(spec.template.spec.containers[0].env)"
 ```
 
-### Cloud SQL Auth Proxy Sidecar Probe Failure
+### Cloud SQL Connectivity (Cloud Run)
 
-**Symptom:** `HealthCheckContainerError` — startup probe fails for `cloud-sql-proxy` container on port 9090
+**Symptom:** App fails to connect to Cloud SQL, database connection errors in logs
 
-**Root cause:** Cloud Run has a lag between the proxy process binding its health check port and the port being reachable by Cloud Run's probe infrastructure. The proxy logs "ready for new connections" but the external probe can't connect yet.
-
-**Probe budget:** `initial_delay_seconds=10`, `period_seconds=10`, `failure_threshold=5` (~60s total). The proxy typically connects within 2-5s, but the budget accounts for container init lag, Cloud SQL connection variability, and Cloud Run networking setup.
-
-**If the probe still fails:**
+**Troubleshoot:**
 1. Check that `roles/cloudsql.client` is granted to the app service account
-2. Verify the Cloud SQL instance is running and accessible
-3. Check proxy container logs for connection errors:
+2. Verify Cloud SQL instance is running with private IP enabled
+3. Verify Cloud Run direct VPC egress is configured (check `vpc_access` in Terraform)
+4. Check proxy sidecar logs for connection errors:
    ```bash
    gcloud run services logs read <service-name> --region <region> --limit 50
    ```
-4. If using `db-f1-micro`, the shared-core instance may have slow connection accept times under load — consider upgrading the instance tier
+5. If connection timeouts occur under load, upgrade the instance tier in `database.tf` or enable managed connection pooling (Enterprise Plus edition). See [Cloud SQL Scaling](./infrastructure.md#cloud-sql-scaling)
+
+### Bastion Host Health
+
+**Symptom:** IAP tunnel connects but database queries fail
+
+**Troubleshoot:**
+1. SSH to bastion via IAP: `gcloud compute ssh <bastion-instance> --zone=<zone> --tunnel-through-iap`
+2. Check Auth Proxy container: `docker ps` (Container-Optimized OS runs Docker)
+3. Check Auth Proxy logs: `docker logs $(docker ps -q --filter name=cloud-sql-proxy)`
+4. Verify bastion SA has `roles/cloudsql.client`
+5. Confirm Cloud SQL instance private IP is reachable from the VPC subnet
+6. Check COS iptables allows port 5432: `sudo iptables -L INPUT -n | grep 5432` — should show ACCEPT rule. COS default INPUT policy is DROP; the cloud-init `runcmd` must open port 5432 before starting the proxy.
+7. Check proxy listens on all interfaces: `sudo ss -tlnp | grep 5432` — should show `*:5432` (all interfaces), not `127.0.0.1:5432`. The bastion proxy requires `--address=0.0.0.0` because IAP tunnel connections arrive from outside the loopback interface.
+8. Verify bastion SA can impersonate app SA: the bastion SA needs `roles/iam.serviceAccountTokenCreator` on the app SA (granted via `google_service_account_iam_member` in Terraform). Without this, `--impersonate-service-account` fails.
+
+**Common error:** `InvalidAuthorizationSpecificationError: Cloud SQL IAM service account authentication failed` — the bastion proxy cannot impersonate the app SA. Verify `roles/iam.serviceAccountTokenCreator` is granted to the bastion SA on the app SA.
 
 ## Terraform
 

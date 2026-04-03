@@ -18,6 +18,7 @@ module "github" {
 
   project                                            = var.project
   region                                             = var.region
+  zone                                               = var.zone
   google_cloud_location                              = var.google_cloud_location
   agent_name                                         = var.agent_name
   repository_owner                                   = var.repository_owner

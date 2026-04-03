@@ -8,6 +8,11 @@ output "region" {
   value       = var.region
 }
 
+output "zone" {
+  description = "Google Cloud Compute zone"
+  value       = var.zone
+}
+
 output "agent_name" {
   description = "Agent name to identify cloud resources and logs"
   value       = var.agent_name
@@ -51,6 +56,26 @@ output "memory_service_uri" {
 output "artifact_service_uri" {
   description = "Artifact service GCS bucket URL (for local .env ARTIFACT_SERVICE_URI)"
   value       = google_storage_bucket.artifact_service.url
+}
+
+output "bastion_instance" {
+  description = "Bastion host instance name (for IAP tunnel)"
+  value       = google_compute_instance.bastion.name
+}
+
+output "bastion_zone" {
+  description = "Bastion host zone (for IAP tunnel)"
+  value       = google_compute_instance.bastion.zone
+}
+
+output "bastion_service_account_email" {
+  description = "Bastion host service account email"
+  value       = google_service_account.bastion.email
+}
+
+output "bastion_service_account_roles" {
+  description = "Bastion host service account project IAM roles"
+  value       = local.bastion_iam_roles
 }
 
 output "cloud_run_services" {

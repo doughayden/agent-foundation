@@ -17,6 +17,7 @@ module "github" {
   environment = "prod"
 
   project                                            = var.project
+  zone                                               = var.zone
   region                                             = var.region
   google_cloud_location                              = var.google_cloud_location
   agent_name                                         = var.agent_name
@@ -35,6 +36,7 @@ module "github_protected" {
   environment = "prod-apply"
 
   project                                            = var.project
+  zone                                               = var.zone
   region                                             = var.region
   google_cloud_location                              = var.google_cloud_location
   agent_name                                         = var.agent_name

@@ -17,6 +17,11 @@ variable "region" {
   type        = string
 }
 
+variable "zone" {
+  description = "Google Cloud Compute zone"
+  type        = string
+}
+
 variable "google_cloud_location" {
   description = "Vertex AI model endpoint location"
   type        = string

@@ -35,7 +35,7 @@ locals {
     GOOGLE_CLOUD_PROJECT                               = var.project
     GOOGLE_GENAI_USE_VERTEXAI                          = "TRUE"
     LOG_LEVEL                                          = coalesce(var.log_level, "INFO")
-    MEMORY_SERVICE_URI                                 = "agentengine://${google_vertex_ai_reasoning_engine.memory_bank.id}"
+    MEMORY_SERVICE_URI                                 = "agentengine://${google_vertex_ai_reasoning_engine.session_and_memory.id}"
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = coalesce(var.otel_instrumentation_genai_capture_message_content, "FALSE")
     RELOAD_AGENTS                                      = "FALSE"
     SERVE_WEB_INTERFACE                                = coalesce(var.serve_web_interface, "FALSE")
@@ -43,12 +43,28 @@ locals {
     TELEMETRY_NAMESPACE                                = var.environment
   }
 
+  # Cloud SQL Auth Proxy args — shared between bastion and Cloud Run sidecar
+  cloud_sql_proxy_args = [
+    google_sql_database_instance.sessions.connection_name,
+    "--private-ip",
+    "--port=5432",
+    "--auto-iam-authn",
+    "--structured-logs",
+  ]
+
   # Create a unique Agent resource name per deployment environment
   resource_name = "${var.agent_name}-${var.environment}"
 
-  # Service account ID has 30 character limit - truncate agent_name but preserve "-environment"
-  sa_max_agent_length = 30 - length(var.environment) - 1
-  sa_id               = "${substr(var.agent_name, 0, local.sa_max_agent_length)}-${var.environment}"
+  # Service account IDs — GCP 30-char limit. Truncate agent_name (prefix) to preserve environment suffix.
+  sa_limit = 30
+
+  sa_suffix_app = "-${var.environment}"
+  sa_prefix_app = substr(var.agent_name, 0, local.sa_limit - length(local.sa_suffix_app))
+  sa_id_app     = "${local.sa_prefix_app}${local.sa_suffix_app}"
+
+  sa_suffix_bastion = "-bastion-${var.environment}"
+  sa_prefix_bastion = substr(var.agent_name, 0, local.sa_limit - length(local.sa_suffix_bastion))
+  sa_id_bastion     = "${local.sa_prefix_bastion}${local.sa_suffix_bastion}"
 
   # Create labels for billing organization
   labels = {
@@ -61,7 +77,7 @@ locals {
 }
 
 resource "google_service_account" "app" {
-  account_id   = local.sa_id
+  account_id   = local.sa_id_app
   display_name = "${local.resource_name} Service Account"
   description  = "Service account attached to the ${local.resource_name} Cloud Run service"
 }
@@ -73,49 +89,9 @@ resource "google_project_iam_member" "app" {
   member   = google_service_account.app.member
 }
 
-resource "google_sql_database_instance" "sessions" {
-  name             = "${local.resource_name}-sessions"
-  database_version = "POSTGRES_18"
-  region           = var.region
-
-  # ref: https://docs.cloud.google.com/sql/docs/postgres/machine-series-overview
-  settings {
-    edition = "ENTERPRISE"
-    tier    = "db-f1-micro"
-
-    database_flags {
-      name  = "cloudsql.iam_authentication"
-      value = "on"
-    }
-  }
-}
-
-resource "google_sql_database" "sessions" {
-  name     = "agent_sessions"
-  instance = google_sql_database_instance.sessions.name
-}
-
-resource "time_sleep" "cloud_sql_ready" {
-  depends_on      = [google_sql_database.sessions]
-  create_duration = "30s"
-}
-
-resource "google_sql_user" "app" {
-  # Note: for Postgres only, GCP requires omitting the ".gserviceaccount.com" suffix
-  # from the service account email due to length limits on database usernames.
-  name     = trimsuffix(google_service_account.app.email, ".gserviceaccount.com")
-  instance = google_sql_database_instance.sessions.name
-  type     = "CLOUD_IAM_SERVICE_ACCOUNT"
-  # cloudsqlsuperuser is Cloud SQL's standard IAM database role (not Postgres SUPERUSER).
-  # Grants DDL + DML ownership — required for ADK DatabaseSessionService auto-schema creation.
-  database_roles = ["cloudsqlsuperuser"]
-
-  depends_on = [time_sleep.cloud_sql_ready]
-}
-
-resource "google_vertex_ai_reasoning_engine" "memory_bank" {
-  display_name = "${local.resource_name} Memory Bank"
-  description  = "Memory Bank Service for the ${local.resource_name} app"
+resource "google_vertex_ai_reasoning_engine" "session_and_memory" {
+  display_name = "${local.resource_name} Sessions and Memory"
+  description  = "Managed Session and Memory Bank Service for the ${local.resource_name} app"
   region       = var.region
 
   # Prevent plan and apply diffs with an empty spec for managed sessions and memory bank only (no runtime code)
@@ -197,31 +173,19 @@ resource "google_cloud_run_v2_service" "app" {
       }
     }
 
-    # Cloud SQL Auth Proxy sidecar
+    # Cloud SQL Auth Proxy sidecar (no startup probe — Cloud Run restarts on crash)
     containers {
       image = "gcr.io/cloud-sql-connectors/cloud-sql-proxy:2"
-      args = [
-        google_sql_database_instance.sessions.connection_name,
-        "--port=5432",
-        "--auto-iam-authn",
-        "--health-check",
-        "--http-port=9090",
-        "--structured-logs",
-        "--exit-zero-on-sigterm",
-      ]
+      args  = concat(local.cloud_sql_proxy_args, ["--exit-zero-on-sigterm"])
+    }
 
-      # Proxy needs headroom for container init + Cloud SQL connection establishment.
-      # Cloud Run coordinates sidecar probes with app container timing — budget must
-      # account for networking setup lag between process bind and external reachability.
-      startup_probe {
-        http_get {
-          path = "/readiness"
-          port = 9090
-        }
-        initial_delay_seconds = 10
-        period_seconds        = 10
-        failure_threshold     = 5
+    # Direct VPC egress for Cloud SQL private IP connectivity
+    vpc_access {
+      network_interfaces {
+        network    = google_compute_network.main.id
+        subnetwork = google_compute_subnetwork.main.id
       }
+      egress = "PRIVATE_RANGES_ONLY"
     }
 
     # Explicitly set the concurrency (defaults to 80 for CPU >= 1).

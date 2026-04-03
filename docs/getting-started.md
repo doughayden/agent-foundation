@@ -97,10 +97,12 @@ See [Bootstrap Reference](references/bootstrap.md) for complete bootstrap setup 
 ## Deploy
 
 GitHub Actions deploy the agent resources:
-- Cloud SQL instance for session persistence (`SESSION_SERVICE_URI`) with Cloud SQL Auth Proxy sidecar
+- VPC network with Private Services Access for Cloud SQL private IP
+- Cloud SQL instance for session persistence (`SESSION_SERVICE_URI`) with private IP only
+- Bastion host running Auth Proxy for local developer access via IAP tunnel
 - Agent Engine for memory persistence (`MEMORY_SERVICE_URI`)
 - GCS bucket for artifact storage (`ARTIFACT_SERVICE_URI`)
-- Cloud Run service (auto-configured with all resources, including Auth Proxy sidecar)
+- Cloud Run service with Auth Proxy sidecar and direct VPC egress
 - Service account with least-privilege IAM bindings
 - Additional cloud resources you customized for your agent
 
@@ -165,17 +167,20 @@ Configure your local `.env` with cloud resource values from the deployment, then
 cp .env.example .env
 ```
 
-### 2. Add Cloud Resource Values for the Local Agent
+### 2. Add Cloud Resource Values
 
 Add the values from the deployment job summary to `.env`:
 
 ```bash
-CLOUD_SQL_INSTANCE_CONNECTION_NAME=project-id:region:instance-name
+BASTION_INSTANCE=agent-name-dev-bastion
+BASTION_ZONE=us-central1-b
 SESSION_SERVICE_URI=postgresql+asyncpg://YOUR_SERVICE_ACCOUNT@project.iam:@localhost:5432/agent_sessions
 MEMORY_SERVICE_URI=agentengine://projects/YOUR_PROJECT_ID/locations/YOUR_LOCATION/reasoningEngines/YOUR_ENGINE_ID
 ARTIFACT_SERVICE_URI=gs://YOUR_BUCKET_NAME
 # Add values for resources you customized for your agent
 ```
+
+Set `TELEMETRY_NAMESPACE` to a unique value (e.g., your name) so teammates can filter to your traces in Cloud Trace.
 
 Enable the development web interface in your `.env`:
 
@@ -190,13 +195,27 @@ See [Environment Variables: Cloud Resources](environment-variables.md#cloud-reso
 ```bash
 # Authenticate with GCP (if not already done)
 gcloud auth application-default login
+```
 
-# Run server (http://localhost:8000)
-uv run server
+**Standard development** (Docker Compose mirrors production, connects to cloud resources by reading `.env` values):
 
-# Or with Docker Compose (file sync + auto-restart, matches production)
+```bash
 docker compose up --build --watch
 ```
+
+> [!IMPORTANT]
+> Docker Compose requires `roles/iap.tunnelResourceAccessor` on your Google account for the IAP tunnel to the bastion host. Grant via GCP Console (IAM) or `gcloud projects add-iam-policy-binding`.
+
+**Local-only** (no cloud resource dependency):
+
+> [!NOTE]
+> `uv run server` reads `.env` and attempts to connect to cloud resources with the URIs configured above. To run fully local (SQLite sessions, in-memory storage), comment out `SESSION_SERVICE_URI`, `MEMORY_SERVICE_URI`, and `ARTIFACT_SERVICE_URI` from `.env`.
+
+```bash
+uv run server
+```
+
+Both modes export traces and structured logs to Cloud Trace and Cloud Logging automatically.
 
 See [Development](development.md) for the full local development workflow including testing and code quality.
 

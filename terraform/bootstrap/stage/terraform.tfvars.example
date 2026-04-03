@@ -5,6 +5,7 @@
 # GCP Configuration: stage environment
 project                = "your-project-stage"  # NOTE: USE A DIFFERENT PROJECT FOR EACH ENVIRONMENT
 region                 = "us-central1"
+zone                   = "us-central1-a"
 google_cloud_location  = "global"
 agent_name             = "your-agent-name"                       # NOTE: USE THE SAME AGENT NAME ACROSS ALL ENVIRONMENTS
 terraform_state_bucket = "terraform-state-your-agent-name-stage" # NOTE: PRE-BOOTSTRAP CREATES A DIFFERENT BUCKET FOR EACH ENVIRONMENT
