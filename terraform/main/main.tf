@@ -29,7 +29,7 @@ locals {
   run_app_env = {
     ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS         = coalesce(var.adk_suppress_experimental_feature_warnings, "TRUE")
     AGENT_NAME                                         = var.agent_name
-    ALLOW_ORIGINS                                      = jsonencode(["http://127.0.0.1", "http://127.0.0.1:8000"]) # Localhost-only for gcloud proxy access (add client service origins when UI is deployed)
+    ALLOW_ORIGINS                                      = jsonencode(["http://127.0.0.1:8000", "http://localhost:8000"]) # Localhost-only for gcloud proxy access (add client service origins when UI is deployed)
     ARTIFACT_SERVICE_URI                               = google_storage_bucket.artifact_service.url
     GOOGLE_CLOUD_LOCATION                              = var.google_cloud_location
     GOOGLE_CLOUD_PROJECT                               = var.project
