@@ -253,6 +253,47 @@ class TestModelCallbacks:
 
         assert "'cached_tokens': 100" in caplog.text
 
+    def test_after_model_logs_zero_cached_tokens(
+        self,
+        mock_logging_callback_context,
+        create_mock_llm_response,
+        create_mock_usage_metadata,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Verify after_model includes cached tokens when explicitly zero."""
+        caplog.set_level(logging.INFO)
+        callbacks = LoggingCallbacks()
+
+        usage = create_mock_usage_metadata(
+            prompt_token_count=200,
+            candidates_token_count=50,
+            total_token_count=250,
+            cached_content_token_count=0,
+        )
+        response = create_mock_llm_response(usage_metadata=usage)
+
+        callbacks.after_model(mock_logging_callback_context, response)
+
+        assert "'cached_tokens': 0" in caplog.text
+
+    def test_after_model_skips_log_when_all_counts_none(
+        self,
+        mock_logging_callback_context,
+        create_mock_llm_response,
+        create_mock_usage_metadata,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Verify after_model skips token log when all counts are None."""
+        caplog.set_level(logging.INFO)
+        callbacks = LoggingCallbacks()
+
+        usage = create_mock_usage_metadata()
+        response = create_mock_llm_response(usage_metadata=usage)
+
+        callbacks.after_model(mock_logging_callback_context, response)
+
+        assert "Token usage:" not in caplog.text
+
     def test_after_model_no_token_usage_without_metadata(
         self,
         mock_logging_callback_context,

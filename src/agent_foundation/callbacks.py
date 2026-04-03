@@ -42,8 +42,8 @@ class LoggingCallbacks:
     """Provides observability callbacks for ADK agent lifecycle events.
 
     This class groups all agent lifecycle callback methods together and supports
-    logger injection following the strategy pattern. Covers both structured
-    logging and trace enrichment (e.g., token usage span attributes). All
+    logger injection following the strategy pattern. Covers both logging
+    and trace enrichment (e.g., token usage span attributes). All
     callbacks are non-intrusive and return None.
 
     Attributes:
@@ -157,14 +157,18 @@ class LoggingCallbacks:
             self.logger.debug(f"LLM response: {response_data}")
 
         if usage := llm_response.usage_metadata:
-            token_info: dict[str, int | None] = {
-                "prompt_tokens": usage.prompt_token_count,
-                "response_tokens": usage.candidates_token_count,
-                "total_tokens": usage.total_token_count,
+            token_info: dict[str, int] = {
+                key: value
+                for key, value in {
+                    "prompt_tokens": usage.prompt_token_count,
+                    "response_tokens": usage.candidates_token_count,
+                    "total_tokens": usage.total_token_count,
+                    "cached_tokens": usage.cached_content_token_count,
+                }.items()
+                if value is not None
             }
-            if usage.cached_content_token_count:
-                token_info["cached_tokens"] = usage.cached_content_token_count
-            self.logger.info(f"Token usage: {token_info}")
+            if token_info:
+                self.logger.info(f"Token usage: {token_info}")
 
             span = trace.get_current_span()
             if usage.cached_content_token_count is not None:
