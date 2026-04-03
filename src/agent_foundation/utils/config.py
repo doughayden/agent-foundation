@@ -148,8 +148,9 @@ class ServerEnv(BaseModel):
         alias="ALLOW_ORIGINS",
         description=(
             "JSON array string of allowed CORS origins. "
-            "Both 127.0.0.1 and localhost are needed because browsers may resolve "
-            "either. Ports must be included for exact origin matching (ADK>=1.27.3)"
+            "Include both because developers may access the server via localhost "
+            "or 127.0.0.1 (or because certain proxy setups use one or the other), "
+            "and ports must match exactly in ADK>=1.27.3"
         ),
     )
 
