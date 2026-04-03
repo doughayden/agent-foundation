@@ -53,7 +53,7 @@ resource "google_compute_instance" "bastion" {
       }
     )
     enable-oslogin            = "TRUE"
-    cos-update-strategy       = "update_enabled" # COS milestone 117+ defaults to disabled
+    cos-update-strategy       = "update_enabled"
     google-logging-enabled    = "true"
     google-monitoring-enabled = "true"
   }

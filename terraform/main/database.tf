@@ -8,7 +8,7 @@ resource "google_sql_database_instance" "sessions" {
   database_version    = "POSTGRES_18"
   region              = var.region
   root_password       = random_password.postgres_root.result
-  deletion_protection = true
+  deletion_protection = contains(["stage", "prod"], var.environment)
 
   # ref: https://docs.cloud.google.com/sql/docs/postgres/machine-series-overview
   settings {

@@ -64,16 +64,22 @@ The backup window (`start_time`) defines the start of a [4-hour window](https://
 
 The template's 7-day retention covers most workloads. To increase retention for production, update `database.tf`:
 
-```hcl
-backup_configuration {
-  enabled                        = true
-  point_in_time_recovery_enabled = true
-  start_time                     = "03:00"
+Update the `backup_configuration` block inside `settings` in your `database.tf`:
 
-  # Increase retention for production
-  transaction_log_retention_days = 14
-  backup_retention_settings {
-    retained_backups = 14
+```hcl
+settings {
+  # ... existing settings ...
+
+  backup_configuration {
+    enabled                        = true
+    point_in_time_recovery_enabled = true
+    start_time                     = "03:00"
+
+    # Increase retention for production
+    transaction_log_retention_days = 14
+    backup_retention_settings {
+      retained_backups = 14
+    }
   }
 }
 ```
