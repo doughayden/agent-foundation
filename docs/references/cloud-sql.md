@@ -8,7 +8,7 @@ The template provisions a minimal Cloud SQL instance (`db-custom-1-3840`, Enterp
 
 The template's `database.tf` creates:
 
-- **Instance tier:** `db-custom-1-3840` (1 shared vCPU, 3.84 GB RAM)
+- **Instance tier:** `db-custom-1-3840` (1 shared vCPU, 3.75 GB RAM)
 - **Edition:** Enterprise
 - **Availability:** Zonal (single zone, no automatic failover)
 - **Backups:** None configured (Cloud SQL default)
@@ -27,7 +27,7 @@ Cloud SQL uses custom machine types with the format `db-custom-{vCPUs}-{memoryMB
 
 | Tier | vCPUs | RAM | Max Connections | Approximate Monthly Cost |
 |---|---|---|---|---|
-| `db-custom-1-3840` (baseline) | 1 (shared) | 3.84 GB | ~100 | ~$50 |
+| `db-custom-1-3840` (baseline) | 1 (shared) | 3.75 GB | ~100 | ~$50 |
 | `db-custom-2-7680` | 2 | 7.68 GB | ~200 | ~$100 |
 | `db-custom-4-15360` | 4 | 15.36 GB | ~400 | ~$200 |
 | `db-custom-8-30720` | 8 | 30.72 GB | ~800 | ~$400 |
