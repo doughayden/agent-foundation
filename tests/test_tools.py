@@ -1,49 +1,77 @@
 """Unit tests for custom tools."""
 
-import logging
+import re
 
-import pytest
+from agent_foundation.tools import (
+    DEFAULT_TIMEZONE_NAME,
+    ERROR_STATUS,
+    INVALID_TIMEZONE_CODE,
+    SUCCESS_CODE,
+    SUCCESS_STATUS,
+    get_current_time,
+)
 
-from agent_foundation.tools import example_tool
 
+class TestGetCurrentTime:
+    """Tests for the get_current_time function."""
 
-class TestExampleTool:
-    """Tests for the example_tool function."""
-
-    def test_example_tool_returns_success(
-        self, mock_tool_context, caplog: pytest.LogCaptureFixture
+    def test_get_current_time_returns_default_timezone_success(
+        self, mock_tool_context
     ) -> None:
-        """Test that example_tool returns success status and message."""
-        caplog.set_level(logging.INFO)
+        """Test that get_current_time defaults to UTC."""
+        result = get_current_time(tool_context=mock_tool_context)
 
-        result = example_tool(mock_tool_context)
+        assert result["status"] == SUCCESS_STATUS
+        assert result["code"] == SUCCESS_CODE
+        assert result["timezone_name"] == DEFAULT_TIMEZONE_NAME
+        assert result["utc_offset"] == "+00:00"
+        assert result["message"] == "Retrieved current time for UTC."
+        assert result["day_of_week"]
+        assert result["current_date"]
+        assert result["utc_time"]
+        assert re.fullmatch(
+            r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00",
+            result["current_time"],
+        )
 
-        assert result["status"] == "success"
-        assert result["message"] == "Successfully used example_tool."
+    def test_get_current_time_uses_requested_timezone(self, mock_tool_context) -> None:
+        """Test that get_current_time returns data for a valid timezone."""
+        result = get_current_time(
+            tool_context=mock_tool_context, timezone_name="America/New_York"
+        )
 
-    def test_example_tool_logs_state_keys(
-        self, mock_tool_context, caplog: pytest.LogCaptureFixture
+        assert result["status"] == SUCCESS_STATUS
+        assert result["code"] == SUCCESS_CODE
+        assert result["timezone_name"] == "America/New_York"
+        assert result["message"] == "Retrieved current time for America/New_York."
+        assert result["utc_offset"] in {"-05:00", "-04:00"}
+
+    def test_get_current_time_uses_default_timezone_for_blank_input(
+        self, mock_tool_context
     ) -> None:
-        """Test that example_tool logs session state keys."""
-        caplog.set_level(logging.INFO)
+        """Test that blank timezone input falls back to UTC."""
+        result = get_current_time(tool_context=mock_tool_context, timezone_name="   ")
 
-        example_tool(mock_tool_context)
+        assert result["status"] == SUCCESS_STATUS
+        assert result["timezone_name"] == DEFAULT_TIMEZONE_NAME
+        assert result["message"] == "Retrieved current time for UTC."
 
-        assert "Session state keys:" in caplog.text
-        assert "Successfully used example_tool." in caplog.text
-
-        # Verify INFO level was used
-        info_records = [r for r in caplog.records if r.levelname == "INFO"]
-        assert len(info_records) == 2
-
-    def test_example_tool_with_empty_state(
-        self, mock_tool_context_empty_state, caplog: pytest.LogCaptureFixture
+    def test_get_current_time_returns_error_for_invalid_timezone(
+        self, mock_tool_context_empty_state
     ) -> None:
-        """Test that example_tool handles empty state correctly."""
-        caplog.set_level(logging.INFO)
+        """Test that invalid timezone input returns a clear error response."""
+        result = get_current_time(
+            tool_context=mock_tool_context_empty_state,
+            timezone_name="Mars/Olympus_Mons",
+        )
 
-        result = example_tool(mock_tool_context_empty_state)
-
-        assert result["status"] == "success"
-        assert result["message"] == "Successfully used example_tool."
-        assert "Session state keys:" in caplog.text
+        assert result == {
+            "status": ERROR_STATUS,
+            "code": INVALID_TIMEZONE_CODE,
+            "message": (
+                "Unsupported timezone 'Mars/Olympus_Mons'. "
+                "Use an IANA timezone name such as 'UTC' or "
+                "'America/New_York'."
+            ),
+            "requested_timezone": "Mars/Olympus_Mons",
+        }
