@@ -28,9 +28,9 @@ Cloud SQL uses custom machine types with the format `db-custom-{vCPUs}-{memoryMB
 | Tier | vCPUs | RAM | Max Connections | Approximate Monthly Cost |
 |---|---|---|---|---|
 | `db-custom-1-3840` (baseline) | 1 (shared) | 3.75 GB | ~100 | ~$50 |
-| `db-custom-2-7680` | 2 | 7.68 GB | ~200 | ~$100 |
-| `db-custom-4-15360` | 4 | 15.36 GB | ~400 | ~$200 |
-| `db-custom-8-30720` | 8 | 30.72 GB | ~800 | ~$400 |
+| `db-custom-2-7680` | 2 | 7.5 GB | ~200 | ~$100 |
+| `db-custom-4-15360` | 4 | 15 GB | ~400 | ~$200 |
+| `db-custom-8-30720` | 8 | 30 GB | ~800 | ~$400 |
 
 > [!NOTE]
 > Costs are approximate for `us-central1` with Enterprise edition. Actual costs vary by region and sustained use discounts. Check [Cloud SQL pricing](https://cloud.google.com/sql/pricing) for current rates.
@@ -44,7 +44,7 @@ Update the `tier` field in your `database.tf`:
 ```hcl
 settings {
   edition = "ENTERPRISE"
-  tier    = "db-custom-2-7680"  # 2 vCPUs, 7.68 GB RAM
+  tier    = "db-custom-2-7680"  # 2 vCPUs, 7.5 GB RAM
   # ...
 }
 ```
