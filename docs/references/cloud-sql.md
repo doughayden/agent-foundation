@@ -11,7 +11,8 @@ The template's `database.tf` creates:
 - **Instance tier:** `db-custom-1-3840` (1 shared vCPU, 3.75 GB RAM)
 - **Edition:** Enterprise
 - **Availability:** Zonal (single zone, no automatic failover)
-- **Backups:** None configured (Cloud SQL default)
+- **Backups:** Daily at 03:00 UTC, 7-day retention, point-in-time recovery enabled
+- **Maintenance window:** Sunday 06:00 UTC, stable update track (offset from backup window)
 - **Connection pooling:** None (application connects directly through Auth Proxy sidecar)
 - **Networking:** Private IP only, enforced Auth Proxy, enforced TLS, IAM database auth
 
@@ -53,30 +54,26 @@ settings {
 
 ## Automated Backups
 
-**When to enable:** Any environment where data loss is unacceptable. Enable for production immediately. Consider for staging if it holds test data worth preserving.
+The template enables daily backups with 7-day retention and point-in-time recovery (PITR) by default. PITR uses write-ahead logs to restore to any point within the retention window.
 
-Cloud SQL supports automated daily backups and point-in-time recovery (PITR). PITR uses write-ahead logs to restore to any point within the retention window.
+### Backup and Maintenance Window Scheduling
 
-### How to Enable
+The backup window (`start_time`) defines the start of a [4-hour window](https://cloud.google.com/sql/docs/postgres/backup-recovery/backing-up) during which the backup begins. The template sets backups at 03:00 UTC and maintenance at 06:00 UTC Sunday to avoid overlap — maintenance involves a [brief restart](https://cloud.google.com/sql/docs/postgres/maintenance) (~5–10 minutes, <30s connectivity loss for Enterprise edition) that could interrupt a backup in progress. Google's documentation does not explicitly address this interaction, but the [maintenance overview](https://cloud.google.com/sql/docs/postgres/maintenance) states that "maintenance is canceled if an instance operation, such as an export, is ongoing" and advises to "ensure that no other instance operations are planned when maintenance is scheduled." Whether an automated backup qualifies as an "instance operation" in this context is unstated — offsetting the windows avoids the question entirely. For large databases where backups may exceed the 4-hour window, consider increasing the offset.
 
-Add a `backup_configuration` block inside `settings`:
+### Adjusting Retention
+
+The template's 7-day retention covers most workloads. To increase retention for production, update `database.tf`:
 
 ```hcl
-settings {
-  # ... existing settings ...
+backup_configuration {
+  enabled                        = true
+  point_in_time_recovery_enabled = true
+  start_time                     = "03:00"
 
-  backup_configuration {
-    enabled                        = true
-    point_in_time_recovery_enabled = true
-
-    # Backup window — choose a low-traffic period (UTC)
-    start_time = "03:00"
-
-    # Retain backups for 14 days (default is 7)
-    transaction_log_retention_days = 14
-    backup_retention_settings {
-      retained_backups = 14
-    }
+  # Increase retention for production
+  transaction_log_retention_days = 14
+  backup_retention_settings {
+    retained_backups = 14
   }
 }
 ```
@@ -85,7 +82,7 @@ settings {
 
 **Retention trade-offs:**
 
-- **7 days (default):** Sufficient for most workloads. Covers accidental deletes or corruption discovered within a week.
+- **7 days (template default):** Sufficient for most workloads. Covers accidental deletes or corruption discovered within a week.
 - **14 days:** Better safety margin for issues discovered late. Recommended for production.
 - **Longer retention:** Increases storage cost linearly. Rarely needed for session data — consider database exports for long-term archival instead.
 
@@ -224,6 +221,10 @@ Create Cloud Monitoring alert policies for production:
 
 - [Cloud SQL pricing](https://cloud.google.com/sql/pricing)
 - [Cloud SQL HA configuration](https://cloud.google.com/sql/docs/postgres/high-availability)
+- [Cloud SQL backup overview](https://cloud.google.com/sql/docs/postgres/backup-recovery/backups)
+- [Configure standard backups](https://cloud.google.com/sql/docs/postgres/backup-recovery/backing-up)
+- [Cloud SQL maintenance overview](https://cloud.google.com/sql/docs/postgres/maintenance)
+- [Set a maintenance window](https://cloud.google.com/sql/docs/postgres/set-maintenance-window)
 - [Managed connection pooling](https://cloud.google.com/sql/docs/postgres/managed-connection-pooling)
 - [Cloud SQL machine series overview](https://cloud.google.com/sql/docs/postgres/machine-series-overview)
 - [Cloud Monitoring metrics for Cloud SQL](https://cloud.google.com/monitoring/api/metrics_gcp#gcp-cloudsql)

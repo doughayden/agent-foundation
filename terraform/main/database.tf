@@ -4,10 +4,11 @@ resource "random_password" "postgres_root" {
 }
 
 resource "google_sql_database_instance" "sessions" {
-  name             = "${local.resource_name}-sessions"
-  database_version = "POSTGRES_18"
-  region           = var.region
-  root_password    = random_password.postgres_root.result
+  name                = "${local.resource_name}-sessions"
+  database_version    = "POSTGRES_18"
+  region              = var.region
+  root_password       = random_password.postgres_root.result
+  deletion_protection = true
 
   # ref: https://docs.cloud.google.com/sql/docs/postgres/machine-series-overview
   settings {
@@ -28,6 +29,23 @@ resource "google_sql_database_instance" "sessions" {
     database_flags {
       name  = "cloudsql.iam_authentication"
       value = "on"
+    }
+
+    backup_configuration {
+      enabled                        = true
+      point_in_time_recovery_enabled = true
+      start_time                     = "03:00"
+      transaction_log_retention_days = 7
+
+      backup_retention_settings {
+        retained_backups = 7
+      }
+    }
+
+    maintenance_window {
+      day          = 7 # Sunday
+      hour         = 6 # 06:00 UTC (offset from 03:00 backup window)
+      update_track = "stable"
     }
 
     password_validation_policy {

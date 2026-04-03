@@ -10,6 +10,10 @@ Deep-dive technical documentation for optional follow-up.
 - [CI/CD Workflows](cicd.md) - Workflow architecture and mechanics
 - [Cloud SQL Scaling and Reliability](cloud-sql.md) - Instance tiers, backups, HA, connection pooling, monitoring
 
+## Security
+
+- [Security Posture](security-posture.md) - Defense-in-depth rationale and architectural security decisions
+
 ## Operations
 
 - [ADK Origin Check Middleware](adk-origin-check-middleware.md) - Origin validation, CORS interaction, and ALLOW_ORIGINS configuration
