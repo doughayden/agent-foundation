@@ -55,7 +55,7 @@ markdown_extensions:
 nav:
   - Home: README.md
   - Getting Started:
-    - Quick Start: getting-started.md
+    - First Deployment: getting-started.md
     - Environment Variables: environment-variables.md
   - Guides:
     - Development Workflow: development.md
@@ -66,16 +66,21 @@ nav:
     - Syncing Upstream Changes: template-management.md
   - Reference:
     - Overview: references/README.md
-    - Bootstrap Setup: references/bootstrap.md
-    - Protection Strategies: references/protection-strategies.md
-    - Deployment Modes: references/deployment.md
-    - CI/CD Workflows: references/cicd.md
-    - Cloud SQL Scaling: references/cloud-sql.md
-    - ADK Origin Check Middleware: references/adk-origin-check-middleware.md
-    - OpenTelemetry Architecture: references/opentelemetry-architecture.md
-    - Testing Patterns: references/testing.md
-    - Code Quality Tools: references/code-quality.md
-    - Cloud Backend Options: references/cloud-backend-options.md
-    - Docker Compose: references/docker-compose-workflow.md
-    - Dockerfile Strategy: references/dockerfile-strategy.md
-    - MkDocs Setup: references/mkdocs-setup.md
+    - Infrastructure:
+      - Bootstrap Setup: references/bootstrap.md
+      - Protection Strategies: references/protection-strategies.md
+      - Deployment Modes: references/deployment.md
+      - CI/CD Workflows: references/cicd.md
+      - Cloud SQL Scaling: references/cloud-sql.md
+    - Security:
+      - Security Posture: references/security-posture.md
+    - Operations:
+      - ADK Origin Check Middleware: references/adk-origin-check-middleware.md
+      - OpenTelemetry Architecture: references/opentelemetry-architecture.md
+    - Development:
+      - Testing Patterns: references/testing.md
+      - Code Quality Tools: references/code-quality.md
+      - Cloud Backend Options: references/cloud-backend-options.md
+      - Docker Compose: references/docker-compose-workflow.md
+      - Dockerfile Strategy: references/dockerfile-strategy.md
+      - MkDocs Setup: references/mkdocs-setup.md

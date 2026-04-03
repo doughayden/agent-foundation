@@ -43,16 +43,24 @@ Built for teams who need to move beyond prototypes and ship production AI agents
 
 Deep dives for optional follow-up:
 
+### Infrastructure
 - [Bootstrap](references/bootstrap.md) - Complete bootstrap setup for both deployment modes
 - [Protection Strategies](references/protection-strategies.md) - Branch, tag, environment protection
 - [Deployment Modes](references/deployment.md) - Multi-environment strategy and infrastructure
 - [CI/CD Workflows](references/cicd.md) - Workflow architecture and mechanics
 - [Cloud SQL Scaling and Reliability](references/cloud-sql.md) - Instance tiers, backups, HA, connection pooling, monitoring
+
+### Security
+- [Security Posture](references/security-posture.md) - Defense-in-depth rationale and architectural security decisions
+
+### Operations
+- [ADK Origin Check Middleware](references/adk-origin-check-middleware.md) - Origin validation, CORS interaction, and ALLOW_ORIGINS configuration
+- [OpenTelemetry Architecture](references/opentelemetry-architecture.md) - ADK coexistence, instrumentation strategy, dependency management
+
+### Development
 - [Testing Strategy](references/testing.md) - Detailed testing patterns and organization
 - [Code Quality](references/code-quality.md) - Tool usage and exclusion strategies
 - [Cloud Backend Options](references/cloud-backend-options.md) - Advanced options for uv run server with cloud backends
 - [Docker Compose Workflow](references/docker-compose-workflow.md) - Watch mode, volumes, and configuration
 - [Dockerfile Strategy](references/dockerfile-strategy.md) - Multi-stage builds and optimization
 - [MkDocs Setup](references/mkdocs-setup.md) - Documentation site setup and customization
-- [ADK Origin Check Middleware](references/adk-origin-check-middleware.md) - Origin validation, CORS interaction, and ALLOW_ORIGINS configuration
-- [OpenTelemetry Architecture](references/opentelemetry-architecture.md) - ADK coexistence, instrumentation strategy, dependency management

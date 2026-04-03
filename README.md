@@ -49,6 +49,10 @@ This project distills proven patterns from the Starter Pack while prioritizing b
 - **Non-root containers**: Security-hardened runtime with least-privilege IAM
 - **Health checks**: Kubernetes-style probes with startup grace periods
 
+## Try It Locally
+
+Run the agent with no cloud dependencies: [Development: Quick Start](docs/development.md#quick-start)
+
 ## Getting Started
 
 > [!IMPORTANT]
