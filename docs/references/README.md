@@ -8,6 +8,7 @@ Deep-dive technical documentation for optional follow-up.
 - [Protection Strategies](protection-strategies.md) - Branch, tag, environment protection
 - [Deployment Modes](deployment.md) - Multi-environment strategy and infrastructure
 - [CI/CD Workflows](cicd.md) - Workflow architecture and mechanics
+- [Cloud SQL Scaling and Reliability](cloud-sql.md) - Instance tiers, backups, HA, connection pooling, monitoring
 
 ## Operations
 
