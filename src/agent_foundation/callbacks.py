@@ -13,6 +13,7 @@ from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.adk.tools import ToolContext
 from google.adk.tools.base_tool import BaseTool
+from opentelemetry import trace
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +39,12 @@ async def add_session_to_memory(callback_context: CallbackContext) -> None:
 
 
 class LoggingCallbacks:
-    """Provides comprehensive logging callbacks for ADK agent lifecycle events.
+    """Provides observability callbacks for ADK agent lifecycle events.
 
     This class groups all agent lifecycle callback methods together and supports
-    logger injection following the strategy pattern. All callbacks are
-    non-intrusive and return None.
+    logger injection following the strategy pattern. Covers both structured
+    logging and trace enrichment (e.g., token usage span attributes). All
+    callbacks are non-intrusive and return None.
 
     Attributes:
         logger: Logger instance for recording agent lifecycle events.
@@ -153,6 +155,28 @@ class LoggingCallbacks:
         if llm_content := llm_response.content:
             response_data = llm_content.model_dump(exclude_none=True, mode="json")
             self.logger.debug(f"LLM response: {response_data}")
+
+        if usage := llm_response.usage_metadata:
+            token_info: dict[str, int | None] = {
+                "prompt_tokens": usage.prompt_token_count,
+                "response_tokens": usage.candidates_token_count,
+                "total_tokens": usage.total_token_count,
+            }
+            if usage.cached_content_token_count:
+                token_info["cached_tokens"] = usage.cached_content_token_count
+            self.logger.info(f"Token usage: {token_info}")
+
+            span = trace.get_current_span()
+            if usage.cached_content_token_count is not None:
+                span.set_attribute(
+                    "gen_ai.usage.experimental.cached_tokens",
+                    usage.cached_content_token_count,
+                )
+            if usage.total_token_count is not None:
+                span.set_attribute(
+                    "gen_ai.usage.experimental.total_tokens",
+                    usage.total_token_count,
+                )
 
         return
 

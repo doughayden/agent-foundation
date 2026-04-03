@@ -212,6 +212,122 @@ class TestModelCallbacks:
             in caplog.text
         )
 
+    def test_after_model_logs_token_usage(
+        self,
+        mock_logging_callback_context,
+        mock_llm_response,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Verify after_model logs token usage at INFO when usage_metadata present."""
+        caplog.set_level(logging.INFO)
+        callbacks = LoggingCallbacks()
+
+        callbacks.after_model(mock_logging_callback_context, mock_llm_response)
+
+        assert "Token usage:" in caplog.text
+        assert "'prompt_tokens': 150" in caplog.text
+        assert "'response_tokens': 50" in caplog.text
+        assert "'total_tokens': 200" in caplog.text
+        assert "cached_tokens" not in caplog.text
+
+    def test_after_model_logs_cached_tokens_when_present(
+        self,
+        mock_logging_callback_context,
+        create_mock_llm_response,
+        create_mock_usage_metadata,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Verify after_model includes cached tokens when non-zero."""
+        caplog.set_level(logging.INFO)
+        callbacks = LoggingCallbacks()
+
+        usage = create_mock_usage_metadata(
+            prompt_token_count=200,
+            candidates_token_count=50,
+            total_token_count=250,
+            cached_content_token_count=100,
+        )
+        response = create_mock_llm_response(usage_metadata=usage)
+
+        callbacks.after_model(mock_logging_callback_context, response)
+
+        assert "'cached_tokens': 100" in caplog.text
+
+    def test_after_model_no_token_usage_without_metadata(
+        self,
+        mock_logging_callback_context,
+        create_mock_llm_response,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Verify after_model skips token logging when usage_metadata is None."""
+        caplog.set_level(logging.INFO)
+        callbacks = LoggingCallbacks()
+
+        response = create_mock_llm_response()
+
+        callbacks.after_model(mock_logging_callback_context, response)
+
+        assert "Token usage:" not in caplog.text
+
+    def test_after_model_sets_span_attributes(
+        self,
+        mock_logging_callback_context,
+        create_mock_llm_response,
+        create_mock_usage_metadata,
+        mocker: MockerFixture,
+    ) -> None:
+        """Verify after_model sets cached and total token span attributes."""
+        callbacks = LoggingCallbacks()
+
+        usage = create_mock_usage_metadata(
+            prompt_token_count=200,
+            candidates_token_count=50,
+            total_token_count=250,
+            cached_content_token_count=100,
+        )
+        response = create_mock_llm_response(usage_metadata=usage)
+
+        mock_span = mocker.Mock()
+        mocker.patch(
+            "agent_foundation.callbacks.trace.get_current_span",
+            return_value=mock_span,
+        )
+
+        callbacks.after_model(mock_logging_callback_context, response)
+
+        mock_span.set_attribute.assert_any_call(
+            "gen_ai.usage.experimental.cached_tokens", 100
+        )
+        mock_span.set_attribute.assert_any_call(
+            "gen_ai.usage.experimental.total_tokens", 250
+        )
+
+    def test_after_model_skips_span_attributes_when_none(
+        self,
+        mock_logging_callback_context,
+        create_mock_llm_response,
+        create_mock_usage_metadata,
+        mocker: MockerFixture,
+    ) -> None:
+        """Verify after_model skips span attributes when counts are None."""
+        callbacks = LoggingCallbacks()
+
+        usage = create_mock_usage_metadata(
+            prompt_token_count=150,
+            candidates_token_count=50,
+        )
+        response = create_mock_llm_response(usage_metadata=usage)
+
+        mock_span = mocker.Mock()
+        mocker.patch(
+            "agent_foundation.callbacks.trace.get_current_span",
+            return_value=mock_span,
+        )
+
+        callbacks.after_model(mock_logging_callback_context, response)
+
+        mock_span.set_attribute.assert_not_called()
+
     def test_after_model_without_llm_content(
         self,
         mock_logging_callback_context,
