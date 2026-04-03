@@ -1,13 +1,10 @@
 """Custom tools for the LLM agent."""
 
-import logging
 from datetime import UTC, datetime
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from google.adk.tools import ToolContext
-
-logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEZONE_NAME = "UTC"
 SUCCESS_STATUS = "success"
@@ -17,25 +14,22 @@ INVALID_TIMEZONE_CODE = "invalid_timezone"
 
 
 def get_current_time(
+    tool_context: ToolContext,
     timezone_name: str = DEFAULT_TIMEZONE_NAME,
-    tool_context: ToolContext | None = None,
 ) -> dict[str, Any]:
     """Return the current time for a requested timezone.
 
     Args:
         timezone_name: IANA timezone name such as ``UTC`` or
             ``America/New_York``.
-        tool_context: Optional ADK ToolContext with access to session state.
 
     Returns:
         A dictionary describing either the current time lookup result or the
         validation error for an unsupported timezone.
     """
+    # tool_context: ToolContext injected by ADK for session state access.
+    # Not included in the docstring to avoid confusing the LlmAgent.
     normalized_timezone_name = timezone_name.strip() or DEFAULT_TIMEZONE_NAME
-
-    if tool_context is not None:
-        session_state_keys = list(tool_context.state.to_dict().keys())
-        logger.info("Session state keys: %s", session_state_keys)
 
     try:
         timezone = ZoneInfo(normalized_timezone_name)
@@ -45,7 +39,6 @@ def get_current_time(
             "Use an IANA timezone name such as 'UTC' or "
             "'America/New_York'."
         )
-        logger.info(error_message)
         return {
             "status": ERROR_STATUS,
             "code": INVALID_TIMEZONE_CODE,
@@ -59,7 +52,6 @@ def get_current_time(
     utc_time = current_time.astimezone(UTC)
 
     message = f"Retrieved current time for {normalized_timezone_name}."
-    logger.info(message)
     return {
         "status": SUCCESS_STATUS,
         "code": SUCCESS_CODE,
