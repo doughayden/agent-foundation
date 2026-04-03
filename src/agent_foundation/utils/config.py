@@ -144,12 +144,13 @@ class ServerEnv(BaseModel):
     )
 
     allow_origins: str = Field(
-        default='["http://localhost", "http://localhost:8000"]',
+        default='["http://127.0.0.1:8000", "http://localhost:8000"]',
         alias="ALLOW_ORIGINS",
         description=(
             "JSON array string of allowed CORS origins. "
-            "Use 'localhost' for local dev (browsers send this as Origin header), "
-            "not '127.0.0.1' (which OAuth clients might only allow over HTTPS)"
+            "Include both because developers may access the server via localhost "
+            "or 127.0.0.1 (or because certain proxy setups use one or the other), "
+            "and ports must match exactly in ADK>=1.27.3"
         ),
     )
 

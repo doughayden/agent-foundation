@@ -22,7 +22,7 @@ See `.env.example` in the repository root for template configuration with inline
 | [TELEMETRY_NAMESPACE](#logging) | Optional | `local` | Trace grouping |
 | [SERVE_WEB_INTERFACE](#agent-features) | Optional | `FALSE` | Enable ADK web UI |
 | [RELOAD_AGENTS](#agent-features) | Optional | `FALSE` | Hot-reload on file changes |
-| [ALLOW_ORIGINS](#cors) | Optional | `["http://localhost", "http://localhost:8000"]` | CORS allowed origins |
+| [ALLOW_ORIGINS](#cors) | Optional | `["http://127.0.0.1:8000", "http://localhost:8000"]` | CORS allowed origins |
 | [AGENT_DIR](#advanced) | Optional | Auto-detected | Override agent directory |
 | [HOST](#advanced) | Optional | `127.0.0.1` | Server bind address |
 | [PORT](#advanced) | Optional | `8000` | Server listening port |
@@ -157,7 +157,7 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
 ### CORS
 
 **ALLOW_ORIGINS**
-- **Default:** `'["http://localhost", "http://localhost:8000"]'`
+- **Default:** `'["http://127.0.0.1:8000", "http://localhost:8000"]'`
 - **Format:** JSON array string
 - **Purpose:** Configure CORS allowed origins
 - **Where:** Hard-coded in Terraform for Cloud Run, configurable locally via `.env`

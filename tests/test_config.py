@@ -55,7 +55,7 @@ class TestServerEnv:
         assert env.session_service_uri is None
         assert env.memory_service_uri is None
         assert env.artifact_service_uri is None
-        assert env.allow_origins == '["http://localhost", "http://localhost:8000"]'
+        assert env.allow_origins == '["http://127.0.0.1:8000", "http://localhost:8000"]'
         assert env.host == "127.0.0.1"
         assert env.port == 8000
 

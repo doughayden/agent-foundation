@@ -11,6 +11,7 @@ Deep-dive technical documentation for optional follow-up.
 
 ## Operations
 
+- [ADK Origin Check Middleware](adk-origin-check-middleware.md) - Origin validation, CORS interaction, and ALLOW_ORIGINS configuration
 - [OpenTelemetry Architecture](opentelemetry-architecture.md) - ADK coexistence, instrumentation strategy, dependency management
 
 ## Development
