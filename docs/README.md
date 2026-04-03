@@ -47,6 +47,7 @@ Deep dives for optional follow-up:
 - [Protection Strategies](references/protection-strategies.md) - Branch, tag, environment protection
 - [Deployment Modes](references/deployment.md) - Multi-environment strategy and infrastructure
 - [CI/CD Workflows](references/cicd.md) - Workflow architecture and mechanics
+- [Cloud SQL Scaling and Reliability](references/cloud-sql.md) - Instance tiers, backups, HA, connection pooling, monitoring
 - [Testing Strategy](references/testing.md) - Detailed testing patterns and organization
 - [Code Quality](references/code-quality.md) - Tool usage and exclusion strategies
 - [Cloud Backend Options](references/cloud-backend-options.md) - Advanced options for uv run server with cloud backends
