@@ -192,12 +192,34 @@ class MockLlmRequest:
         self.contents = contents
 
 
+class MockUsageMetadata:
+    """Mock UsageMetadata for token usage tracking tests."""
+
+    def __init__(
+        self,
+        prompt_token_count: int | None = None,
+        candidates_token_count: int | None = None,
+        total_token_count: int | None = None,
+        cached_content_token_count: int | None = None,
+    ) -> None:
+        """Initialize mock usage metadata with optional token counts."""
+        self.prompt_token_count = prompt_token_count
+        self.candidates_token_count = candidates_token_count
+        self.total_token_count = total_token_count
+        self.cached_content_token_count = cached_content_token_count
+
+
 class MockLlmResponse:
     """Mock LlmResponse for model callbacks."""
 
-    def __init__(self, content: MockContent | None = None) -> None:
+    def __init__(
+        self,
+        content: MockContent | None = None,
+        usage_metadata: MockUsageMetadata | None = None,
+    ) -> None:
         """Initialize mock LLM response."""
         self.content = content
+        self.usage_metadata = usage_metadata
 
 
 class MockEventActions:
@@ -383,18 +405,36 @@ def create_mock_llm_request() -> Callable[..., MockLlmRequest]:
 
 @pytest.fixture
 def mock_llm_response() -> MockLlmResponse:
-    """Create a mock LLM response with content."""
+    """Create a mock LLM response with content and usage metadata."""
     return MockLlmResponse(
-        content=MockContent({"text": "The answer is 42", "confidence": 0.95})
+        content=MockContent({"text": "The answer is 42", "confidence": 0.95}),
+        usage_metadata=MockUsageMetadata(
+            prompt_token_count=150,
+            candidates_token_count=50,
+            total_token_count=200,
+        ),
     )
 
 
 @pytest.fixture
 def create_mock_llm_response() -> Callable[..., MockLlmResponse]:
-    """Factory for MockLlmResponse with custom content."""
+    """Factory for MockLlmResponse with custom content and usage metadata."""
 
-    def _factory(content: MockContent | None = None) -> MockLlmResponse:
-        return MockLlmResponse(content)
+    def _factory(
+        content: MockContent | None = None,
+        usage_metadata: MockUsageMetadata | None = None,
+    ) -> MockLlmResponse:
+        return MockLlmResponse(content=content, usage_metadata=usage_metadata)
+
+    return _factory
+
+
+@pytest.fixture
+def create_mock_usage_metadata() -> Callable[..., MockUsageMetadata]:
+    """Factory for MockUsageMetadata with custom token counts."""
+
+    def _factory(**kwargs: Any) -> MockUsageMetadata:
+        return MockUsageMetadata(**kwargs)
 
     return _factory
 
