@@ -30,8 +30,9 @@ Ports must always be included when the origin has a non-default port (anything o
 
 ## Why Both localhost and 127.0.0.1
 
-Browsers may resolve `localhost` to either `127.0.0.1` (IPv4) or `::1` (IPv6), and the `Origin` header reflects what the browser actually resolved. When accessing the agent via `http://localhost:8000`, some browsers send `Origin: http://localhost:8000` while others may send `Origin: http://127.0.0.1:8000`. Configure both to cover all cases.
+The `Origin` header is based on the URL the client uses, not on how `localhost` is resolved. So a browser visiting `http://localhost:8000` sends `Origin: http://localhost:8000`, while a browser visiting `http://127.0.0.1:8000` sends `Origin: http://127.0.0.1:8000`.
 
+Include both when clients may access the service using either hostname or IP literal. For example, developers, proxies, scripts, or documentation may use `localhost`, `127.0.0.1`, or even IPv6 `http://[::1]:8000`, and each is a different exact-match origin.
 The default `ALLOW_ORIGINS` value includes both:
 
 ```json
