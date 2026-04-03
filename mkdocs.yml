@@ -70,6 +70,9 @@ nav:
     - Protection Strategies: references/protection-strategies.md
     - Deployment Modes: references/deployment.md
     - CI/CD Workflows: references/cicd.md
+    - Cloud SQL Scaling: references/cloud-sql.md
+    - ADK Origin Check Middleware: references/adk-origin-check-middleware.md
+    - OpenTelemetry Architecture: references/opentelemetry-architecture.md
     - Testing Patterns: references/testing.md
     - Code Quality Tools: references/code-quality.md
     - Cloud Backend Options: references/cloud-backend-options.md
