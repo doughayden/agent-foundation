@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-04-03
+
+### Added
+- Security Posture reference doc — defense-in-depth rationale across 7 layers with GCP source links and CMEK consumer guidance (#136)
+- Cloud SQL automated backups (daily 03:00 UTC, 7-day retention, point-in-time recovery) (#136)
+- Cloud SQL maintenance window (Sunday 06:00 UTC, stable track, offset from backup window) (#136)
+- Cloud SQL deletion protection for stage/prod environments (#136)
+- COS automatic OS updates on bastion (`cos-update-strategy = "update_enabled"`) (#136)
+- "Try It Locally" section in README linking to Development Quick Start (#137)
+
+### Changed
+- Organize reference navigation into Infrastructure/Security/Operations/Development groupings (#136)
+- Rename mkdocs nav "Quick Start" to "First Deployment" (#136)
+- Update cloud-sql.md baseline to reflect new backup and maintenance defaults (#136)
+
+### Fixed
+- Add missing reference docs to mkdocs nav (#135)
+
 ## [0.11.0] - 2026-04-03
 
 ### Added
@@ -386,7 +404,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/doughayden/agent-foundation/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/doughayden/agent-foundation/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/doughayden/agent-foundation/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/doughayden/agent-foundation/compare/v0.9.4...v0.10.0

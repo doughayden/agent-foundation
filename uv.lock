@@ -3,7 +3,7 @@ revision = 3
 requires-python = "==3.13.*"
 
 [options]
-exclude-newer = "2026-03-29T04:58:32.1203Z"
+exclude-newer = "2026-03-29T17:07:40.576653Z"
 exclude-newer-span = "P5D"
 
 [manifest]
@@ -11,7 +11,7 @@ constraints = [{ name = "litellm", specifier = "<=1.82.6" }]
 
 [[package]]
 name = "agent-foundation"
-version = "0.11.0"
+version = "0.12.0"
 source = { editable = "." }
 dependencies = [
     { name = "google-adk" },
