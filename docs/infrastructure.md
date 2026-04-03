@@ -244,7 +244,7 @@ See [Deployment Modes: Terraform Structure](references/deployment.md#terraform-s
 
 ## Cloud SQL Scaling
 
-The template ships with `db-custom-1-3840` (1 vCPU, 3.75 GB RAM) — should handle ~100 concurrent database connections. Each Cloud Run instance maintains a connection pool (default 5 + 10 overflow = 15 max), so this supports ~6 concurrent instances comfortably.
+The template ships with `db-custom-1-3840` (1 vCPU, 3.84 GB RAM) — should handle ~100 concurrent database connections. Each Cloud Run instance maintains a connection pool (default 5 + 10 overflow = 15 max), so this supports ~6 concurrent instances comfortably.
 
 **Scaling path:**
 

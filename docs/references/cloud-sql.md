@@ -35,7 +35,7 @@ Cloud SQL uses custom machine types with the format `db-custom-{vCPUs}-{memoryMB
 > [!NOTE]
 > Costs are approximate for `us-central1` with Enterprise edition. Actual costs vary by region and sustained use discounts. Check [Cloud SQL pricing](https://cloud.google.com/sql/pricing) for current rates.
 
-**Connection limits** are approximate and depend on available memory. PostgreSQL reserves ~10 MB per connection, so the practical limit scales with RAM.
+**Connection limits** are approximate. Cloud SQL imposes its own per-tier limits below the theoretical maximum (RAM / ~10 MB per connection) due to reserved memory for system processes, shared buffers, and background workers.
 
 ### How to Change
 
@@ -49,7 +49,7 @@ settings {
 }
 ```
 
-**Recommendation:** Start by upgrading the instance tier before adding connection pooling or high availability. Tier upgrades are the simplest scaling lever and take effect after a brief restart.
+**Recommendation:** Start by upgrading the instance tier before adding connection pooling or high availability. Tier upgrades are the simplest scaling lever and typically complete in under 5 minutes (brief restart required).
 
 ## Automated Backups
 
@@ -139,7 +139,7 @@ Managed connection pooling has specific requirements:
 
 - **Cloud SQL Enterprise Plus edition** (not Enterprise) — higher base cost
 - **Cloud SQL Auth Proxy >= 2.15.2** — earlier versions do not support the pooling endpoint
-- **Compatible with IAM database auth** — the proxy routes pooled connections through port 3307 automatically when `--auto-iam-authn` is set
+- **Compatible with IAM database auth** — pooling is transparent to the application, which continues connecting to `localhost:5432` through the Auth Proxy
 
 ### How to Enable
 
@@ -165,7 +165,7 @@ settings {
 }
 ```
 
-3. **No application code changes needed.** The Auth Proxy detects the pooling endpoint and routes connections through port 3307 automatically. The application still connects to `localhost:5432`.
+3. **No application code changes needed.** Managed connection pooling is transparent to the application and proxy configuration. Continue connecting to `localhost:5432`.
 
 > [!IMPORTANT]
 > Enterprise Plus edition has a significantly higher base cost than Enterprise. Evaluate whether upgrading the instance tier (more connections per instance) is sufficient before switching editions. For many workloads, a `db-custom-4-15360` on Enterprise (~$200/month) handles more connections than a minimum Enterprise Plus instance.
