@@ -32,8 +32,8 @@ The project enforces security at every layer of the stack, from network topology
 
 **Direct VPC egress from Cloud Run.** Cloud Run uses `PRIVATE_RANGES_ONLY` egress to reach Cloud SQL through the VPC, avoiding a Serverless VPC Access connector (which adds cost and another component to secure).
 
-- Source: [`terraform/main/vpc.tf`](https://github.com/doughayden/agent-foundation/blob/main/terraform/main/vpc.tf) (VPC, firewall rules, Private Services Access)
-- Source: [`terraform/main/main.tf`](https://github.com/doughayden/agent-foundation/blob/main/terraform/main/main.tf) (Cloud Run VPC egress)
+- Source: `terraform/main/vpc.tf` (VPC, firewall rules, Private Services Access)
+- Source: `terraform/main/main.tf` (Cloud Run VPC egress)
 - GCP docs: [Private Services Access](https://cloud.google.com/sql/docs/postgres/configure-private-services-access), [IAP TCP forwarding](https://cloud.google.com/iap/docs/using-tcp-forwarding), [Direct VPC egress](https://cloud.google.com/run/docs/configuring/vpc-direct-vpc)
 - Guide: [Infrastructure](../infrastructure.md)
 
@@ -45,8 +45,8 @@ The project enforces security at every layer of the stack, from network topology
 
 **Cross-project promotion uses WIF principals, not service accounts.** Stage reads from dev's Artifact Registry, prod reads from stage's — but the IAM binding uses the WIF pool principal, not a service account. This avoids org policies that restrict cross-project service account usage and keeps the trust boundary at the identity pool level.
 
-- Source: [`terraform/bootstrap/module/gcp/main.tf`](https://github.com/doughayden/agent-foundation/blob/main/terraform/bootstrap/module/gcp/main.tf) (WIF pool, provider, attribute conditions)
-- Source: [`terraform/main/database.tf`](https://github.com/doughayden/agent-foundation/blob/main/terraform/main/database.tf) (IAM database user, password policy)
+- Source: `terraform/bootstrap/module/gcp/main.tf` (WIF pool, provider, attribute conditions)
+- Source: `terraform/main/database.tf` (IAM database user, password policy)
 - GCP docs: [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation), [IAM database authentication](https://cloud.google.com/sql/docs/postgres/iam-authentication)
 - Guide: [Infrastructure](../infrastructure.md), Reference: [Bootstrap](bootstrap.md)
 
@@ -58,7 +58,7 @@ The project enforces security at every layer of the stack, from network topology
 
 **Deletion protection and operational safety.** `deletion_protection = true` prevents accidental destruction of the database via Terraform or the console. Automated daily backups with point-in-time recovery provide a recovery path for data corruption or accidental deletes. The maintenance window is offset from the backup window to avoid contention — see [Cloud SQL Scaling and Reliability](cloud-sql.md) for scheduling details. SQL Studio (`data_api_access`) is enabled in dev for debugging and disabled in stage/prod.
 
-- Source: [`terraform/main/database.tf`](https://github.com/doughayden/agent-foundation/blob/main/terraform/main/database.tf) (connector enforcement, SSL mode, IAM auth flag, deletion protection, backups, maintenance)
+- Source: `terraform/main/database.tf` (connector enforcement, SSL mode, IAM auth flag, deletion protection, backups, maintenance)
 - GCP docs: [Enforce Cloud SQL Auth Proxy](https://cloud.google.com/sql/docs/postgres/configure-connectivity#enforce-cloud-sql-auth-proxy), [Configure SSL/TLS](https://cloud.google.com/sql/docs/postgres/configure-ssl-instance)
 - Reference: [Cloud SQL Scaling and Reliability](cloud-sql.md)
 
@@ -77,8 +77,8 @@ The bastion's sole purpose is running the Auth Proxy for developer access to Clo
 
 **Cloud Run Gen2 execution environment.** Gen2 uses a full Linux VM with hardware-level isolation (KVM), providing stronger syscall compatibility than Gen1's gVisor-based sandbox.
 
-- Source: [`terraform/main/bastion.tf`](https://github.com/doughayden/agent-foundation/blob/main/terraform/main/bastion.tf) (COS image, no public IP, metadata)
-- Source: [`terraform/main/templates/bastion-cloud-init.yaml`](https://github.com/doughayden/agent-foundation/blob/main/terraform/main/templates/bastion-cloud-init.yaml) (iptables, systemd proxy service)
+- Source: `terraform/main/bastion.tf` (COS image, no public IP, metadata)
+- Source: `terraform/main/templates/bastion-cloud-init.yaml` (iptables, systemd proxy service)
 - GCP docs: [COS features and benefits](https://cloud.google.com/container-optimized-os/docs/concepts/features-and-benefits), [COS security overview](https://cloud.google.com/container-optimized-os/docs/concepts/security) (verified boot, read-only rootfs, default-deny firewall), [COS automatic updates](https://cloud.google.com/container-optimized-os/docs/concepts/auto-update) (active-passive partition scheme), [COS host firewall](https://cloud.google.com/container-optimized-os/docs/how-to/firewall), [Cloud Run execution environments](https://cloud.google.com/run/docs/about-execution-environments)
 - Guide: [Infrastructure](../infrastructure.md)
 
@@ -92,14 +92,14 @@ The bastion's sole purpose is running the Auth Proxy for developer access to Clo
 
 **Immutable deployment by digest.** CI/CD deploys Cloud Run revisions by image digest, not tag. A tag can be repointed; a digest cannot. This guarantees the exact image that was built and tested is what runs in production.
 
-- Source: [`Dockerfile`](https://github.com/doughayden/agent-foundation/blob/main/Dockerfile) (multi-stage build, non-root user, pinned uv)
+- Source: `Dockerfile` (multi-stage build, non-root user, pinned uv)
 - Reference: [Dockerfile Strategy](dockerfile-strategy.md)
 
 ## Storage Layer
 
 **GCS public access prevention.** The artifact service bucket enforces `public_access_prevention = "enforced"` and `uniform_bucket_level_access = true`, preventing accidental public exposure through object-level ACLs. Versioning is enabled for recovery from accidental overwrites.
 
-- Source: [`terraform/main/main.tf`](https://github.com/doughayden/agent-foundation/blob/main/terraform/main/main.tf) (GCS bucket configuration)
+- Source: `terraform/main/main.tf` (GCS bucket configuration)
 - GCP docs: [Public access prevention](https://cloud.google.com/storage/docs/public-access-prevention), [Uniform bucket-level access](https://cloud.google.com/storage/docs/uniform-bucket-level-access)
 
 ## Application Layer
