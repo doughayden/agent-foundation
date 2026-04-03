@@ -1,10 +1,10 @@
 # ADK Origin Check Middleware
 
-How ADK 1.28.0's `_OriginCheckMiddleware` validates request origins and how to configure `ALLOW_ORIGINS`.
+How ADK's `_OriginCheckMiddleware` validates request origins and how to configure `ALLOW_ORIGINS`.
 
 ## What It Is
 
-ADK 1.28.0 introduced `_OriginCheckMiddleware`, an ASGI middleware that blocks cross-origin state-changing requests. It rejects `POST`, `PUT`, and `DELETE` requests unless the `Origin` header matches one of the configured allowed origins or the request's own host.
+ADK 1.27.3 introduced `_OriginCheckMiddleware` ([google/adk-python#4947](https://github.com/google/adk-python/issues/4947)), an ASGI middleware that blocks cross-origin state-changing requests. It rejects `POST`, `PUT`, and `DELETE` requests unless the `Origin` header matches one of the configured allowed origins or the request's own host.
 
 Safe methods (`GET`, `HEAD`, `OPTIONS`) always pass through regardless of origin.
 

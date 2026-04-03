@@ -149,7 +149,7 @@ class ServerEnv(BaseModel):
         description=(
             "JSON array string of allowed CORS origins. "
             "Both 127.0.0.1 and localhost are needed because browsers may resolve "
-            "either. Ports must be included for exact origin matching (ADK>=1.28.0)"
+            "either. Ports must be included for exact origin matching (ADK>=1.27.3)"
         ),
     )
 
