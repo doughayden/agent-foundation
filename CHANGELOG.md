@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-04-03
+
 ### Added
 - Cloud SQL Postgres with private IP and IAM database auth for session persistence via ADK `DatabaseSessionService`
 - VPC network with Private Services Access peering for Cloud SQL private IP connectivity
@@ -27,6 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Locked postgres built-in user with random 30-char password
 - IAP firewall rules (SSH + SQL proxy port) targeting bastion service account
 - Cloud NAT router for bastion outbound connectivity
+- Timezone-aware `get_current_time` tool replacing placeholder `example_tool` (#105)
+- Per-call LLM token usage tracking in `LoggingCallbacks` with structured logging and trace span attributes (#108)
+- OpenTelemetry Architecture reference doc — ADK coexistence, instrumentation strategy, dependency management
+- ADK Origin Check Middleware reference doc — origin validation, CORS interaction, ALLOW_ORIGINS configuration
+- Cloud SQL Scaling and Reliability reference doc — instance tiers, backups, HA, connection pooling, monitoring (#124)
+- uv dependency cooldown (5 days `exclude-newer`) and litellm supply chain constraint
 
 ### Changed
 - **BREAKING**: Replace Agent Engine session service with Cloud SQL Postgres (`SESSION_SERVICE_URI` now `postgresql+asyncpg://` instead of `agentengine://`)
@@ -44,6 +52,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enable `compute.googleapis.com`, `servicenetworking.googleapis.com`, `iap.googleapis.com` APIs in bootstrap
 - Unify two-tier dev workflow: `uv run server` (local SQLite) and `docker compose` (cloud resources)
 - Emphasize `TELEMETRY_NAMESPACE` for collaborative team trace filtering
+- Upgrade google-adk from 1.25.1 to 1.28.0 (#130)
+- Upgrade opentelemetry-instrumentation-google-genai from 0.4b0 to 0.7b0 (#130)
+- Unpin opentelemetry-exporter-otlp-proto-grpc (`==1.37.0` → `>=1.37.0,<2.0.0`) (#130)
+- Bump uv from 0.9.6 to 0.10.11 in Dockerfile (#122)
+- Upgrade GitHub Actions versions and fix TF summary injection (#121)
+- Update `ALLOW_ORIGINS` default to include both `127.0.0.1:8000` and `localhost:8000` with explicit ports (#131)
+
+### Fixed
+- Cloud Run sidecar startup probe timing: increase budget from ~20s to ~60s (#126)
+- Add `time_sleep` for Cloud SQL IAM user creation race condition on initial provisioning (#126)
+- Add explicit `edition = "ENTERPRISE"` to Cloud SQL to prevent provider default drift (#125)
+- `ALLOW_ORIGINS` missing `localhost:8000` — required by ADK >=1.27.3 `_OriginCheckMiddleware` exact string matching (#131)
 
 ### Removed
 - `ROOT_AGENT_MODEL` environment variable — model selection is now a module constant in `agent.py` (#114)
@@ -366,7 +386,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/doughayden/agent-foundation/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/doughayden/agent-foundation/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/doughayden/agent-foundation/compare/v0.9.4...v0.10.0
 [0.9.4]: https://github.com/doughayden/agent-foundation/compare/v0.9.3...v0.9.4
