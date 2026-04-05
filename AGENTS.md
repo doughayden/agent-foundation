@@ -88,7 +88,8 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 
 **pytest_configure()** - Only place using unittest.mock (runs before pytest-mock available):
 - Mock `dotenv.load_dotenv`, `google.auth.default`, `google.auth._default.default`
-- Direct env assignment (`os.environ["KEY"] = "value"`, never `setdefault()`)
+- No env var assignments needed (PEP 562 lazy loading, Pydantic validates only when called)
+- If future imports trigger env var reads at collection time, use direct `os.environ["KEY"] = "value"` (never `setdefault()`)
 - Comprehensive docstring explaining pytest lifecycle (see tests/conftest.py)
 
 **Fixtures:**

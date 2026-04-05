@@ -63,19 +63,16 @@ def mock_session(mocker: MockerFixture) -> MockType:
 
 ### Environment Mocking
 
-**Base test environment:** Set in `pytest_configure()` using direct `os.environ` assignments (see pytest_configure section below).
-
-**One-off overrides in specific tests:** Use `mocker.patch.dict` when you need to override or add environment variables for a single test:
+**No base env vars in `pytest_configure()`:** No module in the test import graph reads env vars at module level. `server.py` does (`initialize_environment` at line 26), but it's never imported during collection (PEP 562 lazy loading, coverage-excluded). Environment variables are set in test fixtures using `mocker.patch.dict`:
 
 ```python
 def test_config_with_custom_region(mocker: MockerFixture) -> None:
     """Test configuration with non-default region."""
-    # Override just the region for this test
     mocker.patch.dict(os.environ, {"GOOGLE_CLOUD_LOCATION": "us-west1"})
     # Test config loading with custom region
 ```
 
-This approach keeps base env vars in `pytest_configure()` and only uses mocking for test-specific overrides.
+If a future import chain triggers env var reads at collection time, add direct `os.environ` assignments in `pytest_configure()` (see section below).
 
 ## ADK Mock Strategy
 
@@ -105,21 +102,28 @@ ADK mocks must exactly mirror real ADK interfaces:
 Use `unittest.mock` here for setup that must happen before tests load:
 
 ```python
-import os
-from unittest.mock import MagicMock, patch
-
 def pytest_configure() -> None:
     """Configure test environment before test collection."""
-    # Mock google.auth before modules import it
-    with patch("google.auth.default", return_value=(MagicMock(), "project")):
-        pass
+    from unittest.mock import Mock, patch
 
-    # Set environment directly (not setdefault)
-    os.environ["GOOGLE_CLOUD_PROJECT"] = "test-project"
-    os.environ["AGENT_NAME"] = "test-agent"
+    # Patch load_dotenv to prevent loading real .env
+    patch("dotenv.load_dotenv").start()
+
+    # Patch google.auth.default to prevent ADC lookup
+    mock_creds = Mock(token="fake", valid=True, expired=False)
+    patch("google.auth.default", return_value=(mock_creds, "test-project")).start()
+    patch("google.auth._default.default", return_value=(mock_creds, "test-project")).start()
+
+    # Environment variables: No module in the test import graph reads env vars at
+    # module level. server.py does (initialize_environment(ServerEnv)), but it's
+    # never imported during collection (PEP 562 lazy loading, coverage-excluded).
+    # If a future import chain triggers env var reads at collection time, set
+    # defaults here using direct assignment:
+    # import os
+    # os.environ["KEY"] = "value"
 ```
 
-See `tests/conftest.py` for complete example with detailed comments.
+See `tests/conftest.py` for the complete implementation with detailed lifecycle comments.
 
 ## Pydantic Validation Testing
 
