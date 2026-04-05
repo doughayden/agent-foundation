@@ -8,7 +8,7 @@ authors = [
 ]
 requires-python = ">=3.13,<3.14"
 dependencies = [
-    # Pin ADK to test releases before locking upgrades
+    # Pin ADK to test releases before locking upgrades (extensions extra required for LiteLlm/MaaS)
     "google-adk[extensions]==1.28.0",
     "google-auth>=2.40.3,<3.0.0",
     "google-cloud-logging>=3.12.1,<4.0.0",
@@ -47,8 +47,9 @@ build-backend = "uv_build"
 [tool.uv]
 # https://docs.astral.sh/uv/concepts/resolution/#dependency-cooldowns
 exclude-newer = "5 days"
-# Preventive constraint: if litellm ever enters the dependency tree (e.g., via ADK),
-# ensure we don't get compromised versions until BerriAI publishes a verified safe release
+# Preventive constraint: litellm v1.82.7-1.82.8 were compromised (supply chain attack,
+# credential exfiltration). Do not bump until BerriAI/litellm#24518 is closed with a
+# verified safe release. Required since google-adk[extensions]>=1.28.0 pulls litellm.
 # https://github.com/BerriAI/litellm/issues/24518
 # https://docs.astral.sh/uv/reference/settings/#constraint-dependencies
 constraint-dependencies = ["litellm<=1.82.6"]

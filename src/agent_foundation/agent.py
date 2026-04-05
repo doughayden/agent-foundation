@@ -20,7 +20,7 @@ ROOT_AGENT_NAME = "agent_foundation"
 # Model for LlmAgent. ADK accepts a string or a LiteLlm wrapper:
 #   Gemini (string):       "gemini-2.5-flash"
 #   Model Garden endpoint: "projects/P/locations/L/endpoints/ENDPOINT_ID"
-#   Vertex AI MaaS:        uncomment below and replace ROOT_AGENT_MODEL
+#   Vertex AI MaaS:        uncomment the next two lines and edit model name
 # from google.adk.models.lite_llm import LiteLlm
 ROOT_AGENT_MODEL = "gemini-2.5-flash"
 # ROOT_AGENT_MODEL = LiteLlm(model="vertex_ai/ORG/MODEL_NAME-maas")
