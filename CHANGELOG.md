@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-04-05
+
+### Changed
+- Remove unnecessary env var assignments from `pytest_configure()` — no module in the test import graph reads env vars at collection time (#141)
+- Update testing guide and AGENTS.md to document when `pytest_configure()` env vars are needed (#141)
+
 ## [0.12.1] - 2026-04-04
 
 ### Added
@@ -418,7 +424,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.12.2...HEAD
+[0.12.2]: https://github.com/doughayden/agent-foundation/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/doughayden/agent-foundation/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/doughayden/agent-foundation/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/doughayden/agent-foundation/compare/v0.10.1...v0.11.0
