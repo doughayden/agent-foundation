@@ -211,7 +211,7 @@ When applying: make targeted edits preserving downstream-specific code (addition
 3. **After conftest sync, identify test modules eligible for bulk sync.** These are test files for foundation components unlikely to change downstream:
    ```bash
    # List foundation test files
-   git show foundation-tags/$VERSION:tests/ | grep "^test_"
+   git ls-tree --name-only foundation-tags/$VERSION:tests/ | grep "^test_"
 
    # For each, check if the downstream equivalent only differs by import path
    diff <(sed "s/agent_foundation/$DOWNSTREAM_PKG/g" <(git show foundation-tags/$VERSION:tests/<test_file>)) tests/<test_file>
