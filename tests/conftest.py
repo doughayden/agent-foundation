@@ -57,9 +57,11 @@ def pytest_configure(config: pytest.Config) -> None:
     auth_private_patcher.start()
 
     # Environment variables: No module-level code reads env vars during collection
-    # (PEP 562 lazy loading in __init__.py, Pydantic validates only when called).
+    # (PEP 562 lazy loading in __init__.py, Pydantic validates only when called)
     # If a future import chain triggers env var reads at collection time, set
-    # defaults here using direct assignment: os.environ["KEY"] = "value"
+    # defaults here using direct assignment:
+    # import os
+    # os.environ["KEY"] = "value"
 
 
 # ADK Callback Mock Objects for testing callbacks

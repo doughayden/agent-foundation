@@ -114,10 +114,10 @@ def pytest_configure() -> None:
     patch("google.auth.default", return_value=(mock_creds, "test-project")).start()
     patch("google.auth._default.default", return_value=(mock_creds, "test-project")).start()
 
-    # Environment variables: No module-level code reads env vars during
-    # collection (PEP 562 lazy loading, Pydantic validates only when called).
-    # If a future import chain triggers env var reads at collection time,
-    # set defaults here using direct assignment:
+    # Environment variables: No module-level code reads env vars during collection
+    # (PEP 562 lazy loading in __init__.py, Pydantic validates only when called)
+    # If a future import chain triggers env var reads at collection time, set
+    # defaults here using direct assignment:
     # import os
     # os.environ["KEY"] = "value"
 ```
