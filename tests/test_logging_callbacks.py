@@ -85,7 +85,7 @@ class TestAgentCallbacks:
         )
 
         # Verify DEBUG level logging
-        assert "State keys:" in caplog.text
+        assert "Active state keys:" in caplog.text
         assert "User Content: {'text': 'Hello, agent!'}" in caplog.text
 
     def test_before_agent_without_user_content(
@@ -123,7 +123,7 @@ class TestAgentCallbacks:
         )
 
         # Verify DEBUG level logging
-        assert "State keys:" in caplog.text
+        assert "Active state keys:" in caplog.text
         assert "User Content: {'text': 'Hello, agent!'}" in caplog.text
 
     def test_after_agent_without_user_content(
@@ -500,7 +500,7 @@ class TestEdgeCases:
         # Test before_agent with empty state
         result = callbacks.before_agent(context)
         assert result is None
-        assert "State keys: dict_keys([])" in caplog.text
+        assert "Active state keys: []" in caplog.text
 
     def test_callbacks_with_complex_nested_state(
         self,
@@ -536,7 +536,30 @@ class TestEdgeCases:
         result = callbacks.before_agent(context)
         assert result is None
         # Now we only log state keys, not the actual values
-        assert "State keys: dict_keys(['user', 'session'])" in caplog.text
+        assert "Active state keys: ['user', 'session']" in caplog.text
+
+    def test_callbacks_omit_falsy_state_keys(
+        self,
+        create_mock_logging_context,
+        create_mock_state,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Verify callbacks omit state keys with None/falsy values."""
+        caplog.set_level(logging.DEBUG)
+        callbacks = LoggingCallbacks()
+
+        state = create_mock_state(
+            {
+                "user:timezone": "America/New_York",
+                "user:sf_email": None,
+                "user:sf_resource_id": "",
+                "user:space_name": "spaces/AAAA",
+            }
+        )
+        context = create_mock_logging_context(state=state)
+
+        callbacks.before_agent(context)
+        assert "Active state keys: ['user:timezone', 'user:space_name']" in caplog.text
 
     def test_logging_levels(
         self, create_mock_logging_context, caplog: pytest.LogCaptureFixture
@@ -567,7 +590,7 @@ class TestEdgeCases:
 
         assert len(info_records) == 1
         assert len(debug_records) >= 1  # At least state should be logged
-        assert any("State keys:" in r.message for r in debug_records)
+        assert any("Active state keys:" in r.message for r in debug_records)
 
     def test_model_dump_serialization(
         self,
