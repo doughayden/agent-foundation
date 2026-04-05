@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-04-04
+
+### Added
+- `/sync-foundation` skill for interactive template sync workflow with 9-phase review order, IDE-agnostic diffs, per-file HITL checkpoints, and conftest fixture reuse strategy (#139)
+- `_log_state_debug` private method in `LoggingCallbacks` for active/all state key logging at DEBUG level (#139)
+- `test_callbacks_omit_falsy_state_keys` test for state key filtering behavior (#139)
+
+### Changed
+- Split docker-compose restart policies: app `no` (clean crash output), IAP tunnel `unless-stopped` (auto-reconnect) (#139)
+- Remove trailing punctuation from docstring list items in config module (#139)
+
+### Fixed
+- Update test assertions from stale `State keys: dict_keys([...])` to `Active state keys: [...]` format (#139)
+
 ## [0.12.0] - 2026-04-03
 
 ### Added
@@ -404,7 +418,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/doughayden/agent-foundation/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/doughayden/agent-foundation/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/doughayden/agent-foundation/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/doughayden/agent-foundation/compare/v0.10.0...v0.10.1
