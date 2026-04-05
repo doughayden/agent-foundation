@@ -31,17 +31,16 @@ def initialize_environment[T: BaseModel](
     configuration.
 
     Args:
-        model_class: Pydantic model class to validate environment with.
-        override_dotenv: Whether to override existing environment variables.
-            Defaults to True for consistency and predictability.
-        print_config: Whether to call print_config() method if it exists.
-            Defaults to True.
+        model_class: Pydantic model class to validate environment with
+        override_dotenv: Whether to override existing environment variables
+            (default True)
+        print_config: Whether to call print_config() method if it exists (default True)
 
     Returns:
-        Validated environment configuration instance.
+        Validated environment configuration instance
 
     Raises:
-        SystemExit: If validation fails.
+        SystemExit: If validation fails
 
     Examples:
         >>> # Simple case (most common)
@@ -74,19 +73,19 @@ class ServerEnv(BaseModel):
     with sensible defaults for local development.
 
     Attributes:
-        google_cloud_project: GCP project ID for authentication and observability.
-        google_cloud_location: Vertex AI region (e.g., us-central1).
-        agent_name: Unique agent identifier for resources and logs.
-        log_level: Logging verbosity level.
-        serve_web_interface: Whether to serve the ADK web interface.
-        reload_agents: Whether to reload agents on file changes (local dev only).
-        session_service_uri: Session service URI (e.g., postgresql+asyncpg://user@host:5432/db).
-        memory_service_uri: Memory service URI (e.g., agentengine://...).
-        artifact_service_uri: GCS bucket URI for artifact storage.
-        allow_origins: JSON array string of allowed CORS origins.
-        host: Server host (127.0.0.1 for local, 0.0.0.0 for containers).
-        port: Server port.
-        otel_capture_content: OpenTelemetry message content capture setting.
+        google_cloud_project: GCP project ID for authentication and observability
+        google_cloud_location: Vertex AI region (e.g., us-central1)
+        agent_name: Unique agent identifier for resources and logs
+        log_level: Logging verbosity level
+        serve_web_interface: Whether to serve the ADK web interface
+        reload_agents: Whether to reload agents on file changes (local dev only)
+        session_service_uri: Session service URI (e.g., postgresql+asyncpg://user@host:5432/db)
+        memory_service_uri: Memory service URI (e.g., agentengine://...)
+        artifact_service_uri: GCS bucket URI for artifact storage
+        allow_origins: JSON array string of allowed CORS origins
+        host: Server host (127.0.0.1 for local, 0.0.0.0 for containers)
+        port: Server port
+        otel_capture_content: OpenTelemetry message content capture setting
     """
 
     google_cloud_project: str = Field(
@@ -231,7 +230,7 @@ class ServerEnv(BaseModel):
         """Parse allow_origins JSON string to list.
 
         Returns:
-            List of allowed origin strings.
+            List of allowed origin strings
         """
         result = json.loads(self.allow_origins)
         # Should never fail due to field_validator, but satisfies type checker

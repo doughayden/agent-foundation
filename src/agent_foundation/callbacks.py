@@ -9,6 +9,7 @@ import logging
 from typing import Any
 
 from google.adk.agents.callback_context import CallbackContext
+from google.adk.agents.context import Context
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.adk.tools import ToolContext
@@ -47,7 +48,7 @@ class LoggingCallbacks:
     callbacks are non-intrusive and return None.
 
     Attributes:
-        logger: Logger instance for recording agent lifecycle events.
+        logger: Logger instance for recording agent lifecycle events
     """
 
     def __init__(self, logger: logging.Logger | None = None) -> None:
@@ -55,24 +56,36 @@ class LoggingCallbacks:
 
         Args:
             logger: Optional logger instance. If not provided, creates one
-                   using the module name.
+                   using the module name
         """
         if logger is None:
             logger = logging.getLogger(self.__class__.__module__)
         self.logger = logger
+
+    def _log_state_debug(self, ctx: Context) -> None:
+        """Helper to log state keys during callbacks
+
+        Args:
+            ctx: The context containing the state to log
+        """
+        state = ctx.state.to_dict()
+        active_keys = [k for k, v in state.items() if v]
+        self.logger.debug(f"Active state keys: {active_keys}")
+        self.logger.debug(f"All state keys: {list(state.keys())}")
+        return
 
     def before_agent(self, callback_context: CallbackContext) -> None:
         """Callback executed before agent processing begins.
 
         Args:
             callback_context (CallbackContext): Context containing agent name,
-                invocation ID, state, and user content.
+                invocation ID, state, and user content
         """
         self.logger.info(
             f"*** Starting agent '{callback_context.agent_name}' "
             f"with invocation_id '{callback_context.invocation_id}' ***"
         )
-        self.logger.debug(f"State keys: {callback_context.state.to_dict().keys()}")
+        self._log_state_debug(callback_context)
 
         if user_content := callback_context.user_content:
             content_data = user_content.model_dump(exclude_none=True, mode="json")
@@ -85,13 +98,13 @@ class LoggingCallbacks:
 
         Args:
             callback_context (CallbackContext): Context containing agent name,
-                invocation ID, state, and user content.
+                invocation ID, state, and user content
         """
         self.logger.info(
             f"*** Leaving agent '{callback_context.agent_name}' "
             f"with invocation_id '{callback_context.invocation_id}' ***"
         )
-        self.logger.debug(f"State keys: {callback_context.state.to_dict().keys()}")
+        self._log_state_debug(callback_context)
 
         if user_content := callback_context.user_content:
             content_data = user_content.model_dump(exclude_none=True, mode="json")
@@ -108,15 +121,15 @@ class LoggingCallbacks:
 
         Args:
             callback_context (CallbackContext): Context containing agent name,
-                invocation ID, state, and user content.
+                invocation ID, state, and user content
             llm_request (LlmRequest): The request being sent to the LLM model
-                containing message contents.
+                containing message contents
         """
         self.logger.info(
             f"*** Before LLM call for agent '{callback_context.agent_name}' "
             f"with invocation_id '{callback_context.invocation_id}' ***"
         )
-        self.logger.debug(f"State keys: {callback_context.state.to_dict().keys()}")
+        self._log_state_debug(callback_context)
 
         if user_content := callback_context.user_content:
             content_data = user_content.model_dump(exclude_none=True, mode="json")
@@ -139,14 +152,14 @@ class LoggingCallbacks:
 
         Args:
             callback_context (CallbackContext): Context containing agent name,
-                invocation ID, state, and user content.
-            llm_response (LlmResponse): The response received from the LLM model.
+                invocation ID, state, and user content
+            llm_response (LlmResponse): The response received from the LLM model
         """
         self.logger.info(
             f"*** After LLM call for agent '{callback_context.agent_name}' "
             f"with invocation_id '{callback_context.invocation_id}' ***"
         )
-        self.logger.debug(f"State keys: {callback_context.state.to_dict().keys()}")
+        self._log_state_debug(callback_context)
 
         if user_content := callback_context.user_content:
             content_data = user_content.model_dump(exclude_none=True, mode="json")
@@ -193,17 +206,17 @@ class LoggingCallbacks:
         """Callback executed before tool invocation.
 
         Args:
-            tool (BaseTool): The tool being invoked.
-            args (dict[str, Any]): Arguments being passed to the tool.
+            tool (BaseTool): The tool being invoked
+            args (dict[str, Any]): Arguments being passed to the tool
             tool_context (ToolContext): Context containing agent name, invocation ID,
-                state, user content, and event actions.
+                state, user content, and event actions
         """
         self.logger.info(
             f"*** Before invoking tool '{tool.name}' in agent "
             f"'{tool_context.agent_name}' with invocation_id "
             f"'{tool_context.invocation_id}' ***"
         )
-        self.logger.debug(f"State keys: {tool_context.state.to_dict().keys()}")
+        self._log_state_debug(tool_context)
 
         if content := tool_context.user_content:
             self.logger.debug(
@@ -226,18 +239,18 @@ class LoggingCallbacks:
         """Callback executed after tool invocation completes.
 
         Args:
-            tool (BaseTool): The tool that was invoked.
-            args (dict[str, Any]): Arguments that were passed to the tool.
+            tool (BaseTool): The tool that was invoked
+            args (dict[str, Any]): Arguments that were passed to the tool
             tool_context (ToolContext): Context containing agent name, invocation ID,
-                state, user content, and event actions.
-            tool_response (dict[str, Any]): The response returned by the tool.
+                state, user content, and event actions
+            tool_response (dict[str, Any]): The response returned by the tool
         """
         self.logger.info(
             f"*** After invoking tool '{tool.name}' in agent "
             f"'{tool_context.agent_name}' with invocation_id "
             f"'{tool_context.invocation_id}' ***"
         )
-        self.logger.debug(f"State keys: {tool_context.state.to_dict().keys()}")
+        self._log_state_debug(tool_context)
 
         if content := tool_context.user_content:
             self.logger.debug(

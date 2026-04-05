@@ -104,6 +104,10 @@ App container (localhost:5432) ──► IAP tunnel container ──► IAP ─�
 
 The bastion Auth Proxy binds to `0.0.0.0` (not loopback) to accept IAP tunnel connections arriving from outside the loopback interface. It also uses `--impersonate-service-account=<app-sa-email>` to authenticate to Cloud SQL as the app SA, since the bastion runs under its own dedicated SA. These flags are bastion-specific — the Cloud Run sidecar uses the defaults (loopback binding, runs as app SA directly).
 
+**Restart policies** differ by role:
+- **App container (`restart: no`):** Crash once, stay down. Keeps stack trace output clean for debugging — no restart noise to scroll past.
+- **IAP tunnel (`restart: unless-stopped`):** Auto-reconnect on network drops (laptop sleep, transient IAP failures). Infrastructure plumbing you don't want to babysit.
+
 **IAP tunnel container** (`gcr.io/google.com/cloudsdktool/google-cloud-cli:stable`):
 - Uses `network_mode: "service:app"` to share the app container's network namespace — the tunnel binds to `0.0.0.0:5432` which appears as `localhost:5432` from the app's perspective
 - Runs `gcloud compute start-iap-tunnel` targeting the bastion host on port 5432

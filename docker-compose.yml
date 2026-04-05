@@ -33,7 +33,8 @@ services:
           path: ./pyproject.toml
         - action: rebuild
           path: ./uv.lock
-    restart: unless-stopped
+    # Crash once, stay down — clean stack trace output for debugging
+    restart: no
 
   # IAP tunnel to bastion — shares app's localhost via network_mode
   iap-tunnel:
@@ -61,4 +62,5 @@ services:
       - ${HOME}/.config/gcloud:/gcloud-config
     environment:
       CLOUDSDK_CONFIG: "/gcloud-config"
+    # Use unless-stopped for auto-reconnect on network drops
     restart: unless-stopped

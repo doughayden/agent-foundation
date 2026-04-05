@@ -106,7 +106,7 @@ def setup_opentelemetry(
     # Configure resource via env vars if not already set
     # (local dev calls configure_otel_resource() before ADK, deployment calls it here)
     if resource := os.getenv("OTEL_RESOURCE_ATTRIBUTES"):
-        print("🔭 OpenTelemetry Resource configured in environment:\n")
+        print("\n🔭 OpenTelemetry Resource configured in environment:\n")
         print("\n".join(resource.split(",")), end="\n\n\n")
     else:
         configure_otel_resource(agent_name, project_id)
