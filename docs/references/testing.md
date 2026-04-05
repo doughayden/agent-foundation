@@ -63,7 +63,7 @@ def mock_session(mocker: MockerFixture) -> MockType:
 
 ### Environment Mocking
 
-**No base env vars in `pytest_configure()`:** PEP 562 lazy loading in `__init__.py` and deferred Pydantic validation mean no module-level code reads env vars during test collection. Environment variables are set in test fixtures using `mocker.patch.dict`:
+**No base env vars in `pytest_configure()`:** No module in the test import graph reads env vars at module level. `server.py` does (`initialize_environment` at line 26), but it's never imported during collection (PEP 562 lazy loading, coverage-excluded). Environment variables are set in test fixtures using `mocker.patch.dict`:
 
 ```python
 def test_config_with_custom_region(mocker: MockerFixture) -> None:
@@ -114,8 +114,9 @@ def pytest_configure() -> None:
     patch("google.auth.default", return_value=(mock_creds, "test-project")).start()
     patch("google.auth._default.default", return_value=(mock_creds, "test-project")).start()
 
-    # Environment variables: No module-level code reads env vars during collection
-    # (PEP 562 lazy loading in __init__.py, Pydantic validates only when called)
+    # Environment variables: No module in the test import graph reads env vars at
+    # module level. server.py does (initialize_environment at line 26), but it's
+    # never imported during collection (PEP 562 lazy loading, coverage-excluded).
     # If a future import chain triggers env var reads at collection time, set
     # defaults here using direct assignment:
     # import os
