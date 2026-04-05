@@ -56,14 +56,10 @@ def pytest_configure(config: pytest.Config) -> None:
     )
     auth_private_patcher.start()
 
-    # Set test environment variables before any imports occur
-    # Use direct assignment (not setdefault) since we're preventing .env loading
-    import os
-
-    os.environ["GOOGLE_CLOUD_PROJECT"] = "test-project"
-    os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
-    os.environ["AGENT_NAME"] = "test-agent"
-    os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = "true"
+    # Environment variables: No module-level code reads env vars during collection
+    # (PEP 562 lazy loading in __init__.py, Pydantic validates only when called).
+    # If a future import chain triggers env var reads at collection time, set
+    # defaults here using direct assignment: os.environ["KEY"] = "value"
 
 
 # ADK Callback Mock Objects for testing callbacks
