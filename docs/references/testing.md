@@ -115,7 +115,7 @@ def pytest_configure() -> None:
     patch("google.auth._default.default", return_value=(mock_creds, "test-project")).start()
 
     # Environment variables: No module in the test import graph reads env vars at
-    # module level. server.py does (initialize_environment at line 26), but it's
+    # module level. server.py does (initialize_environment(ServerEnv)), but it's
     # never imported during collection (PEP 562 lazy loading, coverage-excluded).
     # If a future import chain triggers env var reads at collection time, set
     # defaults here using direct assignment:
