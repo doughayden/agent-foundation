@@ -50,7 +50,7 @@ output "session_service_uri" {
 
 output "memory_service_uri" {
   description = "Memory service URI for ADK get_fast_api_app() factory"
-  value       = local.run_app_env.MEMORY_SERVICE_URI
+  value       = try(local.run_app_env.MEMORY_SERVICE_URI, "NOT CONFIGURED")
 }
 
 output "artifact_service_uri" {

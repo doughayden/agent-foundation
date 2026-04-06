@@ -6,3 +6,5 @@ provider "google" {
 }
 
 provider "random" {}
+
+provider "time" {}
