@@ -248,22 +248,22 @@ See [Deployment Modes: Terraform Structure](references/deployment.md#terraform-s
 
 ```bash
 cd terraform/main
-terraform init -upgrade
+terraform init -upgrade -backend=false
 terraform providers lock -platform=darwin_arm64 -platform=linux_amd64
 ```
 
-**Bootstrap modules** (`terraform/bootstrap/`) only run locally, so a single-platform `terraform init -upgrade` is sufficient:
+**Bootstrap modules** (`terraform/bootstrap/`) only run locally, so a single-platform init is sufficient:
 
 ```bash
 cd terraform/bootstrap/dev
-terraform init -upgrade
+terraform init -upgrade -backend=false
 # Copy updated lockfile to stage and prod (same providers, same versions)
 cp .terraform.lock.hcl ../stage/.terraform.lock.hcl
 cp .terraform.lock.hcl ../prod/.terraform.lock.hcl
 ```
 
 > [!NOTE]
-> `terraform/bootstrap/pre/` uses different providers (random instead of github) — upgrade it separately with `terraform init -upgrade`.
+> `terraform/bootstrap/pre/` uses different providers (random instead of github) — upgrade it separately with `terraform init -upgrade -backend=false`.
 
 ## Cloud SQL Scaling
 
