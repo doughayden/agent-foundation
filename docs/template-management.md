@@ -55,10 +55,11 @@ git fetch foundation 'refs/tags/*:refs/foundation-tags/*' --no-tags
 git for-each-ref refs/foundation-tags --format='%(refname:short)' --sort=-version:refname | head -10  # Semantic version sort (latest first)
 ```
 
-Choose version and set variable
+Choose version and set variables
 ```bash
-# Set version for copy-paste workflow (e.g., v0.9.1)
+# Set variables for copy-paste workflow
 VERSION=v0.9.1
+DOWNSTREAM_PKG=your_agent  # Your package name under src/
 
 # Review what changed
 git show foundation-tags/$VERSION:CHANGELOG.md
@@ -118,7 +119,7 @@ git diff foundation-tags/$VERSION -- tests/conftest.py
 **Phase 2 — Code + tests (per module):**
 ```bash
 # Cross-package diff for src/ files: foundation ref path vs your working tree path
-git diff foundation-tags/$VERSION:src/agent_foundation/utils/config.py -- src/your_agent/utils/config.py
+git diff foundation-tags/$VERSION:src/agent_foundation/utils/config.py -- src/$DOWNSTREAM_PKG/utils/config.py
 # Plain git diff for tests/ paths
 git diff foundation-tags/$VERSION -- tests/test_config.py
 # Adapt both, preserving downstream-specific code. Repeat for each module.
@@ -126,7 +127,8 @@ git diff foundation-tags/$VERSION -- tests/test_config.py
 
 **Phase 3 — Bulk test sync:**
 ```bash
-# Check if test module only differs by package name
+# Check if test module only differs by package name.
+# Inner substitution: extract file from ref, replace package name, then diff against local.
 diff <(sed "s/agent_foundation/$DOWNSTREAM_PKG/g" <(git show foundation-tags/$VERSION:tests/<file>)) tests/<file>
 # If minimal diff: checkout + sed replace. Verify no agent_foundation references remain.
 ```
@@ -169,7 +171,7 @@ git restore --staged docs/
 
 ## Common Patterns
 
-Detailed examples for the Standard Workflow [Sync](#sync) and [Review](#review) phases.
+Detailed git recipes for the [Sync](#sync) phases.
 
 ### Pull Entire Directory
 

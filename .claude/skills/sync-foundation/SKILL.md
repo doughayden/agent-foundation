@@ -224,7 +224,8 @@ When adapting: make targeted edits preserving downstream-specific code (addition
 # List foundation test files
 git ls-tree --name-only foundation-tags/$VERSION:tests/ | grep "^test_"
 
-# For each, check if the downstream equivalent only differs by import path
+# For each, check if the downstream equivalent only differs by import path.
+# Inner substitution: extract file from ref, replace package name, then diff against local.
 diff <(sed "s/agent_foundation/$DOWNSTREAM_PKG/g" <(git show foundation-tags/$VERSION:tests/<test_file>)) tests/<test_file>
 ```
 
