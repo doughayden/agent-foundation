@@ -147,6 +147,28 @@ See [Docker Compose Workflow](references/docker-compose-workflow.md) and [Docker
 
 ## Common Tasks
 
+### Model Selection
+
+The agent model is configured via `ROOT_AGENT_MODEL` in `src/agent_foundation/agent.py`. ADK accepts three model types:
+
+| Type | Example |
+|---|---|
+| Gemini (string) | `"gemini-2.5-flash"` |
+| Model Garden endpoint | `"projects/P/locations/L/endpoints/ENDPOINT_ID"` |
+| Vertex AI MaaS (LiteLlm) | `LiteLlm(model="vertex_ai/ORG/MODEL_NAME-maas")` |
+
+**To use Vertex AI MaaS open models**, replace `ROOT_AGENT_MODEL` in `agent.py` with:
+
+```python
+from google.adk.models.lite_llm import LiteLlm
+ROOT_AGENT_MODEL = LiteLlm(model="vertex_ai/ORG/MODEL_NAME-maas")
+```
+
+The `google-adk[extensions]` extra is already included in `pyproject.toml` — no additional dependencies required.
+
+> [!WARNING]
+> The `litellm<=1.82.6` constraint in `pyproject.toml` is a **security constraint** — litellm v1.82.7–1.82.8 were compromised in a supply chain attack that exfiltrated credentials. Do not remove or bump this constraint until [BerriAI/litellm#24518](https://github.com/BerriAI/litellm/issues/24518) is resolved with a verified safe release.
+
 ### Dependencies
 
 ```bash
