@@ -157,7 +157,7 @@ The agent model is configured via `ROOT_AGENT_MODEL` in `src/agent_foundation/ag
 | Model Garden endpoint | `"projects/P/locations/L/endpoints/ENDPOINT_ID"` |
 | Vertex AI MaaS (LiteLlm) | `LiteLlm(model="vertex_ai/ORG/MODEL_NAME-maas")` |
 
-**To use Vertex AI MaaS open models**, uncomment the two commented lines in `agent.py` and replace the model name:
+**To use Vertex AI MaaS open models**, replace `ROOT_AGENT_MODEL` in `agent.py` with:
 
 ```python
 from google.adk.models.lite_llm import LiteLlm
