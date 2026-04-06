@@ -242,6 +242,29 @@ See [Observability](observability.md) for query examples and trace analysis.
 
 See [Deployment Modes: Terraform Structure](references/deployment.md#terraform-structure) for resource details and naming conventions.
 
+### Upgrading Provider Lockfiles
+
+**Main module** (`terraform/main/`) runs in CI/CD on `linux_amd64`, so its lockfile needs both local and CI platform hashes:
+
+```bash
+cd terraform/main
+terraform init -upgrade -backend=false
+terraform providers lock -platform=darwin_arm64 -platform=linux_amd64
+```
+
+**Bootstrap modules** (`terraform/bootstrap/`) only run locally, so a single-platform init is sufficient:
+
+```bash
+cd terraform/bootstrap/dev
+terraform init -upgrade -backend=false
+# Copy updated lockfile to stage and prod (same providers, same versions)
+cp .terraform.lock.hcl ../stage/.terraform.lock.hcl
+cp .terraform.lock.hcl ../prod/.terraform.lock.hcl
+```
+
+> [!NOTE]
+> `terraform/bootstrap/pre/` uses different providers (random instead of github) — upgrade it separately with `terraform init -upgrade -backend=false`.
+
 ## Cloud SQL Scaling
 
 The template ships with `db-custom-1-3840` (1 vCPU, 3.75 GB RAM) — should handle ~100 concurrent database connections. Each Cloud Run instance maintains a connection pool (default 5 + 10 overflow = 15 max), so this supports ~6 concurrent instances comfortably.
