@@ -70,8 +70,8 @@ class TestServerEnv:
             "LOG_LEVEL": "DEBUG",
             "SERVE_WEB_INTERFACE": "true",
             "RELOAD_AGENTS": "true",
-            "SESSION_SERVICE_URI": "agentengine://test-engine-id",
-            "MEMORY_SERVICE_URI": "agentengine://test-engine-id",
+            "SESSION_SERVICE_URI": "postgresql+asyncpg://user@host:5432/db",
+            "MEMORY_SERVICE_URI": "agentengine://projects/p/locations/l/reasoningEngines/123",
             "ARTIFACT_SERVICE_URI": "gs://test-bucket",
             "ALLOW_ORIGINS": '["http://localhost:3000"]',
             "HOST": "0.0.0.0",  # noqa: S104
@@ -86,8 +86,11 @@ class TestServerEnv:
         assert env.log_level == "DEBUG"
         assert env.serve_web_interface is True
         assert env.reload_agents is True
-        assert env.session_service_uri == "agentengine://test-engine-id"
-        assert env.memory_service_uri == "agentengine://test-engine-id"
+        assert env.session_service_uri == "postgresql+asyncpg://user@host:5432/db"
+        assert (
+            env.memory_service_uri
+            == "agentengine://projects/p/locations/l/reasoningEngines/123"
+        )
         assert env.artifact_service_uri == "gs://test-bucket"
         assert env.allow_origins == '["http://localhost:3000"]'
         assert env.host == "0.0.0.0"  # noqa: S104
