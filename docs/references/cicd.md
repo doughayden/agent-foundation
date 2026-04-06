@@ -199,7 +199,7 @@ config → metadata-extract → resolve-digest → prod-promote → prod-plan �
 
 ### docker-build.yml
 
-**Purpose:** Build and push multi-platform Docker images.
+**Purpose:** Build and push Docker images.
 
 **Inputs:**
 - Image tags from metadata-extract.yml
@@ -207,7 +207,7 @@ config → metadata-extract → resolve-digest → prod-promote → prod-plan �
 - Environment (dev/stage/prod)
 
 **Features:**
-- Multi-platform support (linux/amd64)
+- Builds for `linux/amd64` (Cloud Run target platform)
 - Registry cache with protected `buildcache` tag
 - Build provenance and SBOM generation
 
