@@ -98,7 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING**: Rename GitHub Environment Variables: `GCP_PROJECT_ID` → `GOOGLE_CLOUD_PROJECT`, `GCP_LOCATION` → `REGION`, `GCP_WORKLOAD_IDENTITY_PROVIDER` → `WORKLOAD_IDENTITY_PROVIDER`
 - **BREAKING**: Rename Terraform variable `location` → `region` across all modules
 - **BREAKING**: Replace `AGENT_ENGINE` env var with `SESSION_SERVICE_URI` and `MEMORY_SERVICE_URI` (full URIs with protocol prefix)
-- Split `terraform/main/main.tf` into `vpc.tf`, `database.tf`, `bastion.tf` (main.tf remains composition root)
+- Split `terraform/main/main.tf` into `network.tf`, `database.tf`, `bastion.tf` (main.tf remains composition root)
 - Replace docker-compose Auth Proxy sidecar with IAP tunnel container (`gcr.io/google.com/cloudsdktool/google-cloud-cli:stable`)
 - Docker-compose IAP tunnel uses `CLOUDSDK_CONFIG` with writable mount (gcloud CLI requires token cache writes)
 - Remove Auth Proxy sidecar startup probe on Cloud Run (unreliable — Cloud Run restarts on crash)

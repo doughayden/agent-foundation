@@ -30,9 +30,9 @@ Base template repo. Run `uv run init_template.py --dry-run` (preview) or `uv run
 
 ```bash
 # Local
+docker compose up --build --watch           # File sync + auto-restart
 uv run server                               # API at 127.0.0.1:8000
 LOG_LEVEL=DEBUG uv run server               # Debug mode
-docker compose up --build --watch           # File sync + auto-restart
 uv run pytest --cov --cov-report=term-missing  # Tests + 100% coverage required
 
 # Code quality (all required)
@@ -89,7 +89,7 @@ Source package lives under `src/` (single package — file references below use 
 - Bastion host (e2-micro, COS, auto-updates) runs Auth Proxy for local developer access via IAP tunnel
 - Bastion concerns: accepts non-loopback IAP tunnel connections, impersonates app SA for IAM auth, COS requires explicit iptables ACCEPT for port 5432 (default INPUT=DROP)
 - Cloud NAT for bastion outbound
-- See `terraform/main/network.tf` and bastion cloud-init template
+- See `terraform/main/network.tf` and `terraform/main/templates/bastion-cloud-init.yaml`
 
 **Docker:** Multi-stage (builder + runtime). uv pinned in Dockerfile. Cache mount in builder (~80% speedup), dependency layer rebuilds on `pyproject.toml`/`uv.lock` changes only, code layer on `src/`. Non-root `app:app`, ~200MB final.
 
@@ -142,7 +142,7 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 ```toml
 [[tool.mypy.overrides]]
 module = "tests.*"
-disable_error_code = ["arg-type"]
+disable_error_code = "arg-type"
 ```
 
 **Coverage:** 100% on production code. Exclusions defined in `pyproject.toml`. Test behaviors (errors, edge cases, return values, logging), not just statements.
@@ -211,7 +211,7 @@ uv lock --upgrade               # Update all
 - `terraform/main/iam.tf` — add WIF principal IAM roles using `google_project_iam_member`; `time_sleep.wif_iam_propagation` uses `for_each` over `wif_additional_roles` — one 120s sleep per role, created only when that role is added (zero overhead when empty); resources needing a new role declare `depends_on = [time_sleep.wif_iam_propagation["roles/example"]]`; list multiple instances explicitly when a resource needs more than one new role
 - WIF principal identifier available via `var.workload_identity_pool_principal_identifier` (passed from bootstrap's `WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER` GitHub Variable)
 
-**Cloud Run probes (Template Internals):** App container probe configured to allow ~120s for credential init. Auth Proxy sidecar has no startup probe — Cloud Run restarts on crash, more reliable than probing. Shared proxy flags in `local.cloud_sql_proxy_args`; bastion-only flags (`--address=0.0.0.0`, `--impersonate-service-account`) in bastion cloud-init template. Debug heuristic: local works but Cloud Run fails = credential or VPC egress issue.
+**Cloud Run probes (Template Internals):** App container probe configured to allow ~120s for credential init. Auth Proxy sidecar has no startup probe — Cloud Run restarts on crash, more reliable than probing. Shared proxy flags in `local.cloud_sql_proxy_args`; bastion-only flags (`--address=0.0.0.0`, `--impersonate-service-account`) in `terraform/main/templates/bastion-cloud-init.yaml`. Debug heuristic: local works but Cloud Run fails = credential or VPC egress issue.
 
 ## Local Development
 
