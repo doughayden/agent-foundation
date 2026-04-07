@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.3] - 2026-04-06
+
+### Added
+- Explicit `time` provider block in Terraform main module (#146)
+- `DOWNSTREAM_PKG` variable in template management guide for copy-paste commands (#146)
+- Template notice in code quality reference guide with `{your_agent}` placeholders (#146)
+
+### Changed
+- Restructure sync skill: fixtures first (Phase 1), code+tests together (Phase 2), bulk test sync (Phase 3) (#146)
+- Unify template management guide with sync skill phase ordering and commands (#146)
+- Use `git diff` refspec pattern for cross-package `src/` comparisons (#146)
+- Make `memory_service_uri` Terraform output optional with `try(null)` (#146)
+- Use realistic URI formats in config tests (#146)
+- Upgrade google provider 7.21.0 → 7.26.0 in all bootstrap lockfiles (#145)
+
+### Fixed
+- Remove stale "multi-platform" language from CI/CD reference guide (#145)
+- Add `-backend=false` to lockfile upgrade documentation (#145)
+
 ## [0.12.2] - 2026-04-05
 
 ### Changed
@@ -424,7 +443,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.12.2...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.12.3...HEAD
+[0.12.3]: https://github.com/doughayden/agent-foundation/compare/v0.12.2...v0.12.3
 [0.12.2]: https://github.com/doughayden/agent-foundation/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/doughayden/agent-foundation/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/doughayden/agent-foundation/compare/v0.11.0...v0.12.0
