@@ -2,6 +2,21 @@
 
 Guidance for AI agents. **CRITICAL: Update this file when establishing project patterns.**
 
+## How to Maintain This File
+
+**Pointer over enumeration.** Reference the source of truth instead of duplicating its contents. Lists of files, env vars, resources, workflows, dependencies, etc. go stale when implementations change but the concept does not. Stale lists waste tokens in every future session and mislead readers. Pointers stay valid as long as the source exists.
+
+- ✅ "Required env vars: see `ServerEnv` in `utils/config.py` and `docs/environment-variables.md`"
+- ❌ "Required: GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION, AGENT_NAME, ..."
+- ✅ "GCP APIs added in `terraform/main/services.tf`"
+- ❌ "Enabled APIs: cloudsql, run, iam, ..."
+
+**Enumerate only when:** the list itself IS the concept (e.g., a security posture's guarantees), discoverability would be hard, or items are load-bearing rules every session must know without reading more files. Default to *concept + location*, not *contents*.
+
+**Template internals vs. consumer extensions.** This is a base template that downstream projects fork. Mark sections describing template internals so consumers understand they carry higher upstream-sync cost if customized — consumers may still modify anything, but expect merge complexity. Intended extension surfaces belong in **Consumer Extension Points** below.
+
+**Global-rule duplication is intentional.** Code Quality, Testing Patterns, and Documentation Strategy sections duplicate baseline conventions that would normally live in user-global rules (e.g., `~/.claude/rules/`). Downstream consumer projects will NOT have those global rules loaded — duplication here ensures consistency across all forks. Do not trim these sections to reduce perceived redundancy.
+
 ## Critical
 
 - **Never commit to main** (branch protection enforced). Workflow: feature branch → PR → merge.
@@ -21,7 +36,7 @@ docker compose up --build --watch           # File sync + auto-restart
 uv run pytest --cov --cov-report=term-missing  # Tests + 100% coverage required
 
 # Code quality (all required)
-uv run ruff format && uv run ruff check && uv run mypy
+uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --cov
 
 # Terraform (dev-only mode) - configure terraform.tfvars files first for pre and bootstrap
 terraform -chdir=terraform/bootstrap/pre init && terraform -chdir=terraform/bootstrap/pre apply  # One-time state buckets (all envs)
@@ -31,39 +46,58 @@ terraform -chdir=terraform/bootstrap/dev apply
 terraform -chdir=terraform/main init/plan/apply           # Deploy (TF_VAR_environment=dev)
 ```
 
+## Consumer Extension Points
+
+Entry-point map for "I want to add X". Each row points to the file where the change should land.
+
+> [!NOTE]
+> Python file references below use basenames only (`tools.py`, `agent.py`, etc.). The template project has exactly one package under `src/`, so basenames are unambiguous — resolve with `Glob src/*/<basename>` or `Glob **/<basename>`. This keeps downstream forks from needing to rename package paths in AGENTS.md after `init_template.py` runs.
+
+| To... | Edit | Notes |
+|---|---|---|
+| Add a custom tool | define `func` in `tools.py` + register in `agent.py` | `root_agent = LlmAgent(..., tools=[..., FunctionTool(func)])` |
+| Add a callback | `callbacks.py` | All callbacks return `None` (observe-only); modify/short-circuit only when intentional |
+| Customize agent instructions | `prompt.py` | InstructionProvider pattern (function ref, called at runtime) |
+| Add an env var | `ServerEnv` in `utils/config.py` + `docs/environment-variables.md` | **CRITICAL:** every new env var MUST be in `docs/environment-variables.md` (purpose, default, where to set, required/optional) |
+| Enable a GCP API | `terraform/main/services.tf` | `google_project_service`; downstream resources `depends_on = [time_sleep.service_enablement_propagation["api.googleapis.com"]]` |
+| Grant a WIF role | `terraform/main/iam.tf` | `google_project_iam_member`; downstream resources `depends_on = [time_sleep.wif_iam_propagation["roles/example"]]` |
+| Override runtime config | GitHub Environment Variables → `TF_VAR_*` | See `coalesce()` call sites in `terraform/main/` for current overridable surface |
+
+**Template internals** (higher upstream-sync cost if customized — consumers may still modify, but expect merge complexity on future upstream syncs):
+- `terraform/bootstrap/` — bootstrap roots and shared modules
+- `.github/workflows/` — CI/CD orchestration
+- `terraform/main/` files other than `services.tf` and `iam.tf`
+
 ## Architecture Overview
 
-**ADK App Structure** (`src/agent_foundation/agent.py`):
-- `GlobalInstructionPlugin`: Dynamic instruction generation (InstructionProvider pattern)
-- `LoggingPlugin`: Agent lifecycle logging
-- `root_agent` (LlmAgent): gemini-2.5-flash via `Gemini` wrapper with retry options, custom tools, callbacks
+Source package lives under `src/` (single package — file references below use basenames; resolve with `Glob src/*/<basename>`).
 
-**Package exports** (`src/agent_foundation/__init__.py`): Uses PEP 562 `__getattr__` for explicit lazy loading. Declares `agent` in `__all__` but defers import until first access. Supports both ADK eval CLI and web server workflows while ensuring .env loads before agent.py executes module-level code.
+**ADK App** (`agent.py`): `App` composes `LlmAgent` (LLM wrapper with instructions, subagent options, custom tools, callbacks), `GlobalInstructionPlugin` (dynamic instruction generation via InstructionProvider), and `LoggingPlugin` (lifecycle observation). Exact model and plugin wiring in `agent.py`.
 
-**Key modules:**
-- `agent.py`: App/LlmAgent config
-- `tools.py`: Custom tools
-- `callbacks.py`: Lifecycle logging + memory callback (all return `None`, non-intrusive)
-- `prompt.py`: Instructions (InstructionProvider pattern for dynamic generation)
-- `server.py`: FastAPI + ADK (`get_fast_api_app()`, optional web UI, health check)
-- `utils/config.py`: Pydantic ServerEnv (type-safe, fail-fast)
-- `utils/observability.py`: OpenTelemetry (Cloud Trace/Logging, trace correlation)
+**Package exports** (`__init__.py`): PEP 562 `__getattr__` for explicit lazy loading. Declares `agent` in `__all__` but defers import until first access. Supports both ADK eval CLI and web server workflows while ensuring `.env` loads before `agent.py` executes module-level code.
 
-**Session Service:** Cloud SQL Postgres (private IP) via ADK `DatabaseSessionService`. `get_fast_api_app()` routes `postgresql://` URIs to `DatabaseSessionService` automatically — no application code needed. Connection via Cloud SQL Auth Proxy sidecar (IAM database auth, no passwords) — proxy connects to Cloud SQL private IP over VPC. Cloud SQL security posture (`database.tf`): `deletion_protection` (stage/prod only), private IP only (`ipv4_enabled = false`), IAM database auth (`cloudsql.iam_authentication`), enforced Auth Proxy (`connector_enforcement = "REQUIRED"`), enforced TLS (`ssl_mode = "TRUSTED_CLIENT_CERTIFICATE_REQUIRED"`), locked postgres superuser (random 30-char password + password validation policy), daily backups (03:00 UTC, 7-day retention, PITR enabled), maintenance window (Sunday 06:00 UTC, stable track, offset from backup window). `DatabaseSessionService` uses SQLAlchemy async engine with `asyncpg` driver: `pool_pre_ping=True` (auto-set for non-SQLite), default pool_size=5, max_overflow=10. Auto-creates V1 schema tables on first operation (no migration needed). PostgreSQL gets `JSONB` columns and `SELECT ... FOR UPDATE` row locking. Scale path: bump instance tier first, then managed connection pooling (requires Enterprise Plus edition) when autoscaling demands it.
+**Module roles:** `agent.py` (composition), `tools.py` / `callbacks.py` / `prompt.py` (consumer extension points — see Consumer Extension Points), `server.py` (FastAPI + ADK via `get_fast_api_app()`), `utils/config.py` (Pydantic `ServerEnv`, type-safe fail-fast), `utils/observability.py` (OpenTelemetry init).
 
-**Networking:** VPC with Private Services Access peering for Cloud SQL private IP. Cloud Run uses direct VPC egress (`PRIVATE_RANGES_ONLY`) to reach Cloud SQL via Auth Proxy sidecar. Bastion host (e2-micro, Container-Optimized OS, auto-updates enabled) runs Auth Proxy for local developer access via IAP tunnel. Bastion-specific proxy flags (not in shared `local.cloud_sql_proxy_args`): `--address=0.0.0.0` (accept IAP tunnel connections from non-loopback) and `--impersonate-service-account=<app-sa-email>` (IAM database auth as app SA). COS requires `iptables -A INPUT -p tcp --dport 5432 -j ACCEPT` in cloud-init before starting the proxy (default INPUT policy is DROP). Cloud NAT router for bastion outbound (image pulls, Cloud SQL Admin API).
+**Session Service:** Cloud SQL Postgres (private IP) via ADK `DatabaseSessionService`.
+- `get_fast_api_app()` routes `postgresql://` URIs automatically — no application code needed
+- Connection via Cloud SQL Auth Proxy sidecar (IAM auth, no passwords)
+- Security posture and pool config: `terraform/main/database.tf`, `docs/references/cloud-sql.md`, `docs/references/security-posture.md`
+- Scale path: bump instance tier first, then managed connection pooling (Enterprise Plus) when autoscaling demands it
 
-**Docker:** Multi-stage (builder + runtime). uv pinned in Dockerfile for reproducible builds (bump manually). Cache mount in builder (~80% speedup), dependency layer on `pyproject.toml`/`uv.lock` changes only, code layer on `src/` changes. Non-root `app:app`, ~200MB final.
+**Networking:** VPC with Private Services Access peering for Cloud SQL private IP.
+- Cloud Run uses direct VPC egress to reach Cloud SQL via Auth Proxy sidecar
+- Bastion host (e2-micro, COS, auto-updates) runs Auth Proxy for local developer access via IAP tunnel
+- Bastion concerns: accepts non-loopback IAP tunnel connections, impersonates app SA for IAM auth, COS requires explicit iptables ACCEPT for port 5432 (default INPUT=DROP)
+- Cloud NAT for bastion outbound
+- See `terraform/main/network.tf` and bastion cloud-init template
 
-**Observability:** OpenTelemetry OTLP→Cloud Trace, structured logs→Cloud Logging. Resource attributes: `service.name` (AGENT_NAME), `service.instance.id` (worker-{PID}-{UUID}), `service.namespace` (TELEMETRY_NAMESPACE), `service.version` (K_REVISION).
+**Docker:** Multi-stage (builder + runtime). uv pinned in Dockerfile. Cache mount in builder (~80% speedup), dependency layer rebuilds on `pyproject.toml`/`uv.lock` changes only, code layer on `src/`. Non-root `app:app`, ~200MB final.
+
+**Observability:** OTLP→Cloud Trace, structured logs→Cloud Logging. Resource attributes derived from environment variables plus per-worker instance ID. See `utils/observability.py`.
 
 ## Environment Variables
 
-**Required:** GOOGLE_GENAI_USE_VERTEXAI=TRUE, GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION, AGENT_NAME, OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT (+ gcloud auth).
-
-**Key optional:** SERVE_WEB_INTERFACE, LOG_LEVEL (DEBUG/INFO/WARNING/ERROR/CRITICAL), TELEMETRY_NAMESPACE (default "local", auto-set to environment in deployments), SESSION_SERVICE_URI, MEMORY_SERVICE_URI, ARTIFACT_SERVICE_URI, ALLOW_ORIGINS (JSON array).
-
-**CRITICAL:** Any new environment variable introduced to the codebase MUST be documented in `docs/environment-variables.md`. No exceptions. Include: purpose, default value, where to set, and whether required or optional.
+**CRITICAL:** Any new env var introduced to the codebase MUST be documented in `docs/environment-variables.md`. No exceptions. Include purpose, default, where to set, and required/optional. `ServerEnv` in `utils/config.py` is the typed source of truth; `docs/environment-variables.md` is the canonical reference.
 
 ## Code Quality
 
@@ -74,7 +108,7 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 
 - **mypy:** Strict, complete type annotations, modern Python 3.13 (`|` unions, lowercase generics), no untyped definitions. Enforces: `no_implicit_optional`, `strict_equality`, `warn_return_any`, `warn_unreachable`.
 - **ruff:** 88 char line length, enforces bandit/simplify/use-pathlib. **Always use `Path` objects** (never `os.path`).
-- **pytest:** 100% coverage on production code (excludes `server.py`, `**/agent.py`, `**/prompt.py`, `**/__init__.py`). Fixtures in `conftest.py`, async via pytest-asyncio.
+- **pytest:** 100% coverage on production code. Coverage exclusions in `pyproject.toml`. Fixtures in `conftest.py`, async via pytest-asyncio.
 
 **Type narrowing:** **NEVER use `cast()`** - always use `isinstance()` checks for type narrowing (provides both mypy inference and runtime safety).
 
@@ -86,11 +120,9 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 
 **Tools:** pytest, pytest-cov (100% required), pytest-asyncio, pytest-mock (`MockerFixture`, `MockType`)
 
-**pytest_configure()** - Only place using unittest.mock (runs before pytest-mock available):
-- Mock `dotenv.load_dotenv`, `google.auth.default`, `google.auth._default.default`
+**pytest_configure()** - Only place using unittest.mock (runs before pytest-mock available). Mocks `dotenv.load_dotenv` and Google auth defaults to prevent real credential lookups during collection. See `tests/conftest.py` for the current mock set and the lifecycle docstring.
 - No env var assignments needed (PEP 562 lazy loading, Pydantic validates only when called)
 - If future imports trigger env var reads at collection time, use direct `os.environ["KEY"] = "value"` (never `setdefault()`)
-- Comprehensive docstring explaining pytest lifecycle (see tests/conftest.py)
 
 **Fixtures:**
 - Type hints: `MockerFixture` → `MockType` return (strict mypy in conftest.py)
@@ -98,12 +130,9 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 - Environment mocking: `mocker.patch.dict(os.environ, env_dict)`
 - Test functions: Don't type hint custom fixtures, optional hints on built-ins for IDE
 
-**ADK Mocks** (mirror real interfaces exactly):
-- MockState, MockContent, MockSession, MockReadonlyContext (with user_id property)
-- MockMemoryCallbackContext (controlled behavior via constructor)
-- MockLoggingCallbackContext, MockLlmRequest/Response, MockToolContext, MockBaseTool
+**ADK Mocks:** Custom mocks mirror real ADK interfaces and live in `tests/conftest.py` (readonly contexts, callback contexts, tool contexts, LLM request/response shapes, etc.). For edge cases requiring custom internal structure, add a specific named fixture.
 
-**Mock Usage:** Never import mock classes directly in test files — always use or add a fixture in `conftest.py`. For edge cases requiring custom internal structure, add a specific named fixture.
+**Mock Usage:** Never import mock classes directly in test files — always use or add a fixture in `conftest.py`.
 
 **Organization:** Mirror source (`src/X.py` → `tests/test_X.py`). Class grouping. Descriptive names (`test_<what>_<condition>_<expected>`).
 
@@ -116,15 +145,15 @@ module = "tests.*"
 disable_error_code = ["arg-type"]
 ```
 
-**Coverage:** 100% on production code. Omit `__init__.py`, `server.py`, `**/agent.py`, `utils/observability.py`. Test behaviors (errors, edge cases, return values, logging), not just statements.
+**Coverage:** 100% on production code. Exclusions defined in `pyproject.toml`. Test behaviors (errors, edge cases, return values, logging), not just statements.
 
 **Parameterization:** Thoughtfully. Inline loops OK for documenting complex behavior (e.g., boolean field parsing).
 
 **ADK patterns:**
-- InstructionProvider: Test with MockReadonlyContext
-- LoggingCallbacks: Return None (non-intrusive observation). Other callbacks can modify/short-circuit.
-- Async callbacks: `@pytest.mark.asyncio`, verify caplog
-- Controlled errors: MockMemoryCallbackContext constructor (should_raise, error_message)
+- **InstructionProvider:** Function `def fn(ctx: ReadonlyContext) -> str`. Pass function ref (not called) to `GlobalInstructionPlugin(fn)`. Plugin calls at runtime. Test with `MockReadonlyContext`.
+- **Callbacks:** All return `None` (observe-only); other callbacks may modify/short-circuit. Memory callback persists session summaries to memory service.
+- **Async callbacks:** `asyncio_mode = "auto"` in pyproject.toml, verify caplog.
+- **Controlled errors:** `MockMemoryCallbackContext(should_raise, error_message)`.
 
 ## Dependencies
 
@@ -134,7 +163,7 @@ uv add --group dev pkg          # Dev
 uv lock --upgrade               # Update all
 ```
 
-**Key runtime dependencies:** `asyncpg` (async PostgreSQL for Cloud SQL sessions), ADK (core framework), google-cloud libraries (auth, observability).
+**Key runtime:** `asyncpg` (async PostgreSQL for Cloud SQL sessions), ADK (core), google-cloud libraries (auth, observability). Full set in `pyproject.toml`.
 
 **When updating versions:** Both `pyproject.toml` and `uv.lock` must be committed together for CI `--locked` to pass.
 
@@ -142,54 +171,53 @@ uv lock --upgrade               # Update all
 
 **Deployment Modes:** Dev-only (default, `production_mode: false` in ci-cd.yml config job) deploys to dev on merge. Production mode (`production_mode: true`) deploys dev+stage on merge, prod on git tag with approval gate. See [Infrastructure Guide](docs/infrastructure.md).
 
-**Workflows:** ci-cd.yml (orchestrator), config-summary.yml, docker-build.yml, metadata-extract.yml, pull-and-promote.yml, resolve-image-digest.yml, terraform-plan-apply.yml, code-quality.yml. PR: build `pr-{sha}`, dev-plan, comment. Main: build `{sha}`+`latest`, deploy dev (+ stage in prod mode). Tag: prod deploy (prod mode only). **Deploy by immutable digest** (not tag) to guarantee new Cloud Run revision. **Option to deploy to dev on all PRs:** single-line change to ci-cd.yml deploys on PR (remove `&& github.event_name == 'push'` from dev-apply condition).
+**Orchestration (Template Internals):** `ci-cd.yml` is the orchestrator; reusable workflows live in `.github/workflows/`. PR: build `pr-{sha}`, dev-plan, comment. Main: build `{sha}`+`latest`, deploy dev (+ stage in prod mode). Tag: prod deploy (prod mode only). **Deploy by immutable digest** (not tag) to guarantee a new Cloud Run revision. Option to deploy to dev on all PRs: single-line change to `ci-cd.yml` (remove `&& github.event_name == 'push'` from dev-apply condition).
 
-**Auth:** WIF (no SA keys). GitHub Variables auto-created: GOOGLE_CLOUD_PROJECT, REGION, IMAGE_NAME, WORKLOAD_IDENTITY_PROVIDER, ARTIFACT_REGISTRY_URI, ARTIFACT_REGISTRY_LOCATION, TERRAFORM_STATE_BUCKET, WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER.
+**Auth:** WIF (no SA keys). Bootstrap auto-creates GitHub Variables for the WIF principal, project, region, registry, and state bucket. See bootstrap module outputs in `terraform/bootstrap/module/github/` for the current set.
 
 **Job Summaries:** Use `mktemp`, `tee "$FILE"`, `${PIPESTATUS[0]}` for streaming + capture. Export GitHub context to shell vars, capture once, check for empty outputs.
 
 ## Terraform
 
-**Pre-Bootstrap:** `terraform/bootstrap/pre/` — single-file Terraform root, run once before any bootstrap environment. Uses terraform.tfvars for configuration. Creates one GCS bucket per environment (`terraform-state-{agent_name}-{env}-{suffix}`). Local state only — do not lose `terraform/bootstrap/pre/terraform.tfstate`. Outputs `terraform_state_buckets` map used for bootstrap `-backend-config` and `terraform_state_bucket` input variable.
+**Pre-Bootstrap:** `terraform/bootstrap/pre/` — single-file Terraform root, run once before any bootstrap environment. Uses `terraform.tfvars` for configuration. Creates one GCS bucket per environment. Outputs `terraform_state_buckets` map used for bootstrap `-backend-config` and `terraform_state_bucket` input variable. **Local state only — do not lose `terraform/bootstrap/pre/terraform.tfstate`.**
 
-**Bootstrap Structure:** Each environment is a separate terraform root (`terraform/bootstrap/dev/`, `terraform/bootstrap/stage/`, `terraform/bootstrap/prod/`) calling shared modules (`terraform/bootstrap/module/gcp/` for GCP infrastructure, `terraform/bootstrap/module/github/` for GitHub automation). Each environment uses GCS remote state (bucket from pre-bootstrap) and terraform.tfvars for configuration. `terraform_state_bucket` is an input variable (created by pre). Creates: WIF, Artifact Registry, GitHub Environments, GitHub Environment Variables. Enables APIs and grants WIF IAM roles sufficient for the base template ONLY — do not modify to add custom services or roles (use `terraform/main/services.tf` and `terraform/main/iam.tf` instead).
+**Bootstrap Structure (Template Internals):**
+- Each environment (`dev/`, `stage/`, `prod/`) is a separate Terraform root calling shared modules (`gcp/`, `github/`)
+- Each uses GCS remote state (from pre) and `terraform.tfvars` for configuration
+- Creates: WIF, Artifact Registry, GitHub Environments, GitHub Environment Variables
+- Enables APIs and grants WIF IAM roles sufficient for the base template ONLY — **do not modify to add custom services/roles** (extend in `terraform/main/services.tf` and `terraform/main/iam.tf`)
 
-**Cross-Project IAM (Production Mode):** Stage and prod bootstrap roots grant cross-project Artifact Registry reader access for image promotion:
-- `stage/main.tf`: Grants stage's WIF principal `roles/artifactregistry.reader` on dev's registry (for stage-promote: dev → stage)
-- `prod/main.tf`: Grants prod's WIF principal `roles/artifactregistry.reader` on stage's registry (for prod-promote: stage → prod)
-- Narrow scope: read-only role, registry-resource-bound (not project-level)
-- Uses WIF principals (not service accounts): bypasses org policies restricting cross-project service account usage
-- Variables: `promotion_source_project` (source GCP project ID), `promotion_source_artifact_registry_name` (source registry name, e.g., `agent-name-dev`)
-- IAM binding: `google_artifact_registry_repository_iam_member` with `member = module.gcp.workload_identity_pool_principal_identifier`
+**Cross-Project IAM (Production Mode — Template Internals):** Stage and prod bootstrap roots grant cross-project Artifact Registry reader access for image promotion.
+- `stage/main.tf`: stage WIF reads dev's registry. `prod/main.tf`: prod WIF reads stage's
+- Uses WIF principals (not service accounts), complies with org policies restricting cross-project SA usage
+- Variables: `promotion_source_project`, `promotion_source_artifact_registry_name`
+- Binding: `google_artifact_registry_repository_iam_member` with `member = module.gcp.workload_identity_pool_principal_identifier`
+- See `terraform/bootstrap/{stage,prod}/main.tf`
 
-**Main Module:** Cloud Run deployment (`terraform/main/`). VPC network + subnet + Private Services Access (Cloud SQL private IP), Cloud NAT router (bastion outbound), IAP firewall rules (SSH + SQL proxy), bastion host (e2-micro, COS, cloud-init Auth Proxy), dedicated bastion SA (`roles/cloudsql.client`), `roles/iam.serviceAccountTokenCreator` on app SA (for `--impersonate-service-account`), random_password for locked postgres built-in user, Cloud SQL Postgres (private IP only), app SA, Cloud Run service with Auth Proxy sidecar + direct VPC egress, Agent Engine, GCS bucket. DRY proxy config via `local.cloud_sql_proxy_args` shared between bastion cloud-init and Cloud Run sidecar; bastion cloud-init adds `--address=0.0.0.0`, `--impersonate-service-account`, and COS iptables rule. Remote state in GCS. Inputs via `TF_VAR_*` from GitHub Environment variables. Runs in GitHub Actions. Requires `TF_VAR_environment` (dev/stage/prod) to set resource naming. `region` for compute placement, `google_cloud_location` for Vertex AI model endpoint routing. Outputs: `bastion_instance`, `bastion_zone` (for docker-compose `.env`).
+**Main Module (Template Internals except `services.tf`/`iam.tf`):** Cloud Run deployment in `terraform/main/` (may require downstream env var customization or extension). Provisions VPC + Cloud SQL private IP, bastion, app SA, Cloud Run with Auth Proxy sidecar, Agent Engine, and GCS bucket. See `terraform/main/` for resource definitions.
+- Shared `local.cloud_sql_proxy_args` between bastion cloud-init and Cloud Run sidecar (bastion adds `--address=0.0.0.0`, `--impersonate-service-account`, COS iptables rule)
+- Remote state in GCS; inputs from `TF_VAR_*` (GitHub Environment variables)
+- Requires `TF_VAR_environment` (dev/stage/prod)
+- Outputs: `bastion_instance`, `bastion_zone` (for docker-compose `.env`)
 
-**Naming:** Resources `${var.agent_name}-${var.environment}`. Service account IDs truncate agent_name to 30 chars (GCP limit). Cloud Run auto-sets `TELEMETRY_NAMESPACE=var.environment`.
+**Naming:** Resources `${var.agent_name}-${var.environment}`. Service account IDs truncate `agent_name` to 30 chars (GCP limit). Cloud Run auto-sets `TELEMETRY_NAMESPACE=var.environment`.
 
-**Runtime Variable Overrides:** GitHub Environment Variables → `TF_VAR_*`. `coalesce()` skips empty/null. Overridable runtime config: log_level, serve_web_interface, otel_instrumentation_genai_capture_message_content, adk_suppress_experimental_feature_warnings. `docker_image` nullable (defaults to previous for infra-only updates). **Infrastructure resources (SESSION_SERVICE_URI, MEMORY_SERVICE_URI, ARTIFACT_SERVICE_URI, CORS origins) are hard-coded in Terraform** (no variable overrides).
+**Runtime Variable Overrides:** GitHub Environment Variables → `TF_VAR_*` → `coalesce()` skips empty/null. `docker_image` is nullable (defaults to previous for infra-only updates). Some infrastructure URIs (session/memory/artifact services, CORS) are hard-coded in Terraform (no override, requires intentional code commit for changes). See `coalesce()` call sites in `terraform/main/` for the current overridable surface.
 
-**IAM:** Dedicated GCP project per env. Project-level WIF roles same-project only (in terraform/bootstrap/module/gcp/main.tf). Cross-project Artifact Registry IAM grants in environment bootstrap roots (stage/main.tf, prod/main.tf) for image promotion. App SA roles in terraform/main/main.tf. Additional WIF principal roles in terraform/main/iam.tf (consumer-defined, applied via CI/CD).
+**IAM Layering:** Dedicated GCP project per env. Project-level WIF roles same-project only (in `terraform/bootstrap/module/gcp/`). Cross-project Artifact Registry grants in environment bootstrap roots. App SA roles in `terraform/main/main.tf`. Additional WIF roles in `terraform/main/iam.tf` (consumer extension point).
 
 **Main Module Extension Points (consumer-defined):**
 - `terraform/main/services.tf` — add GCP APIs using `google_project_service`; `time_sleep.service_enablement_propagation` uses `for_each` over `services` — one 120s sleep per service, created only when that service is added (zero overhead when empty); some GCP services have async backend initialization after the API is marked enabled; resources needing a new service declare `depends_on = [time_sleep.service_enablement_propagation["api.googleapis.com"]]`
 - `terraform/main/iam.tf` — add WIF principal IAM roles using `google_project_iam_member`; `time_sleep.wif_iam_propagation` uses `for_each` over `wif_additional_roles` — one 120s sleep per role, created only when that role is added (zero overhead when empty); resources needing a new role declare `depends_on = [time_sleep.wif_iam_propagation["roles/example"]]`; list multiple instances explicitly when a resource needs more than one new role
 - WIF principal identifier available via `var.workload_identity_pool_principal_identifier` (passed from bootstrap's `WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER` GitHub Variable)
 
-**Cloud Run probes:** App container: failure_threshold=5, period_seconds=20, initial_delay_seconds=20, timeout_seconds=15 (total 120s). Allow credential init (~30-60s). Auth Proxy sidecar has no startup probe — Cloud Run restarts the container on crash, which is more reliable than probing. Previous probe approach was unreliable due to Cloud Run lag between process port bind and external probe reachability. Shared proxy flags (via `local.cloud_sql_proxy_args`): `--private-ip`, `--port=5432`, `--auto-iam-authn`, `--structured-logs`, `--exit-zero-on-sigterm`. Bastion-only additions (in cloud-init template, not shared): `--address=0.0.0.0` (IAP tunnel arrives from non-loopback), `--impersonate-service-account=<app-sa-email>` (bastion SA authenticates as app SA for IAM database auth). Cloud Run sidecar uses defaults for both (loopback binding, runs as app SA directly). Debug: local works but Cloud Run fails = credential/VPC egress issue.
+**Cloud Run probes (Template Internals):** App container probe configured to allow ~120s for credential init. Auth Proxy sidecar has no startup probe — Cloud Run restarts on crash, more reliable than probing. Shared proxy flags in `local.cloud_sql_proxy_args`; bastion-only flags (`--address=0.0.0.0`, `--impersonate-service-account`) in bastion cloud-init template. Debug heuristic: local works but Cloud Run fails = credential or VPC egress issue.
 
-## Project-Specific Patterns
+## Local Development
 
-**Custom Tools:** Create in `src/agent_foundation/tools.py`, register in `agent.py`. Tool(name, description, func).
+**docker-compose:** IAP tunnel container tunnels to bastion Auth Proxy via `network_mode: "service:app"` so the app reaches Cloud SQL at `localhost:5432` (same as Cloud Run). Requires `BASTION_INSTANCE`, `BASTION_ZONE`, `GOOGLE_CLOUD_PROJECT` in `.env`. Developer IAM prerequisite: `roles/iap.tunnelResourceAccessor`. Editable install via `ARG editable=true`. Watch: `sync+restart` for `src/`, `rebuild` for deps. Binds `127.0.0.1:8000`. See `docs/references/docker-compose-workflow.md` for full workflow.
 
-**Callbacks:** `LoggingCallbacks` (lifecycle), `add_session_to_memory` (persist sessions to Agent Engine memory). All return `None` (observe-only).
-
-**InstructionProvider:** `def fn(ctx: ReadonlyContext) -> str`. Pass function ref (not called) to `GlobalInstructionPlugin(fn)`. Plugin calls at runtime. Test with `MockReadonlyContext`.
-
-**Config:** Pydantic `initialize_environment(ServerEnv)` in `utils/config.py`. Type-safe, fail-fast validation.
-
-**Docker Compose:** IAP tunnel container (`gcr.io/google.com/cloudsdktool/google-cloud-cli:stable`) tunnels to bastion host running Auth Proxy. Uses `network_mode: "service:app"` to share app's localhost — app connects to `localhost:5432` same as Cloud Run. Requires `BASTION_INSTANCE`, `BASTION_ZONE`, `GOOGLE_CLOUD_PROJECT` in `.env`. Mounts `~/.config/gcloud` to `/gcloud-config` with `CLOUDSDK_CONFIG=/gcloud-config` (decouples from container home dir). Developer IAM prerequisite: `roles/iap.tunnelResourceAccessor`. Editable install via `ARG editable=true` build arg (`.pth` file points Python to `/app/src`). Watch: `sync+restart` for `src/`, `rebuild` for `pyproject.toml`/`uv.lock`. Volumes: `application_default_credentials.json` (from `~/.config/gcloud/`) for app container. Windows: update GCP creds path. Binds `127.0.0.1:8000`.
-
-**Test Deployed:** `gcloud run services proxy <service-name> --project <project> --region <region> --port 8000`. Service name: `${agent_name}-${environment}` (e.g., `my-agent-dev`).
+**Test deployed service:** `gcloud run services proxy <service-name> --project <project> --region <region> --port 8000`. Service name: `${agent_name}-${environment}` (e.g., `my-agent-dev`).
 
 ## Documentation Strategy
 
@@ -197,20 +225,16 @@ uv lock --upgrade               # Update all
 
 **Structure:**
 - **README.md:** ~200 lines max. Quick start only. Points to docs/.
-- **docs/*.md:** ~300 lines max. Action paths ("I want to..."). Core guides: getting-started, development, infrastructure, environment-variables, observability, troubleshooting, template-management.
-- **docs/references/*.md:** No limit. Deep-dive technical docs. Optional follow-up.
+- **docs/*.md:** ~300 lines max. Action paths ("I want to..."). Index in `docs/README.md`.
+- **docs/references/*.md:** No limit. Deep-dive technical docs. Optional follow-up. Index in `docs/references/README.md`.
 
 **Rules:**
 - Task-based, not tech-based (e.g., "Infrastructure" not "Terraform" + "CI/CD" separately)
-- Hub-and-spoke navigation: docs/README.md and docs/references/README.md are navigation indexes
+- Hub-and-spoke navigation: `docs/README.md` and `docs/references/README.md` are the navigation indexes
 - Inline cross-links only when critically contextual (hybrid approach)
 - No "See Also" sections - rely on index navigation instead
-- Single source of truth: env vars only in docs/environment-variables.md
-- Update docs/README.md when adding docs
-- Keep guides digestible (<300 lines). Move details to references/.
+- Single source of truth: env vars only in `docs/environment-variables.md`
+- Update `docs/README.md` when adding docs
+- Keep guides digestible (<300 lines). Move details to `references/`.
 
 **Callouts:** Use GFM callout blocks (`> [!TYPE]`) sparingly — only when content genuinely warrants elevated attention. Don't use callouts for normal information. (`NOTE` = you should know this, `TIP` = this could help you, `IMPORTANT` = do this, `WARNING` = don't do that, `CAUTION` = this will destroy something)
-
-## Documentation References
-
-Task-based docs in `docs/`. Core: getting-started.md, development.md, infrastructure.md, environment-variables.md. Operations: observability.md, troubleshooting.md. Template: template-management.md. Detailed references: docs/references/ (bootstrap.md, protection-strategies.md, deployment.md, cicd.md, testing.md, code-quality.md, cloud-backend-options.md, docker-compose-workflow.md, dockerfile-strategy.md).
