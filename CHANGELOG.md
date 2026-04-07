@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.4] - 2026-04-07
+
+### Added
+- "How to Maintain This File" meta-instructions in AGENTS.md with pointer-over-enumeration principle, template internals framing, and intentional global-rule duplication note (#148)
+- Consumer Extension Points table in AGENTS.md mapping "I want to add X" intent to file locations (#148)
+- Pointer-over-enumeration guidance in memorizer agent instructions with template/scaffold exception for intentional global-rule duplication (#148)
+
+### Changed
+- Restructure AGENTS.md to optimize default token consumption for AI sessions — replace stale-prone enumerations with source-of-truth pointers, convert dense prose to scannable bullets, mark template internals with soft framing (#148)
+- Wrap `get_current_time` with `FunctionTool` in `agent.py` to match documented custom-tool pattern (#148)
+- Use Python basename convention in AGENTS.md to reduce package-path substitution sites in downstream forks after `init_template.py` runs (#148)
+
 ## [0.12.3] - 2026-04-06
 
 ### Added
@@ -443,7 +455,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.12.3...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.12.4...HEAD
+[0.12.4]: https://github.com/doughayden/agent-foundation/compare/v0.12.3...v0.12.4
 [0.12.3]: https://github.com/doughayden/agent-foundation/compare/v0.12.2...v0.12.3
 [0.12.2]: https://github.com/doughayden/agent-foundation/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/doughayden/agent-foundation/compare/v0.12.0...v0.12.1
