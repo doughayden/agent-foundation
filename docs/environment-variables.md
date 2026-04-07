@@ -136,7 +136,7 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
 - **Purpose:** Groups traces and logs by developer in Cloud Trace — set to a unique value (e.g., your name) so teammates can filter to your experiments for collaborative debugging and review
 - **Where:** Set locally via `.env`, auto-set to environment name in Cloud Run deployments (dev/stage/prod)
 - **Note:** Both `uv run server` and Docker Compose always export traces and structured logs to Cloud Trace and Cloud Logging. This is always on — there is no local-only telemetry mode.
-- **Example:** `TELEMETRY_NAMESPACE=alice`
+- **Example:** `TELEMETRY_NAMESPACE=alice-local`
 
 ### Agent Features
 

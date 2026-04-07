@@ -143,7 +143,7 @@ For every file diff shown, use this consistent interaction pattern:
    ```bash
    ls src/
    ```
-   Store as `DOWNSTREAM_PKG` for cross-package diffs in Phases 1-2.
+   Store as `DOWNSTREAM_PKG` for cross-package diffs in Phases 1-3.
 
 10. **Identify downstream-specific files** that will show as deletions but must be preserved. List these explicitly in the orientation summary.
 
@@ -155,46 +155,11 @@ For every file diff shown, use this consistent interaction pattern:
     git checkout -b sync/foundation-$VERSION
     ```
 
-### Phase 1: Core Code Patterns (Review & Adapt)
+### Phase 1: Test Fixtures (Sync First)
 
-**Goal:** Review improvements in foundation's core modules. These are **reference implementations** — the user adapts patterns to their downstream code manually, since package names differ.
+**Goal:** Sync `tests/conftest.py` fixtures before touching any code or tests. Fixtures are the foundation everything else depends on — syncing them first ensures code+test changes in Phase 2 use current mock signatures.
 
-**Mode: IDE diff review + manual edits.** No `git checkout` — package paths differ (`agent_foundation` vs downstream name).
-
-Review each file individually. For each file, open the IDE diff and **STOP** for user decision.
-
-**Review order** (most impactful first):
-1. `src/agent_foundation/utils/config.py` — Pydantic config patterns
-2. `src/agent_foundation/utils/observability.py` — OpenTelemetry patterns
-3. `src/agent_foundation/server.py` — FastAPI/ADK server setup
-4. `src/agent_foundation/agent.py` — Agent configuration
-5. `src/agent_foundation/callbacks.py` — Lifecycle callbacks
-6. `src/agent_foundation/tools.py` — Tool patterns
-7. `src/agent_foundation/prompt.py` — Instruction provider patterns
-8. `src/agent_foundation/__init__.py` — Export/lazy-loading patterns
-
-**For each file:**
-
-First check if there are meaningful changes using a cross-package diff:
-
-```bash
-diff <(cat src/$DOWNSTREAM_PKG/<file>) <(git show foundation-tags/$VERSION:src/agent_foundation/<file>)
-```
-
-If the diff is empty, skip silently. If non-empty, open IDE diff and **STOP** with options:
-- **Skip** — No changes needed in downstream
-- **Note for later** — User will adapt manually after the sync workflow
-- **Apply now** — Apply edits to the downstream equivalent immediately
-
-When applying: make targeted edits preserving downstream-specific code (additional models, validators, properties, etc.). **Update corresponding tests in the same step** — don't defer test fixes to wrap-up.
-
-> After reviewing all files, summarize which had changes and what the user decided for each.
-
-### Phase 2: Test Infrastructure (Sync & Adapt)
-
-**Goal:** Keep downstream `tests/conftest.py` fixtures aligned with foundation, enabling bulk sync of test modules that test foundation components.
-
-**Why this matters:** Foundation's `conftest.py` defines mock classes (MockState, MockContent, MockSession, MockReadonlyContext, MockMemoryCallbackContext, etc.) and factory fixtures that mock ADK interfaces — not project-specific code. When these fixtures stay in sync, entire test modules for unchanged foundation components can be synced directly with only an import path substitution. This compounding benefit grows with each sync — the more fixtures you keep aligned, the less manual test work each sync requires.
+**Why fixtures first:** Foundation's `conftest.py` defines mock classes (MockState, MockContent, MockSession, MockReadonlyContext, MockMemoryCallbackContext, etc.) and factory fixtures that mock ADK interfaces — not project-specific code. When these fixtures stay in sync, entire test modules for unchanged foundation components can be synced directly with only an import path substitution. This compounding benefit grows with each sync — the more fixtures you keep aligned, the less manual test work each sync requires.
 
 **Sync strategy — two tiers:**
 
@@ -208,24 +173,71 @@ When applying: make targeted edits preserving downstream-specific code (addition
 
 2. When syncing: apply foundation's fixture changes, keeping downstream-only fixtures intact. All `agent_foundation` references must be replaced with `$DOWNSTREAM_PKG` — this includes both import statements (`from $DOWNSTREAM_PKG...`) and mock patch targets (`mocker.patch("$DOWNSTREAM_PKG...")`). A missed patch target silently mocks nothing and produces false-passing tests.
 
-3. **After conftest sync, identify test modules eligible for bulk sync.** These are test files for foundation components unlikely to change downstream:
-   ```bash
-   # List foundation test files
-   git ls-tree --name-only foundation-tags/$VERSION:tests/ | grep "^test_"
+3. Run the test suite to verify fixture changes don't break existing tests before proceeding.
 
-   # For each, check if the downstream equivalent only differs by import path
-   diff <(sed "s/agent_foundation/$DOWNSTREAM_PKG/g" <(git show foundation-tags/$VERSION:tests/<test_file>)) tests/<test_file>
-   ```
+> **Principle:** Downstream projects should maximize reuse of foundation's conftest fixtures. When writing new tests (in this sync or future work), prefer composing foundation fixtures over creating project-specific mocks for the same ADK interfaces. This keeps the test infrastructure consistent and future syncs lightweight.
 
-4. For test modules with minimal or no diff after import substitution, offer to **sync the test file** (checkout + sed replace package name in both imports and patch targets). After substitution, verify no `agent_foundation` references remain:
-   ```bash
-   grep -n "agent_foundation" tests/<test_file>
-   ```
-   For test modules with significant downstream customization, use the IDE diff-and-STOP pattern from Phase 1.
+### Phase 2: Code + Tests (Review & Adapt Together)
 
-> **Principle:** Downstream projects should maximize reuse of foundation's conftest fixtures. When writing new tests (in this sync or future work), prefer composing foundation fixtures over creating project-specific mocks for the same ADK interfaces. This keeps the test infrastructure aligned and future syncs lightweight.
+**Goal:** Review improvements in foundation's core modules and adapt code and tests together for each module. Fixtures are already current from Phase 1, so test updates use correct mock signatures.
 
-### Phase 3: Dependencies & Build (Mixed)
+**Mode: IDE diff review + manual edits.** No `git checkout` — package paths differ (`agent_foundation` vs downstream name).
+
+Review each module individually. For each module, review the code diff, adapt the code, then adapt its tests in the same step. Open IDE diff and **STOP** for user decision.
+
+**Review order** (most impactful first):
+1. `utils/config.py` + `test_config.py` — Pydantic config patterns
+2. `utils/observability.py` + `test_observability.py` — OpenTelemetry patterns
+3. `server.py` + `test_server.py` — FastAPI/ADK server setup
+4. `agent.py` — Agent configuration
+5. `callbacks.py` + `test_logging_callbacks.py` + `test_callbacks.py` — Lifecycle callbacks
+6. `tools.py` + `test_tools.py` — Tool patterns
+7. `prompt.py` — Instruction provider patterns
+8. `__init__.py` — Export/lazy-loading patterns
+
+**For each module:**
+
+First check if there are meaningful changes using a cross-package diff for code, then a plain diff for its test module:
+
+```bash
+# Code: cross-package diff (different src/ paths)
+git diff foundation-tags/$VERSION:src/agent_foundation/<file> -- src/$DOWNSTREAM_PKG/<file>
+
+# Tests: plain diff (same tests/ path in both repos)
+git diff foundation-tags/$VERSION -- tests/<test_file>
+```
+
+If both diffs are empty, skip silently. If either is non-empty, open IDE diffs and **STOP** with options:
+- **Skip** — No changes needed in downstream
+- **Note for later** — User will adapt manually after the sync workflow
+- **Adapt now** — Adapt code and its tests together in one step
+
+When adapting: make targeted edits preserving downstream-specific code (additional models, validators, properties, etc.). Immediately update the corresponding test module to match.
+
+> After reviewing all modules, summarize which had changes and what the user decided for each.
+
+### Phase 3: Bulk Test Sync
+
+**Goal:** Sync remaining test modules that are eligible for wholesale replacement. These are test files for foundation components that weren't customized in Phase 2 and only differ by import path.
+
+```bash
+# List foundation test files
+git ls-tree --name-only foundation-tags/$VERSION:tests/ | grep "^test_"
+
+# For each, check if the downstream equivalent only differs by import path.
+# Inner substitution: extract file from ref, replace package name, then diff against local.
+diff <(sed "s/agent_foundation/$DOWNSTREAM_PKG/g" <(git show foundation-tags/$VERSION:tests/<test_file>)) tests/<test_file>
+```
+
+For test modules with minimal or no diff after import substitution, offer to **sync the test file** (checkout + sed replace package name in both imports and patch targets). After substitution, verify no `agent_foundation` references remain:
+
+```bash
+grep -n "agent_foundation" tests/<test_file>
+```
+
+For test modules with significant downstream customization, use the IDE diff-and-STOP pattern from Phase 2.
+
+### Phase 4: Dependencies & Build (Mixed)
 
 **Goal:** Review dependency and build changes. pyproject.toml needs manual merge; Dockerfile and docker-compose.yml may be safe to sync directly or need manual review.
 
@@ -242,7 +254,7 @@ When applying: make targeted edits preserving downstream-specific code (addition
 
 > **IMPORTANT:** If pyproject.toml was modified, run `uv lock` immediately. Never sync `uv.lock` directly.
 
-### Phase 4: Infrastructure (Checkout & Restore)
+### Phase 5: Infrastructure (Checkout & Restore)
 
 **Goal:** Sync Terraform configurations. Use bulk checkout — downstream-specific files are not deleted because `git checkout` from a ref that doesn't have those files simply leaves them untouched.
 
@@ -264,7 +276,7 @@ git restore --staged terraform/main/
 
 **STOP** to confirm with user before proceeding.
 
-### Phase 5: CI/CD (Checkout & Restore)
+### Phase 6: CI/CD (Checkout & Restore)
 
 **Goal:** Sync GitHub Actions workflows.
 
@@ -281,7 +293,7 @@ git restore --staged .github/workflows/
 
 **STOP** for confirmation.
 
-### Phase 6: Configuration & Project Files
+### Phase 7: Configuration & Project Files
 
 **Goal:** Review miscellaneous configuration files.
 
@@ -292,7 +304,7 @@ git restore --staged .github/workflows/
 
 For each: check if diff exists, skip if empty, **STOP** if non-empty.
 
-### Phase 7: Documentation (Checkout & Restore)
+### Phase 8: Documentation (Checkout & Restore)
 
 **Goal:** Sync documentation guides.
 
@@ -309,7 +321,7 @@ git restore --staged docs/
 
 **STOP** for confirmation.
 
-### Phase 8: Wrap-up
+### Phase 9: Wrap-up
 
 1. **Run full quality suite and fix any failures:**
    ```bash
@@ -330,7 +342,7 @@ git restore --staged docs/
    - "Run full quality suite one final time to confirm"
    - "Push and create PR when ready"
 
-4. **Follow-up items** from "Note for later" decisions in Phases 1-2
+4. **Follow-up items** from "Note for later" decisions in Phase 2
 
 ## Recovering from Mistakes
 

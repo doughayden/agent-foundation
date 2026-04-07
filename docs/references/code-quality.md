@@ -11,6 +11,10 @@ Tools to enforce code quality:
 
 All configured in `pyproject.toml`.
 
+> [!NOTE]
+> THIS GUIDE IS A TEMPLATE
+> Replace `{your_agent}` found throughout the guide with your package name (e.g., `my_custom_agent`)
+
 ## Running Quality Checks
 
 **Run before every commit:**
@@ -156,7 +160,7 @@ From `pyproject.toml`:
 [tool.mypy]
 python_version = "3.13"
 mypy_path = "src"
-packages = ["agent_foundation"]
+packages = ["{your_agent}"]
 
 # Completeness checks
 disallow_untyped_defs = true         # All functions must have type hints
@@ -301,19 +305,19 @@ From `pyproject.toml`:
 [tool.coverage.run]
 omit = [
     # __init__.py files: namespace marker, no logic
-    "src/agent_foundation/**/__init__.py",
+    "src/{your_agent}/**/__init__.py",
 
     # server.py: FastAPI setup and ADK initialization (integration tested via CI/CD)
-    "src/agent_foundation/server.py",
+    "src/{your_agent}/server.py",
 
     # agent.py: LlmAgent instantiation (tested through callbacks, not in isolation)
-    "src/agent_foundation/**/agent.py",
+    "src/{your_agent}/**/agent.py",
 
     # prompt.py: Prompt text and formatting (integration tested via agent runs)
-    "src/agent_foundation/**/prompt.py",
+    "src/{your_agent}/**/prompt.py",
 
     # observability.py: OpenTelemetry setup (infrastructure initialization)
-    "src/agent_foundation/utils/observability.py",
+    "src/{your_agent}/utils/observability.py",
 ]
 ```
 
@@ -330,7 +334,7 @@ omit = [
 
 **Real example from our codebase:**
 ```python
-# src/agent_foundation/utils/config.py:234
+# src/{your_agent}/utils/config.py:234
 if not isinstance(result, list):  # pragma: no cover
     # Pydantic validation makes this unreachable
     msg = "Invalid allow_origins format"

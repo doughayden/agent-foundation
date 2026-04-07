@@ -17,6 +17,9 @@ This template uses **transparent git-based syncing** rather than opaque automati
 - **Flexible:** Resolve conflicts your way
 - **No magic:** Standard git commands, no proprietary tools
 
+> [!TIP]
+> The `/sync-foundation` skill (`.claude/skills/sync-foundation/SKILL.md`) provides an interactive, AI-assisted version of this workflow with phase-ordered review, IDE diffs, and per-file checkpoints.
+
 ## Setup
 
 One-time configuration:
@@ -52,10 +55,11 @@ git fetch foundation 'refs/tags/*:refs/foundation-tags/*' --no-tags
 git for-each-ref refs/foundation-tags --format='%(refname:short)' --sort=-version:refname | head -10  # Semantic version sort (latest first)
 ```
 
-Choose version and set variable
+Choose version and set variables
 ```bash
-# Set version for copy-paste workflow (e.g., v0.9.1)
+# Set variables for copy-paste workflow
 VERSION=v0.9.1
+DOWNSTREAM_PKG=your_agent  # Your package name under src/
 
 # Review what changed
 git show foundation-tags/$VERSION:CHANGELOG.md
@@ -70,124 +74,104 @@ git checkout -b sync/foundation-$VERSION
 
 ### Sync
 
-Sync files in stages (see [Common Patterns](#common-patterns) for detailed examples)
-```bash
-# Compare foundation vs current HEAD
-git diff --stat foundation-tags/$VERSION -- . ':!src/' ':!tests/'
+Work through each phase in order. See [Quick Reference](#quick-reference) for commands per phase and [Common Patterns](#common-patterns) for detailed git recipes.
 
-# Stage foundation files - review with git status, edit staged files before commit
-git checkout foundation-tags/$VERSION -- docs/
-git commit -m "docs: sync with $VERSION"
-
-git checkout foundation-tags/$VERSION -- .github/workflows/
-git commit -m "ci: sync workflows from $VERSION"
-
-git checkout foundation-tags/$VERSION -- terraform/
-git commit -m "infra: sync terraform from $VERSION"
-```
-
-Resolve conflicts if needed
-```bash
-git status
-git mergetool
-git add <resolved-files>
-git commit --amend  # Amend most recent sync commit with resolved conflicts
-```
-
-Restore custom files if needed
-```bash
-git checkout HEAD~1 -- docs/custom-tools.md
-git commit --amend
-```
-
-### Review
-
-Add manual changes for heavily customized files
-```bash
-git diff foundation-tags/$VERSION -- README.md
-# Manually edit README.md to incorporate improvements
-git add README.md
-git commit -m "docs: incorporate upstream README improvements from $VERSION"
-```
-
-Verify sync (customize ignore patterns for expected diffs)
-```bash
-git diff --stat foundation-tags/$VERSION -- . ':!src/' ':!tests/' ':!README.md'
-```
+| Phase | Focus | Strategy |
+|-------|-------|----------|
+| 1 | Test fixtures (`conftest.py`) | Sync first — everything else depends on these |
+| 2 | Code + tests per module | IDE diff, adapt code and tests together |
+| 3 | Bulk test sync | Wholesale replacement for unchanged test modules |
+| 4 | Dependencies & build | Manual review (`pyproject.toml`, `Dockerfile`, `docker-compose.yml`) |
+| 5 | Infrastructure (`terraform/`) | Bulk checkout, verify downstream files preserved |
+| 6 | CI/CD (`.github/workflows/`) | Bulk checkout, remove foundation-only workflows |
+| 7 | Config & project files | Per-file review (`.gitignore`, `AGENTS.md`, `README.md`) |
+| 8 | Documentation (`docs/`) | Bulk checkout, verify downstream docs preserved |
+| 9 | Wrap-up | Quality suite, summary, PR |
 
 ### Test & Merge
 
-Test thoroughly
 ```bash
+# Test thoroughly
 uv run ruff format && uv run ruff check --fix && uv run mypy
 uv run pytest --cov
 docker compose up --build
 terraform -chdir=terraform/bootstrap/dev plan
-```
 
-Create PR and merge
-```bash
+# Create PR and merge
 git push -u origin sync/foundation-$VERSION
 gh pr create --title "Sync with foundation template $VERSION"
 # Review and merge via GitHub
 ```
 
 > [!TIP]
-> **Advanced:** To sync unreleased changes from `foundation/main`, fetch the branch (`git fetch foundation main`) and replace `foundation-tags/$VERSION` with `foundation/main` in commands above.
+> To sync unreleased changes from `foundation/main`, fetch the branch (`git fetch foundation main`) and replace `foundation-tags/$VERSION` with `foundation/main` in commands above.
 
 ## Quick Reference
 
-Sync strategy by file type. Complete [Setup](#setup) and [Prepare](#prepare) to create a branch and set a version (e.g., `VERSION=v0.9.1`)
+Commands per phase. Complete [Setup](#setup) and [Prepare](#prepare) first to create a branch and set `VERSION`.
 
-**Safe to sync (review staged changes for project customizations):**
-
-> [!NOTE]
-> `terraform/` may contain project-specific resource configurations. `docs/` may contain custom guides and environment variables. Always review staged changes before committing.
-
+**Phase 1 — Test fixtures:**
 ```bash
-git checkout foundation-tags/$VERSION -- .github/workflows/
-git checkout foundation-tags/$VERSION -- terraform/
-git checkout foundation-tags/$VERSION -- docs/ mkdocs.yml
-git checkout foundation-tags/$VERSION -- notebooks/
-git checkout foundation-tags/$VERSION -- .gitignore .dockerignore
-# Review: git status && git diff --cached
-```
-
-**Review and edit manually (project-specific):**
-
-```bash
-# Review diffs, manually edit files to incorporate changes
-git diff foundation-tags/$VERSION -- README.md AGENTS.md
-git diff foundation-tags/$VERSION -- Dockerfile docker-compose.yml .env.example
-git diff foundation-tags/$VERSION -- pyproject.toml
-```
-
-**Review upstream patterns (apply manually):**
-
-Foundation may enhance reusable code patterns. Review diffs and selectively apply improvements:
-
-```bash
-# Review utils patterns (Pydantic validation, OpenTelemetry)
-git diff foundation-tags/$VERSION -- src/agent_foundation/utils/
-
-# Review test patterns (pytest fixtures, ADK mocks)
 git diff foundation-tags/$VERSION -- tests/conftest.py
+# Adapt fixtures, preserving downstream-only fixtures. Replace agent_foundation with your package name.
 ```
 
-**Never sync (your code):**
-- `src/` - Your agent implementation
-- `tests/` - Your test suite
-- `CHANGELOG.md` - Your version history
-- `init_template.py` - Removed from your project after first use
-- `LICENSE` - Your project license
-- `uv.lock` - Regenerate with `uv lock` after syncing pyproject.toml
+**Phase 2 — Code + tests (per module):**
+```bash
+# Cross-package diff for src/ files: foundation ref path vs your working tree path
+git diff foundation-tags/$VERSION:src/agent_foundation/utils/config.py -- src/$DOWNSTREAM_PKG/utils/config.py
+# Plain git diff for tests/ paths
+git diff foundation-tags/$VERSION -- tests/test_config.py
+# Adapt both, preserving downstream-specific code. Repeat for each module.
+```
+
+**Phase 3 — Bulk test sync:**
+```bash
+# Check if test module only differs by package name.
+# Inner substitution: extract file from ref, replace package name, then diff against local.
+diff <(sed "s/agent_foundation/$DOWNSTREAM_PKG/g" <(git show foundation-tags/$VERSION:tests/<file>)) tests/<file>
+# If minimal diff: checkout + sed replace. Verify no agent_foundation references remain.
+```
+
+**Phase 4 — Dependencies & build:**
+```bash
+git diff foundation-tags/$VERSION -- pyproject.toml
+git diff foundation-tags/$VERSION -- Dockerfile docker-compose.yml .env.example
+# Manual review and edit. Run uv lock after pyproject.toml changes.
+```
 
 > [!WARNING]
-> After syncing `pyproject.toml`, run `uv lock` to regenerate lockfile. Never sync `uv.lock` - CI uses `uv sync --locked` which fails on stale lockfile.
+> After syncing `pyproject.toml`, run `uv lock` to regenerate lockfile. Never sync `uv.lock` — CI uses `uv sync --locked` which fails on stale lockfile.
+
+**Phases 5-6 — Infrastructure & CI/CD:**
+```bash
+git checkout foundation-tags/$VERSION -- terraform/
+git restore --staged terraform/
+git checkout foundation-tags/$VERSION -- .github/workflows/
+git restore --staged .github/workflows/
+# Verify downstream-specific files preserved. Review with git diff --stat.
+```
+
+**Phases 7-8 — Config files & documentation:**
+```bash
+# Per-file review for config
+git diff foundation-tags/$VERSION -- .gitignore .dockerignore README.md AGENTS.md
+# Bulk checkout for docs
+git checkout foundation-tags/$VERSION -- docs/
+git restore --staged docs/
+```
+
+**Never bulk sync:**
+- `src/` — Your agent implementation (adapt manually in Phase 2)
+- `tests/` — Your test suite (sync fixtures in Phase 1, adapt per-module in Phase 2, bulk sync eligible modules in Phase 3)
+- `CHANGELOG.md` — Your version history
+- `init_template.py` — Removed from your project after first use
+- `LICENSE` — Your project license
+- `uv.lock` — Regenerate with `uv lock` after syncing pyproject.toml
 
 ## Common Patterns
 
-Detailed examples for the Standard Workflow [Sync](#sync) and [Review](#review) phases.
+Detailed git recipes for the [Sync](#sync) phases.
 
 ### Pull Entire Directory
 
