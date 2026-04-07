@@ -32,7 +32,7 @@ The project enforces security at every layer of the stack, from network topology
 
 **Direct VPC egress from Cloud Run.** Cloud Run uses `PRIVATE_RANGES_ONLY` egress to reach Cloud SQL through the VPC, avoiding a Serverless VPC Access connector (which adds cost and another component to secure).
 
-- Source: `terraform/main/vpc.tf` (VPC, firewall rules, Private Services Access)
+- Source: `terraform/main/network.tf` (VPC, firewall rules, Private Services Access)
 - Source: `terraform/main/main.tf` (Cloud Run VPC egress)
 - GCP docs: [Private Services Access](https://cloud.google.com/sql/docs/postgres/configure-private-services-access), [IAP TCP forwarding](https://cloud.google.com/iap/docs/using-tcp-forwarding), [Direct VPC egress](https://cloud.google.com/run/docs/configuring/vpc-direct-vpc)
 - Guide: [Infrastructure](../infrastructure.md)
