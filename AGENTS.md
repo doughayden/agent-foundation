@@ -78,6 +78,8 @@ Source package lives under `src/` (single package — file references below use 
 
 **Module roles:** `agent.py` (composition), `tools.py` / `callbacks.py` / `prompt.py` (consumer extension points — see Consumer Extension Points), `server.py` (FastAPI + ADK via `get_fast_api_app()`), `utils/config.py` (Pydantic `ServerEnv`, type-safe fail-fast), `utils/observability.py` (OpenTelemetry init).
 
+**Memory:** Read via the `load_memory` function tool (LLM queries on-demand; ADK auto-appends a usage instruction when the tool is registered). Write via the `add_session_to_memory` after-agent callback.
+
 **Session Service:** Cloud SQL Postgres (private IP) via ADK `DatabaseSessionService`.
 - `get_fast_api_app()` routes `postgresql://` URIs automatically — no application code needed
 - Connection via Cloud SQL Auth Proxy sidecar (IAM auth, no passwords)

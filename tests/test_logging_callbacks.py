@@ -25,6 +25,7 @@ class TestLoggerInjection:
         callbacks = LoggingCallbacks()
 
         assert callbacks.logger is not None
+        assert callbacks.logger.name == "agent_foundation.callbacks"
 
     def test_logging_callbacks_custom_logger(
         self, custom_logger: logging.Logger

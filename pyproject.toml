@@ -136,9 +136,6 @@ directory = "htmlcov"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-filterwarnings = [
-    "ignore::pydantic.warnings.PydanticDeprecatedSince212:google.genai.types",
-]
 # Uncomment to enable live logging for debugging API calls
 # log_cli = true
 # log_cli_level = "DEBUG"

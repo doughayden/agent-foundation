@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Replace `PreloadMemoryTool` with the `load_memory` function tool in `agent.py` — memory is now retrieved on-demand when the LLM decides it is needed, rather than eager-preloaded into context on every turn (#150)
+- Add explicit empty-password colon to `SESSION_SERVICE_URI` in `terraform/main/main.tf` (`user@` → `user:@`) to align with the documented example in `docs/environment-variables.md` and self-document intentional empty password under IAM database auth (#150)
+- Document memory read/write paths in AGENTS.md Architecture Overview (`load_memory` tool with auto-appended ADK instruction; `add_session_to_memory` after-agent callback) (#150)
+
+### Removed
+- Stale `PydanticDeprecatedSince212` warning filter from `pyproject.toml` — no longer triggered by current dependencies (#150)
+
 ## [0.12.4] - 2026-04-07
 
 ### Added
