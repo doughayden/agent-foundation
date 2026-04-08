@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.5] - 2026-04-08
+
 ### Changed
 - Replace `PreloadMemoryTool` with the `load_memory` function tool in `agent.py` — memory is now retrieved on-demand when the LLM decides it is needed, rather than eager-preloaded into context on every turn (#150)
 - Add explicit empty-password colon to `SESSION_SERVICE_URI` in `terraform/main/main.tf` (`user@` → `user:@`) to align with the documented example in `docs/environment-variables.md` and self-document intentional empty password under IAM database auth (#150)
@@ -463,7 +465,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.12.4...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.12.5...HEAD
+[0.12.5]: https://github.com/doughayden/agent-foundation/compare/v0.12.4...v0.12.5
 [0.12.4]: https://github.com/doughayden/agent-foundation/compare/v0.12.3...v0.12.4
 [0.12.3]: https://github.com/doughayden/agent-foundation/compare/v0.12.2...v0.12.3
 [0.12.2]: https://github.com/doughayden/agent-foundation/compare/v0.12.1...v0.12.2
