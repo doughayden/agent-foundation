@@ -39,7 +39,7 @@ locals {
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = coalesce(var.otel_instrumentation_genai_capture_message_content, "FALSE")
     RELOAD_AGENTS                                      = "FALSE"
     SERVE_WEB_INTERFACE                                = coalesce(var.serve_web_interface, "FALSE")
-    SESSION_SERVICE_URI                                = "postgresql+asyncpg://${google_sql_user.app.name}@localhost:5432/${google_sql_database.sessions.name}"
+    SESSION_SERVICE_URI                                = "postgresql+asyncpg://${google_sql_user.app.name}:@localhost:5432/${google_sql_database.sessions.name}"
     TELEMETRY_NAMESPACE                                = var.environment
   }
 
