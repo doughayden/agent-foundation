@@ -58,15 +58,18 @@ The project enforces security at every layer of the stack, from network topology
 
 **Deletion protection and operational safety.** Deletion protection is enabled for stage and prod environments, preventing accidental destruction of the database via Terraform or the console. Dev is left unprotected for easy teardown. Automated daily backups with point-in-time recovery provide a recovery path for data corruption or accidental deletes. The maintenance window is offset from the backup window to avoid contention — see [Cloud SQL Scaling and Reliability](cloud-sql.md) for scheduling details. SQL Studio (`data_api_access`) is enabled in dev for debugging and disabled in stage/prod.
 
-**OAuth data protected in session state.** Session state is safe for storing sensitive values like OAuth access and refresh tokens because it inherits all database-layer protections:
+**OAuth data protected in session state.** For Agent applications requiring persistent user authentication, Session state is safe for storing sensitive values like OAuth access and refresh tokens because it inherits all database-layer protections:
 
 - **Encryption at rest** — Cloud SQL encrypts all data at rest with AES-256 using [Google-managed keys by default](https://cloud.google.com/sql/docs/postgres/cmek) (see also [GCP default encryption](https://cloud.google.com/docs/security/encryption/default-encryption)). No configuration needed.
 - **User isolation** — ADK scopes sessions by `user_id`. One user's state keys are never visible to another user's session.
-- **Value-safe logging** — all credential-related logging uses key names and operation labels (`Persisted`, `Restored`, `Marked expired`), never token values. Token contents do not appear in application logs, OTel traces, or debug output.
-- **Automatic rotation** — OAuth tokens rotate via ADK's built-in [`OAuth2CredentialRefresher`](https://github.com/google/adk-python/blob/main/src/google/adk/auth/refresher/oauth2_credential_refresher.py). No manual rotation needed.
+- **Automatic rotation** — When using ADK's built-in [`OAuth2CredentialRefresher`](https://github.com/google/adk-python/blob/abe4bbeabbcc80de5d91fcff453626a2bc673fb7/src/google/adk/auth/refresher/oauth2_credential_refresher.py), OAuth tokens rotate automatically with no manual intervention required.
+- **Value-safe logging** — all credential-related logging uses key names and operation labels, never token values. Token contents do not appear in application logs, OTel traces, or debug output.
+
+> [!IMPORTANT]
+> When adding new logging, audit all `logger.*` calls in `src/` to ensure token values are never logged. Follow the `LoggingCallbacks._log_state_debug` pattern (checks truthiness, logs keys only) for all state-related logging. Ensure logged `tool_response`s always contain only API data, not credentials: manage tokens in state, not tool responses.
 
 - Source: `terraform/main/database.tf` (connector enforcement, SSL mode, IAM auth flag, deletion protection, backups, maintenance)
-- Agent logging: `LoggingCallbacks._log_state_debug` logs key names only (checks truthiness and discards values); additional lifecycle callbacks log key names and operation labels, never token values; `LoggingCallbacks.after_tool` logs `tool_response` (API data, not credentials — tokens live in state, not tool responses). Audit all `logger.*` calls in `src/` when adding new logging.
+- Agent logging: `LoggingCallbacks` class in the package root `callbacks.py` module
 - GCP docs: [Enforce Cloud SQL Auth Proxy](https://cloud.google.com/sql/docs/postgres/configure-connectivity#enforce-cloud-sql-auth-proxy), [Configure SSL/TLS](https://cloud.google.com/sql/docs/postgres/configure-ssl-instance), [Default encryption at rest](https://cloud.google.com/sql/docs/postgres/cmek)
 - Reference: [Cloud SQL Scaling and Reliability](cloud-sql.md)
 
