@@ -95,7 +95,6 @@ jobs:
         with:
           track_progress: true
           trigger_phrase: "@claude"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
           use_vertex: "true"
           claude_args: |
             --model claude-sonnet-4-5@20250929
