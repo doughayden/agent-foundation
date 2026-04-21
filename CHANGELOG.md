@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-04-21
+
+### Added
+- Opt-in FastAPI HTTP-layer instrumentation via `setup_opentelemetry(app=...)` — emits server spans as parents to ADK `invocation` spans; disabled by default (#153)
+- `gen_ai.usage.reasoning_tokens` span attribute and `reasoning_tokens` log entry, sourced from Gemini's `thoughts_token_count` (#153)
+- `gen_ai.usage.tool_use.input_tokens` span attribute and `tool_use_tokens` log entry, sourced from `tool_use_prompt_token_count` (#153)
+- Cloud Run Concurrency Tuning reference doc — runtime model, memory math, GIL / multi-process tradeoffs, and starting-point profile for async Python agents (#153)
+- Test Double Naming convention in testing reference (`Mock` / `mock_` / `create_mock_` prefixes) and AGENTS.md (#153)
+- `asyncpg` type strictness note in AGENTS.md (bind typed columns as native Python objects, not ISO strings) (#153)
+- Session state security posture section in security reference — encryption at rest, user isolation, value-safe logging, ADK OAuth2 credential refresher (#152)
+
+### Changed
+- **BREAKING:** Rename `gen_ai.usage.experimental.cached_tokens` span attribute to canonical `gen_ai.usage.cache_read.input_tokens` per OTel semantic conventions — update any dashboards or alerts keyed on the old name (#153)
+- Upgrade `google-adk` pin `1.28.0` → `1.30.0` (#154)
+- Filter ADK `PLUGGABLE_AUTH` experimental `UserWarning` by source module in `[tool.pytest.ini_options]` (#154)
+
+### Removed
+- **BREAKING:** `total_tokens` entry from `after_model` token usage log line and `gen_ai.usage.experimental.total_tokens` span attribute — derive from component counts instead (no semconv equivalent exists); update any dashboards or alerts that referenced the old attribute (#153)
+
 ## [0.12.5] - 2026-04-08
 
 ### Changed
@@ -465,7 +484,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.12.5...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/doughayden/agent-foundation/compare/v0.12.5...v0.13.0
 [0.12.5]: https://github.com/doughayden/agent-foundation/compare/v0.12.4...v0.12.5
 [0.12.4]: https://github.com/doughayden/agent-foundation/compare/v0.12.3...v0.12.4
 [0.12.3]: https://github.com/doughayden/agent-foundation/compare/v0.12.2...v0.12.3
