@@ -44,6 +44,27 @@ All reusable fixtures go in `tests/conftest.py`:
 
 ## Fixture Patterns
 
+### Test Double Naming
+
+Test double classes and fixtures follow a strict naming convention (established in root `conftest.py`):
+
+| Kind | Prefix | Example | Returns |
+|---|---|---|---|
+| Test double class | `Mock` | `MockState`, `MockOAuthContextStore` | — (defined in conftest) |
+| Instance fixture | `mock_` | `mock_state`, `mock_chat_client` | Single mock instance |
+| Factory fixture | `create_mock_` | `create_mock_state`, `create_mock_oauth_store` | `Callable` that builds instances |
+| Convenience fixture | (none) | `oauth_flow_config`, `valid_server_env` | Real objects / test data |
+
+Factory fixtures use `_factory` as their inner function name:
+
+```python
+@pytest.fixture
+def create_mock_state() -> Callable[..., MockState]:
+    def _factory(data: dict | None = None) -> MockState:
+        return MockState(data)
+    return _factory
+```
+
 ### Type Hints
 
 **Fixture definitions (strict in conftest.py):**

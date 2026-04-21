@@ -111,6 +111,20 @@ OpenTelemetry resource attributes uniquely identify your service instances in tr
 
 `LoggingCallbacks` (in `callbacks.py`) logs agent lifecycle events (start/end, model calls, tool invocations) with automatic trace context correlation.
 
+### Custom Gen AI Usage Attributes
+
+`LoggingCallbacks.after_model` (registered as the root agent's `after_model_callback`) supplements the genai instrumentor's auto-emitted attributes with three token counts extracted from `GenerateContentResponseUsageMetadata`:
+
+| Attribute | Source field | Semconv status |
+|---|---|---|
+| `gen_ai.usage.cache_read.input_tokens` | `cached_content_token_count` | Canonical (Development stability) — matches "tokens served from provider-managed cache" |
+| `gen_ai.usage.reasoning_tokens` | `thoughts_token_count` | Draft / convention-consistent — name not yet final in semconv, but converging across Gemini / OpenAI / Anthropic telemetry |
+| `gen_ai.usage.tool_use.input_tokens` | `tool_use_prompt_token_count` | Custom — no semconv equivalent yet; name follows the `cache_read.input_tokens` pattern for symmetry |
+
+The genai instrumentor already auto-emits `gen_ai.usage.input_tokens` (from `prompt_token_count`) and `gen_ai.usage.output_tokens` (from `candidates_token_count`) on its `generate_content` span. The callback does not duplicate those. `total_token_count` is intentionally omitted — no corresponding semconv span attribute exists; the total is derivable as `input_tokens + output_tokens + reasoning_tokens + tool_use.input_tokens`.
+
+String literals are used at the emission site rather than imported constants because the installed `opentelemetry-semantic-conventions` (0.58b0) does not yet export constants for the cache/reasoning/tool-use attributes. On future version bumps, check `opentelemetry.semconv._incubating.attributes.gen_ai_attributes` and switch to constant imports once upstream ships them.
+
 ## Message Content Capture
 
 `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` controls LLM content capture:

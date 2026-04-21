@@ -30,6 +30,11 @@ def pytest_configure(config: pytest.Config) -> None:
     Therefore, unittest.mock is the ONLY tool available at this stage. This is
     the only place in the codebase where unittest.mock is used - all other mocking
     (fixtures and tests) uses pytest-mock's mocker fixture.
+
+    CONSEQUENCE: All src package imports in this file MUST be deferred to fixture
+    bodies or guarded by TYPE_CHECKING. A top-level ``from package.x import Y``
+    would execute during test collection — before these patches take effect —
+    possibly triggering real API calls.
     """
     from unittest.mock import Mock, patch
 
@@ -200,12 +205,16 @@ class MockUsageMetadata:
         candidates_token_count: int | None = None,
         total_token_count: int | None = None,
         cached_content_token_count: int | None = None,
+        thoughts_token_count: int | None = None,
+        tool_use_prompt_token_count: int | None = None,
     ) -> None:
         """Initialize mock usage metadata with optional token counts."""
         self.prompt_token_count = prompt_token_count
         self.candidates_token_count = candidates_token_count
         self.total_token_count = total_token_count
         self.cached_content_token_count = cached_content_token_count
+        self.thoughts_token_count = thoughts_token_count
+        self.tool_use_prompt_token_count = tool_use_prompt_token_count
 
 
 class MockLlmResponse:
@@ -436,6 +445,14 @@ def create_mock_usage_metadata() -> Callable[..., MockUsageMetadata]:
         return MockUsageMetadata(**kwargs)
 
     return _factory
+
+
+@pytest.fixture
+def mock_span(mocker: MockerFixture) -> MockType:
+    """Mock span returned by ``trace.get_current_span()`` in callbacks."""
+    span = mocker.Mock()
+    mocker.patch("agent_foundation.callbacks.trace.get_current_span", return_value=span)
+    return span
 
 
 @pytest.fixture

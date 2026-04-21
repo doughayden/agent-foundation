@@ -17,6 +17,7 @@ import warnings
 import google.auth
 import google.auth.transport.requests
 import grpc
+from fastapi import FastAPI
 from google.auth.exceptions import DefaultCredentialsError
 from google.auth.transport.grpc import AuthMetadataPlugin
 from google.cloud.logging_v2.services.logging_service_v2 import (
@@ -29,6 +30,7 @@ from opentelemetry.exporter.cloud_logging import CloudLoggingExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter,
 )
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.google_genai import GoogleGenAiSdkInstrumentor
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.sdk._events import EventLoggerProvider
@@ -81,6 +83,7 @@ def setup_opentelemetry(
     project_id: str,
     agent_name: str,
     log_level: str,
+    app: FastAPI | None = None,
 ) -> None:
     """Set up complete OpenTelemetry observability with tracing and logging.
 
@@ -99,6 +102,9 @@ def setup_opentelemetry(
         project_id: GCP Project ID for trace and log export
         agent_name: Unique service identifier
         log_level: Logging verbosity level as string
+        app: Optional FastAPI instance. When provided, enables HTTP-layer
+            instrumentation (request/response spans as parents to ADK's
+            invocation spans). Leave as None to skip.
 
     Returns:
         None
@@ -154,12 +160,6 @@ def setup_opentelemetry(
     event_logger_provider = EventLoggerProvider(logger_provider)
     events.set_event_logger_provider(event_logger_provider)
 
-    # Inject OTel trace attributes in LogRecords
-    LoggingInstrumentor().instrument()
-
-    # ADK uses the Google Gen AI SDK
-    GoogleGenAiSdkInstrumentor().instrument()
-
     # Get the root logger and set the logging level
     root = logging.getLogger()
     root.setLevel(log_level)
@@ -195,5 +195,15 @@ def setup_opentelemetry(
         tracer_provider = TracerProvider()
         tracer_provider.add_span_processor(span_processor)
         trace.set_tracer_provider(tracer_provider)
+
+    # Inject OTel trace attributes in LogRecords
+    LoggingInstrumentor().instrument()
+
+    # ADK uses the Google Gen AI SDK
+    GoogleGenAiSdkInstrumentor().instrument()
+
+    if app is not None:
+        # instrument_app patches existing; .instrument() only patches future ones
+        FastAPIInstrumentor().instrument_app(app)
 
     return

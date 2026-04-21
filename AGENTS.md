@@ -86,6 +86,8 @@ Source package lives under `src/` (single package — file references below use 
 - Security posture and pool config: `terraform/main/database.tf`, `docs/references/cloud-sql.md`, `docs/references/security-posture.md`
 - Scale path: bump instance tier first, then managed connection pooling (Enterprise Plus) when autoscaling demands it
 
+**asyncpg type strictness:** Direct SQL against the session DB must bind typed columns as native Python objects — asyncpg's codecs reject ISO strings for `timestamptz` (and other typed columns) with `DataError`. sqlite via aiosqlite tolerates strings, so sqlite-only tests miss the bug. Use `text(...).bindparams(bindparam("x", type_=DateTime(timezone=True)))` to force dialect-aware conversion.
+
 **Networking:** VPC with Private Services Access peering for Cloud SQL private IP.
 - Cloud Run uses direct VPC egress to reach Cloud SQL via Auth Proxy sidecar
 - Bastion host (e2-micro, COS, auto-updates) runs Auth Proxy for local developer access via IAP tunnel
@@ -131,6 +133,7 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 - Factory pattern (not context managers): `def _factory() -> MockType` returned by fixture
 - Environment mocking: `mocker.patch.dict(os.environ, env_dict)`
 - Test functions: Don't type hint custom fixtures, optional hints on built-ins for IDE
+- Naming: `Mock` prefix for test double classes (e.g., `MockState`); `mock_xxx` for instance fixtures; `create_mock_xxx` for factory fixtures returning `Callable`; no prefix for convenience fixtures returning real objects (e.g., `oauth_flow_config`); factory inner function named `_factory`
 
 **ADK Mocks:** Custom mocks mirror real ADK interfaces and live in `tests/conftest.py` (readonly contexts, callback contexts, tool contexts, LLM request/response shapes, etc.). For edge cases requiring custom internal structure, add a specific named fixture.
 
