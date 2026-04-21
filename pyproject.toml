@@ -9,7 +9,7 @@ authors = [
 requires-python = ">=3.13,<3.14"
 dependencies = [
     # Pin ADK to test releases before locking upgrades
-    "google-adk==1.28.0",
+    "google-adk==1.30.0",
     "google-auth>=2.40.3,<3.0.0",
     "google-cloud-logging>=3.12.1,<4.0.0",
     "opentelemetry-exporter-gcp-logging>=1.11.0a0,<2.0.0",
@@ -136,6 +136,10 @@ fail_under = 100
 directory = "htmlcov"
 
 [tool.pytest.ini_options]
+filterwarnings = [
+    # Ignore the UserWarning category from the ADK feature flag decorator module
+    "ignore::UserWarning:google.adk.features._feature_decorator",
+]
 asyncio_mode = "auto"
 # Uncomment to enable live logging for debugging API calls
 # log_cli = true
