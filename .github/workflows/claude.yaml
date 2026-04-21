@@ -56,7 +56,6 @@ jobs:
             - Documentation and testing completeness
 
             Provide specific, actionable feedback with line-by-line suggestions where appropriate.
-          github_token: ${{ secrets.GITHUB_TOKEN }}
           use_vertex: "true"
           claude_args: |
             --model claude-sonnet-4-5@20250929
@@ -96,7 +95,6 @@ jobs:
         with:
           track_progress: true
           trigger_phrase: "@claude"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
           use_vertex: "true"
           claude_args: |
             --model claude-sonnet-4-5@20250929
