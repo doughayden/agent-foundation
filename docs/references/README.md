@@ -9,6 +9,7 @@ Deep-dive technical documentation for optional follow-up.
 - [Deployment Modes](deployment.md) - Multi-environment strategy and infrastructure
 - [CI/CD Workflows](cicd.md) - Workflow architecture and mechanics
 - [Cloud SQL Scaling and Reliability](cloud-sql.md) - Instance tiers, backups, HA, connection pooling, monitoring
+- [Cloud Run Concurrency Tuning](cloud-run-concurrency-tuning.md) - Async runtime model, GIL, and sizing for single-process Cloud Run deployments
 
 ## Security
 

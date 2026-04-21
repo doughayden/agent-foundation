@@ -228,8 +228,10 @@ class TestModelCallbacks:
         assert "Token usage:" in caplog.text
         assert "'prompt_tokens': 150" in caplog.text
         assert "'response_tokens': 50" in caplog.text
-        assert "'total_tokens': 200" in caplog.text
+        assert "total_tokens" not in caplog.text
         assert "cached_tokens" not in caplog.text
+        assert "reasoning_tokens" not in caplog.text
+        assert "tool_use_tokens" not in caplog.text
 
     def test_after_model_logs_cached_tokens_when_present(
         self,
@@ -277,6 +279,50 @@ class TestModelCallbacks:
 
         assert "'cached_tokens': 0" in caplog.text
 
+    def test_after_model_logs_reasoning_tokens_when_present(
+        self,
+        mock_logging_callback_context,
+        create_mock_llm_response,
+        create_mock_usage_metadata,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Verify after_model includes reasoning tokens when non-None."""
+        caplog.set_level(logging.INFO)
+        callbacks = LoggingCallbacks()
+
+        usage = create_mock_usage_metadata(
+            prompt_token_count=200,
+            candidates_token_count=50,
+            thoughts_token_count=75,
+        )
+        response = create_mock_llm_response(usage_metadata=usage)
+
+        callbacks.after_model(mock_logging_callback_context, response)
+
+        assert "'reasoning_tokens': 75" in caplog.text
+
+    def test_after_model_logs_tool_use_tokens_when_present(
+        self,
+        mock_logging_callback_context,
+        create_mock_llm_response,
+        create_mock_usage_metadata,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Verify after_model includes tool-use tokens when non-None."""
+        caplog.set_level(logging.INFO)
+        callbacks = LoggingCallbacks()
+
+        usage = create_mock_usage_metadata(
+            prompt_token_count=200,
+            candidates_token_count=50,
+            tool_use_prompt_token_count=30,
+        )
+        response = create_mock_llm_response(usage_metadata=usage)
+
+        callbacks.after_model(mock_logging_callback_context, response)
+
+        assert "'tool_use_tokens': 30" in caplog.text
+
     def test_after_model_skips_log_when_all_counts_none(
         self,
         mock_logging_callback_context,
@@ -311,37 +357,73 @@ class TestModelCallbacks:
 
         assert "Token usage:" not in caplog.text
 
-    def test_after_model_sets_span_attributes(
+    def test_after_model_sets_cache_read_input_tokens_attribute(
         self,
         mock_logging_callback_context,
         create_mock_llm_response,
         create_mock_usage_metadata,
-        mocker: MockerFixture,
+        mock_span,
     ) -> None:
-        """Verify after_model sets cached and total token span attributes."""
+        """Verify after_model sets the semconv cache_read.input_tokens attribute."""
         callbacks = LoggingCallbacks()
 
         usage = create_mock_usage_metadata(
             prompt_token_count=200,
             candidates_token_count=50,
-            total_token_count=250,
             cached_content_token_count=100,
         )
         response = create_mock_llm_response(usage_metadata=usage)
 
-        mock_span = mocker.Mock()
-        mocker.patch(
-            "agent_foundation.callbacks.trace.get_current_span",
-            return_value=mock_span,
+        callbacks.after_model(mock_logging_callback_context, response)
+
+        mock_span.set_attribute.assert_called_once_with(
+            "gen_ai.usage.cache_read.input_tokens", 100
         )
+
+    def test_after_model_sets_reasoning_tokens_attribute(
+        self,
+        mock_logging_callback_context,
+        create_mock_llm_response,
+        create_mock_usage_metadata,
+        mock_span,
+    ) -> None:
+        """Verify after_model maps thoughts_token_count to reasoning_tokens."""
+        callbacks = LoggingCallbacks()
+
+        usage = create_mock_usage_metadata(
+            prompt_token_count=200,
+            candidates_token_count=50,
+            thoughts_token_count=75,
+        )
+        response = create_mock_llm_response(usage_metadata=usage)
 
         callbacks.after_model(mock_logging_callback_context, response)
 
-        mock_span.set_attribute.assert_any_call(
-            "gen_ai.usage.experimental.cached_tokens", 100
+        mock_span.set_attribute.assert_called_once_with(
+            "gen_ai.usage.reasoning_tokens", 75
         )
-        mock_span.set_attribute.assert_any_call(
-            "gen_ai.usage.experimental.total_tokens", 250
+
+    def test_after_model_sets_tool_use_input_tokens_attribute(
+        self,
+        mock_logging_callback_context,
+        create_mock_llm_response,
+        create_mock_usage_metadata,
+        mock_span,
+    ) -> None:
+        """Verify after_model maps tool_use_prompt_token_count to tool_use input."""
+        callbacks = LoggingCallbacks()
+
+        usage = create_mock_usage_metadata(
+            prompt_token_count=200,
+            candidates_token_count=50,
+            tool_use_prompt_token_count=30,
+        )
+        response = create_mock_llm_response(usage_metadata=usage)
+
+        callbacks.after_model(mock_logging_callback_context, response)
+
+        mock_span.set_attribute.assert_called_once_with(
+            "gen_ai.usage.tool_use.input_tokens", 30
         )
 
     def test_after_model_skips_span_attributes_when_none(
@@ -349,7 +431,7 @@ class TestModelCallbacks:
         mock_logging_callback_context,
         create_mock_llm_response,
         create_mock_usage_metadata,
-        mocker: MockerFixture,
+        mock_span,
     ) -> None:
         """Verify after_model skips span attributes when counts are None."""
         callbacks = LoggingCallbacks()
@@ -359,12 +441,6 @@ class TestModelCallbacks:
             candidates_token_count=50,
         )
         response = create_mock_llm_response(usage_metadata=usage)
-
-        mock_span = mocker.Mock()
-        mocker.patch(
-            "agent_foundation.callbacks.trace.get_current_span",
-            return_value=mock_span,
-        )
 
         callbacks.after_model(mock_logging_callback_context, response)
 

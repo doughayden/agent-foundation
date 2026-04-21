@@ -82,19 +82,7 @@ ADK's built-in tracing covers the agent orchestration layer:
 - Agent name, session ID, model, token usage, tool args/responses as span attributes
 - Gen AI semantic convention attributes (`gen_ai.operation.name`, `gen_ai.request.model`, etc.)
 
-ADK does **not** instrument HTTP routes. There are no `GET /health`, `POST /run`, or similar spans.
-
-### FastAPI Instrumentation (Not Included)
-
-`opentelemetry-instrumentation-fastapi` would add complementary HTTP-layer spans (not duplicates) as parent spans to ADK's `invocation` spans. This provides visibility into FastAPI routing, middleware, and response serialization latency. It is not included in the template but is useful for projects with custom routes.
-
-To add it:
-
-```python
-# In server.py, after get_fast_api_app() returns
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-FastAPIInstrumentor.instrument_app(app)
-```
+ADK does **not** instrument HTTP routes. There are no `GET /health`, `POST /run`, or similar spans. Projects that expose custom HTTP routes and want HTTP-layer spans can opt in — see [HTTP Layer Instrumentation (FastAPI)](#http-layer-instrumentation-fastapi) below.
 
 ## Dependency Management
 
@@ -106,6 +94,7 @@ FastAPIInstrumentor.instrument_app(app)
 | `opentelemetry-exporter-gcp-logging` | Cloud Logging export via `CloudLoggingExporter` |
 | `opentelemetry-instrumentation-logging` | Bridges Python `logging` module to OTel (injects trace context into `LogRecord` attributes) |
 | `opentelemetry-instrumentation-google-genai` | Genai SDK instrumentation. ADK's `[otel-gcp]` extra includes this, but the project maintains explicit version control |
+| `opentelemetry-instrumentation-fastapi` | Opt-in HTTP-layer instrumentation. Imported unconditionally; activation gated on `setup_opentelemetry(..., app=app)`. Pulls in `opentelemetry-instrumentation-asgi` + `opentelemetry-util-http` + `asgiref` transitively |
 
 ### Transitive Dependencies (via ADK)
 
@@ -145,17 +134,43 @@ async def my_background_fn(..., parent_otel_context=None):
             ...  # spans are linked to the parent trace
     finally:
         if token is not None:
-            with contextlib.suppress(ValueError):
-                otel_context.detach(token)
+            otel_context.detach(token)
 ```
 
-**Why suppress `ValueError` on detach:**
+Both `attach()` and `detach()` execute inside the background task's own async `contextvars.Context`. Because the token is created and released in the same context, no `ValueError` is raised and no defensive suppression is needed. This invariant is load-bearing: any refactor that moves `otel_context.attach(...)` outside the background task (e.g., back into the sync request handler) will introduce the "Token was created in a different Context" class of error.
 
-Python's [`ContextVar.reset()`](https://docs.python.org/3/library/contextvars.html#contextvars.ContextVar.reset) raises `ValueError` when the token was created in a different `contextvars.Context`. Starlette runs background tasks in a separate context copy, so the OTel token from `attach()` cannot be cleanly detached. This is a [known issue](https://github.com/open-telemetry/opentelemetry-python/issues/2606) in the OpenTelemetry Python SDK. The suppress is safe because:
+## HTTP Layer Instrumentation (FastAPI)
 
-- The `attach()` succeeded — spans are correctly linked to the parent trace
-- The background task is about to exit — no leaked context to clean up
-- OTel's own `detach()` implementation also catches all exceptions internally
+`opentelemetry-instrumentation-fastapi` is an optional, opt-in instrumentor that adds HTTP-layer spans as parents to ADK's `invocation` spans. Enable it by passing the FastAPI instance to `setup_opentelemetry(..., app=app)`; leave `app` as `None` to skip.
+
+A typical enabled trace tree looks like:
+
+```
+POST /some-route                     (FastAPI server span)
+├── POST /some-route http receive    (ASGI http.request event)
+├── <your custom handler spans>
+│   └── invocation                   (ADK)
+│       └── invoke_agent {agent}
+│           └── call_llm
+│               └── generate_content {model}
+├── POST /some-route http send       (ASGI http.response.start)
+└── POST /some-route http send       (ASGI http.response.body)
+```
+
+**Why `instrument_app(app)` instead of the global `.instrument()`:**
+
+`FastAPIInstrumentor` provides two APIs:
+
+| API | Effect |
+|---|---|
+| `FastAPIInstrumentor().instrument()` | Patches `FastAPI.__init__` so any FastAPI app **constructed after this call** gets auto-instrumented |
+| `FastAPIInstrumentor().instrument_app(app)` | Wraps middleware on the **existing** `app` instance |
+
+In `server.py`, the FastAPI app is created at module import time via `get_fast_api_app()`, well before `setup_opentelemetry()` is called inside `main()`. The global `.instrument()` form only patches future constructors, so it would miss the already-constructed app entirely. `instrument_app(app)` wraps the live instance and works regardless of construction order.
+
+**Two `http send` spans per request:**
+
+The ASGI instrumentor (to which `FastAPIInstrumentor` delegates) creates one span per outbound ASGI message. HTTP responses always produce two messages: `http.response.start` (status + headers) and `http.response.body` (body frame). Each span is tagged with an `asgi.event.type` attribute carrying the message type verbatim, so the two spans are distinguishable in Cloud Trace by inspecting that attribute. This is normal ASGI behavior, not a duplication bug. Source: `opentelemetry/instrumentation/asgi/__init__.py` (the `send_span.set_attribute("asgi.event.type", message["type"])` path).
 
 ---
 

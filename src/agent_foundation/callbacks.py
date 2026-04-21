@@ -175,8 +175,9 @@ class LoggingCallbacks:
                 for key, value in {
                     "prompt_tokens": usage.prompt_token_count,
                     "response_tokens": usage.candidates_token_count,
-                    "total_tokens": usage.total_token_count,
                     "cached_tokens": usage.cached_content_token_count,
+                    "reasoning_tokens": usage.thoughts_token_count,
+                    "tool_use_tokens": usage.tool_use_prompt_token_count,
                 }.items()
                 if value is not None
             }
@@ -186,13 +187,18 @@ class LoggingCallbacks:
             span = trace.get_current_span()
             if usage.cached_content_token_count is not None:
                 span.set_attribute(
-                    "gen_ai.usage.experimental.cached_tokens",
+                    "gen_ai.usage.cache_read.input_tokens",
                     usage.cached_content_token_count,
                 )
-            if usage.total_token_count is not None:
+            if usage.thoughts_token_count is not None:
                 span.set_attribute(
-                    "gen_ai.usage.experimental.total_tokens",
-                    usage.total_token_count,
+                    "gen_ai.usage.reasoning_tokens",
+                    usage.thoughts_token_count,
+                )
+            if usage.tool_use_prompt_token_count is not None:
+                span.set_attribute(
+                    "gen_ai.usage.tool_use.input_tokens",
+                    usage.tool_use_prompt_token_count,
                 )
 
         return
