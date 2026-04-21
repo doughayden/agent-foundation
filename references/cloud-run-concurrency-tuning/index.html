@@ -1,0 +1,2154 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://doughayden.github.io/agent-foundation/references/cloud-run-concurrency-tuning/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Cloud Run Concurrency Tuning for Async Python Agents - Agent Foundation Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#cloud-run-concurrency-tuning-for-async-python-agents" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Agent Foundation Docs" class="md-header__button md-logo" aria-label="Agent Foundation Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Agent Foundation Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Cloud Run Concurrency Tuning for Async Python Agents
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/doughayden/agent-foundation" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../development/" class="md-tabs__link">
+          
+  
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../template-management/" class="md-tabs__link">
+          
+  
+  
+  Template
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Agent Foundation Docs" class="md-nav__button md-logo" aria-label="Agent Foundation Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5"/></svg>
+
+    </a>
+    Agent Foundation Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/doughayden/agent-foundation" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    First Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../environment-variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../infrastructure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure & Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Template
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Template
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../template-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Syncing Upstream Changes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Infrastructure
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bootstrap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bootstrap Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../protection-strategies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Protection Strategies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cicd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cloud-sql/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud SQL Scaling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-posture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Posture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adk-origin-check-middleware/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADK Origin Check Middleware
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../opentelemetry-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenTelemetry Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing Patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../code-quality/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code Quality Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cloud-backend-options/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Backend Options
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docker-compose-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dockerfile-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dockerfile Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mkdocs-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MkDocs Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#runtime-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-max_instance_request_concurrency-actually-bounds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What max_instance_request_concurrency Actually Bounds
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#effective-concurrency-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Effective Concurrency Limits
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Effective Concurrency Limits">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-memory-per-in-flight-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Memory per in-flight request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-backgroundtasks-inflation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. BackgroundTasks inflation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-sqlalchemy-connection-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. SQLAlchemy connection pool
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-cloud-sql-or-other-db-connection-cap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Cloud SQL (or other DB) connection cap
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-gil-processes-and-parallelism" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The GIL, Processes, and Parallelism
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-agent-engine-uses-9-processes-and-this-doesnt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Agent Engine Uses 9 Processes and This Doesn't
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why Agent Engine Uses 9 Processes and This Doesn&#39;t">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vcpu-is-a-rate-limit-not-a-thread-cap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        vCPU is a rate limit, not a thread cap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-real-constraints-on-adding-processes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The real constraints on adding processes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#choosing-vcpu-and-process-count-together" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing vCPU and process count together
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#starting-point-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starting-Point Profile
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-validating-the-starting-point" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Validating the Starting Point
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cpu_idle-and-first-request-latency-after-idle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cpu_idle and First-Request Latency After Idle
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="cpu_idle and First-Request Latency After Idle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-cpu_idle-true-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What cpu_idle = true does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#whats-slow-on-first-after-idle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What's slow on first-after-idle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-heuristics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision heuristics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-scale-up-vs-out-vs-add-workers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to Scale Up vs Out vs Add Workers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observability-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observability Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="cloud-run-concurrency-tuning-for-async-python-agents">Cloud Run Concurrency Tuning for Async Python Agents</h1>
+<p>How to reason about <code>max_instance_request_concurrency</code>, instance sizing, and scaling for an ADK-based agent deployed as a single async uvicorn process on Cloud Run.</p>
+<p>This guide is generic — the runtime model, limits, and rationale apply to any self-hosted Python async agent on Cloud Run, not just this template.</p>
+<h2 id="runtime-model">Runtime Model</h2>
+<p>The server entrypoint runs <code>uvicorn.run(app, ...)</code> with no <code>workers=</code> argument. That yields:</p>
+<ul>
+<li><strong>One process</strong> per container instance</li>
+<li><strong>One asyncio event loop</strong> inside that process</li>
+<li><strong>No threads</strong> doing request work (FastAPI handlers are <code>async def</code>)</li>
+</ul>
+<p>Every <code>await</code> in a handler yields control back to the event loop, letting other in-flight requests progress during I/O waits (LLM streams, DB queries, outbound HTTP). The loop is the sole request multiplexer — there is no thread pool or worker pool behind it.</p>
+<h2 id="what-max_instance_request_concurrency-actually-bounds">What <code>max_instance_request_concurrency</code> Actually Bounds</h2>
+<p><code>max_instance_request_concurrency</code> on <code>google_cloud_run_v2_service.template</code> is the number of HTTP requests Cloud Run will route to a single instance <em>before spinning up a new instance</em>. It is not:</p>
+<ul>
+<li>A thread count (no threads)</li>
+<li>A worker count (no workers)</li>
+<li>An OS-level concurrency primitive</li>
+</ul>
+<p>All it does is tell the Cloud Run load balancer when to fan out. That single async process absorbs every request routed to it.</p>
+<p>Once Cloud Run reaches <code>max_instance_count</code> instances <em>and</em> each is at <code>max_instance_request_concurrency</code>, additional requests queue. Queue depth shows up as latency.</p>
+<p>Reference: <a href="https://docs.cloud.google.com/run/docs/about-concurrency">Cloud Run — About container concurrency</a>.</p>
+<h2 id="effective-concurrency-limits">Effective Concurrency Limits</h2>
+<p>The event loop itself can juggle large numbers of concurrent awaits cheaply — <a href="https://piccolo-orm.com/blog/what-is-the-maximum-number-of-coroutines-you-should-run-concurrently/">Piccolo's coroutine-scaling experiments</a> report asyncio comfortably running tens of thousands of coroutines, with external bottlenecks (rate limits, DB connection caps, network timeouts) binding long before the loop itself. What actually bounds safe per-instance concurrency:</p>
+<h3 id="1-memory-per-in-flight-request">1. Memory per in-flight request</h3>
+<p>Each concurrent request pins a stack of objects in memory for its duration. Order-of-magnitude contributions for a typical ADK agent:</p>
+<table>
+<thead>
+<tr>
+<th>Contributor</th>
+<th>Typical size</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Loaded session events</td>
+<td>100 KB – 5 MB</td>
+<td>20–100 events; bloats when past tool outputs (API responses, retrieved documents) are embedded in event content</td>
+</tr>
+<tr>
+<td>LLM response buffers</td>
+<td>5–50 KB</td>
+<td>Streamed LLM response accumulates as it arrives; 500–10K tokens ≈ 2–40 KB text plus chunk overhead</td>
+</tr>
+<tr>
+<td>Tool output payloads</td>
+<td>10 KB – 10 MB</td>
+<td>Highly variable; an API tool returning 1K records at ~500 B each ≈ 500 KB; JSON parse+validate transiently doubles</td>
+</tr>
+<tr>
+<td>Pydantic model graph</td>
+<td>1–5 MB</td>
+<td><code>Event</code> / <code>Content</code> / <code>Part</code> instances × hundreds per request; Python object overhead dominates</td>
+</tr>
+<tr>
+<td>OpenTelemetry spans</td>
+<td>50 KB – 1 MB</td>
+<td>~1 KB per span; 50–200 spans per complex request before export flushes</td>
+</tr>
+<tr>
+<td>Background task state</td>
+<td>1–5 MB</td>
+<td>BG task builds its own event stream + clients while running (see §2)</td>
+</tr>
+<tr>
+<td>HTTP client buffers</td>
+<td>~100 KB</td>
+<td>httpx pools, active TLS sessions per outbound call</td>
+</tr>
+</tbody>
+</table>
+<p>Summed ranges:</p>
+<ul>
+<li><strong>Light</strong> (greeting, no tool calls): <strong>2–5 MB</strong></li>
+<li><strong>Medium</strong> (1–2 tool calls with small results): <strong>5–15 MB</strong></li>
+<li><strong>Heavy</strong> (bulk tool outputs, long sessions, many LLM turns): <strong>20–50+ MB</strong></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>These are component estimates, not measurements. Before tuning based on them, measure actual resident set size (RSS) growth per in-flight request under realistic load — e.g., compare steady-state memory at low vs target concurrency, or expose a <code>/debug/memory</code> endpoint that reports <code>resource.getrusage(RUSAGE_SELF).ru_maxrss</code>. RSS is the process's non-swapped physical memory footprint, which is what Cloud Run compares against the <code>memory</code> limit.</p>
+</div>
+<p><code>memory / per_request_budget</code> is the hard ceiling. Exceed it and the instance OOMs.</p>
+<h3 id="2-backgroundtasks-inflation">2. BackgroundTasks inflation</h3>
+<p>If your agent spawns FastAPI <code>BackgroundTasks</code> or other post-response async work (streaming event delivery, webhook fan-out, cleanup), those keep running after the HTTP response returns. Cloud Run's <code>max_instance_request_concurrency</code> counts HTTP requests in-flight, not BG tasks — so it may route a new request while the previous one's BG task is still executing, holding memory. Agents with no post-response work have <code>D_bg = 0</code> and the multiplier below reduces to 1×; the rest of this section applies when <code>D_bg &gt; 0</code>.</p>
+<p>Applying <a href="https://en.wikipedia.org/wiki/Little%27s_law">Little's law</a> at steady state, with HTTP arrivals at rate R, HTTP handler duration <code>D_http</code>, and BG task duration <code>D_bg</code>:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>in_flight_http  ≈ R × D_http        (capped by max_instance_request_concurrency)
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>in_flight_bg    ≈ R × D_bg
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>total_in_flight ≈ in_flight_http × (1 + D_bg/D_http)
+</span></code></pre></div>
+<p>The inflation multiplier is <code>1 + D_bg/D_http</code> and is workload-dependent:</p>
+<ul>
+<li><strong>Single-turn</strong> (handler returns after the only response event): <code>D_bg ≈ 0</code>, multiplier ~1×</li>
+<li><strong>Multi-turn with streamed follow-up</strong> (handler returns after first event; BG streams remaining LLM turns + tool calls): <code>D_bg</code> commonly equals or exceeds <code>D_http</code>, multiplier 2×–4×</li>
+<li><strong>Tool-heavy agent flows</strong> (many post-response LLM turns, bulk tool responses): multiplier can reach 5× or more</li>
+</ul>
+<p>Measure <code>D_bg</code> and <code>D_http</code> from your own traces rather than assuming a multiplier. Size memory budget for <code>max_instance_request_concurrency × (1 + D_bg/D_http) × per_request_MB</code>, not the HTTP cap alone.</p>
+<h3 id="3-sqlalchemy-connection-pool">3. SQLAlchemy connection pool</h3>
+<p>SQLAlchemy's async engine defaults to 5 connections + 10 overflow = 15 max per engine. Each engine has its own pool, so a deployment with multiple stores (e.g., session state plus any secondary store — OAuth contexts, job queues, audit logs) multiplies the per-instance connection count. Concurrency higher than pool size causes requests to wait for a connection to free.</p>
+<p>Tune pool size with <code>create_async_engine(uri, pool_size=N, max_overflow=M)</code> if concurrency justifies it.</p>
+<h3 id="4-cloud-sql-or-other-db-connection-cap">4. Cloud SQL (or other DB) connection cap</h3>
+<p>The database tier sets a hard max-connection limit. Per-instance connection count has two regimes:</p>
+<ul>
+<li><strong>Steady state</strong> (<code>sum(pool_size) × instances</code>) — connections held open under typical concurrency. Fast operations (1–10 ms reads/writes) return to the pool quickly, so actual in-use count stays close to <code>pool_size × engines</code> most of the time.</li>
+<li><strong>Peak with overflow</strong> (<code>sum(pool_size + max_overflow) × instances</code>) — theoretical ceiling during bursts, slow queries, or pool warmup on new instances. Overflow connections open on demand when the base pool is saturated.</li>
+</ul>
+<p>Aggregate: <code>max_instances × connections_per_instance ≤ db_max_connections</code>, minus Postgres reservations (~3 for superuser/replication). On small tiers the formula can bind before memory or CPU — raising <code>max_instance_count</code> without matching DB headroom leads to intermittent connection failures under load (pool timeouts or driver-level rejections from the DB).</p>
+<h2 id="the-gil-processes-and-parallelism">The GIL, Processes, and Parallelism</h2>
+<p>Python's Global Interpreter Lock (GIL) lets only one thread execute Python bytecode at a time within a single process. Async coroutines on one event loop face the same limit — they parallelize only during I/O waits that release the GIL (socket reads, DB drivers with C extensions). Pure Python work (JSON parsing, pydantic validation, event shaping, prompt construction, card rendering) serializes on the one thread holding the GIL.</p>
+<p>Two ways to get real Python parallelism:</p>
+<ol>
+<li><strong>Multiple processes</strong> (gunicorn/uvicorn workers, Agent Engine's managed runtime). Each process owns its own GIL. Cost: every process duplicates the app's in-memory state — runner, connection pools, observability exporters, plugin registries, loaded models.</li>
+<li><strong>C extensions that release the GIL</strong> during compute (numpy, some DB drivers). Free when applicable.</li>
+</ol>
+<p><strong>The relevant question isn't "how many vCPUs do I have?" — it's "how much of each request is Python compute?"</strong> For an I/O-dominant agent (time spent awaiting LLM / REST / DB), a single async process handles concurrency well regardless of vCPU count — the event loop multiplexes I/O waits and there's little Python compute to parallelize. Multi-process Python earns its keep only when both (a) you have multiple vCPUs <em>and</em> (b) per-request Python compute is significant enough that parallelizing it materially improves throughput.</p>
+<p>vCPU count is a cost/complexity dial, not a fixed baseline: smaller is cheaper and forces the single-process model; larger opens the door to multi-process if the compute mix justifies it. Start with the smallest size that fits your per-request memory footprint and scale up only when profiling shows Python compute is the bottleneck.</p>
+<h2 id="why-agent-engine-uses-9-processes-and-this-doesnt">Why Agent Engine Uses 9 Processes and This Doesn't</h2>
+<p>Vertex AI Agent Engine's <a href="https://docs.cloud.google.com/agent-builder/agent-engine/optimize-runtime">optimize-runtime documentation</a> recommends <code>container_concurrency</code> as a multiple of 9 because their managed runtime bakes <strong>9 agent processes per container</strong>. Each process handles <code>container_concurrency / 9</code> in-flight requests. This is a gunicorn-worker model wrapping your agent inside their container.</p>
+<h3 id="vcpu-is-a-rate-limit-not-a-thread-cap">vCPU is a rate limit, not a thread cap</h3>
+<p>A Cloud Run <code>cpu = "N"</code> limit means "the container gets N vCPU-seconds per wall-clock second across all its threads and processes" — enforced by cgroups CPU quota. You can run more processes than vCPUs; they just time-share the budget. For an I/O-dominant workload, time-sharing is fine — most processes are parked on I/O waits at any instant, so oversubscription costs little.</p>
+<p>Agent Engine's 9 processes fit their container for the same reason a single async process fits many concurrent requests on one event loop: concurrency exceeds parallelism because work is I/O-bound.</p>
+<h3 id="the-real-constraints-on-adding-processes">The real constraints on adding processes</h3>
+<p>Two reasons not to run multiple processes, applicable at any vCPU size:</p>
+<ol>
+<li>
+<p><strong>Memory duplication.</strong> Each Python process duplicates the full resident state — ADK runner, plugin registries, loaded module graph, SQLAlchemy pools, observability exporters, in-memory caches. Ballpark for a non-trivial agent: 150–300 MB per process. N processes costs roughly <code>N × 250 MB</code> in resident memory before per-request data lands. Agent Engine's containers must be sized to absorb 9× state; cost-tuned Cloud Run services usually aren't.</p>
+</li>
+<li>
+<p><strong>Parallelism gain depends on Python compute being significant.</strong> Multi-process Python's headline benefit is GIL parallelism — N processes use N cores simultaneously for Python bytecode. That's only useful when (a) you provision ≥ N vCPUs <em>and</em> (b) per-request Python compute is a meaningful slice of wall-clock time. For I/O-dominant workloads, (b) rarely holds: the Python compute slice is thin, so parallelizing it yields modest throughput gains against a 2×–9× memory cost.</p>
+</li>
+</ol>
+<p>At small vCPU counts there's also no parallelism to extract — only one instruction stream runs at a time regardless of process count. Multi-process there buys only <em>isolation</em> (one crashed process doesn't kill the others), which a single-purpose agent rarely values enough to pay for.</p>
+<h3 id="choosing-vcpu-and-process-count-together">Choosing vCPU and process count together</h3>
+<p>vCPU size and process count are a paired decision driven by the Python-compute share of each request:</p>
+<ul>
+<li><strong>I/O-dominant</strong> (e.g., ~95% awaiting LLM / REST / DB): one async process, smallest vCPU that fits per-request memory. Scaling goes horizontal via <code>max_instance_count</code>, not vertical.</li>
+<li><strong>Mixed compute + I/O</strong>: one async process per vCPU, sized to the compute share. Memory must absorb <code>N × app_state</code>. Consider DB tier implications — N× connection pools can exhaust a small DB.</li>
+<li><strong>Python-compute dominant</strong> (large prompt assembly, bulk validation, local inference, data transformation): multiple processes across multiple vCPUs is how you extract throughput. Memory + DB headroom are prerequisites.</li>
+</ul>
+<p>For I/O-dominant workloads specifically, the effective levers for latency and throughput are elsewhere: bigger DB tier, horizontal scaling via <code>max_instance_count</code>, keeping connection pools warm (see <code>cpu_idle</code> section), reducing LLM turns per user query. Provisioning more vCPU without a matching Python-compute bottleneck is mostly idle cores.</p>
+<p>If you migrate the agent to host inside Agent Engine, re-tune to their 9× model (e.g., <code>36</code>, <code>72</code>). That's their container architecture, not a universal rule.</p>
+<h2 id="starting-point-profile">Starting-Point Profile</h2>
+<p>For an I/O-dominant async Python agent with modest traffic, as a cost-tuned starting point:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Value</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://docs.cloud.google.com/run/docs/configuring/min-instances"><code>min_instance_count</code></a></td>
+<td><code>1</code></td>
+<td>Avoids cold start on first request of the day</td>
+</tr>
+<tr>
+<td><a href="https://docs.cloud.google.com/run/docs/configuring/max-instances-limits"><code>max_instance_count</code></a></td>
+<td><code>10</code></td>
+<td>Bounds runaway cost for a single-tenant workload; plenty of headroom (project quota typically 1000)</td>
+</tr>
+<tr>
+<td><a href="https://docs.cloud.google.com/run/docs/about-concurrency"><code>max_instance_request_concurrency</code></a></td>
+<td><code>10</code></td>
+<td>Sized so <code>10 × (1 + D_bg/D_http) × per_request_MB</code> fits <code>memory</code> — see Effective Concurrency Limits for the math</td>
+</tr>
+<tr>
+<td><code>cpu</code></td>
+<td><code>"1"</code></td>
+<td>Cheap tier; matches a single async process naturally. Raise only if profiling shows Python compute bottleneck</td>
+</tr>
+<tr>
+<td><code>memory</code></td>
+<td><code>"2Gi"</code></td>
+<td>Starting budget; revisit with measured per-request MB and BG inflation multiplier</td>
+</tr>
+<tr>
+<td><a href="https://docs.cloud.google.com/run/docs/configuring/cpu-allocation"><code>cpu_idle</code></a></td>
+<td><code>true</code></td>
+<td>Request-based billing; idle instances cheap while keeping <code>min=1</code> warm</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>These are starting points for a specific profile (I/O-dominant, cost-tuned, modest traffic). vCPU and memory are genuine tuning dials, not fixed assumptions — measure per-request memory and Python-compute share under realistic load, then adjust.</p>
+</div>
+<h2 id="example-validating-the-starting-point">Example: Validating the Starting Point</h2>
+<p>Applying the formulas from Effective Concurrency Limits against the Starting-Point Profile, for a Medium workload typical of a multi-tool agent (1–2 upstream API calls per user turn, streamed follow-up via background tasks):</p>
+<p><strong>Inputs:</strong></p>
+<ul>
+<li>Per-request memory: Medium band midpoint ≈ <strong>10 MB</strong> (conversation's in-memory footprint during its active lifetime)</li>
+<li>BG inflation: handler returns after the first response event; BG task streams follow-up events. <code>D_bg ≈ D_http</code> for light multi-turn → multiplier ≈ <strong>2×</strong></li>
+<li>Baseline resident memory: ≈ <strong>300–500 MB</strong> (ADK runner, plugins, SQLAlchemy engines, OTel exporters, Python interpreter — estimate, unmeasured)</li>
+</ul>
+<p><strong>Per-instance memory fit:</strong></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>in_flight_memory ≈ 10 × 2 × 10 MB = 200 MB
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>total_rss        ≈ 400 MB baseline + 200 MB in-flight ≈ 600 MB of 2048 MB
+</span></code></pre></div>
+<p>Comfortable headroom. The model treats HTTP- and BG-phase in-flight items as separate 10 MB slots, which is slightly conservative — a conversation's HTTP and BG phases share the same loaded session + event list, so real memory is somewhat less.</p>
+<p><strong>Heavy-tail check:</strong> per-request 40 MB × inflation 5× × concurrency 10 = 2000 MB for in-flight alone, approaching the 2 Gi ceiling. If traffic skews heavy, raise <code>memory</code> before <code>max_instance_request_concurrency</code>.</p>
+<p><strong>Event loop:</strong> 10 HTTP + ~20 BG = 30 concurrent async tasks on one event loop. Three orders of magnitude below the coroutine counts asyncio handles routinely (see Effective Concurrency Limits intro) — no contention risk at this scale.</p>
+<p><strong>Horizontal-scale constraint — DB connections:</strong></p>
+<p>Two SQLAlchemy engines per instance (session service + OAuth store), each defaulting to <code>pool_size=5, max_overflow=10</code>. Two regimes:</p>
+<ul>
+<li><strong>Steady state</strong> — fast ops cycle connections back to the pool quickly, so actual in-use count per instance stays near <code>pool_size × engines ≈ 10</code> under typical concurrency. At <code>max_instance_count = 10</code> that aggregates to ~100 connections against a <code>db-custom-1-3840</code> tier with ~97 effective connections (after Postgres reservations for superuser/replication).</li>
+<li><strong>Peak with overflow</strong> — bursts, slow queries, or new-instance pool warmup can push per-instance count to <code>(pool_size + max_overflow) × engines ≈ 30</code>, reaching ~300 aggregate. At that point Cloud SQL rejects new connection attempts; failures surface to the app as SQLAlchemy connection errors (pool timeout when the local pool can't serve a request within <code>pool_timeout</code>, or a wrapped driver exception — e.g., <code>asyncpg.exceptions.TooManyConnectionsError</code> — when the DB itself refuses a new connection).</li>
+</ul>
+<p>Operational reality: at <code>max_instance_count = 10</code> we sit <em>at</em> the tier budget at steady peak (no wiggle room) and <em>blow past it</em> during any burst. Before pushing <code>max_instance_count</code> further, <strong>bump the DB tier</strong> — <code>db-custom-2-7680</code> supports ~200 connections, doubling burst headroom. See <a href="../cloud-sql/">Cloud SQL Scaling</a>. Reducing <code>max_overflow</code> per engine is an alternative that trades burst-connection rejection for burst latency (requests wait longer for pooled connections).</p>
+<p><strong>Conclusion:</strong> the starting point holds for the Medium workload on a single instance — memory sits near 30% utilization and the event loop has ample headroom. Under horizontal scale, DB connections bind first, not memory or CPU. Measure per-request RSS and <code>D_bg</code> / <code>D_http</code> in production to confirm these estimates match reality before relying on them.</p>
+<h2 id="cpu_idle-and-first-request-latency-after-idle"><code>cpu_idle</code> and First-Request Latency After Idle</h2>
+<p><code>min_instance_count = 1</code> eliminates cold start (container boot, app import, lifespan init) but does not guarantee the first request after an idle period will be fast. Two separate latency regimes exist:</p>
+<ul>
+<li><strong>Cold start:</strong> no instance exists. Container + app boot is the penalty.</li>
+<li><strong>Warm-idle-to-active:</strong> instance exists but hasn't served a request in a while. A different set of penalties apply.</li>
+</ul>
+<h3 id="what-cpu_idle-true-does">What <code>cpu_idle = true</code> does</h3>
+<p>With <code>cpu_idle = true</code> (request-based billing), the instance's CPU is throttled to &lt;5% while no requests are in-flight, and unthrottled when a request arrives. Billing accrues only during request processing.</p>
+<p>With <code>cpu_idle = false</code> (instance-based billing), CPU is always fully allocated while the instance exists. Billing is continuous.</p>
+<p>References: <a href="https://docs.cloud.google.com/run/docs/configuring/cpu-allocation">Cloud Run — CPU allocation</a>, <a href="https://docs.cloud.google.com/run/docs/configuring/billing-settings">Billing settings</a>.</p>
+<h3 id="whats-slow-on-first-after-idle">What's slow on first-after-idle</h3>
+<ol>
+<li><strong>CPU unthrottle ramp</strong> — small (~100 ms), real but usually not dominant</li>
+<li><strong>Stale connection pools</strong> — the bigger penalty:</li>
+<li>Cloud SQL Auth Proxy ↔ Cloud SQL backend keepalive expires → first query re-handshakes TLS + auth</li>
+<li>httpx async clients to upstream APIs (LLM provider, external REST services) drop idle connections → new TLS handshake on first call</li>
+<li>SQLAlchemy pool recycles stale connections via <code>pool_pre_ping</code> or <code>pool_recycle</code></li>
+<li><strong>ADC / IAM token refresh</strong> — identity tokens refresh on a cadence; first request after idle may trigger one</li>
+<li><strong>Python GC and OS page cache</strong> — long idle periods invite full GC cycles and page eviction; next request pays for reload</li>
+<li><strong>In-process caches</strong> — any session-service or in-memory caches may have been GC'd</li>
+</ol>
+<p>Under throttled CPU, housekeeping that would overlap an idle period (keepalives, background tasks) runs slowly or not at all, so pools stay stale longer and re-establishment costs are paid in the request path.</p>
+<h3 id="options">Options</h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Effect</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cpu_idle = false</code></td>
+<td>CPU always allocated; background housekeeping keeps pools and caches warm; first-after-idle request fast</td>
+<td>~2× instance cost (billed during idle too)</td>
+</tr>
+<tr>
+<td>Cloud Scheduler → <code>/health</code> every ~60s</td>
+<td>Instance never sits idle long enough for pools to die; CPU briefly unthrottles each ping</td>
+<td>Trivial (one scheduler job + ~1 request/min)</td>
+</tr>
+<tr>
+<td>Application-level keepalive task</td>
+<td>Periodic async task pings DB/APIs to keep pools warm</td>
+<td>Complexity; fights Cloud Run's stateless model</td>
+</tr>
+<tr>
+<td>Accept it</td>
+<td>Simplest</td>
+<td>Slow first-after-idle request</td>
+</tr>
+</tbody>
+</table>
+<h3 id="decision-heuristics">Decision heuristics</h3>
+<ul>
+<li><strong>Dev or low-traffic</strong> — <code>cpu_idle = true</code> is fine. First-after-idle slowness shows up but rarely matters.</li>
+<li><strong>Low-traffic with latency SLOs</strong> — Cloud Scheduler pinger is the best ROI: keeps pools warm without flipping the billing model.</li>
+<li><strong>Steady prod traffic</strong> — <code>cpu_idle = true</code> is fine; natural traffic keeps the instance active.</li>
+<li><strong>Prod with unpredictable traffic + latency SLO</strong> — <code>cpu_idle = false</code> is the clean answer; you're paying for <code>min=1</code> anyway, might as well keep it hot.</li>
+</ul>
+<p>The template defaults to <code>cpu_idle = true</code> because cost predictability matters more than sub-second first-request latency for most early-stage deployments. Revisit when an SLO makes the tradeoff concrete.</p>
+<p>Reference: <a href="https://docs.cloud.google.com/run/docs/tips/general">Cloud Run — General development tips</a> (cold start and latency mitigation).</p>
+<h2 id="when-to-scale-up-vs-out-vs-add-workers">When to Scale Up vs Out vs Add Workers</h2>
+<p><strong>Scale out (raise <code>max_instance_count</code>)</strong> when:<br />
+- Queue depth / tail latency grows under load<br />
+- Memory per instance stays healthy<br />
+- Cost per request is acceptable</p>
+<p><strong>Scale up memory (raise <code>memory</code>)</strong> when:<br />
+- Instances OOM before hitting concurrency cap<br />
+- You want to raise per-instance concurrency without OOM risk<br />
+- Pool sizes or cached state grow</p>
+<p><strong>Scale up CPU (raise <code>cpu</code>)</strong> when:<br />
+- Profiling shows CPU-bound time inside request handlers (not I/O waits)<br />
+- Event loop tasks are observably starved<br />
+- You plan to add uvicorn workers (below)</p>
+<p><strong>Add uvicorn workers</strong> (only after raising CPU) when:<br />
+- <code>cpu ≥ 2</code> and CPU profile shows GIL contention<br />
+- Per-request Python compute is significant (heavy serialization, parsing, validation)<br />
+- Memory can absorb <code>N × app_state</code> duplication</p>
+<p><strong>Raise <code>max_instance_request_concurrency</code></strong> when:<br />
+- Instances are consistently underutilized (low CPU, low memory)<br />
+- No queue depth, no tail latency issues<br />
+- BackgroundTasks are light or absent</p>
+<h2 id="observability-checklist">Observability Checklist</h2>
+<p>Before tuning any of the above, confirm you can see:</p>
+<ul>
+<li>Per-instance memory usage (Cloud Run container metrics)</li>
+<li>Per-instance request count and queue depth</li>
+<li>Event loop lag (custom metric if not provided by your observability stack)</li>
+<li>DB connection pool saturation (SQLAlchemy pool status or DB-side connection count)</li>
+<li>Request tail latency (p95, p99)</li>
+</ul>
+<p>Tune based on signal, not vibes.</p>
+<hr />
+<p>← <a href="../">Back to References</a> | <a href="../../">Documentation</a></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
