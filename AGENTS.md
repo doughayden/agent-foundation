@@ -62,6 +62,7 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 | Enable a GCP API | `terraform/main/services.tf` | `google_project_service`; downstream resources `depends_on = [time_sleep.service_enablement_propagation["api.googleapis.com"]]` |
 | Grant a WIF role | `terraform/main/iam.tf` | `google_project_iam_member`; downstream resources `depends_on = [time_sleep.wif_iam_propagation["roles/example"]]` |
 | Override runtime config | GitHub Environment Variables → `TF_VAR_*` | See `coalesce()` call sites in `terraform/main/` for current overridable surface |
+| Swap the LLM | `ROOT_AGENT_MODEL` in `agent.py` | Gemini/Claude/Vertex-hosted work via model string out of the box. For LiteLlm / Apigee / Ollama / vLLM / LiteRT-LM connectors, install the matching ADK extra and pass a connector instance. See [ADK models](https://adk.dev/agents/models/). |
 
 **Template internals** (higher upstream-sync cost if customized — consumers may still modify, but expect merge complexity on future upstream syncs):
 - `terraform/bootstrap/` — bootstrap roots and shared modules
