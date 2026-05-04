@@ -56,7 +56,7 @@ REUSING IN OTHER TEMPLATES:
 
 TECHNICAL NOTES:
     - Excluded from test coverage (not in src/, one-time use)
-    - Excluded from ruff/mypy checks (see pyproject.toml)
+    - Outside mypy's default scope (see pyproject.toml); ruff covers it
     - No automated tests (manual validation via --dry-run)
 """
 

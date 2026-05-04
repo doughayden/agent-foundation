@@ -21,6 +21,8 @@ jobs:
         id: filter
         with:
           filters: |
+            # Tracks the PyPA src-layout convention: source under src/, tests under tests/.
+            # https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/
             code:
               - 'src/**'
               - 'tests/**'
@@ -81,7 +83,10 @@ jobs:
     steps:
       - name: Check required status
         run: |
-          if [[ "${{ needs.changes.outputs.code }}" == "true" ]]; then
+          if [[ "${{ needs.changes.result }}" != "success" ]]; then
+            echo "❌ Changes detection failed (result: ${{ needs.changes.result }})"
+            exit 1
+          elif [[ "${{ needs.changes.outputs.code }}" == "true" ]]; then
             if [[ "${{ needs.code-quality.result }}" == "success" ]]; then
               echo "✅ Code quality and tests passed"
             else
