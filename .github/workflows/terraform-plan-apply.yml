@@ -18,7 +18,6 @@ on:
         description: 'Terraform environment for resource naming (dev, stage, prod). If not specified, uses the GitHub environment value.'
         required: false
         type: string
-        default: ''
       docker_image:
         description: 'Docker image URI to deploy'
         required: true
@@ -45,7 +44,7 @@ permissions:
   pull-requests: write  # For PR comments
 
 concurrency:
-  group: terraform-apply-${{ inputs.terraform_environment != '' && inputs.terraform_environment || inputs.environment }}
+  group: terraform-apply-${{ inputs.terraform_environment || inputs.environment }}
   cancel-in-progress: false
 
 jobs:

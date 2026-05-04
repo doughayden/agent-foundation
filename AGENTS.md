@@ -63,6 +63,8 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 | Grant a WIF role | `terraform/main/iam.tf` | `google_project_iam_member`; downstream resources `depends_on = [time_sleep.wif_iam_propagation["roles/example"]]` |
 | Override runtime config | GitHub Environment Variables → `TF_VAR_*` | See `coalesce()` call sites in `terraform/main/` for current overridable surface |
 | Swap the LLM | `ROOT_AGENT_MODEL` in `agent.py` | Gemini/Claude/Vertex-hosted work via model string out of the box. For LiteLlm / Apigee / Ollama / vLLM / LiteRT-LM connectors, install the matching ADK extra and pass a connector instance. See [ADK models](https://adk.dev/agents/models/). |
+| Add a CI lane for a subproject | new `.github/workflows/ci-<name>.yml` (copy `ci.yml`) | Scope `paths-filter` and step `working-directory` to the subdir. Each workflow needs a unique top-level `name:` so its `status` check is uniquely addressable; register the new `<Name> / status` check in branch protection (see `docs/references/protection-strategies.md` Prerequisites for the bootstrap path) |
+| Add a subproject Docker image to the deploy pipeline | new `build-<name>` job in `ci-cd.yml` calling `docker-build.yml` with `image_name`/`context` overrides; mirror with `pull-and-promote.yml` and `resolve-image-digest.yml` calls (same `image_name` override) and pass the resulting digest URI through to `terraform-plan-apply.yml` as a new `TF_VAR_*` input | Subproject build context: `.dockerignore` is read from the context root, not the repo root, so add a `<context>/.dockerignore` if the subproject needs its own exclusions. Subproject lands in the same Artifact Registry as the main app (only `image_name` differs) — for a separate registry, see the Reusable workflow parameter pattern note above. See `docs/references/cicd.md` Subproject Builds |
 
 **Template internals** (higher upstream-sync cost if customized — consumers may still modify, but expect merge complexity on future upstream syncs):
 - `terraform/bootstrap/` — bootstrap roots and shared modules
@@ -179,9 +181,13 @@ uv lock --upgrade               # Update all
 
 **Orchestration (Template Internals):** `ci-cd.yml` is the orchestrator; reusable workflows live in `.github/workflows/`. PR: build `pr-{sha}`, dev-plan, comment. Main: build `{sha}`+`latest`, deploy dev (+ stage in prod mode). Tag: prod deploy (prod mode only). **Deploy by immutable digest** (not tag) to guarantee a new Cloud Run revision. Option to deploy to dev on all PRs: single-line change to `ci-cd.yml` (remove `&& github.event_name == 'push'` from dev-apply condition).
 
+**Reusable workflow parameter pattern:** Any `inputs.X || vars.X` conditional resolved once at job-level `env:` block, then referenced via `${{ env.X }}` in steps (avoids duplication at use sites, self-documents the fallback). See `IMAGE_NAME: ${{ inputs.image_name || vars.IMAGE_NAME }}` in docker-build.yml for the pattern. **No `registry` override:** `vars.ARTIFACT_REGISTRY_URI` embeds the per-env GCP project, and GitHub Environment vars resolve in the callee's env context (not the caller's), so a static input override would defeat per-env isolation and break cross-project promotion. Per-env subproject registries should be done with a new env-scoped GitHub var consumed directly in a per-subproject job, not via input override.
+
 **Auth:** WIF (no SA keys). Bootstrap auto-creates GitHub Variables for the WIF principal, project, region, registry, and state bucket. See bootstrap module outputs in `terraform/bootstrap/module/github/` for the current set.
 
 **Job Summaries:** Use `mktemp`, `tee "$FILE"`, `${PIPESTATUS[0]}` for streaming + capture. Export GitHub context to shell vars, capture once, check for empty outputs.
+
+**Required checks (Template Internals):** Self-contained `ci.yml` workflow (not called by orchestrator). Owns a three-job pipeline: `changes` (dorny/paths-filter — file-scope path detection), `code-quality` (gated on changes output — runs ruff/mypy/pytest), and `status` (always-runs sentinel; reports skipped or pass/fail for branch protection). Branch protection requires `CI / status`.
 
 ## Terraform
 

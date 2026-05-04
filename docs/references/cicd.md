@@ -14,8 +14,9 @@ GitHub Actions workflow architecture, mechanics, and customization.
 - **`pull-and-promote.yml`** - Image promotion between registries (production mode)
 - **`resolve-image-digest.yml`** - Digest lookup by tag (production mode)
 - **`terraform-plan-apply.yml`** - Terraform deployment
-- **`code-quality.yml`** - Code quality checks (ruff, mypy, pytest)
-- **`required-checks.yml`** - Conditional status check wrapper
+
+**Standalone CI Workflow:**
+- **`ci.yml`** - Code quality checks (ruff, mypy, pytest with coverage)
 
 **Key principle:** Infrastructure as code + GitOps = reproducible deployments.
 
@@ -206,6 +207,10 @@ config → metadata-extract → resolve-digest → prod-promote → prod-plan �
 - Registry URI and location
 - Environment (dev/stage/prod)
 
+**Optional overrides (for subproject builds):**
+- `image_name` - override `vars.IMAGE_NAME`
+- `context` - Docker build context path (defaults to `.`)
+
 **Features:**
 - Builds for `linux/amd64` (Cloud Run target platform)
 - Registry cache with protected `buildcache` tag
@@ -227,6 +232,9 @@ config → metadata-extract → resolve-digest → prod-promote → prod-plan �
 - Source digest
 - Target tags
 
+**Optional overrides (for subproject promotion):**
+- `image_name` - override `vars.IMAGE_NAME` for both source and target (image name is intended to remain static across environments)
+
 **How it works:**
 1. Authenticate to source and target registries via WIF
 2. Pull image from source registry by digest
@@ -246,6 +254,9 @@ config → metadata-extract → resolve-digest → prod-promote → prod-plan �
 **Inputs:**
 - Environment (stage)
 - Tags to resolve
+
+**Optional overrides (for subproject digest lookup):**
+- `image_name` - override `vars.IMAGE_NAME` for the resolved environment
 
 **How it works:**
 1. Authenticate to registry via WIF
@@ -283,35 +294,22 @@ config → metadata-extract → resolve-digest → prod-promote → prod-plan �
 - `plan` job on merge: Save plan artifact (no comment)
 - `apply` job: Use saved plan artifact
 
-### code-quality.yml
+## Standalone CI Workflow
 
-**Purpose:** Run code quality checks (ruff, mypy, pytest).
+### ci.yml
 
-**Steps:**
-1. Install uv and Python 3.13
-2. Install dependencies with `uv sync --locked`
-3. Run ruff format check
-4. Run ruff linting
-5. Run mypy type checking
-6. Run pytest with coverage
+**Purpose:** Run code quality checks (ruff, mypy, pytest with coverage).
 
-**Timeout:** 10 minutes (typical: 2-3 minutes)
+**Pipeline (three jobs):**
+1. `changes` - dorny/paths-filter detects whether relevant files changed
+2. `code-quality` - runs ruff format check, ruff linting, mypy, pytest with coverage. Gated on `changes.outputs.code == 'true'`.
+3. `status` - always-runs sentinel that aggregates results for branch protection
 
-**When it runs:** Push to main (paths filtered) or called by required-checks.yml
+**Timeout:** 10 minutes for the `code-quality` job (typical: 2-3 minutes)
 
-### required-checks.yml
+**When it runs:** Every push to main and every pull request. The inner `code-quality` job is skipped when no relevant paths changed; the `status` sentinel always reports.
 
-**Purpose:** Conditional status check wrapper for branch protection.
-
-**How it works:**
-1. `check-changes` job: Use paths-filter to detect code changes
-2. `code-quality` job: Run if code changed
-3. `required-status` job: Always run (required in branch protection)
-   - Pass if no code changes
-   - Pass if code changed and quality checks passed
-   - Fail if code changed and quality checks failed
-
-**Why this exists:** Branch protection requires a status check that always runs. This wrapper allows skipping quality checks when code hasn't changed while maintaining a consistent required status.
+**Branch protection:** Require `CI / status` (the `status` job). The sentinel passes either with "skipped — no relevant files changed" or with the actual quality-check result.
 
 ## Workflow Behavior
 
@@ -411,9 +409,21 @@ See [Deployment Modes](deployment.md) for runtime vs infrastructure distinction.
 ### Add Build Steps
 
 Edit `.github/workflows/ci-cd.yml` or reusable workflows:
-- Code quality checks → Edit `code-quality.yml`
+- Code quality checks → Edit `ci.yml`
 - Integration tests → Add job after `docker-build` in `ci-cd.yml`
 - Custom notifications → Add to orchestrator
+
+### Subproject Builds
+
+The reusable workflows (`docker-build.yml`, `pull-and-promote.yml`, `resolve-image-digest.yml`) accept optional `image_name` and (for `docker-build.yml`) `context` overrides. This lets a single `ci-cd.yml` orchestrate multiple images, like a primary app plus a sidecar/relay subproject under `relay/`.
+
+**Pattern:** add a parallel `build-<name>` job per subproject in `ci-cd.yml`, calling `docker-build.yml` with the subproject's `image_name` and `context`. Mirror with parallel promote/resolve jobs (same `image_name` override) and pass each resulting `digest_uri` through to `terraform-plan-apply.yml` as a new `TF_VAR_*` input.
+
+**Sub-context `.dockerignore` gotcha:** Docker reads `.dockerignore` from the *context root*, not the repo root. When `context: relay`, the build sees `relay/.dockerignore` (if it exists) and ignores the project-root `.dockerignore`. Add a `<context>/.dockerignore` per subproject if you need exclusions.
+
+**CI lane per subproject:** for code-quality coverage of a subproject, copy `ci.yml` to `ci-<name>.yml`, scope its `paths-filter` and step `working-directory` to the subdir, give the workflow a unique `name:` so its `status` check is uniquely addressable, and add the new `<Name> / status` to branch protection.
+
+**No `registry` override:** the parameterization deliberately stops at `image_name` (and `context` for builds). `vars.ARTIFACT_REGISTRY_URI` embeds the per-env GCP project, and GitHub Environment vars resolve in the callee's env context (not the caller's), so a static input override would defeat per-env isolation and break cross-project promotion. Subprojects therefore land in the same per-env Artifact Registry as the main app, distinguished only by `image_name`. If a subproject genuinely needs a different per-env registry, define a new env-scoped GitHub var in bootstrap and consume it directly in a per-subproject reusable workflow rather than threading it through the existing inputs.
 
 ### Modify Triggers
 

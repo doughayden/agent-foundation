@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5  # Typical run: <1 min (path filtering). 5 min is generous buffer
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'src/**'
+              - 'tests/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.github/workflows/ci.yml'
+
+  code-quality:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: Code Quality and Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10  # Typical run: 2-3 min (format, lint, type check, tests). 10 min prevents hanging
+    strategy:
+      matrix:
+        python-version: ['3.13']
+      fail-fast: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --all-extras --locked
+
+      - name: Run Ruff formatting check
+        run: uv run ruff format --check
+        if: success() || failure()
+
+      - name: Run Ruff linting
+        run: uv run ruff check --output-format=github
+        if: success() || failure()
+
+      - name: Run MyPy type checking
+        run: uv run mypy
+        if: success() || failure()
+
+      - name: Run pytest with coverage
+        run: uv run pytest --cov
+        if: success() || failure()
+
+  # Always-runs sentinel for branch protection.
+  status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5  # Typical run: <1 min (status check). 5 min is generous buffer
+    needs: [changes, code-quality]
+    if: always()
+    steps:
+      - name: Check required status
+        run: |
+          if [[ "${{ needs.changes.outputs.code }}" == "true" ]]; then
+            if [[ "${{ needs.code-quality.result }}" == "success" ]]; then
+              echo "✅ Code quality and tests passed"
+            else
+              echo "❌ Code quality and tests failed"
+              exit 1
+            fi
+          else
+            echo "⏭️ Code quality and tests skipped - no relevant files changed"
+          fi
