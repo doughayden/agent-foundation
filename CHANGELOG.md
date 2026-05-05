@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Optional `image_name` and `context` overrides on `.github/workflows/docker-build.yml` to support building subproject images alongside the primary app
+- Optional `image_name` override on `.github/workflows/pull-and-promote.yml` (applies to both source and target by design — image name stays static across environments)
+- Optional `image_name` override on `.github/workflows/resolve-image-digest.yml`
+- Subproject Builds section in `docs/references/cicd.md` covering the override pattern, the per-context `.dockerignore` gotcha, the per-subproject CI lane recipe, and the rationale for not exposing a `registry` override
+- Consumer Extension Points entries in `AGENTS.md` for adding a CI lane and adding a subproject Docker image to the deploy pipeline
+- Migration bullet in `docs/references/protection-strategies.md` Prerequisites for renamed required-status checks (do the swap on the PR before merging to avoid an unprotected window)
+
+### Changed
+- **BREAKING:** Required status check renamed from `Required Checks / required-status` to `CI / status`. Consumers with branch protection configured must update the required check name (see `docs/references/protection-strategies.md` Prerequisites for the migration path)
+- Consolidated `code-quality.yml` and `required-checks.yml` into a single self-contained `ci.yml` workflow with three jobs (`changes`, `code-quality`, `status`)
+
+### Removed
+- `.github/workflows/code-quality.yml` (consolidated into `ci.yml`)
+- `.github/workflows/required-checks.yml` (consolidated into `ci.yml`)
+- `workflow_dispatch` and `workflow_call` triggers from the code-quality pipeline (intentional — neither was invoked, and `ci.yml` is now self-contained)
+
 ## [0.13.0] - 2026-04-21
 
 ### Added

@@ -25,7 +25,7 @@ Configure protection rules after bootstrap (manual setup):
 **Branch Protection (main):**
 1. Settings → Branches → Add rule for `main`
 2. Require PR with 1 approval, dismiss stale reviews
-3. Require status checks: `Required Checks / required-status`
+3. Require status checks: `CI / status`
 4. No force pushes, no deletions
 
 **Tag Protection (production mode, automated):**

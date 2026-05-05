@@ -12,13 +12,22 @@ on:
         required: false
         type: boolean
         default: true
+      image_name:
+        description: 'Optional override for image name (e.g., my-app)'
+        required: false
+        type: string
+      context:
+        description: 'Docker build context path (defaults to repo root)'
+        required: false
+        type: string
+        default: '.'
       tags:
         description: 'Newline-separated list of image tag names (registry-agnostic)'
         required: true
         type: string
     outputs:
       image_sha:
-        description: 'Short SHA tag (user-friendly reference for break-glass workflow)'
+        description: 'Short SHA tag (user-friendly reference)'
         value: ${{ jobs.build-push.outputs.image_sha }}
       digest:
         description: 'Image digest (immutable content hash: sha256:...)'
@@ -41,6 +50,9 @@ jobs:
       image_sha: ${{ steps.image-sha.outputs.sha }}
       digest: ${{ steps.build.outputs.digest }}
       digest_uri: ${{ steps.digest-uri.outputs.uri }}
+
+    env:
+      IMAGE_NAME: ${{ inputs.image_name || vars.IMAGE_NAME }}
 
     steps:
       - name: Checkout repository
@@ -68,7 +80,7 @@ jobs:
         run: |
           set -euo pipefail
           REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
-          IMAGE_NAME="${{ vars.IMAGE_NAME }}"
+          IMAGE_NAME="${{ env.IMAGE_NAME }}"
 
           # Convert newline-separated tag names to comma-separated full registry paths
           # Note: metadata-extract outputs newline-separated (idiomatic bash), but docker/build-push-action
@@ -90,12 +102,12 @@ jobs:
         id: build
         uses: docker/build-push-action@v7
         with:
-          context: .
+          context: ${{ inputs.context }}
           push: ${{ inputs.push }}
           platforms: linux/amd64
           tags: ${{ steps.construct-tags.outputs.full_tags }}
-          cache-from: type=registry,ref=${{ vars.ARTIFACT_REGISTRY_URI }}/${{ vars.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ vars.ARTIFACT_REGISTRY_URI }}/${{ vars.IMAGE_NAME }}:buildcache,mode=max
+          cache-from: type=registry,ref=${{ vars.ARTIFACT_REGISTRY_URI }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ vars.ARTIFACT_REGISTRY_URI }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -114,7 +126,7 @@ jobs:
         run: |
           set -euo pipefail
           REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
-          IMAGE_NAME="${{ vars.IMAGE_NAME }}"
+          IMAGE_NAME="${{ env.IMAGE_NAME }}"
           DIGEST="${{ steps.build.outputs.digest }}"
 
           URI="${REGISTRY}/${IMAGE_NAME}@${DIGEST}"

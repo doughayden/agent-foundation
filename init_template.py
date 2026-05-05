@@ -56,7 +56,8 @@ REUSING IN OTHER TEMPLATES:
 
 TECHNICAL NOTES:
     - Excluded from test coverage (not in src/, one-time use)
-    - Excluded from ruff/mypy checks (see pyproject.toml)
+    - Outside CI's path filter; ruff covers it on local full-repo runs
+    - Outside mypy's default scope (see pyproject.toml)
     - No automated tests (manual validation via --dry-run)
 """
 

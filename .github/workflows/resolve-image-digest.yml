@@ -11,6 +11,10 @@ on:
         description: 'Tags from metadata-extract (newline-separated, SHA is first)'
         required: true
         type: string
+      image_name:
+        description: 'Optional override for image name (defaults to vars.IMAGE_NAME for the resolved environment)'
+        required: false
+        type: string
     outputs:
       digest:
         description: 'Resolved image digest (sha256:...)'
@@ -35,6 +39,9 @@ jobs:
       digest: ${{ steps.resolve.outputs.digest }}
       image_sha: ${{ steps.extract-sha.outputs.sha }}
       tags: ${{ inputs.tags }}
+
+    env:
+      IMAGE_NAME: ${{ inputs.image_name || vars.IMAGE_NAME }}
 
     steps:
       - name: Extract SHA from Tags
@@ -68,7 +75,7 @@ jobs:
           esac
 
           REGISTRY="${{ vars.ARTIFACT_REGISTRY_URI }}"
-          IMAGE_NAME="${{ vars.IMAGE_NAME }}"
+          IMAGE_NAME="${{ env.IMAGE_NAME }}"
           SHA_TAG="${{ steps.extract-sha.outputs.sha }}"
 
           # Configure docker auth for Artifact Registry

@@ -14,6 +14,14 @@ Three protection layers ensure code quality and security:
 
 Main branch protection ensures code quality and prevents accidental commits to main.
 
+### Prerequisites
+
+- **Repository admin access** — only admins (or org owners) can configure branch protection rules.
+- **Status check names must already exist before you can require them.** GitHub's required-status-check picker only offers check names it has seen at least once on the repository. If a workflow has never run, the check it produces won't appear as a selectable option. Three common paths:
+  - *Existing repo:* the workflow is already on `main` and has run on prior pushes — the status check name is already in the picker.
+  - *Fresh repo:* open a PR that adds `.github/workflows/ci.yml`. Workflows triggered by `pull_request` events run from the PR head ref (not the target branch), so the workflow runs on the PR even before protection is configured. After the first run completes, the status check name appears in the picker. Configure protection, then merge the PR.
+  - *Migrating an existing repo to a renamed required check (like the `Required Checks / required-status` → `CI / status` rename):* open a PR with the new/renamed workflow. After the first run on the PR, edit the protection rule to add the new check name and remove the old one before merging. Doing the swap on the PR (rather than after merge) avoids a window where the rule references a check that no longer exists.
+
 ### What to Configure
 
 1. **Require pull request before merging:**
@@ -23,7 +31,7 @@ Main branch protection ensures code quality and prevents accidental commits to m
 2. **Require status checks to pass:**
    - Require branches to be up to date: ✅
    - Status checks required:
-     - `Required Checks / required-status` (from `.github/workflows/required-checks.yml`)
+     - `CI / status` (from `.github/workflows/ci.yml`)
 
 3. **Do not allow bypassing settings:**
    - Allow specific actors to bypass: Repository admins only
@@ -44,7 +52,7 @@ Main branch protection ensures code quality and prevents accidental commits to m
      - ✅ Dismiss stale pull request approvals when new commits are pushed
    - ✅ **Require status checks to pass before merging**
      - ✅ Require branches to be up to date before merging
-     - Search for and select: `Required Checks / required-status`
+     - Search for and select: `CI / status`
    - ✅ **Do not allow bypassing the above settings**
      - Allow specific actors to bypass: Repository admins (optional)
    - ❌ Require linear history (optional)
