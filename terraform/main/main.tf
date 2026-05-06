@@ -73,7 +73,7 @@ locals {
   }
 
   # Recycle docker_image from previous deployment if not provided
-  docker_image = coalesce(var.docker_image, try(data.terraform_remote_state.main.outputs.deployed_image, null))
+  docker_image = coalesce(var.docker_image, try(data.terraform_remote_state.main.outputs.app_deployed_image, null))
 }
 
 resource "google_service_account" "app" {
