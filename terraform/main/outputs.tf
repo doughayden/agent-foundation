@@ -23,17 +23,17 @@ output "terraform_state_bucket" {
   value       = var.terraform_state_bucket
 }
 
-output "deployed_image" {
-  description = "Deployed Docker image URI"
+output "app_deployed_image" {
+  description = "Deployed Agent app Docker image URI"
   value       = local.docker_image
 }
 
-output "service_account_email" {
+output "app_service_account_email" {
   description = "Agent app service account email"
   value       = google_service_account.app.email
 }
 
-output "service_account_roles" {
+output "app_service_account_roles" {
   description = "Agent app service account project IAM roles"
   value       = local.app_iam_roles
 }
@@ -78,20 +78,20 @@ output "bastion_service_account_roles" {
   value       = local.bastion_iam_roles
 }
 
-output "cloud_run_services" {
+output "app_cloud_run_services" {
   description = "Agent app Cloud Run service details per location"
   value = { for loc, svc in data.google_cloud_run_v2_service.app :
     loc => {
       latest_ready_revision = split("revisions/", svc.latest_ready_revision)[1]
       update_time           = svc.update_time
-      uri                   = svc.uri
+      urls                  = svc.urls
     }
   }
 }
 
-output "configured_environment_variables" {
-  description = "Configured Cloud Run service environment variables"
-  value       = local.run_app_env
+output "app_environment_variables" {
+  description = "Agent app Cloud Run service environment variables"
+  value       = local.app_environment_variables
 }
 
 output "workload_identity_pool_principal_identifier" {

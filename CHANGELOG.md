@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **BREAKING:** Required status check renamed from `Required Checks / required-status` to `CI / status`. Consumers with branch protection configured must update the required check name (see `docs/references/protection-strategies.md` Prerequisites for the migration path)
+- **BREAKING:** Rename `terraform/main` outputs for consistent `app_*` / `bastion_*` prefixes:
+  `deployed_image` → `app_deployed_image`, `service_account_email` → `app_service_account_email`,
+  `service_account_roles` → `app_service_account_roles`, `cloud_run_services` → `app_cloud_run_services`,
+  `configured_environment_variables` → `app_environment_variables`
+- `app_environment_variables` now reflects the deployed Cloud Run service env, not the configured input
+- **BREAKING:** Replace `uri` (string) with `urls` (list) in `app_cloud_run_services.<location>` to surface all
+  configured service URLs (deterministic and random) for auditability
 - Consolidated `code-quality.yml` and `required-checks.yml` into a single self-contained `ci.yml` workflow with three jobs (`changes`, `code-quality`, `status`)
 
 ### Removed
