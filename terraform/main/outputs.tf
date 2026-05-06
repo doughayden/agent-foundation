@@ -84,22 +84,14 @@ output "app_cloud_run_services" {
     loc => {
       latest_ready_revision = split("revisions/", svc.latest_ready_revision)[1]
       update_time           = svc.update_time
-      uri                   = svc.uri
+      urls                  = svc.urls
     }
   }
 }
 
-locals {
-  # Select any deployed service — they share env config across regions
-  app_service_any = values(data.google_cloud_run_v2_service.app)[0]
-
-  # Filter out sidecars by matching the deployed app image
-  app_container_any = one([for c in local.app_service_any.template[0].containers : c if c.image == local.docker_image])
-}
-
 output "app_environment_variables" {
-  description = "Deployed Agent app Cloud Run service environment variables"
-  value       = { for item in local.app_container_any.env : item.name => item.value }
+  description = "Agent app Cloud Run service environment variables"
+  value       = local.app_environment_variables
 }
 
 output "workload_identity_pool_principal_identifier" {

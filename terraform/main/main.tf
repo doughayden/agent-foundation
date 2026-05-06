@@ -201,3 +201,15 @@ data "google_cloud_run_v2_service" "app" {
   name     = google_cloud_run_v2_service.app[each.key].name
   location = each.key
 }
+
+# Unpack deployed Cloud Run service environment variables for Terraform output
+locals {
+  # Select any deployed service — they share env config across regions
+  app_service_any = values(data.google_cloud_run_v2_service.app)[0]
+
+  # Filter out sidecars by matching the deployed app image
+  app_container_any = one([for c in local.app_service_any.template[0].containers : c if c.image == local.docker_image])
+
+  # Project container env objects to a key, value map (secret env values display as empty strings)
+  app_environment_variables = { for e in local.app_container_any.env : e.name => e.value }
+}
