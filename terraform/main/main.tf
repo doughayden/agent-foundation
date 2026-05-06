@@ -210,6 +210,6 @@ locals {
   # Filter out sidecars by matching the deployed app image
   app_container_any = one([for c in local.app_service_any.template[0].containers : c if c.image == local.docker_image])
 
-  # Project container env objects to a key, value map (secret env values display as empty strings)
+  # Project the container env objects to a key, value map (secret env values display as empty strings)
   app_environment_variables = { for e in local.app_container_any.env : e.name => e.value }
 }
