@@ -19,6 +19,7 @@ locals {
     "roles/artifactregistry.writer",
     "roles/cloudsql.admin",
     "roles/compute.instanceAdmin.v1",
+    "roles/compute.networkAdmin", # Required for google_compute_network creation in main module
     "roles/iam.serviceAccountAdmin",
     "roles/iam.serviceAccountUser", # Required for Cloud Run to attach service accounts during deployment
     "roles/resourcemanager.projectIamAdmin",
