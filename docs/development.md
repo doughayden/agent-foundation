@@ -77,6 +77,7 @@ docker compose up --build --watch  # Standard (cloud resources, mirrors producti
 # Or: uv run server                # Local-only with cloud resource URIs commented out in .env
 
 # Quality checks before commit (100% coverage required)
+# Pre-commit automates format/lint/typecheck if installed
 uv run ruff format && uv run ruff check && uv run mypy
 uv run pytest --cov --cov-report=term-missing
 
@@ -103,6 +104,26 @@ Run format, lint, type check, and unit tests (100% coverage required) **before e
 - **Code Style:** Ruff enforced (88-char lines, `Path` objects, security checks)
 - **Docstrings:** Google-style format (args, returns, exceptions)
 - **Testing:** 100% coverage on production code, exclusions for configuration modules, fixtures in `conftest.py`, test behaviors and errors
+
+### Pre-commit Hooks
+
+Pre-commit runs format, lint, and type checks as a fix-in-place git hook on every `git commit`. It does not run pytest, so coverage validation still requires `uv run pytest --cov`.
+
+**One-time setup** (writes `.git/hooks/pre-commit`):
+
+```bash
+uv run pre-commit install
+```
+
+**Manual invocation:**
+
+```bash
+uv run pre-commit run --all-files              # All hooks on all tracked files
+uv run pre-commit run --files path/to/file     # Scope to specific files
+uv run pre-commit run ruff-format              # Run a single hook
+```
+
+Hooks are configured in `.pre-commit-config.yaml`. Versions for the `language: system` hooks (ruff, mypy) are pinned in `uv.lock`. `pre-commit autoupdate` is a no-op for these hooks; update versions with `uv lock --upgrade` instead.
 
 See [Testing Strategy](references/testing.md) and [Code Quality](references/code-quality.md) references for detailed patterns, tool usage, and exclusion strategies.
 
