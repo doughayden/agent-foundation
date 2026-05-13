@@ -107,7 +107,7 @@ jobs:
 # https://github.com/marketplace/actions/claude-code-action-official
 # https://github.com/anthropics/claude-code-action
 #
-# Github checkout action
+# GitHub checkout action
 # https://github.com/actions/checkout
 #
 # GitHub Google Authenticate action

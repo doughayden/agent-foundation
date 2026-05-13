@@ -56,7 +56,7 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 | To... | Edit | Notes |
 |---|---|---|
 | Add a custom tool | define `func` in `tools.py` + register in `agent.py` | `root_agent = LlmAgent(..., tools=[..., FunctionTool(func)])` |
-| Add a callback | `callbacks.py` | All callbacks return `None` (observe-only); modify/short-circuit only when intentional |
+| Add a callback | `callbacks.py` | ADK callbacks return `None` to observe, or a modified value to mutate/short-circuit — choose per intent |
 | Customize agent instructions | `prompt.py` | InstructionProvider pattern (function ref, called at runtime) |
 | Add an env var | `ServerEnv` in `utils/config.py` + `docs/environment-variables.md` | **CRITICAL:** every new env var MUST be in `docs/environment-variables.md` (purpose, default, where to set, required/optional) |
 | Enable a GCP API | `terraform/main/services.tf` | `google_project_service`; downstream resources `depends_on = [time_sleep.service_enablement_propagation["api.googleapis.com"]]` |
@@ -161,7 +161,7 @@ disable_error_code = "arg-type"
 
 **ADK patterns:**
 - **InstructionProvider:** Function `def fn(ctx: ReadonlyContext) -> str`. Pass function ref (not called) to `GlobalInstructionPlugin(fn)`. Plugin calls at runtime. Test with `MockReadonlyContext`.
-- **Callbacks:** All return `None` (observe-only); other callbacks may modify/short-circuit. Memory callback persists session summaries to memory service.
+- **Callbacks:** Three return modes — `None` (observe-only), modified context/response (mutate), or early replacement (short-circuit).
 - **Async callbacks:** `asyncio_mode = "auto"` in pyproject.toml, verify caplog.
 - **Controlled errors:** `MockMemoryCallbackContext(should_raise, error_message)`.
 
