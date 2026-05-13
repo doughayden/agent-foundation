@@ -113,6 +113,8 @@ Source package lives under `src/` (single package — file references below use 
 uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --cov
 ```
 
+**Pre-commit:** Local fix-in-place hooks are configured in `.pre-commit-config.yaml`. Note that `pre-commit autoupdate` is a no-op for our `language: system` hooks since versions are pinned in `uv.lock`. To update ruff or mypy versions, run `uv lock --upgrade`, not `pre-commit autoupdate`.
+
 - **mypy:** Strict, complete type annotations, modern Python 3.13 (`|` unions, lowercase generics), no untyped definitions. Enforces: `no_implicit_optional`, `strict_equality`, `warn_return_any`, `warn_unreachable`.
 - **ruff:** 88 char line length, enforces bandit/simplify/use-pathlib. **Always use `Path` objects** (never `os.path`).
 - **pytest:** 100% coverage on production code. Coverage exclusions in `pyproject.toml`. Fixtures in `conftest.py`, async via pytest-asyncio.
