@@ -237,13 +237,13 @@ curl http://localhost:8000/health
 
 > [!TIP]
 > ### Enable the deployed remote agent web interface (optional)
-> 
+>
 > To access the same dev UI available locally, set `SERVE_WEB_INTERFACE=TRUE` in the `dev` GitHub Environment variables and re-deploy:
-> 
+>
 > ```bash
 > gh variable set SERVE_WEB_INTERFACE --env dev --body "TRUE"  # Or change in GitHub on the web
 > ```
-> 
+>
 > Then re-run the latest CI/CD workflow (Actions tab → CI/CD Pipeline → Re-run jobs).
 >
 > Once deployed, the web UI is available at `http://localhost:8000` via the proxy.
