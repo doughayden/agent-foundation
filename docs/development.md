@@ -77,6 +77,7 @@ docker compose up --build --watch  # Standard (cloud resources, mirrors producti
 # Or: uv run server                # Local-only with cloud resource URIs commented out in .env
 
 # Quality checks before commit (100% coverage required)
+# Pre-commit automates format/lint/typecheck if installed
 uv run ruff format && uv run ruff check && uv run mypy
 uv run pytest --cov --cov-report=term-missing
 
