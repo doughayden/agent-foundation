@@ -30,7 +30,7 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-      id-token: write 
+      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -76,7 +76,7 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-      id-token: write 
+      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -106,17 +106,17 @@ jobs:
 # https://docs.anthropic.com/en/docs/claude-code/github-actions
 # https://github.com/marketplace/actions/claude-code-action-official
 # https://github.com/anthropics/claude-code-action
-# 
+#
 # Github checkout action
 # https://github.com/actions/checkout
-# 
+#
 # GitHub Google Authenticate action
 # https://github.com/google-github-actions/auth
-# 
+#
 # Google Cloud Workload Identity Federation
 # https://cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines
 # https://github.com/google-github-actions/auth?tab=readme-ov-file#preferred-direct-workload-identity-federation
-# 
+#
 # Configure Repository Variables
 # https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables
 # Set the GitHub Actions > Repository variables GOOGLE_CLOUD_PROJECT to the Google Cloud project ID

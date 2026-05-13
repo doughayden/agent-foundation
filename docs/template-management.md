@@ -4,7 +4,7 @@ Syncing upstream changes from the template repository.
 
 > [!TIP]
 > **First time?** Read [Setup](#setup) and [Standard Workflow](#standard-workflow).
-> [Quick Reference](#quick-reference) is your copy-paste guide. 
+> [Quick Reference](#quick-reference) is your copy-paste guide.
 > [Common Patterns](#common-patterns) and [Troubleshooting](#troubleshooting) are optional deep-dives.
 
 ## Philosophy

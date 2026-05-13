@@ -207,7 +207,7 @@ locals {
   # Select any deployed service — they share env config across regions
   app_service_any = values(data.google_cloud_run_v2_service.app)[0]
 
-  # Filter out sidecars by matching the deployed app image
+  # Filter to the container using deployed image
   app_container_any = one([for c in local.app_service_any.template[0].containers : c if c.image == local.docker_image])
 
   # Project the container env objects to a key, value map (secret env values display as empty strings)
