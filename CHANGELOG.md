@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-05-13
+
 ### Added
 - Optional `image_name` and `context` overrides on `.github/workflows/docker-build.yml` to support building subproject images alongside the primary app
 - Optional `image_name` override on `.github/workflows/pull-and-promote.yml` (applies to both source and target by design — image name stays static across environments)
@@ -14,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Subproject Builds section in `docs/references/cicd.md` covering the override pattern, the per-context `.dockerignore` gotcha, the per-subproject CI lane recipe, and the rationale for not exposing a `registry` override
 - Consumer Extension Points entries in `AGENTS.md` for adding a CI lane and adding a subproject Docker image to the deploy pipeline
 - Migration bullet in `docs/references/protection-strategies.md` Prerequisites for renamed required-status checks (do the swap on the PR before merging to avoid an unprotected window)
+- Local `pre-commit` hooks via `.pre-commit-config.yaml` covering trailing whitespace, end-of-file, YAML, TOML, large-file checks, `uv-lock` sync, and `language: system` hooks for ruff format, ruff check, and mypy (#168)
+- Pre-commit Hooks subsection in `docs/development.md` covering install, manual invocation patterns, and the `language: system` autoupdate caveat (#170)
+- Consumer Extension Points row in `AGENTS.md` pointing at ADK model selection for swapping the LLM (Gemini string, Model Garden endpoint, LiteLlm/MaaS connectors) (#143)
 
 ### Changed
 - **BREAKING:** Required status check renamed from `Required Checks / required-status` to `CI / status`. Consumers with branch protection configured must update the required check name (see `docs/references/protection-strategies.md` Prerequisites for the migration path)
@@ -25,11 +30,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING:** Replace `uri` (string) with `urls` (list) in `app_cloud_run_services.<location>` to surface all
   configured service URLs (deterministic and random) for auditability
 - Consolidated `code-quality.yml` and `required-checks.yml` into a single self-contained `ci.yml` workflow with three jobs (`changes`, `code-quality`, `status`)
+- Use the official Claude GitHub Action app for PR automation; remove explicit GitHub token from job step inputs (#156)
+- Upgrade `google-adk` pin `1.30.0` → `1.33.0` (#171)
 
 ### Removed
 - `.github/workflows/code-quality.yml` (consolidated into `ci.yml`)
 - `.github/workflows/required-checks.yml` (consolidated into `ci.yml`)
 - `workflow_dispatch` and `workflow_call` triggers from the code-quality pipeline (intentional — neither was invoked, and `ci.yml` is now self-contained)
+
+### Fixed
+- Replace `instanceAdmin.v1` with `compute.admin` in bootstrap WIF roles to unblock first-time VPC creation (#167)
 
 ## [0.13.0] - 2026-04-21
 
@@ -508,7 +518,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/doughayden/agent-foundation/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/doughayden/agent-foundation/compare/v0.12.5...v0.13.0
 [0.12.5]: https://github.com/doughayden/agent-foundation/compare/v0.12.4...v0.12.5
 [0.12.4]: https://github.com/doughayden/agent-foundation/compare/v0.12.3...v0.12.4
