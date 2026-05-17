@@ -199,17 +199,9 @@ Test connections between components:
 - Tools are added to agent correctly
 - Configuration flows through system
 
-## Mypy Override for Tests
+## Mypy Scope
 
-Tests use relaxed type checking for pragmatism:
-
-```toml
-[[tool.mypy.overrides]]
-module = "tests.*"
-disable_error_code = ["arg-type"]
-```
-
-Still type hint `conftest.py` fully, but test functions can be more flexible.
+mypy is scoped to the source package. Test modules are not type-checked; conftest typing is a team convention enforced by reviewers. Full rationale and the expected-error categories that surface if you run `uv run mypy src tests` are in [Code Quality → Test Suite Typing Strategy](code-quality.md#test-suite-typing-strategy).
 
 ## Running Tests
 
