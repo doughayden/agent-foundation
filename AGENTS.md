@@ -134,7 +134,7 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 - If future imports trigger env var reads at collection time, use direct `os.environ["KEY"] = "value"` (never `setdefault()`)
 
 **Fixtures:**
-- Type hints: `MockerFixture` → `MockType` return (strict mypy in conftest.py)
+- Type hints: `MockerFixture` → `MockType` return (CONVENTION ONLY — see `docs/references/code-quality.md` Test Suite Typing Strategy)
 - Factory pattern (not context managers): `def _factory() -> MockType` returned by fixture
 - Environment mocking: `mocker.patch.dict(os.environ, env_dict)`
 - Test functions: Don't type hint custom fixtures, optional hints on built-ins for IDE
@@ -148,12 +148,7 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 
 **Validation:** Pydantic `@field_validator` (validate at model creation). Tests expect `ValidationError` at `model_validate()`, not at property access. Property simplified with `# pragma: no cover` for impossible edge cases.
 
-**Mypy override:**
-```toml
-[[tool.mypy.overrides]]
-module = "tests.*"
-disable_error_code = "arg-type"
-```
+**Mypy scope:** mypy is scoped to `src/` only. Test bodies are not type-checked; conftest typing is convention enforced by reviewers. Several expected errors surface if you run `uv run mypy src tests` — see `docs/references/code-quality.md` Test Suite Typing Strategy for the full rationale and category list.
 
 **Coverage:** 100% on production code. Exclusions defined in `pyproject.toml`. Test behaviors (errors, edge cases, return values, logging), not just statements.
 

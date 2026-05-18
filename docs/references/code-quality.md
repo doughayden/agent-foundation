@@ -229,18 +229,45 @@ def greet(name: str | None = None) -> str:
     return f"Hello, {name or 'stranger'}"
 ```
 
-### Per-module Exclusions
+### Test Suite Typing Strategy
 
-From `pyproject.toml`:
+mypy is scoped to the source package. Test modules are not type-checked. Conftest typing is a team convention enforced by reviewers, not by tooling.
+
 ```toml
-[[tool.mypy.overrides]]
-module = "tests.*"
-disable_error_code = "arg-type"  # Allow duck-typed mocks in tests
+[tool.mypy]
+mypy_path = "src"
+packages = ["{your_agent}"]
 ```
 
-**Why:** Test files can pass duck-typed mocks to functions without arg-type errors, enabling pragmatic testing patterns.
+**Why we skip tests:**
+- Drift from `src/` refactors is caught by tests failing at runtime. Running mypy on tests catches the same drift only seconds earlier, but at meaningful config and maintenance cost.
+- Most strict-mypy errors on test code are noise: untyped pytest fixture parameters, duck-typed mocks intentionally standing in for real types, explicit `result = ...; assert result is None` patterns documenting None-return callback variants.
+- Simpler config is more maintainable, especially in a template that downstream projects fork. This matches the common pattern in modern Python projects (Pydantic, FastAPI, and others).
 
-**Important caveat:** We still strictly type `conftest.py` fixture definitions as a team practice (see Team Practices section for rationale).
+**Conftest convention:**
+
+We strictly type fixture definitions in `conftest.py` files as a team practice. mypy doesn't enforce this, but reviewers do.
+
+```python
+# conftest.py — strict typing by convention, not by tooling
+@pytest.fixture
+def mock_state(mocker: MockerFixture) -> MockType:
+    """Mock state with test data."""
+    return mocker.Mock(spec=State)
+```
+
+**Expected errors if you run `uv run mypy src tests`:**
+
+Running mypy on test modules will surface several categories of expected errors:
+
+| Error code | Why it's expected |
+|---|---|
+| `no-untyped-def` | pytest injects fixture parameters by name, not by type. Annotating test function parameters adds ceremony without signal. |
+| `func-returns-value` | Pattern `result = callbacks.before_agent(...); assert result is None` documents which ADK callback variants return None. The assertion catches drift if the source signature ever changes. |
+| `attr-defined` | ADK's `App.root_agent` is typed `BaseAgent`, but the runtime instance is a concrete subclass like `LlmAgent`. Tests deliberately access subclass attributes through the parent-typed reference. |
+| `arg-type` | Duck-typed mocks (like `MockMemoryCallbackContext`) intentionally stand in for real types in tests. |
+| `var-annotated` | Bare local-variable assignments in tests where the inferred type is obvious. |
+| `no-any-return` | pytest-mock interactions where the union type returned by `mocker.Mock()` is treated as Any when narrowed through `mocker.patch`. |
 
 ### Inline Exclusions
 
@@ -377,32 +404,6 @@ All checks run automatically in GitHub Actions on every PR:
 - Code quality workflow runs ruff, mypy, pytest
 - Blocks merge if any check fails
 - Ensures main branch always passes quality gates
-
-### Team Practices
-
-**Test Suite Typing Strategy:**
-
-We disable mypy `arg-type` checking for test files, but maintain strict discipline in `conftest.py`:
-
-```python
-# conftest.py - strictly typed even though mypy doesn't enforce it
-@pytest.fixture
-def mock_state() -> MockState:
-    """Create a mock state with test data."""
-    return MockState({"user_id": "user123", "session_data": {"key": "value"}})
-
-@pytest.fixture
-def mock_content() -> MockContent:
-    """Create a mock content with test data."""
-    return MockContent({"text": "Hello, agent!"})
-```
-
-**Why this works:**
-- Test files can pass duck-typed mocks without mypy errors (pragmatic testing)
-- `conftest.py` fixtures have clear type contracts (self-documenting, IDE support)
-- Best of both worlds: strict where it matters, flexible where it helps
-
-This is a **team practice**, not enforced by tooling. Maintain discipline when writing fixtures.
 
 ## Philosophy
 
