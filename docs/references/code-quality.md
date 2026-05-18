@@ -258,7 +258,7 @@ def mock_state(mocker: MockerFixture) -> MockType:
 
 **Expected errors if you run `uv run mypy src tests`:**
 
-Running mypy across both surfaces will surface several categories of expected errors:
+Running mypy on test modules will surface several categories of expected errors:
 
 | Error code | Why it's expected |
 |---|---|
