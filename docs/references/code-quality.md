@@ -240,13 +240,13 @@ packages = ["{your_agent}"]
 ```
 
 **Why we skip tests:**
-- Drift from `src/` refactors is caught by tests failing at runtime. CI mypy on tests catches the same drift seconds earlier at meaningful config and maintenance cost.
+- Drift from `src/` refactors is caught by tests failing at runtime. Running mypy on tests catches the same drift only seconds earlier, but at meaningful config and maintenance cost.
 - Most strict-mypy errors on test code are noise: untyped pytest fixture parameters, duck-typed mocks intentionally standing in for real types, explicit `result = ...; assert result is None` patterns documenting None-return callback variants.
 - Simpler config is more maintainable, especially in a template that downstream projects fork. This matches the common pattern in modern Python projects (Pydantic, FastAPI, and others).
 
 **Conftest convention:**
 
-We strict-type fixture definitions in `conftest.py` files as a team practice. mypy doesn't enforce this, but reviewers do.
+We strictly type fixture definitions in `conftest.py` files as a team practice. mypy doesn't enforce this, but reviewers do.
 
 ```python
 # conftest.py — strict typing by convention, not by tooling

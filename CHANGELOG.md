@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- Consolidate Test Suite Typing Strategy as the single source of truth in `docs/references/code-quality.md`, explaining the mypy scope position (src/ only, conftest by convention) and cataloging the categories of expected mypy errors that surface if you run `uv run mypy src tests`. `docs/references/testing.md` and `AGENTS.md` now point to the single source of code quality rationale (#173)
+- Consolidate Test Suite Typing Strategy in `docs/references/code-quality.md` as the single source of truth (mypy scoped to src/, conftest by convention) and catalog expected mypy error categories from `uv run mypy src tests`. `docs/references/testing.md` and `AGENTS.md` now point at it (#173)
 
 ### Removed
 - Dead `[[tool.mypy.overrides]] module = "tests.*"` block from `pyproject.toml`. mypy was already scoped to `packages = ["agent_foundation"]`, so the override never fired — its presence misled readers about what was actually being checked (#173)

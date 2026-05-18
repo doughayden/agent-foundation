@@ -134,7 +134,7 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 - If future imports trigger env var reads at collection time, use direct `os.environ["KEY"] = "value"` (never `setdefault()`)
 
 **Fixtures:**
-- Type hints: `MockerFixture` → `MockType` return (CONVENTION ONLY — mypy is scoped to `src/`; conftest typing is enforced by reviewers, see `docs/references/code-quality.md` Test Suite Typing Strategy)
+- Type hints: `MockerFixture` → `MockType` return (CONVENTION ONLY — see `docs/references/code-quality.md` Test Suite Typing Strategy)
 - Factory pattern (not context managers): `def _factory() -> MockType` returned by fixture
 - Environment mocking: `mocker.patch.dict(os.environ, env_dict)`
 - Test functions: Don't type hint custom fixtures, optional hints on built-ins for IDE
