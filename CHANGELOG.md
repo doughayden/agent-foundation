@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-05-21
+
 ### Changed
 - Consolidate Test Suite Typing Strategy in `docs/references/code-quality.md` as the single source of truth (mypy scoped to src/, conftest by convention) and catalog expected mypy error categories from `uv run mypy src tests`. `docs/references/testing.md` and `AGENTS.md` now point at it (#173)
 
@@ -524,7 +526,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/doughayden/agent-foundation/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/doughayden/agent-foundation/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/doughayden/agent-foundation/compare/v0.12.5...v0.13.0
 [0.12.5]: https://github.com/doughayden/agent-foundation/compare/v0.12.4...v0.12.5
