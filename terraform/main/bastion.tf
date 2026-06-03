@@ -4,6 +4,15 @@ locals {
     "roles/logging.logWriter",
     "roles/monitoring.metricWriter",
   ])
+
+  bastion_user_data = templatefile(
+    "${path.module}/templates/bastion-cloud-init.yaml",
+    {
+      proxy_args          = join(" ", local.cloud_sql_proxy_args)
+      app_service_account = google_service_account.app.email
+      app_sa_db_user      = google_sql_user.app.name
+    }
+  )
 }
 
 resource "google_service_account" "bastion" {
@@ -26,6 +35,10 @@ resource "google_service_account_iam_member" "bastion_impersonate_app" {
   member             = google_service_account.bastion.member
 }
 
+resource "terraform_data" "bastion_user_data" {
+  triggers_replace = sha256(local.bastion_user_data)
+}
+
 resource "google_compute_instance" "bastion" {
   name         = "${local.resource_name}-bastion"
   machine_type = "e2-micro"
@@ -45,13 +58,7 @@ resource "google_compute_instance" "bastion" {
   }
 
   metadata = {
-    user-data = templatefile(
-      "${path.module}/templates/bastion-cloud-init.yaml",
-      {
-        proxy_args          = join(" ", local.cloud_sql_proxy_args)
-        app_service_account = google_service_account.app.email
-      }
-    )
+    user-data                 = local.bastion_user_data
     enable-oslogin            = "TRUE"
     cos-update-strategy       = "update_enabled"
     google-logging-enabled    = "true"
@@ -61,5 +68,9 @@ resource "google_compute_instance" "bastion" {
   service_account {
     email  = google_service_account.bastion.email
     scopes = ["cloud-platform"]
+  }
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.bastion_user_data]
   }
 }

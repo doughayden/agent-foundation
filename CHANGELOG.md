@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Scheduled session-data cleanup via `pg_cron`: a daily job deletes `sessions` older than 90 days (`events` cascade via the FK), closing the `DatabaseSessionService` no-server-side-TTL storage gap. Provisioned with no application code, via the `cloudsql.enable_pg_cron` flag and an idempotent bootstrap in the bastion cloud-init. Runs and failures are observable by default through `cron.job_run_details` and the instance Postgres logs in Cloud Logging (#182)
+- Local Cloud SQL access from the host: `docker-compose.yml` publishes `127.0.0.1:5432:5432`, so a laptop DB client reaches Cloud SQL through the existing IAP tunnel and bastion Auth Proxy as the app SA (#181)
+
 ## [0.14.1] - 2026-05-21
 
 ### Changed

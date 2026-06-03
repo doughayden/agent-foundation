@@ -25,6 +25,65 @@ write_files:
 
       [Install]
       WantedBy=multi-user.target
+  - path: /etc/pg-cron-bootstrap.sh
+    permissions: "0755"
+    content: |
+      #!/bin/sh
+      # Bootstrap pg_cron for scheduled session cleanup. Idempotent: safe to run on every
+      # COS boot. The systemd unit invokes this via `/bin/sh <path>` so COS noexec mounts
+      # do not block it (the interpreter reads the script as data; no execve of the file).
+      set -eu
+
+      RETENTION_INTERVAL="90 days"
+      CLEANUP_SCHEDULE="30 3 * * *"
+
+      PG_IMAGE="mirror.gcr.io/library/postgres:18-alpine"
+      CONN="host=127.0.0.1 port=5432 user=${app_sa_db_user} dbname=postgres sslmode=disable"
+
+      # Pull the image once up front so the readiness loop below measures proxy
+      # readiness, not first-pull download time (which can exceed the ~60s budget).
+      /usr/bin/docker pull "$PG_IMAGE"
+
+      # Wait up to ~60s for the Cloud SQL Auth Proxy to accept connections (it needs a
+      # moment after boot to bind the listener and fetch the impersonation token).
+      ready=""
+      i=1
+      while [ "$i" -le 30 ]; do
+        if /usr/bin/docker run --rm --network host "$PG_IMAGE" pg_isready -h 127.0.0.1 -p 5432; then
+          ready=1
+          break
+        fi
+        sleep 2
+        i=$((i + 1))
+      done
+      if [ -z "$ready" ]; then
+        echo "pg-cron-bootstrap: proxy not ready after 60s, aborting" >&2
+        exit 1
+      fi
+
+      # The extension must live in the postgres DB (Cloud SQL pins cron.database_name there);
+      # the job upserts by name (no duplicate on re-run); the DELETE targets agent_sessions
+      # and cascades to events via the FK. now() AT TIME ZONE 'UTC' matches the naive
+      # (timestamp without time zone) update_time column created by the ADK db session service.
+      /usr/bin/docker run --rm --network host "$PG_IMAGE" \
+        psql "$CONN" -v ON_ERROR_STOP=1 \
+        -c "CREATE EXTENSION IF NOT EXISTS pg_cron;" \
+        -c "SELECT cron.schedule_in_database('session-cleanup', '$CLEANUP_SCHEDULE', 'DELETE FROM sessions WHERE update_time < (now() AT TIME ZONE ''UTC'') - interval ''$RETENTION_INTERVAL''', 'agent_sessions');"
+  - path: /etc/systemd/system/pg-cron-bootstrap.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Bootstrap pg_cron extension and session-cleanup job
+      After=cloud-sql-proxy.service
+      Requires=cloud-sql-proxy.service
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=/bin/sh /etc/pg-cron-bootstrap.sh
+
+      [Install]
+      WantedBy=multi-user.target
 
 runcmd:
   # COS default INPUT policy is DROP — allow IAP tunnel traffic on proxy port
@@ -32,3 +91,5 @@ runcmd:
   - systemctl daemon-reload
   - systemctl enable cloud-sql-proxy.service
   - systemctl start cloud-sql-proxy.service
+  - systemctl enable pg-cron-bootstrap.service
+  - systemctl start pg-cron-bootstrap.service
