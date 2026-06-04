@@ -88,12 +88,13 @@ Source package lives under `src/` (single package — file references below use 
 - Connection via Cloud SQL Auth Proxy sidecar (IAM auth, no passwords)
 - Security posture and pool config: `terraform/main/database.tf`, `docs/references/cloud-sql.md`, `docs/references/security-posture.md`
 - Scale path: bump instance tier first, then managed connection pooling (Enterprise Plus) when autoscaling demands it
+- Session data retention: scheduled `pg_cron` job (90-day default) deletes stale `sessions` (`events` cascade via FK) — provisioned by default via bastion cloud-init; retention/schedule constants in `terraform/main/templates/bastion-cloud-init.yaml`, full detail in `docs/references/cloud-sql.md` Scheduled Session Cleanup
 
 **asyncpg type strictness:** Direct SQL against the session DB must bind typed columns as native Python objects — asyncpg's codecs reject ISO strings for `timestamptz` (and other typed columns) with `DataError`. sqlite via aiosqlite tolerates strings, so sqlite-only tests miss the bug. Use `text(...).bindparams(bindparam("x", type_=DateTime(timezone=True)))` to force dialect-aware conversion.
 
 **Networking:** VPC with Private Services Access peering for Cloud SQL private IP.
 - Cloud Run uses direct VPC egress to reach Cloud SQL via Auth Proxy sidecar
-- Bastion host (e2-micro, COS, auto-updates) runs Auth Proxy for local developer access via IAP tunnel
+- Bastion host (e2-micro, COS, auto-updates) runs Auth Proxy for local developer access via IAP tunnel, plus a oneshot pg_cron bootstrap
 - Bastion concerns: accepts non-loopback IAP tunnel connections, impersonates app SA for IAM auth, COS requires explicit iptables ACCEPT for port 5432 (default INPUT=DROP)
 - Cloud NAT for bastion outbound
 - See `terraform/main/network.tf` and `terraform/main/templates/bastion-cloud-init.yaml`
@@ -224,7 +225,7 @@ uv lock --upgrade               # Update all
 
 ## Local Development
 
-**docker-compose:** IAP tunnel container tunnels to bastion Auth Proxy via `network_mode: "service:app"` so the app reaches Cloud SQL at `localhost:5432` (same as Cloud Run). Requires `BASTION_INSTANCE`, `BASTION_ZONE`, `GOOGLE_CLOUD_PROJECT` in `.env`. Developer IAM prerequisite: `roles/iap.tunnelResourceAccessor`. Editable install via `ARG editable=true`. Watch: `sync+restart` for `src/`, `rebuild` for deps. Binds `127.0.0.1:8000`. See `docs/references/docker-compose-workflow.md` for full workflow.
+**docker-compose:** IAP tunnel container tunnels to bastion Auth Proxy via `network_mode: "service:app"` so the app reaches Cloud SQL at `localhost:5432` (same as Cloud Run). Requires `BASTION_INSTANCE`, `BASTION_ZONE`, `GOOGLE_CLOUD_PROJECT` in `.env`. Developer IAM prerequisite: `roles/iap.tunnelResourceAccessor`. Editable install via `ARG editable=true`. Watch: `sync+restart` for `src/`, `rebuild` for deps. Binds `127.0.0.1:8000` (app) and `127.0.0.1:5432` (Postgres, for host DB clients through the tunnel). See `docs/references/docker-compose-workflow.md` for full workflow.
 
 **Test deployed service:** `gcloud run services proxy <service-name> --project <project> --region <region> --port 8000`. Service name: `${agent_name}-${environment}` (e.g., `my-agent-dev`).
 

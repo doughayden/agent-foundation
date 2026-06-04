@@ -31,6 +31,11 @@ resource "google_sql_database_instance" "sessions" {
       value = "on"
     }
 
+    database_flags {
+      name  = "cloudsql.enable_pg_cron"
+      value = "on"
+    }
+
     backup_configuration {
       enabled                        = true
       point_in_time_recovery_enabled = true

@@ -92,6 +92,62 @@ settings {
 - **14 days:** Better safety margin for issues discovered late. Recommended for production.
 - **Longer retention:** Increases storage cost linearly. Rarely needed for session data — consider database exports for long-term archival instead.
 
+## Scheduled Session Cleanup
+
+Unlike the scaling levers above (all opt-in), this is provisioned **by default**. `DatabaseSessionService` has no built-in server-side TTL, so the `sessions` and `events` tables grow without bound. A scheduled `pg_cron` job deletes old rows so storage and backup size stay bounded as the database ages.
+
+### What runs
+
+A daily job named `session-cleanup` (03:30 UTC, offset from the 03:00 backup window) runs:
+
+```sql
+DELETE FROM sessions WHERE update_time < (now() AT TIME ZONE 'UTC') - interval '90 days';
+```
+
+`events` rows cascade away via the `ON DELETE CASCADE` foreign key, so deleting a stale session reclaims its events in one statement. `user:`-scoped state lives in a separate table with no FK to `sessions`, so it is unaffected. `update_time` is `timestamp without time zone` (naive UTC) in the ADK schema, so the predicate compares in the UTC domain explicitly via `now() AT TIME ZONE 'UTC'`.
+
+**Locking and scan cost.** `DELETE` acquires a `ROW EXCLUSIVE` table-level lock, which conflicts only with `SHARE` and stronger modes, plus `FOR UPDATE` row-level locks on just the rows it deletes, so concurrent reads and writes on other rows proceed unblocked (see [PostgreSQL explicit locking](https://www.postgresql.org/docs/current/explicit-locking.html)). `update_time` is unindexed in the ADK schema, so each run is a sequential scan, and the cleanup itself bounds the table: the scan covers at most the retention window of sessions, once daily, offset from peak hours.
+
+### How it is provisioned (no application code)
+
+- **Flag:** `cloudsql.enable_pg_cron = on` in `terraform/main/database.tf`.
+- **Bootstrap:** the bastion's cloud-init writes `/etc/pg-cron-bootstrap.sh` and a oneshot systemd unit that runs it after the Auth Proxy is up. The script connects through the local proxy as the app SA (`cloudsqlsuperuser`), creates the extension in the `postgres` database (Cloud SQL pins `cron.database_name` there), and schedules the job into `agent_sessions` via `cron.schedule_in_database`. See `terraform/main/templates/bastion-cloud-init.yaml`.
+- **Idempotent:** COS re-runs cloud-init on every boot; `CREATE EXTENSION IF NOT EXISTS` is a no-op and the named job upserts, so reboots re-assert exactly one job. The job lives in the database, not on the bastion, so the bootstrap needs to succeed only once per database lifetime: a failed run on a later boot leaves the existing job intact, and the at-risk runs (first provision, post-edit replacement) are operator-attended moments where verification is the one `cron.job` query below.
+- **Ordering:** the bastion's cloud-init references `google_sql_user.app.name`, which transitively orders the bastion creation after the database and the IAM DB user. These intentional resource graph dependencies prevent the cloud-init bootstrap from running before `agent_sessions` exists, and avoids a `cron.schedule_in_database` error on a missing database.
+- **Replacement on change:** the bastion's rendered cloud-init is tracked by `terraform_data.bastion_user_data` and wired to the instance via `lifecycle.replace_triggered_by`, so editing the payload (retention, schedule, anything in the script) recreates the bastion gce instance rather than updating it in place. This mirrors the `ForceNew` behavior the provider gives the `metadata_startup_script` attribute on standard VMs, and for the same reason: an instance runs its startup script (or COS cloud-init) only on boot, so the metadata must be replaced, not patched, for a change to take effect. COS exposes cloud-init only through the in-place `user-data` metadata key with no force-replace convenience attribute, so the terraform_data + lifecycle strategy reconstructs that behavior explicitly.
+
+### Changing retention or schedule
+
+Both are named constants at the top of the bootstrap script in `bastion-cloud-init.yaml` (`RETENTION_INTERVAL` and `CLEANUP_SCHEDULE`). Edit them and `terraform apply`; the bastion is recreated (see Replacement on change above) so cloud-init re-runs and re-asserts the job at the new value.
+
+The default is 90 days. The floor is the backup window (7 days by default): retention shorter than that leaves a deleted session beyond what a backup could restore. 90 days clears the floor and sits past the 30-day default Cloud Logging retention, so the session database doubles as a recovery window for sessions that have aged off logs, while still bounding table growth. Shorten it if storage outweighs that window for your workload, or lengthen it for richer session histories worth keeping.
+
+### Observing runs and failures
+
+Two surfaces expose job activity, and they carry different information, so a complete view uses both.
+
+`cron.job_run_details` (in-database, authoritative). Connect through the bastion tunnel (see [Docker Compose Workflow](docker-compose-workflow.md)) to the `postgres` database:
+
+```sql
+-- the scheduled job
+SELECT jobid, jobname, schedule, command, database FROM cron.job;
+
+-- recent runs; return_message holds the row count ("DELETE 5") on success or the Postgres error on failure
+SELECT d.jobid, j.jobname, d.status, d.return_message, d.start_time
+FROM cron.job_run_details d JOIN cron.job j USING (jobid)
+ORDER BY d.start_time DESC LIMIT 10;
+```
+
+This is the only surface that ties an outcome to a job by name, with `status` (`succeeded` or `failed`) and the full `return_message`. It is a table, not a log, so Cloud Logging cannot read it directly.
+
+`postgres.log` (Cloud Logging, real-time). pg_cron logs job activity to the Postgres server log by default (`cron.log_run` and `cron.log_statement` are both on), and Cloud SQL ingests that log into Cloud Logging under `cloudsql.googleapis.com/postgres.log`, mapping the Postgres log level to the entry severity. Three line shapes appear:
+
+- INFO `LOG: cron job N starting: <command>` — logged by the pg_cron scheduler. Identifies the job by id and includes the full command text.
+- INFO `LOG: cron job N COMMAND completed: <result>` — logged by the scheduler on success, with the affected-row count ("DELETE 5 5"). A failed run produces no completed line.
+- ERROR `ERROR: <message>` — logged by the background worker that executed the statement. This is the real-time failure signal. Its payload is only the Postgres error, with no job id, name, or command.
+
+Correlation shape (general; settle specifics when wiring alerting). The worker ERROR line and the scheduler `starting` line are emitted by different processes, so they share no PID, but they land in the same second. Join the ERROR to the nearest preceding `cron job N starting` line on timestamp to recover the job identity, and treat the `cron.job_run_details` row at the same `start_time` as the authoritative confirmation. In practice a real-time monitor keys off ERROR-severity `postgres.log` entries while a periodic check reads `cron.job_run_details` for `status = 'failed'` directly.
+
 ## High Availability
 
 **When to enable:** Production environments where downtime is unacceptable. Do not enable for dev or staging unless you are testing HA failover behavior.
