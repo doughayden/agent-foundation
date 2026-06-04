@@ -4,7 +4,7 @@ ADK coexistence strategy, instrumentation decisions, and dependency management f
 
 ## ADK Coexistence Strategy
 
-The custom OpenTelemetry setup in `utils/observability.py` must coexist with ADK's internal telemetry infrastructure. ADK creates its own `TracerProvider` (with in-memory exporters for the web UI) during `get_fast_api_app()`. The project augments this provider rather than replacing it.
+The custom OpenTelemetry setup in `observability.py` must coexist with ADK's internal telemetry infrastructure. ADK creates its own `TracerProvider` (with in-memory exporters for the web UI) during `get_fast_api_app()`. The project augments this provider rather than replacing it.
 
 ### Two-Phase Initialization
 

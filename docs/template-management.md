@@ -119,9 +119,9 @@ git diff foundation-tags/$VERSION -- tests/conftest.py
 **Phase 2 — Code + tests (per module):**
 ```bash
 # Cross-package diff for src/ files: foundation ref path vs your working tree path
-git diff foundation-tags/$VERSION:src/agent_foundation/utils/config.py -- src/$DOWNSTREAM_PKG/utils/config.py
+git diff foundation-tags/$VERSION:src/agent_foundation/config.py -- src/$DOWNSTREAM_PKG/config.py
 # Plain git diff for tests/ paths
-git diff foundation-tags/$VERSION -- tests/unit/test_utils_config.py
+git diff foundation-tags/$VERSION -- tests/unit/test_config.py
 # Adapt both, preserving downstream-specific code. Repeat for each module.
 ```
 
@@ -204,10 +204,10 @@ git commit -m "docs: sync deployment.md from $VERSION"
 
 ```bash
 # Review the diff across different paths
-git diff foundation-tags/$VERSION:src/agent_foundation/utils/observability.py -- src/your_agent/utils/observability.py
+git diff foundation-tags/$VERSION:src/agent_foundation/observability.py -- src/your_agent/observability.py
 
 # Write the foundation version to your local path
-git show foundation-tags/$VERSION:src/agent_foundation/utils/observability.py > src/your_agent/utils/observability.py
+git show foundation-tags/$VERSION:src/agent_foundation/observability.py > src/your_agent/observability.py
 git commit -m "chore: sync observability.py from foundation $VERSION"
 ```
 

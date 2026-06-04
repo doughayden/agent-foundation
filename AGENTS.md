@@ -6,7 +6,7 @@ Guidance for AI agents. **CRITICAL: Update this file when establishing project p
 
 **Pointer over enumeration.** Reference the source of truth instead of duplicating its contents. Lists of files, env vars, resources, workflows, dependencies, etc. go stale when implementations change but the concept does not. Stale lists waste tokens in every future session and mislead readers. Pointers stay valid as long as the source exists.
 
-- ✅ "Required env vars: see `ServerEnv` in `utils/config.py` and `docs/environment-variables.md`"
+- ✅ "Required env vars: see `ServerEnv` in `config.py` and `docs/environment-variables.md`"
 - ❌ "Required: GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION, AGENT_NAME, ..."
 - ✅ "GCP APIs added in `terraform/main/services.tf`"
 - ❌ "Enabled APIs: cloudsql, run, iam, ..."
@@ -58,7 +58,7 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 | Add a custom tool | define `func` in `tools.py` + register in `agent.py` | `root_agent = LlmAgent(..., tools=[..., FunctionTool(func)])` |
 | Add a callback | `callbacks.py` | ADK callbacks return `None` to observe, or a modified value to mutate/short-circuit — choose per intent |
 | Customize agent instructions | `prompt.py` | InstructionProvider pattern (function ref, called at runtime) |
-| Add an env var | `ServerEnv` in `utils/config.py` + `docs/environment-variables.md` | **CRITICAL:** every new env var MUST be in `docs/environment-variables.md` (purpose, default, where to set, required/optional) |
+| Add an env var | `ServerEnv` in `config.py` + `docs/environment-variables.md` | **CRITICAL:** every new env var MUST be in `docs/environment-variables.md` (purpose, default, where to set, required/optional) |
 | Enable a GCP API | `terraform/main/services.tf` | `google_project_service`; downstream resources `depends_on = [time_sleep.service_enablement_propagation["api.googleapis.com"]]` |
 | Grant a WIF role | `terraform/main/iam.tf` | `google_project_iam_member`; downstream resources `depends_on = [time_sleep.wif_iam_propagation["roles/example"]]` |
 | Override runtime config | GitHub Environment Variables → `TF_VAR_*` | See `coalesce()` call sites in `terraform/main/` for current overridable surface |
@@ -79,7 +79,7 @@ Source package lives under `src/` (single package — file references below use 
 
 **Package exports** (`__init__.py`): PEP 562 `__getattr__` for explicit lazy loading. Declares `agent` in `__all__` but defers import until first access. Supports both ADK eval CLI and web server workflows while ensuring `.env` loads before `agent.py` executes module-level code.
 
-**Module roles:** `agent.py` (composition), `tools.py` / `callbacks.py` / `prompt.py` (consumer extension points — see Consumer Extension Points), `server.py` (FastAPI + ADK via `get_fast_api_app()`), `utils/config.py` (Pydantic `ServerEnv`, type-safe fail-fast), `utils/observability.py` (OpenTelemetry init).
+**Module roles:** `agent.py` (composition), `tools.py` / `callbacks.py` / `prompt.py` (consumer extension points — see Consumer Extension Points), `server.py` (FastAPI + ADK via `get_fast_api_app()`), `config.py` (Pydantic `ServerEnv`, type-safe fail-fast), `observability.py` (OpenTelemetry init).
 
 **Memory:** Read via the `load_memory` function tool (LLM queries on-demand; ADK auto-appends a usage instruction when the tool is registered). Write via the `add_session_to_memory` after-agent callback.
 
@@ -101,11 +101,11 @@ Source package lives under `src/` (single package — file references below use 
 
 **Docker:** Multi-stage (builder + runtime). uv pinned in Dockerfile. Cache mount in builder (~80% speedup), dependency layer rebuilds on `pyproject.toml`/`uv.lock` changes only, code layer on `src/`. Non-root `app:app`, ~200MB final.
 
-**Observability:** OTLP→Cloud Trace, structured logs→Cloud Logging. Resource attributes derived from environment variables plus per-worker instance ID. See `utils/observability.py`.
+**Observability:** OTLP→Cloud Trace, structured logs→Cloud Logging. Resource attributes derived from environment variables plus per-worker instance ID. See `observability.py`.
 
 ## Environment Variables
 
-**CRITICAL:** Any new env var introduced to the codebase MUST be documented in `docs/environment-variables.md`. No exceptions. Include purpose, default, where to set, and required/optional. `ServerEnv` in `utils/config.py` is the typed source of truth; `docs/environment-variables.md` is the canonical reference.
+**CRITICAL:** Any new env var introduced to the codebase MUST be documented in `docs/environment-variables.md`. No exceptions. Include purpose, default, where to set, and required/optional. `ServerEnv` in `config.py` is the typed source of truth; `docs/environment-variables.md` is the canonical reference.
 
 ## Code Quality
 
@@ -154,7 +154,7 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 
 **Mock Usage:** Never import mock classes directly in test files — always use or add a fixture in `conftest.py`.
 
-**Organization:** Test module path mirrors source path, flattened with underscores (`src/<pkg>/utils/config.py` → `tests/unit/test_utils_config.py`). Root `tests/conftest.py` is shared across lanes; per-lane conftest files live in the lane dir. Class grouping. Descriptive names (`test_<what>_<condition>_<expected>`).
+**Organization:** Test module path mirrors source path (`src/<pkg>/config.py` → `tests/unit/test_config.py`); nested source paths flatten with underscores (`<pkg>/sub/foo.py` → `test_sub_foo.py`). Root `tests/conftest.py` is shared across lanes; per-lane conftest files live in the lane dir. Class grouping. Descriptive names (`test_<what>_<condition>_<expected>`).
 
 **Validation:** Pydantic `@field_validator` (validate at model creation). Tests expect `ValidationError` at `model_validate()`, not at property access. Property simplified with `# pragma: no cover` for impossible edge cases.
 

@@ -121,7 +121,7 @@ The bastion's sole purpose is running the Auth Proxy for developer access to Clo
 
 **Static analysis with security rules.** Ruff's `S` rule set (flake8-bandit) runs in CI and locally, catching common security mistakes: hardcoded credentials, insecure function usage, and binding patterns. Suppressions require specific codes and justification (`# noqa: S105 — test mock`).
 
-- Source: `src/<package>/utils/config.py` (Pydantic validation, ALLOW_ORIGINS)
+- Source: `src/<package>/config.py` (Pydantic validation, ALLOW_ORIGINS)
 - GCP docs: [Ruff flake8-bandit rules](https://docs.astral.sh/ruff/rules/#flake8-bandit-s)
 - Reference: [ADK Origin Check Middleware](adk-origin-check-middleware.md), [Code Quality](code-quality.md)
 
