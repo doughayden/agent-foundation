@@ -7,10 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-06-04
+
 ### Changed
-- Flatten `src/<pkg>/utils/` into the package root: `utils/config.py` → `config.py`, `utils/observability.py` → `observability.py`; the `utils/__init__.py` re-export facade is removed and `server.py` imports from the modules directly. Forks syncing past this release: apply the same moves, update imports (`from .utils import X` → `from .config import X` / `from .observability import X`), test patch targets (`<pkg>.utils.config.load_dotenv` → `<pkg>.config.load_dotenv` in `conftest.py`), the coverage omit path in `pyproject.toml`, and rename `tests/unit/test_utils_config.py` → `tests/unit/test_config.py` (#186)
-- Reorganize `tests/` into explicit `unit/`, `integration/`, `smoke/`, and `eval/` lane directories. A lane is decided by runtime requirements and determinism; non-unit lanes run by explicit path and `testpaths = ["tests/unit"]` scopes a bare `pytest` to the fast, free, deterministic lane with the 100% coverage gate. Lane markers registered in `pyproject.toml` (#177)
-- Rename `tests/test_config.py` to `tests/unit/test_utils_config.py`, establishing the mirror-source naming convention (`src/<pkg>/utils/config.py` → `test_utils_config.py`) (#177)
+- Flatten `src/<pkg>/utils/` into the package root: `utils/config.py` → `config.py`, `utils/observability.py` → `observability.py`; the `utils/__init__.py` re-export facade is removed and `server.py` imports from the modules directly. Forks syncing past this release: apply the same moves, update imports (`from .utils import X` → `from .config import X` / `from .observability import X`), test patch targets (`<pkg>.utils.config.load_dotenv` → `<pkg>.config.load_dotenv` in `conftest.py`), and the coverage omit path in `pyproject.toml` (#186)
+- Reorganize `tests/` into explicit `unit/`, `integration/`, `smoke/`, and `eval/` lane directories; existing test modules move to `tests/unit/`. A lane is decided by runtime requirements and determinism; non-unit lanes run by explicit path and `testpaths = ["tests/unit"]` scopes a bare `pytest` to the fast, free, deterministic lane with the 100% coverage gate. Lane markers registered in `pyproject.toml` (#177)
+- Establish the mirror-source test naming convention: test module path mirrors source path (`src/<pkg>/config.py` → `tests/unit/test_config.py`); nested source paths flatten with underscores (#177, #186)
 
 ### Removed
 - `tests/test_integration.py`: in-process structural assertions on coverage-omitted modules, not integration tests. App/agent wiring will be validated by the real integration lane, freeing the name for the Postgres + FastAPI suite (#177)
@@ -541,7 +543,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/doughayden/agent-foundation/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/doughayden/agent-foundation/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/doughayden/agent-foundation/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/doughayden/agent-foundation/compare/v0.13.0...v0.14.0
