@@ -112,11 +112,11 @@ DELETE FROM sessions WHERE update_time < (now() AT TIME ZONE 'UTC') - interval '
 
 Partition-based retention (dropping time-bucketed partitions, typically managed by pg_partman) is the cleaner expiry mechanism for append-only tables with an immutable time key that the project owns. The session tables fail all three conditions:
 
-- The schema belongs to ADK's `DatabaseSessionService`, and Postgres accepts `PARTITION BY` only at table creation. Partitioning means recreating the tables and owning a divergent copy of upstream's DDL that every ADK schema change must be merged into. The DELETE sweep keeps the zero-application-code property.
+- The schema belongs to ADK's `DatabaseSessionService`, and Postgres accepts `PARTITION BY` only at table creation. Partitioning means recreating the tables and owning a divergent copy of upstream's DDL that every ADK schema change must be merged into. The DELETE sweep keeps the zero-application-code property (retention runs in the database via pg_cron; the app sees ADK's unmodified schema).
 - Retention here means idle for 90 days, so the partition key would have to be `update_time`, which mutates on every event append. Partitioning on the immutable creation timestamp would expire by session age and drop still-active sessions. Partitioning on `update_time` causes cross-partition row movement on the hot write path, which surfaces as serialization errors on concurrent updates.
 - Partitioned tables require the partition key in every primary key and unique constraint, and ADK's session PK does not include a timestamp.
 
-The scale argument also does not arrive: partition drop beats DELETE when the sweep itself is expensive, and this sweep bounds its own input (see Locking and scan cost above). If delete volume ever grows, the first lever is a chunked DELETE (`LIMIT` batches in the job command), a one-line change with no schema surgery. pg_partman would also keep all of the provisioning machinery here, since its retention maintenance is conventionally scheduled through pg_cron.
+The scale argument also does not arrive: partition drop beats DELETE when the sweep itself is expensive, and this sweep bounds its own input (see Locking and scan cost above). If delete volume ever grows, the first lever is batching: Postgres `DELETE` has no `LIMIT` clause, so batch via a `ctid` subquery (`WHERE ctid IN (SELECT ctid ... LIMIT n)`), still a job-command-only change with no schema surgery. pg_partman would also keep all of the provisioning machinery here, since its retention maintenance is conventionally scheduled through pg_cron.
 
 Partition expiry remains the right tool for time-keyed append-only stores the project does own, like an analytics sink with partition-based retention.
 
