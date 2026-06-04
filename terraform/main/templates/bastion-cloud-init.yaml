@@ -37,6 +37,8 @@ write_files:
       RETENTION_INTERVAL="90 days"
       CLEANUP_SCHEDULE="30 3 * * *"
 
+      # Major-pinned floating tag for automatic security patches (same policy as
+      # the proxy image above); re-pulled on every boot by the docker pull below.
       PG_IMAGE="mirror.gcr.io/library/postgres:18-alpine"
       CONN="host=127.0.0.1 port=5432 user=${app_sa_db_user} dbname=postgres sslmode=disable"
 
