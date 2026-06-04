@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-06-04
+
 ### Added
 - Scheduled session-data cleanup via `pg_cron`: a daily job deletes `sessions` older than 90 days (`events` cascade via the FK), closing the `DatabaseSessionService` no-server-side-TTL storage gap. Provisioned with no application code, via the `cloudsql.enable_pg_cron` flag and an idempotent bootstrap in the bastion cloud-init. Runs and failures are observable by default through `cron.job_run_details` and the instance Postgres logs in Cloud Logging (#182)
 - Local Cloud SQL access from the host: `docker-compose.yml` publishes `127.0.0.1:5432:5432`, so a laptop DB client reaches Cloud SQL through the existing IAP tunnel and bastion Auth Proxy as the app SA (#181)
@@ -531,7 +533,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/doughayden/agent-foundation/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/doughayden/agent-foundation/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/doughayden/agent-foundation/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/doughayden/agent-foundation/compare/v0.12.5...v0.13.0
