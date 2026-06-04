@@ -1,4 +1,9 @@
-"""Shared pytest fixtures for all tests."""
+"""Shared pytest fixtures for all test lanes.
+
+This root conftest applies to every lane. Per-lane fixtures (like a Postgres
+connection for integration tests) belong in a lane-level conftest such as
+tests/integration/conftest.py.
+"""
 
 from __future__ import annotations
 
