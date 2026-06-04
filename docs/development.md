@@ -258,9 +258,10 @@ your-agent-name/
     agent.py              # ADK App and LlmAgent configuration
     callbacks.py          # Agent lifecycle callbacks (logging, safety, tool augmentation)
     prompt.py             # Agent instructions (InstructionProvider pattern)
+    config.py             # Typed env-var validation (Pydantic ServerEnv)
+    observability.py      # OpenTelemetry initialization
     server.py             # FastAPI composition root (services, DI, routing)
     tools.py              # Custom FunctionTools for agent use
-    utils/                # Config validation, common helpers, observability
   tests/                  # Test suite (unit/integration/smoke/eval lanes)
     conftest.py           # Shared fixtures, test env setup (all lanes)
     unit/test_*.py        # Default lane; modules mirror source structure

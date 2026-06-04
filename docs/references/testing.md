@@ -42,7 +42,7 @@ tests/
   unit/
     test_callbacks.py            # Tests for src/agent_foundation/callbacks.py
     test_tools.py                # Tests for src/agent_foundation/tools.py
-    test_utils_config.py         # Tests for src/agent_foundation/utils/config.py
+    test_config.py               # Tests for src/agent_foundation/config.py
     ...
   integration/                   # Postgres + FastAPI lane
   smoke/                         # Live deployed-URL lane
@@ -53,7 +53,7 @@ The root `conftest.py` applies to all lanes (auth/dotenv mocking). Per-lane `con
 
 ### Naming Conventions
 
-- **Files:** test module path mirrors source path, flattened with underscores: `src/<pkg>/utils/config.py → tests/unit/test_utils_config.py`
+- **Files:** test module path mirrors source path: `src/<pkg>/config.py → tests/unit/test_config.py`; nested source paths flatten with underscores (`<pkg>/sub/foo.py → test_sub_foo.py`)
 - **Functions:** `test_<what>_<condition>_<expected>`
 - **Classes:** Group related tests for the same module/class (style preference)
 

@@ -119,7 +119,7 @@ omit = [
     # prompt.py: Prompt text and formatting (integration tested via agent runs)
     "src/**/prompt.py",
     # observability.py: OpenTelemetry setup (infrastructure initialization)
-    "src/**/utils/observability.py",
+    "src/**/observability.py",
 ]
 
 [tool.coverage.report]

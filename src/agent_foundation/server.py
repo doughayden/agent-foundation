@@ -15,12 +15,8 @@ import uvicorn
 from fastapi import FastAPI
 from google.adk.cli.fast_api import get_fast_api_app
 
-from .utils import (
-    ServerEnv,
-    configure_otel_resource,
-    initialize_environment,
-    setup_opentelemetry,
-)
+from .config import ServerEnv, initialize_environment
+from .observability import configure_otel_resource, setup_opentelemetry
 
 # Load and validate environment configuration
 env = initialize_environment(ServerEnv)

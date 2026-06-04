@@ -94,7 +94,7 @@ mock_credentials.token = "test-mock-token-totally-not-real"  # noqa: S105
 
 **Real example from tests:**
 ```python
-# tests/unit/test_utils_config.py
+# tests/unit/test_config.py
 "HOST": "0.0.0.0",  # noqa: S104
 ```
 
@@ -344,7 +344,7 @@ omit = [
     "src/{your_agent}/**/prompt.py",
 
     # observability.py: OpenTelemetry setup (infrastructure initialization)
-    "src/{your_agent}/utils/observability.py",
+    "src/{your_agent}/observability.py",
 ]
 ```
 
@@ -361,7 +361,7 @@ omit = [
 
 **Real example from our codebase:**
 ```python
-# src/{your_agent}/utils/config.py:234
+# src/{your_agent}/config.py:234
 if not isinstance(result, list):  # pragma: no cover
     # Pydantic validation makes this unreachable
     msg = "Invalid allow_origins format"

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Flatten `src/<pkg>/utils/` into the package root: `utils/config.py` → `config.py`, `utils/observability.py` → `observability.py`; the `utils/__init__.py` re-export facade is removed and `server.py` imports from the modules directly. Forks syncing past this release: apply the same moves, update imports (`from .utils import X` → `from .config import X` / `from .observability import X`), the coverage omit path in `pyproject.toml`, and rename `tests/unit/test_utils_config.py` → `tests/unit/test_config.py` (#186)
 - Reorganize `tests/` into explicit `unit/`, `integration/`, `smoke/`, and `eval/` lane directories. A lane is decided by runtime requirements and determinism; non-unit lanes run by explicit path and `testpaths = ["tests/unit"]` scopes a bare `pytest` to the fast, free, deterministic lane with the 100% coverage gate. Lane markers registered in `pyproject.toml` (#177)
 - Rename `tests/test_config.py` to `tests/unit/test_utils_config.py`, establishing the mirror-source naming convention (`src/<pkg>/utils/config.py` → `test_utils_config.py`) (#177)
 

@@ -585,7 +585,7 @@ def mock_load_dotenv(mocker: MockerFixture) -> MockType:
     Returns:
         Mock object for load_dotenv function.
     """
-    return mocker.patch("agent_foundation.utils.config.load_dotenv")
+    return mocker.patch("agent_foundation.config.load_dotenv")
 
 
 @pytest.fixture
