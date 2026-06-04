@@ -186,7 +186,7 @@ For every file diff shown, use this consistent interaction pattern:
 Review each module individually. For each module, review the code diff, adapt the code, then adapt its tests in the same step. Open IDE diff and **STOP** for user decision.
 
 **Review order** (most impactful first):
-1. `utils/config.py` + `test_config.py` — Pydantic config patterns
+1. `utils/config.py` + `test_utils_config.py` — Pydantic config patterns
 2. `utils/observability.py` + `test_observability.py` — OpenTelemetry patterns
 3. `server.py` + `test_server.py` — FastAPI/ADK server setup
 4. `agent.py` — Agent configuration

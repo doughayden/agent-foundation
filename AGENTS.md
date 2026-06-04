@@ -130,6 +130,15 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 
 **Tools:** pytest, pytest-cov (100% required), pytest-asyncio, pytest-mock (`MockerFixture`, `MockType`)
 
+**Lanes:** A test's lane = its runtime requirements + determinism, not how many components it touches. Lanes select by explicit path (the command or CI job IS the selector); `testpaths = ["tests/unit"]` guards a bare `pytest` from spinning Postgres or spending LLM money. Only `unit` carries the `--cov` 100% gate. **Never add pytest to pre-commit hooks** — hooks stay static-checks-only; tests run in CI.
+
+| Lane | Needs | Deterministic | Local command |
+|---|---|---|---|
+| `tests/unit` | in-process only (mocks at boundaries) | yes | `uv run pytest` (default) |
+| `tests/integration` | real external resource (Postgres) | yes | `uv run pytest tests/integration` |
+| `tests/smoke` | live deployed URL | yes | `uv run pytest tests/smoke` |
+| `tests/eval` | real LLM (nondeterministic, costs money) | no | `uv run pytest tests/eval` |
+
 **pytest_configure()** - Only place using unittest.mock (runs before pytest-mock available). Mocks `dotenv.load_dotenv` and Google auth defaults to prevent real credential lookups during collection. See `tests/conftest.py` for the current mock set and the lifecycle docstring.
 - No env var assignments needed (PEP 562 lazy loading, Pydantic validates only when called)
 - If future imports trigger env var reads at collection time, use direct `os.environ["KEY"] = "value"` (never `setdefault()`)
@@ -145,7 +154,7 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 
 **Mock Usage:** Never import mock classes directly in test files — always use or add a fixture in `conftest.py`.
 
-**Organization:** Mirror source (`src/X.py` → `tests/test_X.py`). Class grouping. Descriptive names (`test_<what>_<condition>_<expected>`).
+**Organization:** Test module path mirrors source path, flattened with underscores (`src/<pkg>/utils/config.py` → `tests/unit/test_utils_config.py`). Root `tests/conftest.py` is shared across lanes; per-lane conftest files live in the lane dir. Class grouping. Descriptive names (`test_<what>_<condition>_<expected>`).
 
 **Validation:** Pydantic `@field_validator` (validate at model creation). Tests expect `ValidationError` at `model_validate()`, not at property access. Property simplified with `# pragma: no cover` for impossible edge cases.
 
