@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Reorganize `tests/` into explicit `unit/`, `integration/`, `smoke/`, and `eval/` lane directories. A lane is decided by runtime requirements and determinism; non-unit lanes run by explicit path and `testpaths = ["tests/unit"]` scopes a bare `pytest` to the fast, free, deterministic lane with the 100% coverage gate. Lane markers registered in `pyproject.toml` (#177)
+- Rename `tests/test_config.py` to `tests/unit/test_utils_config.py`, establishing the mirror-source naming convention (`src/<pkg>/utils/config.py` → `test_utils_config.py`) (#177)
+
+### Removed
+- `tests/test_integration.py`: in-process structural assertions on coverage-omitted modules, not integration tests. App/agent wiring will be validated by the real integration lane, freeing the name for the Postgres + FastAPI suite (#177)
+
 ## [0.15.0] - 2026-06-04
 
 ### Added

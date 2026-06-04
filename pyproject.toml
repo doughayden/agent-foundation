@@ -132,6 +132,14 @@ fail_under = 100
 directory = "htmlcov"
 
 [tool.pytest.ini_options]
+# Bare `pytest` runs only the fast, deterministic unit lane; other lanes run by
+# explicit path (e.g. `pytest tests/integration`) — see AGENTS.md Testing Patterns
+testpaths = ["tests/unit"]
+markers = [
+    "integration: requires a real external resource (e.g. Postgres); no LLM or cloud",
+    "smoke: requires a live deployed service URL",
+    "eval: runs the real LLM; nondeterministic and costs money",
+]
 filterwarnings = [
     # Ignore the UserWarning category from the ADK feature flag decorator module
     "ignore::UserWarning:google.adk.features._feature_decorator",

@@ -94,7 +94,7 @@ mock_credentials.token = "test-mock-token-totally-not-real"  # noqa: S105
 
 **Real example from tests:**
 ```python
-# tests/test_config.py
+# tests/unit/test_utils_config.py
 "HOST": "0.0.0.0",  # noqa: S104
 ```
 

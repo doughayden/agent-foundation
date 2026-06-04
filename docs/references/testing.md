@@ -2,6 +2,21 @@
 
 Detailed testing patterns, organization, and requirements for the project.
 
+## Test Lanes
+
+A test's lane is decided by its runtime requirements and determinism, not by how many components it touches.
+
+| Lane | Needs | Deterministic | Cost | Local command |
+|---|---|---|---|---|
+| unit | in-process only (mocks at boundaries) | yes | free/fast | `uv run pytest` (default) |
+| integration | real external resource (Postgres) | yes | slower, no LLM/cloud | `uv run pytest tests/integration` |
+| smoke | a live deployed URL | yes | needs a deploy | `uv run pytest tests/smoke` |
+| eval | the real LLM (full suite) | no (judge variance) | costs money | `uv run pytest tests/eval` |
+
+Non-unit lanes run by explicit path, both locally and in CI — the command or CI job is the selector. `testpaths = ["tests/unit"]` in `pyproject.toml` scopes a bare `uv run pytest` to the fast, free, deterministic lane so it can't accidentally require Postgres or spend LLM money. An explicit path argument overrides it.
+
+Only the unit lane runs `--cov` with the 100% gate.
+
 ## Coverage Requirements
 
 **100% coverage required on production code.**
@@ -19,19 +34,26 @@ Detailed testing patterns, organization, and requirements for the project.
 
 ### Directory Structure
 
-Tests mirror source structure:
+Lanes are top-level directories; unit test modules mirror source structure:
 
 ```
 tests/
-  conftest.py                    # Shared fixtures, mocks, and test environment setup
-  test_callbacks.py              # Tests for src/agent_foundation/callbacks.py
-  test_tools.py                  # Tests for src/agent_foundation/tools.py
-  ...
+  conftest.py                    # Shared fixtures, mocks, and test environment setup (all lanes)
+  unit/
+    test_callbacks.py            # Tests for src/agent_foundation/callbacks.py
+    test_tools.py                # Tests for src/agent_foundation/tools.py
+    test_utils_config.py         # Tests for src/agent_foundation/utils/config.py
+    ...
+  integration/                   # Postgres + FastAPI lane
+  smoke/                         # Live deployed-URL lane
+  eval/                          # LLM eval lane
 ```
+
+The root `conftest.py` applies to all lanes (auth/dotenv mocking). Per-lane `conftest.py` files (e.g. a Postgres fixture in `integration/`) live in their lane directory.
 
 ### Naming Conventions
 
-- **Files:** `test_<module>.py` mirroring source module name
+- **Files:** test module path mirrors source path, flattened with underscores: `src/<pkg>/utils/config.py → tests/unit/test_utils_config.py`
 - **Functions:** `test_<what>_<condition>_<expected>`
 - **Classes:** Group related tests for the same module/class (style preference)
 
@@ -194,10 +216,7 @@ Test invalid inputs and edge cases:
 
 ### Integration Points
 
-Test connections between components:
-- Callbacks are registered and invoked
-- Tools are added to agent correctly
-- Configuration flows through system
+App and agent wiring (callbacks registered, tools attached, configuration flow) is validated by the integration lane against a real server.
 
 ## Mypy Scope
 
@@ -206,16 +225,21 @@ mypy is scoped to the source package. Test modules are not type-checked; conftes
 ## Running Tests
 
 ```bash
-# Full coverage report
+# Unit lane (default) with full coverage report
 uv run pytest --cov --cov-report=term-missing
 
 # HTML report for detailed view
 uv run pytest --cov --cov-report=html
 open htmlcov/index.html
 
+# Other lanes by explicit path
+uv run pytest tests/integration
+uv run pytest tests/smoke
+uv run pytest tests/eval
+
 # Specific tests
-uv run pytest tests/test_integration.py -v
-uv run pytest tests/test_file.py::test_name -v
+uv run pytest tests/unit/test_callbacks.py -v
+uv run pytest tests/unit/test_file.py::test_name -v
 
 # Watch mode (requires pytest-watch)
 uv run ptw

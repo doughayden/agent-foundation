@@ -121,7 +121,7 @@ git diff foundation-tags/$VERSION -- tests/conftest.py
 # Cross-package diff for src/ files: foundation ref path vs your working tree path
 git diff foundation-tags/$VERSION:src/agent_foundation/utils/config.py -- src/$DOWNSTREAM_PKG/utils/config.py
 # Plain git diff for tests/ paths
-git diff foundation-tags/$VERSION -- tests/test_config.py
+git diff foundation-tags/$VERSION -- tests/unit/test_utils_config.py
 # Adapt both, preserving downstream-specific code. Repeat for each module.
 ```
 
