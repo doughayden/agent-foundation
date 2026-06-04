@@ -108,6 +108,18 @@ DELETE FROM sessions WHERE update_time < (now() AT TIME ZONE 'UTC') - interval '
 
 **Locking and scan cost.** `DELETE` acquires a `ROW EXCLUSIVE` table-level lock, which conflicts only with `SHARE` and stronger modes, plus `FOR UPDATE` row-level locks on just the rows it deletes, so concurrent reads and writes on other rows proceed unblocked (see [PostgreSQL explicit locking](https://www.postgresql.org/docs/current/explicit-locking.html)). `update_time` is unindexed in the ADK schema, so each run is a sequential scan, and the cleanup itself bounds the table: the scan covers at most the retention window of sessions, once daily, offset from peak hours.
 
+### Why a DELETE sweep, not partition expiry
+
+Partition-based retention (dropping time-bucketed partitions, typically managed by pg_partman) is the cleaner expiry mechanism for append-only tables with an immutable time key that the project owns. The session tables fail all three conditions:
+
+- The schema belongs to ADK's `DatabaseSessionService`, and Postgres accepts `PARTITION BY` only at table creation. Partitioning means recreating the tables and owning a divergent copy of upstream's DDL that every ADK schema change must be merged into. The DELETE sweep keeps the zero-application-code property.
+- Retention here means idle for 90 days, so the partition key would have to be `update_time`, which mutates on every event append. Partitioning on the immutable creation timestamp would expire by session age and drop still-active sessions. Partitioning on `update_time` causes cross-partition row movement on the hot write path, which surfaces as serialization errors on concurrent updates.
+- Partitioned tables require the partition key in every primary key and unique constraint, and ADK's session PK does not include a timestamp.
+
+The scale argument also does not arrive: partition drop beats DELETE when the sweep itself is expensive, and this sweep bounds its own input (see Locking and scan cost above). If delete volume ever grows, the first lever is a chunked DELETE (`LIMIT` batches in the job command), a one-line change with no schema surgery. pg_partman would also keep all of the provisioning machinery here, since its retention maintenance is conventionally scheduled through pg_cron.
+
+Partition expiry remains the right tool for time-keyed append-only stores the project does own, like an analytics sink with partition-based retention.
+
 ### How it is provisioned (no application code)
 
 - **Flag:** `cloudsql.enable_pg_cron = on` in `terraform/main/database.tf`.
