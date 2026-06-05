@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `docs/references/image-digest-resolution.md`: how one build surfaces as different digests across Artifact Registry tags (OCI index), Cloud Run revisions (platform manifest), and the provenance attestation — with resolution commands, console paths, and digest-based debugging recipes. Restores and modernizes content dropped in the February docs refactor
-- `verify-image-provenance` project skill: operationalizes the digest-resolution doc as a deterministic procedure (`resolve_chain.sh` with service/compare/revision/tag/classify/find-commit modes) answering image-identity questions with digest evidence — same-image checks across revisions, running-image-to-commit/PR attribution, artifact classification, and deploy-chain verification. Eval-validated across models (workspace results in `.claude-output/`)
+- `verify-image-provenance` project skill: operationalizes the digest-resolution doc as a deterministic procedure (`resolve_chain.sh` with service/compare/revision/tag/classify/find-commit modes) answering image-identity questions with digest evidence — same-image checks across revisions, running-image-to-commit/PR attribution, artifact classification, and deploy-chain verification. Eval-validated across models
 
 ## [0.16.0] - 2026-06-04
 

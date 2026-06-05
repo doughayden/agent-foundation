@@ -11,7 +11,8 @@
 #                               attestation (and what it attests), or buildcache
 #
 # Common flags: --project ID --region REGION --repo-uri REGISTRY/REPO/IMAGE
-# The repo URI is derived from the service spec when omitted.
+# Registry modes derive the repo URI from --service when --repo-uri is omitted.
+# Requires: gcloud, docker (buildx), jq
 set -euo pipefail
 
 PROJECT="" REGION="" SERVICE="" REVISION="" TAG="" FIND_DIGEST="" REPO_URI=""
@@ -21,7 +22,6 @@ MODE="service"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --project) PROJECT="$2"; shift 2 ;;
-    --verify) MODE="service"; shift ;;
     --region) REGION="$2"; shift 2 ;;
     --service) SERVICE="$2"; shift 2 ;;
     --revision) REVISION="$2"; MODE="revision"; shift 2 ;;
@@ -36,23 +36,43 @@ done
 
 [[ -n "$PROJECT" && -n "$REGION" ]] || { echo "--project and --region are required" >&2; exit 2; }
 
-# Modes needing a repo URI can derive it from --service instead of --repo-uri
-if [[ -z "$REPO_URI" && -n "$SERVICE" && "$MODE" != "service" ]]; then
-  REPO_URI=$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" 2>/dev/null \
-    --format 'value(spec.template.spec.containers[0].image)' | cut -d'@' -f1)
-fi
+validate_digest() {
+  [[ "$1" =~ ^sha256:[0-9a-f]{64}$ ]] \
+    || { echo "error: invalid digest format: $1 (expected sha256:<64 hex chars>)" >&2; exit 2; }
+}
 
 run_gcloud() { gcloud "$@" --project "$PROJECT" 2>/dev/null; }
 
 revision_platform_digest() {
-  run_gcloud run revisions describe "$1" --region "$REGION" \
-    --format 'value(spec.containers[0].image)'
+  local img
+  img=$(run_gcloud run revisions describe "$1" --region "$REGION" \
+    --format 'value(spec.containers[0].image)') && [[ -n "$img" ]] \
+    || { echo "error: could not describe revision $1 (check name, project, region)" >&2; exit 1; }
+  echo "$img"
 }
 
 service_image() {
-  run_gcloud run services describe "$1" --region "$REGION" \
-    --format 'value(spec.template.spec.containers[0].image)'
+  local img
+  img=$(run_gcloud run services describe "$1" --region "$REGION" \
+    --format 'value(spec.template.spec.containers[0].image)') && [[ -n "$img" ]] \
+    || { echo "error: could not describe service $1 (check name, project, region)" >&2; exit 1; }
+  echo "$img"
 }
+
+# jq: render one index child as "<platform|attestation>: <digest>"
+JQ_CHILDREN='.manifests[] |
+  (if (.annotations["vnd.docker.reference.type"] // "") == "attestation-manifest"
+   then "attestation"
+   else ((.platform.os // "?") + "/" + (.platform.architecture // "?")) end)
+  + ": " + .digest'
+
+# jq: extract the amd64 child digest of an index ("" when absent)
+JQ_AMD64='[.manifests[]? | select(.platform.architecture == "amd64")][0].digest // ""'
+
+# Registry modes derive the repo URI from --service when --repo-uri is omitted
+if [[ -z "$REPO_URI" && -n "$SERVICE" && "$MODE" != "service" ]]; then
+  REPO_URI=$(service_image "$SERVICE" | cut -d'@' -f1)
+fi
 
 case "$MODE" in
   revision)
@@ -75,31 +95,24 @@ case "$MODE" in
     ;;
 
   tag)
-    [[ -n "$REPO_URI" ]] || { echo "--repo-uri required for --tag mode" >&2; exit 2; }
+    [[ -n "$REPO_URI" ]] || { echo "pass --service or --repo-uri for --tag mode" >&2; exit 2; }
     INDEX=$(run_gcloud artifacts docker images describe "${REPO_URI}:${TAG}" \
       --format 'value(image_summary.digest)')
     echo "tag: $TAG"
     echo "index_digest: $INDEX"
     echo "children:"
-    docker buildx imagetools inspect "${REPO_URI}@${INDEX}" --raw \
-      | python3 -c '
-import json, sys
-for m in json.load(sys.stdin).get("manifests", []):
-    plat = m.get("platform") or {}
-    ref = (m.get("annotations") or {}).get("vnd.docker.reference.type", "")
-    kind = "attestation" if ref == "attestation-manifest" else plat.get("os", "?") + "/" + plat.get("architecture", "?")
-    print("  " + kind + ": " + m["digest"])'
+    docker buildx imagetools inspect "${REPO_URI}@${INDEX}" --raw | jq -r "$JQ_CHILDREN" | sed 's/^/  /'
     echo "note: the artifact shown as platform unknown/unknown in registry UIs is the attestation child above (BuildKit provenance), never the index and never a broken image"
     ;;
 
   find-commit)
-    [[ -n "$REPO_URI" ]] || { echo "--repo-uri required for --find-commit mode" >&2; exit 2; }
+    validate_digest "$FIND_DIGEST"
+    [[ -n "$REPO_URI" ]] || { echo "pass --service or --repo-uri for --find-commit mode" >&2; exit 2; }
     echo "searching tagged indexes for platform digest: $FIND_DIGEST"
     FOUND=""
     while read -r T D; do
       [[ "$T" =~ ^(latest|buildcache|pr-.*)$ ]] && continue
-      CHILD=$(docker buildx imagetools inspect "${REPO_URI}@${D}" --raw 2>/dev/null \
-        | python3 -c 'import json,sys; print(next((m["digest"] for m in json.load(sys.stdin).get("manifests",[]) if (m.get("platform") or {}).get("architecture")=="amd64"),""))' || true)
+      CHILD=$(docker buildx imagetools inspect "${REPO_URI}@${D}" --raw 2>/dev/null | jq -r "$JQ_AMD64" || true)
       if [[ "$CHILD" == "$FIND_DIGEST" ]]; then
         echo "match: tag=$T index=$D"
         FOUND=1
@@ -110,34 +123,31 @@ for m in json.load(sys.stdin).get("manifests", []):
     ;;
 
   classify)
-    [[ -n "$REPO_URI" ]] || { echo "--repo-uri required for --classify mode" >&2; exit 2; }
-    # buildcache check: compare against the buildcache tag's digest
+    validate_digest "$CLASSIFY_DIGEST"
+    [[ -n "$REPO_URI" ]] || { echo "pass --service or --repo-uri for --classify mode" >&2; exit 2; }
     CACHE_DIGEST=$(run_gcloud artifacts docker images describe "${REPO_URI}:buildcache" \
       --format 'value(image_summary.digest)' || true)
+    echo "digest: $CLASSIFY_DIGEST"
     if [[ "$CLASSIFY_DIGEST" == "$CACHE_DIGEST" ]]; then
-      echo "digest: $CLASSIFY_DIGEST"
       echo "classification: buildcache - BuildKit layer cache (mode=max), overwritten per build, never deployed"
       exit 0
     fi
-    RAW=$(docker buildx imagetools inspect "${REPO_URI}@${CLASSIFY_DIGEST}" --raw)
-    echo "digest: $CLASSIFY_DIGEST"
-    echo "$RAW" | python3 -c '
-import json, sys
-doc = json.load(sys.stdin)
-mt = doc.get("mediaType", "")
-if "image.index" in mt or "manifest.list" in mt:
-    print("classification: index - OCI image index (what registry tags and Terraform reference); the unknown/unknown child below is the provenance attestation, not a broken image")
-    for m in doc.get("manifests", []):
-        plat = m.get("platform") or {}
-        ref = (m.get("annotations") or {}).get("vnd.docker.reference.type", "")
-        kind = "attestation" if ref == "attestation-manifest" else plat.get("os", "?") + "/" + plat.get("architecture", "?")
-        print("  child " + kind + ": " + m["digest"])
-elif any("in-toto" in (l.get("mediaType") or "") for l in doc.get("layers", [])):
-    pt = next(((l.get("annotations") or {}).get("in-toto.io/predicate-type", "") for l in doc.get("layers", []) if l.get("annotations")), "")
-    print("classification: attestation - BuildKit provenance (" + (pt or "in-toto") + "), platform unknown/unknown, never deployed")
-else:
-    print("classification: platform-image - runnable image manifest (what Cloud Run revisions record)")'
-    # if it is a platform image or attestation, find its parent index among tagged indexes
+    docker buildx imagetools inspect "${REPO_URI}@${CLASSIFY_DIGEST}" --raw | jq -r '
+      if (.mediaType | test("image.index|manifest.list")) then
+        "classification: index - OCI image index (what registry tags and Terraform reference); the unknown/unknown child below is the provenance attestation, not a broken image",
+        (.manifests[] |
+          "  child " +
+          (if (.annotations["vnd.docker.reference.type"] // "") == "attestation-manifest"
+           then "attestation"
+           else ((.platform.os // "?") + "/" + (.platform.architecture // "?")) end)
+          + ": " + .digest)
+      elif ([.layers[]? | select(.mediaType | test("in-toto"))] | length) > 0 then
+        "classification: attestation - BuildKit provenance ("
+        + ([.layers[]? | .annotations["in-toto.io/predicate-type"] // empty] | first // "in-toto")
+        + "), platform unknown/unknown, never deployed"
+      else
+        "classification: platform-image - runnable image manifest (what Cloud Run revisions record)"
+      end'
     ;;
 
   service)
@@ -155,8 +165,7 @@ else:
     echo "latest_ready_revision: $LATEST"
     echo "revision_platform: $PLATFORM"
 
-    AMD64=$(docker buildx imagetools inspect "${REPO_URI}@${INDEX_DIGEST}" --raw \
-      | python3 -c 'import json,sys; print(next((m["digest"] for m in json.load(sys.stdin).get("manifests",[]) if (m.get("platform") or {}).get("architecture")=="amd64"),""))')
+    AMD64=$(docker buildx imagetools inspect "${REPO_URI}@${INDEX_DIGEST}" --raw | jq -r "$JQ_AMD64")
     echo "index_amd64_child: $AMD64"
 
     if [[ "$AMD64" == "$PLATFORM" ]]; then
