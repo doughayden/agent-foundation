@@ -1,0 +1,35 @@
+{
+  "skill_name": "verify-image-provenance",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "did cloud run revisions agent-foundation-dev-00065-9qp and agent-foundation-dev-00066-hpj deploy the exact same image? project doug-hayden-eng-sandbox, region us-central1",
+      "expected_output": "IDENTICAL verdict; both revisions run platform digest sha256:5cc32590b1595275e3869a1a8fb4770b1e3acbb4ce4f1a17d02c371e463653fc",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "which git commit produced the image currently serving agent-foundation-dev in doug-hayden-eng-sandbox / us-central1?",
+      "expected_output": "Commit 4ae72ab, via revision platform digest 5cc32590 contained in index 87d5625f tagged 4ae72ab",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I'm seeing an image with platform unknown/unknown in our agent-foundation-dev artifact registry repo - did a build break?",
+      "expected_output": "Nothing broken: BuildKit provenance attestation manifest, stored in the index with platform unknown/unknown, never deployed",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "confirm the image built by the latest CI/CD Pipeline run on main is the same one serving on the latest agent-foundation-dev cloud run revision (doug-hayden-eng-sandbox, us-central1)",
+      "expected_output": "Confirmed: build log exports manifest 5cc32590 and manifest list 87d5625f; latest ready revision 00066 runs 5cc32590, the amd64 child of the deployed index 87d5625f",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "show me the image from cloud run revision agent-foundation-dev-00064-qm2 and correlate it back to the PR that produced it",
+      "expected_output": "Revision runs sha256:0589b7e7..., amd64 child of index 5530f8b0... tagged f0fa060, squash commit of PR #188",
+      "files": []
+    }
+  ]
+}
