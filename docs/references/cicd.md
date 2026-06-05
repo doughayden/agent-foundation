@@ -170,7 +170,7 @@ config → metadata-extract → resolve-digest → prod-promote → prod-plan �
 - Tags: `{sha}`, `latest`, `{version}`
 - Example: `abc1234`, `latest`, `v1.0.0`
 
-**Deployment uses image digest** (not tags) to ensure every rebuild triggers a new Cloud Run revision.
+**Deployment uses image digest** (not tags) to ensure every rebuild triggers a new Cloud Run revision. The deployed digest is the OCI index; Cloud Run revisions record the resolved platform image digest — see [Image Digest Resolution](image-digest-resolution.md) for the taxonomy and verification commands.
 
 ## Reusable Workflows
 
