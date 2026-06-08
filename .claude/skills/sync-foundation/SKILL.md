@@ -321,6 +321,8 @@ git restore --staged docs/
 
 **STOP** for confirmation.
 
+> **Principle:** Downstream projects should maximize verbatim reuse of foundation's docs. When an upstream doc carries over cleanly, keep it word-for-word so the next sync sees a clean checkout with an empty diff. When a downstream edit is genuinely needed (local voice, project-specific paths, sections that only exist downstream), confine it to a clearly-bounded block rather than threading small wording changes through the whole file — a future sync can then accept the rest as a verbatim diff and review only the isolated block. Divergence cost compounds across syncs, so keeping docs verbatim-aligned where possible is what keeps this phase a fast checkout rather than a slow line-by-line reconciliation.
+
 ### Phase 9: Wrap-up
 
 1. **Run full quality suite and fix any failures:**
