@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-06-08
+
 ### Added
 - `docs/references/image-digest-resolution.md`: how one build surfaces as different digests across Artifact Registry tags (OCI index), Cloud Run revisions (platform manifest), and the provenance attestation — with resolution commands, console paths, and digest-based debugging recipes. Restores and modernizes content dropped in the February docs refactor
 - `verify-image-provenance` project skill: operationalizes the digest-resolution doc as a deterministic procedure (`resolve_chain.sh` with service/compare/revision/tag/classify/find-commit modes) answering image-identity questions with digest evidence — same-image checks across revisions, running-image-to-commit/PR attribution, artifact classification, and deploy-chain verification. Eval-validated across models
+
+### Changed
+- `sync-foundation` skill: add a doc-reuse principle to Phase 8 (Documentation) mirroring the Phase 1 fixture-reuse principle — prefer verbatim reuse of upstream docs and isolate unavoidable divergence into bounded blocks, so future syncs evaluate docs as fast verbatim diffs rather than line-by-line reconciliation (#191)
 
 ## [0.16.0] - 2026-06-04
 
@@ -547,7 +552,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/doughayden/agent-foundation/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/doughayden/agent-foundation/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/doughayden/agent-foundation/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/doughayden/agent-foundation/compare/v0.14.0...v0.14.1
