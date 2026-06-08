@@ -49,12 +49,14 @@ Deep dives for optional follow-up:
 - [Deployment Modes](references/deployment.md) - Multi-environment strategy and infrastructure
 - [CI/CD Workflows](references/cicd.md) - Workflow architecture and mechanics
 - [Cloud SQL Scaling and Reliability](references/cloud-sql.md) - Instance tiers, backups, HA, connection pooling, monitoring
+- [Cloud Run Concurrency Tuning](references/cloud-run-concurrency-tuning.md) - Async runtime model, GIL, and sizing for single-process Cloud Run deployments
 
 ### Security
 - [Security Posture](references/security-posture.md) - Defense-in-depth rationale and architectural security decisions
 
 ### Operations
 - [ADK Origin Check Middleware](references/adk-origin-check-middleware.md) - Origin validation, CORS interaction, and ALLOW_ORIGINS configuration
+- [Image Digest Resolution](references/image-digest-resolution.md) - Index vs platform digests, provenance verification, and digest-based debugging
 - [OpenTelemetry Architecture](references/opentelemetry-architecture.md) - ADK coexistence, instrumentation strategy, dependency management
 
 ### Development
