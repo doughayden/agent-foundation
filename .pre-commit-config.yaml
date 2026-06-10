@@ -2,8 +2,11 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
+      # The Claude Code sandbox write-denies .claude/, so fix-in-place hooks error there
       - id: trailing-whitespace
+        exclude: ^\.claude/
       - id: end-of-file-fixer
+        exclude: ^\.claude/
       - id: check-yaml
         args: [--unsafe]
       - id: check-toml
