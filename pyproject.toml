@@ -9,13 +9,13 @@ authors = [
 requires-python = ">=3.13,<3.14"
 dependencies = [
     # Pin ADK to test releases before locking upgrades
-    "google-adk==1.33.0",
+    "google-adk[gcp,otel-gcp]==2.2.0",
     "google-auth>=2.40.3,<3.0.0",
     "google-cloud-logging>=3.12.1,<4.0.0",
     "opentelemetry-exporter-gcp-logging>=1.11.0a0,<2.0.0",
     "opentelemetry-exporter-otlp-proto-grpc>=1.37.0,<2.0.0",
     "opentelemetry-instrumentation-fastapi>=0.58b0,<0.59",
-    "opentelemetry-instrumentation-google-genai>=0.7b0,<0.8",
+    "opentelemetry-instrumentation-google-genai>=0.7b1,<1",
     "opentelemetry-instrumentation-logging>=0.58b0,<0.59",
     "pydantic>=2.11.0,<3.0.0",
     "python-dotenv>=1.0.0,<2.0.0",
@@ -141,8 +141,9 @@ markers = [
     "eval: runs the real LLM; nondeterministic and costs money",
 ]
 filterwarnings = [
-    # Ignore the UserWarning category from the ADK feature flag decorator module
-    "ignore::UserWarning:google.adk.features._feature_decorator",
+    # ADK 2.x deprecated the config-defined agent family; fires at import via ABCMeta
+    # subclass creation (shows as <frozen abc>), unused here — match by message
+    "ignore:BaseAgentConfig is deprecated:DeprecationWarning",
 ]
 asyncio_mode = "auto"
 # Uncomment to enable live logging for debugging API calls
