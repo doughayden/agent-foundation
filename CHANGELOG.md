@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Upgrade `google-adk` to 2.2.0 and declare its `[gcp,otel-gcp]` extras. ADK 2.x no longer pulls the Vertex/Agent Engine (`aiplatform`), GCS, and GCP OpenTelemetry dependencies by default; the extras restore them for the Agent Engine memory service, the GCS artifact service, and Cloud Trace/Logging export. Raise the `opentelemetry-instrumentation-google-genai` floor to `>=0.7b1` (earlier builds capped `google-genai<2` and silently skipped GenAI instrumentation under ADK 2.x)
+
 ## [0.17.0] - 2026-06-08
 
 ### Added
