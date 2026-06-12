@@ -8,10 +8,31 @@ tests/integration/conftest.py.
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import pytest
 from pytest_mock import MockerFixture, MockType
+
+
+def _eval_lane_only(config: pytest.Config) -> bool:
+    """Return True when every invocation arg targets the tests/eval lane.
+
+    The eval lane runs the agent against the real LLM, so it needs genuine
+    Application Default Credentials and a real ``.env`` — the collection-time
+    mocks in ``pytest_configure`` would break it. The check requires ALL args
+    to target tests/eval: in a mixed-lane invocation the mocks stay on
+    (protecting the unit lane from real API calls) and the eval test fails
+    loudly on the mocked credentials. Run the eval lane standalone:
+    ``uv run pytest tests/eval``.
+    """
+    eval_dir = Path(config.rootpath) / "tests" / "eval"
+
+    def _targets_eval(arg: str) -> bool:
+        path = (config.invocation_params.dir / arg.split("::")[0]).resolve()
+        return path == eval_dir or eval_dir in path.parents
+
+    return bool(config.args) and all(_targets_eval(arg) for arg in config.args)
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -40,7 +61,14 @@ def pytest_configure(config: pytest.Config) -> None:
     bodies or guarded by TYPE_CHECKING. A top-level ``from package.x import Y``
     would execute during test collection — before these patches take effect —
     possibly triggering real API calls.
+
+    EVAL LANE EXCEPTION: when the invocation targets only tests/eval (see
+    ``_eval_lane_only``), no mocks are applied — that lane intentionally uses
+    real credentials and the real .env to drive live model inference.
     """
+    if _eval_lane_only(config):
+        return
+
     from unittest.mock import Mock, patch
 
     # Patch load_dotenv to prevent loading real .env file during module imports

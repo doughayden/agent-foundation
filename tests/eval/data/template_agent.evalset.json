@@ -1,0 +1,45 @@
+{
+  "eval_set_id": "template_agent_core",
+  "name": "Template agent core behaviors",
+  "description": "Deterministic eval cases for the template root agent. Each case pins an expected tool trajectory (exact tool name and args) plus a reference response for ROUGE-1 matching. Author or replay cases interactively with `adk web src`; run the gate with `uv run pytest tests/eval`.",
+  "eval_cases": [
+    {
+      "eval_id": "get_current_time_new_york",
+      "conversation": [
+        {
+          "invocation_id": "get_current_time_new_york_inv_1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Hi, I'm Alex. What is the current time in the America/New_York timezone?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Hi Alex! The current time in America/New_York is 10:30 PM on Thursday."
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "get_current_time",
+                "args": {
+                  "timezone_name": "America/New_York"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "agent_foundation",
+        "user_id": "eval_user"
+      }
+    }
+  ]
+}
