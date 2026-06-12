@@ -20,7 +20,7 @@
             "role": "model",
             "parts": [
               {
-                "text": "Hi Alex! The current time in America/New_York is 10:30 PM on Thursday."
+                "text": "Hi Alex! Here is the current time in the America/New_York timezone."
               }
             ]
           },
