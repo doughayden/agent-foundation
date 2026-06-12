@@ -40,7 +40,7 @@ DEFAULT_DATABASE_URI = "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/se
 # under src/ (src/agent_foundation -> "agent_foundation").
 APP_NAME = "agent_foundation"
 
-STUB_RESPONSE_TEXT = "stubbed integration reply"
+MOCK_RESPONSE_TEXT = "stubbed integration reply"
 
 
 class MockLlm(BaseLlm):
@@ -60,7 +60,7 @@ class MockLlm(BaseLlm):
         yield LlmResponse(
             content=types.Content(
                 role="model",
-                parts=[types.Part(text=STUB_RESPONSE_TEXT)],
+                parts=[types.Part(text=MOCK_RESPONSE_TEXT)],
             )
         )
 
@@ -78,9 +78,9 @@ def app_name() -> str:
 
 
 @pytest.fixture(scope="session")
-def stub_response_text() -> str:
+def mock_response_text() -> str:
     """Canned text the stubbed model yields on the run path."""
-    return STUB_RESPONSE_TEXT
+    return MOCK_RESPONSE_TEXT
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
@@ -114,9 +114,10 @@ async def integration_app(database_uri: str) -> AsyncIterator[FastAPI]:
         lambda *args, **kwargs: session_service
     )
     try:
+        # The factory patch above supplies the session service; no URI is passed
+        # here since get_fast_api_app would otherwise build (and leak) its own.
         app = get_fast_api_app(
             agents_dir=str(Path(__file__).parent.parent.parent / "src"),
-            session_service_uri=database_uri,
             web=False,
         )
         yield app

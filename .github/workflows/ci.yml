@@ -140,5 +140,5 @@ jobs:
               exit 1
             fi
           else
-            echo "⏭️ Code quality and tests skipped - no relevant files changed"
+            echo "⏭️ Code quality and integration tests skipped - no relevant files changed"
           fi

@@ -73,7 +73,7 @@ class TestAgentRunStatePersistence:
     """An agent run persists events and reads back session state."""
 
     async def test_run_persists_events_and_state(
-        self, client, app_name, stub_response_text
+        self, client, app_name, mock_response_text
     ) -> None:
         """Running the agent appends events to the session in Postgres.
 
@@ -99,7 +99,7 @@ class TestAgentRunStatePersistence:
         assert run.status_code == 200
         events = run.json()
         assert any(
-            part.get("text") == stub_response_text
+            part.get("text") == mock_response_text
             for event in events
             for part in event.get("content", {}).get("parts", [])
         )
@@ -120,7 +120,7 @@ class TestAgentRunStatePersistence:
             event.get("content", {}).get("role") == "user" for event in persisted
         )
         assert any(
-            part.get("text") == stub_response_text
+            part.get("text") == mock_response_text
             for event in persisted
             for part in event.get("content", {}).get("parts", [])
         )
@@ -129,10 +129,11 @@ class TestAgentRunStatePersistence:
 class TestPostgresDialectStrictness:
     """asyncpg rejects ISO strings for typed columns where sqlite tolerates them.
 
-    This is the regression class the lane exists to catch. Binding a typed column
-    requires native Python objects (or a dialect-aware ``bindparam``); an ISO string
-    bound without type info raises ``DataError`` against asyncpg but silently coerces
-    under sqlite, so a sqlite-only suite would miss the bug.
+    These tests demonstrate the asyncpg strictness constraint that motivates the
+    ``text(...).bindparams(...)`` convention documented in AGENTS.md. Binding a typed
+    column requires native Python objects (or a dialect-aware ``bindparam``); an ISO
+    string bound without type info raises ``DataError`` against asyncpg but silently
+    coerces under sqlite, so a sqlite-only suite would miss the bug.
     """
 
     async def test_timestamptz_requires_typed_bindparam(self, database_uri) -> None:

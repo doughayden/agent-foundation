@@ -298,16 +298,17 @@ config → metadata-extract → resolve-digest → prod-promote → prod-plan �
 
 ### ci.yml
 
-**Purpose:** Run code quality checks (ruff, mypy, pytest with coverage).
+**Purpose:** Run code quality checks (ruff, mypy, pytest with coverage) plus the Postgres integration lane.
 
-**Pipeline (three jobs):**
+**Pipeline (four jobs):**
 1. `changes` - dorny/paths-filter detects whether relevant files changed
 2. `code-quality` - runs ruff format check, ruff linting, mypy, pytest with coverage. Gated on `changes.outputs.code == 'true'`.
-3. `status` - always-runs sentinel that aggregates results for branch protection
+3. `integration` - runs `pytest tests/integration` against a `postgres:17` service container (no coverage gate; the 100% gate is unit-lane-only). Gated on `changes.outputs.code == 'true'`.
+4. `status` - always-runs sentinel that aggregates results for branch protection
 
 **Timeout:** 10 minutes for the `code-quality` job (typical: 2-3 minutes)
 
-**When it runs:** Every push to main and every pull request. The inner `code-quality` job is skipped when no relevant paths changed; the `status` sentinel always reports.
+**When it runs:** Every push to main and every pull request. The inner `code-quality` and `integration` jobs are skipped when no relevant paths changed; the `status` sentinel always reports.
 
 **Branch protection:** Require `CI / status` (the `status` job). The sentinel passes either with "skipped — no relevant files changed" or with the actual quality-check result.
 

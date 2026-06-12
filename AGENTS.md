@@ -194,7 +194,7 @@ uv lock --upgrade               # Update all
 
 **Job Summaries:** Use `mktemp`, `tee "$FILE"`, `${PIPESTATUS[0]}` for streaming + capture. Export GitHub context to shell vars, capture once, check for empty outputs.
 
-**Required checks (Template Internals):** Self-contained `ci.yml` workflow (not called by orchestrator). Owns a three-job pipeline: `changes` (dorny/paths-filter — file-scope path detection), `code-quality` (gated on changes output — runs ruff/mypy/pytest), and `status` (always-runs sentinel; reports skipped or pass/fail for branch protection). Branch protection requires `CI / status`.
+**Required checks (Template Internals):** Self-contained `ci.yml` workflow (not called by orchestrator). Owns a four-job pipeline: `changes` (dorny/paths-filter — file-scope path detection), `code-quality` (gated on changes output — runs ruff/mypy/pytest), `integration` (gated on changes output — runs `pytest tests/integration` against a `postgres:17` service container; no `--cov`, the 100% gate is unit-lane-only), and `status` (always-runs sentinel; reports skipped or pass/fail for branch protection). Branch protection requires `CI / status`.
 
 ## Terraform
 
