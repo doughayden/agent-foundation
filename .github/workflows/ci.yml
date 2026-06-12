@@ -74,11 +74,60 @@ jobs:
         run: uv run pytest --cov
         if: success() || failure()
 
+  # Deterministic agent eval gate (tests/eval). The agent under test performs
+  # real model inference on Vertex AI — authenticated with the dev
+  # environment's WIF principal (roles/aiplatform.user, environment-scoped
+  # GitHub Variables) — but scoring uses only deterministic metrics (exact
+  # tool trajectory, ROUGE-1 response match): no LLM judge, no flake.
+  # pytest is the gate because AgentEvaluator.evaluate() raises on
+  # sub-threshold metrics; the `adk eval` CLI exits 0 even when cases fail
+  # (verified against google-adk 2.2.0), so it cannot gate CI.
+  agent-eval:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: Agent Eval (deterministic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10  # Typical run: 2-3 min (sync + one live inference). 10 min prevents hanging
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write  # WIF auth for Vertex AI inference
+    env:
+      GOOGLE_GENAI_USE_VERTEXAI: "TRUE"
+      GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+      GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-extras --locked
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Run deterministic agent evals
+        run: uv run pytest tests/eval
+
   # Always-runs sentinel for branch protection.
   status:
     runs-on: ubuntu-latest
     timeout-minutes: 5  # Typical run: <1 min (status check). 5 min is generous buffer
-    needs: [changes, code-quality]
+    needs: [changes, code-quality, agent-eval]
     if: always()
     steps:
       - name: Check required status
@@ -87,11 +136,14 @@ jobs:
             echo "❌ Changes detection failed (result: ${{ needs.changes.result }})"
             exit 1
           elif [[ "${{ needs.changes.outputs.code }}" == "true" ]]; then
-            if [[ "${{ needs.code-quality.result }}" == "success" ]]; then
-              echo "✅ Code quality and tests passed"
-            else
+            if [[ "${{ needs.code-quality.result }}" != "success" ]]; then
               echo "❌ Code quality and tests failed"
               exit 1
+            elif [[ "${{ needs.agent-eval.result }}" != "success" ]]; then
+              echo "❌ Agent eval gate failed"
+              exit 1
+            else
+              echo "✅ Code quality, tests, and agent evals passed"
             fi
           else
             echo "⏭️ Code quality and tests skipped - no relevant files changed"
