@@ -36,7 +36,7 @@ dev = [
     "types-grpcio>=1.0.0.20251009,<2.0.0.0",
     "pytest-mock>=3.15.1,<4.0.0",
     "pre-commit>=4.6.0",
-    "httpx>=0.28.1,<0.29.0",
+    "httpx>=0.28.1,<1.0.0",
 ]
 docs = [
     "mkdocs-callouts>=1.16.0,<2.0.0",

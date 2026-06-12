@@ -18,7 +18,13 @@ from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.types import DateTime
 
-pytestmark = pytest.mark.integration
+pytestmark = [
+    pytest.mark.integration,
+    # The app/client fixtures are session-scoped (one connection pool per run); their
+    # async setup and these tests must share one event loop or the pool's asyncpg
+    # connections are created on a loop that's closed before engine disposal.
+    pytest.mark.asyncio(loop_scope="session"),
+]
 
 USER_ID = "integration-user"
 
@@ -104,8 +110,20 @@ class TestAgentRunStatePersistence:
         assert reloaded.status_code == 200
         body = reloaded.json()
         assert body["state"]["seed"] == "value"
-        # User message + stubbed model response both persisted to Postgres.
-        assert len(body["events"]) == 2
+        # Both the user message and the stubbed model response persisted to Postgres.
+        # Assert presence rather than an exact count: ADK does not guarantee a fixed
+        # persisted-event count and the lane tracks weekly ADK releases, so a future
+        # lifecycle/state-delta event must not read as a false regression.
+        persisted = body["events"]
+        assert len(persisted) >= 2
+        assert any(
+            event.get("content", {}).get("role") == "user" for event in persisted
+        )
+        assert any(
+            part.get("text") == stub_response_text
+            for event in persisted
+            for part in event.get("content", {}).get("parts", [])
+        )
 
 
 class TestPostgresDialectStrictness:
@@ -137,8 +155,13 @@ class TestPostgresDialectStrictness:
         engine = create_async_engine(database_uri)
         try:
             async with engine.connect() as conn:
+                # The CAST target drives asyncpg's timestamptz codec inference, so the
+                # str is rejected before it reaches Postgres — the same failure mode the
+                # production path hits without a dialect-aware bindparam.
                 stmt = text("SELECT CAST(:ts AS timestamptz) AS ts")
-                with pytest.raises(Exception, match="DataError|invalid input|expected"):
+                with pytest.raises(
+                    Exception, match=r"expected a datetime\.date.*got 'str'"
+                ):
                     await conn.execute(stmt, {"ts": "2026-06-11T00:00:00+00:00"})
         finally:
             await engine.dispose()

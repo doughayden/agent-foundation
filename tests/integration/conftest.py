@@ -19,19 +19,18 @@ container; locally, run an ephemeral container (see ``docs/references/testing.md
 from __future__ import annotations
 
 import os
-from collections.abc import AsyncGenerator, Iterator
+from collections.abc import AsyncGenerator, AsyncIterator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 import pytest_asyncio
 from google.adk.models import BaseLlm, LlmResponse
+from google.adk.sessions import DatabaseSessionService
 from google.genai import types
 from httpx import ASGITransport, AsyncClient
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
     from fastapi import FastAPI
     from google.adk.models import LlmRequest
 
@@ -44,7 +43,7 @@ APP_NAME = "agent_foundation"
 STUB_RESPONSE_TEXT = "stubbed integration reply"
 
 
-class StubLlm(BaseLlm):
+class MockLlm(BaseLlm):
     """Deterministic, zero-cost stand-in for the real model on the run path.
 
     Subclasses ``BaseLlm`` so it satisfies the same interface ADK invokes; yields a
@@ -72,45 +71,62 @@ def database_uri() -> str:
     return os.environ.get("INTEGRATION_DATABASE_URI", DEFAULT_DATABASE_URI)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def app_name() -> str:
     """ADK app name (the agent package directory discovered under src/)."""
     return APP_NAME
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def stub_response_text() -> str:
     """Canned text the stubbed model yields on the run path."""
     return STUB_RESPONSE_TEXT
 
 
-@pytest.fixture
-def integration_app(database_uri: str) -> Iterator[FastAPI]:
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
+async def integration_app(database_uri: str) -> AsyncIterator[FastAPI]:
     """Build the production FastAPI app against real Postgres with a stubbed model.
 
     Reuses production wiring (``get_fast_api_app`` with a real ``postgresql+asyncpg://``
     session service). The only override is replacing ``root_agent.model`` with
-    ``StubLlm`` so the run path is deterministic and free; the model is restored after
-    the test to avoid leaking the stub into other tests.
+    ``MockLlm`` so the run path is deterministic and free; the model is restored at the
+    end of the session to avoid leaking the stub into other lanes.
+
+    The session service is constructed explicitly here and injected by patching ADK's
+    ``create_session_service_from_options`` factory (the binding ``get_fast_api_app``
+    actually calls) so the fixture owns the connection pool and disposes its engine on
+    teardown. ``get_fast_api_app`` otherwise builds the service from the URI internally
+    and discards the handle, so its asyncpg pool would leak; ADK's ``internal_lifespan``
+    closes runners but never disposes the session engine, and httpx ``ASGITransport``
+    never emits ASGI lifespan events in any case. Session-scoped so one pool is built
+    and disposed per run rather than one per test.
     """
+    import google.adk.cli.fast_api as fast_api_mod
     from google.adk.cli.fast_api import get_fast_api_app
 
     import agent_foundation.agent as agent_mod
 
+    session_service = DatabaseSessionService(db_url=database_uri)
     original_model = agent_mod.root_agent.model
-    agent_mod.root_agent.model = StubLlm()
+    agent_mod.root_agent.model = MockLlm()
+    original_factory = fast_api_mod.create_session_service_from_options
+    fast_api_mod.create_session_service_from_options = (
+        lambda *args, **kwargs: session_service
+    )
     try:
         app = get_fast_api_app(
-            agents_dir=str(Path("src").resolve()),
+            agents_dir=str(Path(__file__).parent.parent.parent / "src"),
             session_service_uri=database_uri,
             web=False,
         )
         yield app
     finally:
+        fast_api_mod.create_session_service_from_options = original_factory
         agent_mod.root_agent.model = original_model
+        await session_service.db_engine.dispose()
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def client(integration_app: FastAPI) -> AsyncIterator[AsyncClient]:
     """In-process httpx client driving the app over ASGI (no socket, no server)."""
     transport = ASGITransport(app=integration_app)
