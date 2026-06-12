@@ -100,6 +100,11 @@ async def integration_app(database_uri: str) -> AsyncIterator[FastAPI]:
     closes runners but never disposes the session engine, and httpx ``ASGITransport``
     never emits ASGI lifespan events in any case. Session-scoped so one pool is built
     and disposed per run rather than one per test.
+
+    ADK's ``get_fast_api_app`` accepts only ``session_service_uri`` (a URI string), not
+    a pre-built service object, so the factory binding is the only injection point. No
+    upstream adk-python issue requests a ``session_service`` parameter yet. Remove this
+    patch when such a parameter lands.
     """
     import google.adk.cli.fast_api as fast_api_mod
     from google.adk.cli.fast_api import get_fast_api_app

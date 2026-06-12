@@ -25,7 +25,7 @@ The integration lane (`tests/integration/`) exercises the real FastAPI app again
 
 - Session lifecycle through the API: create, get, list, delete
 - An agent run that persists events and reads back session state
-- Postgres dialect strictness: asyncpg rejects ISO strings for `timestamptz` where sqlite tolerates them, so direct SQL binds native Python objects via typed `bindparam`. This is the regression class the lane exists to catch (a sqlite-only suite would miss it).
+- Postgres dialect strictness: asyncpg rejects ISO strings for `timestamptz` where sqlite tolerates them, so direct SQL binds native Python objects via typed `bindparam`. These tests demonstrate the asyncpg strictness constraint that motivates the typed-bindparam convention in AGENTS.md; the session-lifecycle and agent-run tests are what actually catch dialect regressions through `DatabaseSessionService`.
 
 ### Run it locally
 
@@ -33,7 +33,7 @@ Start an ephemeral Postgres container, run the lane, then tear it down:
 
 ```bash
 docker run -d --rm --name agent-foundation-pg \
-  -p 5432:5432 \
+  -p 127.0.0.1:5432:5432 \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=postgres \
   -e POSTGRES_DB=sessions \
