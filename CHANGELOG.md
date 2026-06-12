@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Integration test lane (`tests/integration/`): exercises the real FastAPI app against a real Postgres session service with no mocks, covering session create/list/get/delete and an agent run that persists and reads session state. Builds the production app via ADK `get_fast_api_app()` with a `postgresql+asyncpg://` URI and drives it in-process with httpx `ASGITransport`; the LLM is stubbed so the lane is deterministic and free. Includes a Postgres-dialect strictness test (asyncpg rejects ISO strings for `timestamptz` where sqlite tolerates them). Runs in the `ci.yml` required check via a `postgres:17` service container, gated on `changes` and folded into the `CI / status` sentinel, without `--cov` (#102)
+
 ### Changed
 - Upgrade `google-adk` to 2.2.0 and declare its `[gcp,otel-gcp]` extras. ADK 2.x no longer pulls the Vertex/Agent Engine (`aiplatform`), GCS, and GCP OpenTelemetry dependencies by default; the extras restore them for the Agent Engine memory service, the GCS artifact service, and Cloud Trace/Logging export. Raise the `opentelemetry-instrumentation-google-genai` floor to `>=0.7b1` (earlier builds capped `google-genai<2` and silently skipped GenAI instrumentation under ADK 2.x)
 

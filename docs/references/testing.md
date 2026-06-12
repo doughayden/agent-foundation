@@ -17,6 +17,42 @@ Non-unit lanes run by explicit path, both locally and in CI — the command or C
 
 Only the unit lane runs `--cov` with the 100% gate.
 
+## Integration Lane
+
+The integration lane (`tests/integration/`) exercises the real FastAPI app against a real Postgres session service with no mocks. It builds the production app via ADK `get_fast_api_app()` with a `postgresql+asyncpg://` URI (a real `DatabaseSessionService`) and drives it in-process with httpx `ASGITransport`. The only substitution is the LLM: `root_agent.model` is replaced with a deterministic stub, so the run path persists and reads session state without a network call or cost. Agent behavior is owned by the eval lane, not this one.
+
+### What it covers
+
+- Session lifecycle through the API: create, get, list, delete
+- An agent run that persists events and reads back session state
+- Postgres dialect strictness: asyncpg rejects ISO strings for `timestamptz` where sqlite tolerates them, so direct SQL binds native Python objects via typed `bindparam`. This is the regression class the lane exists to catch (a sqlite-only suite would miss it).
+
+### Run it locally
+
+Start an ephemeral Postgres container, run the lane, then tear it down:
+
+```bash
+docker run -d --rm --name agent-foundation-pg \
+  -p 5432:5432 \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=sessions \
+  postgres:17
+
+uv run pytest tests/integration
+
+docker stop agent-foundation-pg
+```
+
+The connection defaults to `postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/sessions`. Override it with the `INTEGRATION_DATABASE_URI` environment variable to point at a different host or port. This is a test-harness variable, not application runtime config, so it lives here rather than in `docs/environment-variables.md`.
+
+> [!NOTE]
+> The lane needs no GCP credentials. The root `tests/conftest.py` `pytest_configure()` patches `dotenv.load_dotenv` and `google.auth.default` for every lane.
+
+### How CI provides Postgres
+
+The `ci.yml` `integration` job runs a `postgres:17` service container (with a `pg_isready` health check) and sets `INTEGRATION_DATABASE_URI` to reach it. It is gated on the `changes` job and folded into the always-runs `status` sentinel, so the single required check `CI / status` covers it. The job runs `uv run pytest tests/integration` without `--cov` — the 100% coverage gate is unit-lane-only.
+
 ## Coverage Requirements
 
 **100% coverage required on production code.**
