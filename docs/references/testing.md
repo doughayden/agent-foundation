@@ -11,7 +11,7 @@ A test's lane is decided by its runtime requirements and determinism, not by how
 | unit | in-process only (mocks at boundaries) | yes | free/fast | `uv run pytest` (default) |
 | integration | real external resource (Postgres) | yes | slower, no LLM/cloud | `uv run pytest tests/integration` |
 | smoke | a live deployed URL | yes | needs a deploy | `uv run pytest tests/smoke` |
-| eval | the real LLM (full suite) | no (judge variance) | costs money | `uv run pytest tests/eval` |
+| eval | the real LLM (full suite) | gate metrics yes; judge metrics no | costs money | `uv run pytest tests/eval` |
 
 Non-unit lanes run by explicit path, both locally and in CI — the command or CI job is the selector. `testpaths = ["tests/unit"]` in `pyproject.toml` scopes a bare `uv run pytest` to the fast, free, deterministic lane so it can't accidentally require Postgres or spend LLM money. An explicit path argument overrides it.
 
@@ -50,6 +50,9 @@ tests/
 ```
 
 The root `conftest.py` applies to all lanes (auth/dotenv mocking). Per-lane `conftest.py` files (e.g. a Postgres fixture in `integration/`) live in their lane directory.
+
+> [!NOTE]
+> The eval lane is the exception to the auth/dotenv mocks: when an invocation targets only `tests/eval`, the root `pytest_configure()` skips them so the agent can authenticate for real model inference. Run the eval lane standalone (`uv run pytest tests/eval`) — in a mixed-lane invocation the mocks stay on and the eval test fails on the mocked credentials.
 
 ### Naming Conventions
 
@@ -244,6 +247,58 @@ uv run pytest tests/unit/test_file.py::test_name -v
 # Watch mode (requires pytest-watch)
 uv run ptw
 ```
+
+## Agent Evals
+
+The eval lane scores real agent behavior against committed eval sets. One data set, two front-ends:
+
+- **`uv run pytest tests/eval`** — the gate-fidelity runner. Calls `AgentEvaluator.evaluate()`, which raises `AssertionError` on sub-threshold metrics. This is what CI runs.
+- **`adk eval src/agent_foundation <evalset> --config_file_path <config>`** and **`adk web src`** — the interactive authoring loop for creating, replaying, and debugging eval cases against the same `*.evalset.json` files.
+
+> [!WARNING]
+> Never gate CI on the `adk eval` CLI: it exits 0 even when eval cases fail (verified against google-adk 2.2.0), so a CLI-based gate is silently always green. Only the pytest runner fails the build.
+
+### Artifacts
+
+All eval data lives in `tests/eval/data/`:
+
+| File | Role |
+|---|---|
+| `template_agent.evalset.json` | Eval cases (ADK `EvalSet` schema): user query, expected tool trajectory, reference response |
+| `test_config.json` | Deterministic PR-gate criteria — auto-discovered by `AgentEvaluator` from the eval set's directory |
+| `full_eval_config.json` | Full criteria including LLM-judge metrics (`final_response_match_v2`, `safety_v1`) for local deep evaluation and the deploy pipeline; pass explicitly via `--config_file_path` |
+
+### Deterministic PR-Gate Metrics
+
+`test_config.json` uses only metrics with no LLM judge — same inputs, same scores:
+
+- **`tool_trajectory_avg_score` (threshold 1.0, `IN_ORDER` match)** — expected tool calls must occur in order with exact name and args; `IN_ORDER` tolerates extra calls (like an LLM-decided `load_memory`) without failing the case.
+- **`response_match_score` (threshold 0.4)** — ROUGE-1 overlap between the actual response and the case's reference response. The agent under test still runs the real LLM, so reference texts use stable tokens (no dates or clock values) and a modest threshold absorbs phrasing variance.
+
+The judge-metric thresholds, judge model, sampling (`num_samples`), and `temperature: 0` live in `full_eval_config.json` — intentionally not wired into the PR gate.
+
+### Credentials and Cost
+
+The deterministic gate has no judge, but inference is real: the eval lane needs Vertex AI auth (`GOOGLE_GENAI_USE_VERTEXAI`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION` + ADC). Locally these come from `.env` (loaded by `tests/eval/conftest.py`); in CI the `agent-eval` job authenticates with the dev environment's WIF principal (`roles/aiplatform.user`) and sets the variables from environment-scoped GitHub Variables. Each gate run is a handful of flash-model calls — cheap, but not free; that's why the lane never runs from bare `pytest`.
+
+> [!NOTE]
+> Running `full_eval_config.json` metrics that delegate to the Vertex AI evaluation service (like `safety_v1`) may require `google-cloud-aiplatform[evaluation]`, which is not installed: the `google-adk[eval]` extra is unresolvable under this project's preventive `litellm` constraint (see `pyproject.toml`). The deterministic metrics and the ADK-native judge (`final_response_match_v2`) work with the committed dev dependencies (`rouge-score`, `pandas`, `tabulate`).
+
+### CI Gate
+
+The `agent-eval` job in `.github/workflows/ci.yml` runs the deterministic gate on every PR that touches code paths. The always-run `status` sentinel requires it, so the existing `CI / status` required check already blocks merges on eval failures — no new branch-protection registration is needed. To additionally require the eval job as its own named check:
+
+```bash
+gh api repos/:owner/:repo/branches/main/protection/required_status_checks/contexts \
+  --method POST --input - <<< '["CI / Agent Eval (deterministic)"]'
+```
+
+### Adding Eval Cases
+
+1. Author or capture a case: `adk web src` records sessions you can export as eval cases, or hand-edit `template_agent.evalset.json` (ADK `EvalSet` pydantic schema).
+2. Pin the expected tool trajectory (exact tool name and args) and a reference response built from stable tokens.
+3. Replay interactively: `adk eval src/agent_foundation tests/eval/data/template_agent.evalset.json --config_file_path tests/eval/data/test_config.json`
+4. Validate gate fidelity and stability: run `uv run pytest tests/eval` at least 3 times before relying on the case in CI.
 
 ## Examples
 

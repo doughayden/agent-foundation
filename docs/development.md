@@ -125,6 +125,16 @@ uv run pre-commit run ruff-format              # Run a single hook
 
 Hooks are configured in `.pre-commit-config.yaml`. Versions for the `language: system` hooks (ruff, mypy) are pinned in `uv.lock`. `pre-commit autoupdate` is a no-op for these hooks; update versions with `uv lock --upgrade` instead.
 
+### Agent Evals
+
+Run the deterministic agent eval gate before merging changes that touch agent behavior (instructions, tools, callbacks, model):
+
+```bash
+uv run pytest tests/eval     # Gate-fidelity runner (real model inference, deterministic scoring)
+```
+
+CI runs the same command on every code PR. For authoring and debugging eval cases interactively, use `adk web src` or `adk eval src/agent_foundation tests/eval/data/template_agent.evalset.json --config_file_path tests/eval/data/test_config.json` — but never as a CI gate, because the `adk eval` CLI exits 0 even when cases fail. Requires Vertex AI credentials from `.env`.
+
 See [Testing Strategy](references/testing.md) and [Code Quality](references/code-quality.md) references for detailed patterns, tool usage, and exclusion strategies.
 
 ## Docker Compose for Standard Development

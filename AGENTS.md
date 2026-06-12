@@ -58,6 +58,7 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 | Add a custom tool | define `func` in `tools.py` + register in `agent.py` | `root_agent = LlmAgent(..., tools=[..., FunctionTool(func)])` |
 | Add a callback | `callbacks.py` | ADK callbacks return `None` to observe, or a modified value to mutate/short-circuit — choose per intent |
 | Customize agent instructions | `prompt.py` | InstructionProvider pattern (function ref, called at runtime) |
+| Add an agent eval case | `tests/eval/data/*.evalset.json` | Deterministic gate criteria in `test_config.json` (auto-discovered); judge criteria in `full_eval_config.json` (not in the PR gate). Validate non-flaky: run `uv run pytest tests/eval` ≥3 times. `adk eval`/`adk web` are authoring tools only — the CLI exits 0 on failed cases, never gate CI on it |
 | Add an env var | `ServerEnv` in `config.py` + `docs/environment-variables.md` | **CRITICAL:** every new env var MUST be in `docs/environment-variables.md` (purpose, default, where to set, required/optional) |
 | Enable a GCP API | `terraform/main/services.tf` | `google_project_service`; downstream resources `depends_on = [time_sleep.service_enablement_propagation["api.googleapis.com"]]` |
 | Grant a WIF role | `terraform/main/iam.tf` | `google_project_iam_member`; downstream resources `depends_on = [time_sleep.wif_iam_propagation["roles/example"]]` |
@@ -137,9 +138,11 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 | `tests/unit` | in-process only (mocks at boundaries) | yes | `uv run pytest` (default) |
 | `tests/integration` | real external resource (Postgres) | yes | `uv run pytest tests/integration` |
 | `tests/smoke` | live deployed URL | yes | `uv run pytest tests/smoke` |
-| `tests/eval` | real LLM (nondeterministic, costs money) | no | `uv run pytest tests/eval` |
+| `tests/eval` | real LLM + Vertex AI creds (costs money) | gate metrics yes; judge metrics no | `uv run pytest tests/eval` |
 
-**pytest_configure()** - Only place using unittest.mock (runs before pytest-mock available). Mocks `dotenv.load_dotenv` and Google auth defaults to prevent real credential lookups during collection. See `tests/conftest.py` for the current mock set and the lifecycle docstring.
+**Eval lane:** Gate-fidelity runner is pytest calling `AgentEvaluator.evaluate()` (raises on sub-threshold metrics); `adk eval` CLI exits 0 on failed cases — authoring only, NEVER a CI gate. Deterministic PR-gate criteria (`tool_trajectory_avg_score` IN_ORDER 1.0, `response_match_score` ROUGE-1) in `tests/eval/data/test_config.json`; judge metrics in `full_eval_config.json` (104-B/local only). Run standalone — mixed-lane invocations keep the collection mocks on. `google-adk[eval]` extra unresolvable (litellm preventive constraint) — lane deps are `rouge-score`, `pandas`, `tabulate` in the dev group. Detail: `docs/references/testing.md` Agent Evals.
+
+**pytest_configure()** - Only place using unittest.mock (runs before pytest-mock available). Mocks `dotenv.load_dotenv` and Google auth defaults to prevent real credential lookups during collection — skipped when the invocation targets only `tests/eval` (real credentials needed there). See `tests/conftest.py` for the current mock set and the lifecycle docstring.
 - No env var assignments needed (PEP 562 lazy loading, Pydantic validates only when called)
 - If future imports trigger env var reads at collection time, use direct `os.environ["KEY"] = "value"` (never `setdefault()`)
 
@@ -194,7 +197,7 @@ uv lock --upgrade               # Update all
 
 **Job Summaries:** Use `mktemp`, `tee "$FILE"`, `${PIPESTATUS[0]}` for streaming + capture. Export GitHub context to shell vars, capture once, check for empty outputs.
 
-**Required checks (Template Internals):** Self-contained `ci.yml` workflow (not called by orchestrator). Owns a three-job pipeline: `changes` (dorny/paths-filter — file-scope path detection), `code-quality` (gated on changes output — runs ruff/mypy/pytest), and `status` (always-runs sentinel; reports skipped or pass/fail for branch protection). Branch protection requires `CI / status`.
+**Required checks (Template Internals):** Self-contained `ci.yml` workflow (not called by orchestrator). Owns a four-job pipeline: `changes` (dorny/paths-filter — file-scope path detection), `code-quality` (gated on changes output — runs ruff/mypy/pytest), `agent-eval` (gated on changes output — deterministic agent eval via `uv run pytest tests/eval`, WIF auth against the dev environment), and `status` (always-runs sentinel; reports skipped or pass/fail for branch protection). Branch protection requires `CI / status`, which covers the eval gate — no separate registration needed.
 
 ## Terraform
 
