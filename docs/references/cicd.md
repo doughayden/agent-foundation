@@ -306,7 +306,7 @@ config → metadata-extract → resolve-digest → prod-promote → prod-plan �
 3. `integration` - runs `pytest tests/integration` against a `postgres:17` service container (no coverage gate; the 100% gate is unit-lane-only). Gated on `changes.outputs.code == 'true'`.
 4. `status` - always-runs sentinel that aggregates results for branch protection
 
-**Timeout:** 10 minutes for the `code-quality` job (typical: 2-3 minutes)
+**Timeout:** 10 minutes each for the `code-quality` and `integration` jobs (typical: 2-3 minutes)
 
 **When it runs:** Every push to main and every pull request. The inner `code-quality` and `integration` jobs are skipped when no relevant paths changed; the `status` sentinel always reports.
 
