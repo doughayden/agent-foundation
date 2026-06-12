@@ -34,6 +34,7 @@ docker compose up --build --watch           # File sync + auto-restart
 uv run server                               # API at 127.0.0.1:8000
 LOG_LEVEL=DEBUG uv run server               # Debug mode
 uv run pytest --cov --cov-report=term-missing  # Tests + 100% coverage required
+uv run pytest tests/eval                    # Deterministic agent eval gate (real LLM, Vertex AI creds)
 
 # Code quality (all required)
 uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --cov
