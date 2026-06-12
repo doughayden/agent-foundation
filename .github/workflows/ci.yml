@@ -74,11 +74,57 @@ jobs:
         run: uv run pytest --cov
         if: success() || failure()
 
+  # Integration lane: real Postgres via service container, no LLM, no GCP creds.
+  # Runs without --cov (the 100% gate is unit-lane-only and would fail on fail_under).
+  integration:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: Integration Tests (Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10  # Typical run: 2-3 min (deps + Postgres lane). 10 min prevents hanging
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sessions
+        ports:
+          - 5432:5432
+        # Wait for Postgres to accept connections before tests run
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      INTEGRATION_DATABASE_URI: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/sessions
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-extras --locked
+
+      - name: Run integration tests
+        run: uv run pytest tests/integration
+
   # Always-runs sentinel for branch protection.
   status:
     runs-on: ubuntu-latest
     timeout-minutes: 5  # Typical run: <1 min (status check). 5 min is generous buffer
-    needs: [changes, code-quality]
+    needs: [changes, code-quality, integration]
     if: always()
     steps:
       - name: Check required status
@@ -87,10 +133,10 @@ jobs:
             echo "❌ Changes detection failed (result: ${{ needs.changes.result }})"
             exit 1
           elif [[ "${{ needs.changes.outputs.code }}" == "true" ]]; then
-            if [[ "${{ needs.code-quality.result }}" == "success" ]]; then
-              echo "✅ Code quality and tests passed"
+            if [[ "${{ needs.code-quality.result }}" == "success" && "${{ needs.integration.result }}" == "success" ]]; then
+              echo "✅ Code quality, unit, and integration tests passed"
             else
-              echo "❌ Code quality and tests failed"
+              echo "❌ Code quality or integration tests failed"
               exit 1
             fi
           else
