@@ -135,6 +135,9 @@ uv run pytest tests/eval     # Gate-fidelity runner (real model inference, deter
 
 CI runs the same command on every code PR. For authoring and debugging eval cases interactively, use `adk web src` or `adk eval src/agent_foundation tests/eval/data/template_agent.evalset.json --config_file_path tests/eval/data/test_config.json` — but never as a CI gate, because the `adk eval` CLI exits 0 even when cases fail. Requires Vertex AI credentials from `.env`.
 
+> [!NOTE]
+> Run the eval lane yourself or let CI run it on the PR. It cannot run as an autonomous Claude Code action: the command sandbox blocks both the outbound Vertex AI calls and the read of the ADC credentials the lane needs, and allowing those in the sandbox config would weaken its security posture (network egress to the model API plus read access to your credential file). Run it from your own terminal with the command above, where the sandbox does not apply.
+
 See [Testing Strategy](references/testing.md) and [Code Quality](references/code-quality.md) references for detailed patterns, tool usage, and exclusion strategies.
 
 ## Docker Compose for Standard Development
