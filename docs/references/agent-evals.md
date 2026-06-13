@@ -98,6 +98,16 @@ adk eval_set generate_eval_cases src/agent_foundation user_sim_generated \
 
 where `generation_config.json` looks like `{"count": 5, "model_name": "gemini-2.5-flash", "generation_instruction": "...", "environment_context": "..."}`. Generation uses the paid eval service. See ADK's [User Simulation](https://adk.dev/evaluate/user-sim/) guide for the persona model, the conversation-plan format, and the full simulator config.
 
+### Optimizing prompts: `adk optimize`
+
+ADK ships a GEPA prompt optimizer that rewrites the root agent's instructions against a target metric, driven by an optimizer config file:
+
+```bash
+adk optimize src/agent_foundation <optimizer_config_path>
+```
+
+It is long-running and makes many LLM calls. Treat it as a last resort after manual instruction fixes, and run a single pass rather than looping on it. See `adk optimize --help` for the config format.
+
 ### Migrating legacy eval data: `adk migrate`
 
 Older non-pydantic eval files convert to the current schema with `adk migrate` (see the ADK docs).
@@ -132,6 +142,23 @@ The `agent-eval` job in `.github/workflows/ci.yml` runs `uv run pytest tests/eva
 4. Validate non-flaky: run `uv run pytest tests/eval` at least three times before relying on a new gate case.
 
 See ADK's [evaluation docs](https://adk.dev/evaluate/) for the authoring workflow, the `EvalSet` schema, and migration utilities.
+
+## Limits and gotchas
+
+- **Cross-session memory is not eval-testable.** Each eval case runs in a fresh in-memory session, so the `load_memory` tool and the `add_session_to_memory` callback, which recall across separate sessions, cannot be exercised here. Validate that continuity in the integration lane (`tests/integration/`), not in evals.
+- **The gate's tool match is exact, by design.** `tool_trajectory_avg_score` matches tool name and args exactly (`IN_ORDER` only tolerates extra calls). That is deliberate: it is the only judge-free, zero-cost, deterministic option for a per-PR gate. For semantic tool-use scoring that tolerates reordered or alternative tool paths, use the rubric metrics in `full_eval_config.json` (LLM judge, not gate-able). Match the metric to the context: strict for the gate, rubric for deep evaluation.
+- **Thinking models may skip tools.** A model with thinking enabled can answer without calling a tool, which fails an exact-trajectory case. If you hit this, set `tool_config` to `mode="ANY"` on the agent, or use a non-thinking model for the evaluated path.
+- **Never lower the bar to pass.** Dropping a threshold or deleting a flaky case hides a real regression. Fix the agent (instructions, tools) or stabilize the case (stable reference tokens, `temperature=0`), not the gate.
+- **App name must match the package directory.** ADK keys sessions by `App(name=...)`; it must equal the agent package dir (here `agent_foundation`) and the eval `session_input.app_name`, or runs fail with "Session not found". Relevant if you rename the package in a fork.
+- **Eval-service metrics default to the global endpoint.** The Vertex-backed metrics (`safety_v1`, `multi_turn_*`) do not inherit `GOOGLE_CLOUD_LOCATION`; the service supports only a region subset. You normally configure nothing; override only for data residency.
+
+## Relationship to the Agent Platform Eval SDK
+
+This template uses ADK-native evaluation deliberately. ADK's evaluator ships in `google-adk` (which the agent already depends on) and consumes ADK's own `EvalSet` schema with no adapter: the deterministic gate metrics (`tool_trajectory_avg_score`, ROUGE `response_match_score`) are local Python scorers, and the `*_v1` metrics delegate to the Vertex AI evaluation service.
+
+Google's `agents-cli` is a different front-end over that same Vertex eval service, with its own `EvaluationDataset` schema, an unsuffixed managed-metric catalog, and a richer workflow (`eval generate/grade/compare/analyze/optimize/synthesize`). Its datasets and configs are not interchangeable with ADK's. This template does not adopt it, to stay on a single dependency (`google-adk`) rather than a second CLI with its own release cadence.
+
+The practical boundary: ADK-native covers authoring, a deterministic gate, and on-demand judge, safety, and user-simulation evaluation. It has no built-in regression-diff (scoring deltas between two result sets) or failure-clustering across many runs, which are scaled-suite tools. A project that grows a large, judge-heavy eval suite and needs those should reach for the Agent Platform Eval SDK directly (`google-cloud-aiplatform[evaluation]`) or `agents-cli` at that point; both are out of scope for this template.
 
 ---
 
