@@ -37,7 +37,7 @@ Agent behavior is the one thing unit and integration tests cannot catch, so this
 SERVE_WEB_INTERFACE=TRUE uv run server   # http://127.0.0.1:8000
 ```
 
-In the UI, run the agent to create a session, open the Eval tab, click "Add current session" to capture it as an eval case, then run the case and compare actual against expected output. The Trace tab shows each turn's model request, response, and tool-call graph. Set `SERVE_WEB_INTERFACE=TRUE` in `.env` to make it the default.
+In the UI, run the agent to create a session, open the Eval tab, click "Add current session" to capture it as an eval case, then run the case and compare actual against expected output. The Trace tab shows each turn's model request, response, and tool-call graph. Set `SERVE_WEB_INTERFACE=TRUE` in `.env` to make it the default. For the full click-by-click walkthrough (creating cases from sessions, editing them, and the Trace view), see the `adk web` workflow in ADK's [evaluation docs](https://adk.dev/evaluate/).
 
 ### The PR gate, locally: `uv run pytest tests/eval`
 
@@ -87,7 +87,7 @@ adk eval src/agent_foundation user_sim_demo \
   --config_file_path tests/eval/data/user_sim_config.json --print_detailed_results
 ```
 
-The generated eval set is stored under `src/agent_foundation/.adk/` (gitignored). To synthesize scenarios instead of writing them by hand:
+`adk eval_set` writes the eval set to the agent package as `src/agent_foundation/<eval_set_id>.evalset.json` (gitignored as generated scratch; copy anything worth keeping into `tests/eval/data/`). To synthesize scenarios instead of writing them by hand:
 
 ```bash
 adk eval_set generate_eval_cases src/agent_foundation user_sim_generated \
