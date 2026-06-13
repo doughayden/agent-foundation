@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Agent eval harness for the template root agent: `tests/eval/data/template_agent.evalset.json` (ADK `EvalSet` schema) with a deterministic `get_current_time` tool-trajectory case, `test_config.json` deterministic PR-gate criteria (`tool_trajectory_avg_score` IN_ORDER 1.0 + `response_match_score` ROUGE-1 0.4), and `full_eval_config.json` judge criteria (`final_response_match_v2`, `safety_v1`, judge temperature 0) for local deep evaluation and the deploy pipeline (#104)
 - Gate-fidelity pytest eval runner (`uv run pytest tests/eval`) calling `AgentEvaluator.evaluate()`, which raises on sub-threshold metrics — unlike the `adk eval` CLI, which exits 0 even when cases fail (verified against google-adk 2.2.0) and remains the interactive authoring loop only (#104)
 - `agent-eval` CI job: deterministic agent eval gate on every code PR, authenticating to Vertex AI with the dev environment's WIF principal; the always-run `status` sentinel now requires it, so the existing `CI / status` required check blocks merges on eval failures (#104)
-- Eval lane dev dependencies `rouge-score`, `pandas`, `tabulate` — the `google-adk[eval]` extra is unresolvable under the preventive `litellm<=1.82.6` constraint because `google-cloud-aiplatform[evaluation]` requires `litellm>=1.83.7` (#104)
+- `google-adk[eval]` dev extra for the agent eval lane, providing `AgentEvaluator` and its deterministic-metric dependencies (dev-only; no runtime or image impact) (#104)
 - Agent Evals documentation: authoring-vs-gate workflow in `docs/references/testing.md` and a pre-merge eval habit section in `docs/development.md` (#104)
 
 ### Changed

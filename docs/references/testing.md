@@ -282,7 +282,7 @@ The judge-metric thresholds, judge model, sampling (`num_samples`), and `tempera
 The deterministic gate has no judge, but inference is real: the eval lane needs Vertex AI auth (`GOOGLE_GENAI_USE_VERTEXAI`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION` + ADC). Locally these come from `.env` (loaded by `tests/eval/conftest.py`); in CI the `agent-eval` job authenticates with the dev environment's WIF principal (`roles/aiplatform.user`) and sets the variables from environment-scoped GitHub Variables. Each gate run is a handful of flash-model calls — cheap, but not free; that's why the lane never runs from bare `pytest`.
 
 > [!NOTE]
-> Running `full_eval_config.json` metrics that delegate to the Vertex AI evaluation service (like `safety_v1`) may require `google-cloud-aiplatform[evaluation]`, which is not installed: the `google-adk[eval]` extra is unresolvable under this project's preventive `litellm` constraint (see `pyproject.toml`). The deterministic metrics and the ADK-native judge (`final_response_match_v2`) work with the committed dev dependencies (`rouge-score`, `pandas`, `tabulate`).
+> The `full_eval_config.json` judge metrics (`final_response_match_v2`, `safety_v1`) are authored for 104-B and local deep runs, not wired into the PR gate. The `google-adk[eval]` dev extra installs everything they need, including `google-cloud-aiplatform[evaluation]`; metrics like `safety_v1` additionally call the Vertex AI evaluation service at runtime.
 
 ### CI Gate
 
