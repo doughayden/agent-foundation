@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Upgrade `google-adk` to 2.2.0 and declare its `[gcp,otel-gcp]` extras. ADK 2.x no longer pulls the Vertex/Agent Engine (`aiplatform`), GCS, and GCP OpenTelemetry dependencies by default; the extras restore them for the Agent Engine memory service, the GCS artifact service, and Cloud Trace/Logging export. Raise the `opentelemetry-instrumentation-google-genai` floor to `>=0.7b1` (earlier builds capped `google-genai<2` and silently skipped GenAI instrumentation under ADK 2.x)
 
+### Removed
+- Drop the preventive `litellm<=1.82.6` constraint-dependency. The supply-chain compromise that prompted it is contained: the two malicious versions (1.82.7, 1.82.8) are deleted from PyPI and all current releases are verified clean ([BerriAI/litellm#24518](https://github.com/BerriAI/litellm/issues/24518)). The `exclude-newer` dependency cooldown remains the general guard against newly-compromised packages, so no version-specific litellm pin is needed. Unblocks the `google-adk[eval]` extra
+
 ## [0.17.0] - 2026-06-08
 
 ### Added
