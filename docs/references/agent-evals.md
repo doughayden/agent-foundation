@@ -87,7 +87,9 @@ adk eval src/agent_foundation user_sim_demo \
   --config_file_path tests/eval/data/user_sim_config.json --print_detailed_results
 ```
 
-`adk eval_set` writes the eval set to the agent package as `src/agent_foundation/<eval_set_id>.evalset.json` (gitignored as generated scratch; copy anything worth keeping into `tests/eval/data/`). To synthesize scenarios instead of writing them by hand:
+`adk eval_set` writes the eval set to the agent package as `src/agent_foundation/<eval_set_id>.evalset.json` (gitignored as generated scratch; copy anything worth keeping into `tests/eval/data/`). To keep generated eval sets out of the package entirely, pass `--eval_storage_uri gs://<bucket>` to every `adk eval_set` command and to `adk eval`; the eval set is then stored in and read from that GCS bucket. A cloud bucket is the only storage override, local paths are not configurable.
+
+To synthesize scenarios instead of writing them by hand:
 
 ```bash
 adk eval_set generate_eval_cases src/agent_foundation user_sim_generated \
