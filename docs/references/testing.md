@@ -250,7 +250,9 @@ uv run ptw
 
 ## Agent Evals
 
-The eval lane scores real agent behavior against committed eval sets. One data set, two front-ends:
+The eval lane scores real agent behavior against committed eval sets. This section covers the commands and how the gate is wired in this template; [ADK's evaluation docs](https://adk.dev/evaluate/) are the source of truth for eval mechanics — metric semantics, the `EvalSet` schema, `adk web`/`adk eval`, and `AgentEvaluator` — and the [criteria reference](https://adk.dev/evaluate/criteria/) documents every metric.
+
+One data set, two front-ends:
 
 - **`uv run pytest tests/eval`** — the gate-fidelity runner. Calls `AgentEvaluator.evaluate()`, which raises `AssertionError` on sub-threshold metrics. This is what CI runs.
 - **`adk eval src/agent_foundation <evalset> --config_file_path <config>`** and **`adk web src`** — the interactive authoring loop for creating, replaying, and debugging eval cases against the same `*.evalset.json` files.
@@ -264,18 +266,13 @@ All eval data lives in `tests/eval/data/`:
 
 | File | Role |
 |---|---|
-| `template_agent.evalset.json` | Eval cases (ADK `EvalSet` schema): user query, expected tool trajectory, reference response |
+| `template_agent.evalset.json` | Eval cases (ADK `EvalSet` schema) |
 | `test_config.json` | Deterministic PR-gate criteria — auto-discovered by `AgentEvaluator` from the eval set's directory |
-| `full_eval_config.json` | Full criteria including LLM-judge metrics (`final_response_match_v2`, `safety_v1`) for local deep evaluation and the deploy pipeline; pass explicitly via `--config_file_path` |
+| `full_eval_config.json` | Adds LLM-judge metrics (`final_response_match_v2`, `safety_v1`) for local deep evaluation and the deploy pipeline; pass explicitly via `--config_file_path` |
 
-### Deterministic PR-Gate Metrics
+### PR-Gate Criteria
 
-`test_config.json` uses only metrics with no LLM judge — same inputs, same scores:
-
-- **`tool_trajectory_avg_score` (threshold 1.0, `IN_ORDER` match)** — expected tool calls must occur in order with exact name and args; `IN_ORDER` tolerates extra calls (like an LLM-decided `load_memory`) without failing the case.
-- **`response_match_score` (threshold 0.4)** — ROUGE-1 overlap between the actual response and the case's reference response. The agent under test still runs the real LLM, so reference texts use stable tokens (no dates or clock values) and a modest threshold absorbs phrasing variance.
-
-The judge-metric thresholds, judge model, sampling (`num_samples`), and `temperature: 0` live in `full_eval_config.json` — intentionally not wired into the PR gate.
+The gate uses only judge-free metrics, so it stays deterministic and costs no model-grading calls: `tool_trajectory_avg_score` (threshold 1.0, `IN_ORDER`) and `response_match_score` (ROUGE-1, threshold 0.4). The [ADK criteria reference](https://adk.dev/evaluate/criteria/) defines what each measures. Two project-specific choices worth knowing: `IN_ORDER` tolerates extra tool calls (like an LLM-decided `load_memory`) so the case does not flake, and reference responses use stable tokens (no dates or clock values) because the agent under test runs the real LLM. Judge metrics and their tuning (judge model, `num_samples`, `temperature: 0`) live in `full_eval_config.json`, intentionally out of the gate.
 
 ### Credentials and Cost
 
@@ -295,10 +292,12 @@ gh api repos/:owner/:repo/branches/main/protection/required_status_checks/contex
 
 ### Adding Eval Cases
 
-1. Author or capture a case: `adk web src` records sessions you can export as eval cases, or hand-edit `template_agent.evalset.json` (ADK `EvalSet` pydantic schema).
+1. Author or capture a case: `adk web src` records sessions you can export as eval cases, or hand-edit `template_agent.evalset.json`.
 2. Pin the expected tool trajectory (exact tool name and args) and a reference response built from stable tokens.
 3. Replay interactively: `adk eval src/agent_foundation tests/eval/data/template_agent.evalset.json --config_file_path tests/eval/data/test_config.json`
 4. Validate gate fidelity and stability: run `uv run pytest tests/eval` at least 3 times before relying on the case in CI.
+
+See [ADK's evaluation docs](https://adk.dev/evaluate/) for the authoring workflow, the `EvalSet` schema, and migration utilities.
 
 ## Examples
 

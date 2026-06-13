@@ -133,7 +133,7 @@ Run the deterministic agent eval gate before merging changes that touch agent be
 uv run pytest tests/eval     # Gate-fidelity runner (real model inference, deterministic scoring)
 ```
 
-CI runs the same command on every code PR. For authoring and debugging eval cases interactively, use `adk web src` or `adk eval src/agent_foundation tests/eval/data/template_agent.evalset.json --config_file_path tests/eval/data/test_config.json` — but never as a CI gate, because the `adk eval` CLI exits 0 even when cases fail. Requires Vertex AI credentials from `.env`.
+CI runs the same command on every code PR. For authoring and debugging eval cases interactively, use `adk web src` or `adk eval src/agent_foundation tests/eval/data/template_agent.evalset.json --config_file_path tests/eval/data/test_config.json` — but never as a CI gate, because the `adk eval` CLI exits 0 even when cases fail. Requires Vertex AI credentials from `.env`. See [ADK's evaluation docs](https://adk.dev/evaluate/) for eval mechanics and the authoring workflow; [Testing Strategy](references/testing.md) covers how the gate is wired here.
 
 > [!NOTE]
 > Run the eval lane yourself or let CI run it on the PR. It cannot run as an autonomous Claude Code action: the command sandbox blocks both the outbound Vertex AI calls and the read of the ADC credentials the lane needs, and allowing those in the sandbox config would weaken its security posture (network egress to the model API plus read access to your credential file). Run it from your own terminal with the command above, where the sandbox does not apply.
