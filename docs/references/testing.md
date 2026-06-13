@@ -250,54 +250,14 @@ uv run ptw
 
 ## Agent Evals
 
-The eval lane scores real agent behavior against committed eval sets. This section covers the commands and how the gate is wired in this template; [ADK's evaluation docs](https://adk.dev/evaluate/) are the source of truth for eval mechanics — metric semantics, the `EvalSet` schema, `adk web`/`adk eval`, and `AgentEvaluator` — and the [criteria reference](https://adk.dev/evaluate/criteria/) documents every metric.
+The eval lane scores real agent behavior against committed eval sets and is the only lane that catches LLM behavioral regression. The CI gate is `uv run pytest tests/eval`, which calls `AgentEvaluator.evaluate()` against the deterministic criteria in `tests/eval/data/test_config.json` (judge-free: exact tool-trajectory match plus ROUGE-1 response overlap) and raises on a sub-threshold metric. Because the agent runs the real LLM, reference responses use stable tokens and `IN_ORDER` tolerates an extra LLM-decided `load_memory` call, keeping the case non-flaky.
 
-One data set, two front-ends:
-
-- **`uv run pytest tests/eval`** — the gate-fidelity runner. Calls `AgentEvaluator.evaluate()`, which raises `AssertionError` on sub-threshold metrics. This is what CI runs.
-- **`adk eval src/agent_foundation <evalset> --config_file_path <config>`** and **`adk web src`** — the interactive authoring loop for creating, replaying, and debugging eval cases against the same `*.evalset.json` files.
-
-> [!WARNING]
-> Never gate CI on the `adk eval` CLI: it exits 0 even when eval cases fail (verified against google-adk 2.2.0), so a CLI-based gate is silently always green. Only the pytest runner fails the build.
-
-### Artifacts
-
-All eval data lives in `tests/eval/data/`:
-
-| File | Role |
-|---|---|
-| `template_agent.evalset.json` | Eval cases (ADK `EvalSet` schema) |
-| `test_config.json` | Deterministic PR-gate criteria — auto-discovered by `AgentEvaluator` from the eval set's directory |
-| `full_eval_config.json` | Adds LLM-judge metrics (`final_response_match_v2`, `safety_v1`) for local deep evaluation and the deploy pipeline; pass explicitly via `--config_file_path` |
-
-### PR-Gate Criteria
-
-The gate uses only judge-free metrics, so it stays deterministic and costs no model-grading calls: `tool_trajectory_avg_score` (threshold 1.0, `IN_ORDER`) and `response_match_score` (ROUGE-1, threshold 0.4). The [ADK criteria reference](https://adk.dev/evaluate/criteria/) defines what each measures. Two project-specific choices worth knowing: `IN_ORDER` tolerates extra tool calls (like an LLM-decided `load_memory`) so the case does not flake, and reference responses use stable tokens (no dates or clock values) because the agent under test runs the real LLM. Judge metrics and their tuning (judge model, `num_samples`, `temperature: 0`) live in `full_eval_config.json`, intentionally out of the gate.
-
-### Credentials and Cost
-
-The deterministic gate has no judge, but inference is real: the eval lane needs Vertex AI auth (`GOOGLE_GENAI_USE_VERTEXAI`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION` + ADC). Locally these come from `.env` (loaded by `tests/eval/conftest.py`); in CI the `agent-eval` job authenticates with the dev environment's WIF principal (`roles/aiplatform.user`) and sets the variables from environment-scoped GitHub Variables. Each gate run is a handful of flash-model calls — cheap, but not free; that's why the lane never runs from bare `pytest`. Run it from your own terminal or rely on CI: it cannot run as an autonomous Claude Code action, because the command sandbox blocks the Vertex AI egress and ADC credential read the lane needs, and opening those in the sandbox config would weaken its security posture.
+The `agent-eval` job in `.github/workflows/ci.yml` runs this on every code PR (Vertex AI auth via the dev WIF principal) and folds into the `CI / status` required check, so eval failures block merges.
 
 > [!NOTE]
-> The `full_eval_config.json` judge metrics (`final_response_match_v2`, `safety_v1`) are authored for 104-B and local deep runs, not wired into the PR gate. The `google-adk[eval]` dev extra installs everything they need, including `google-cloud-aiplatform[evaluation]`; metrics like `safety_v1` additionally call the Vertex AI evaluation service at runtime.
+> The eval lane needs Vertex AI egress and your ADC, so it cannot run as an autonomous Claude Code action; run it yourself or let CI run the gate. `tests/unit/test_eval_artifacts.py` schema-checks every eval artifact in the unit lane, so malformed eval data fails fast with no LLM cost.
 
-### CI Gate
-
-The `agent-eval` job in `.github/workflows/ci.yml` runs the deterministic gate on every PR that touches code paths. The always-run `status` sentinel requires it, so the existing `CI / status` required check already blocks merges on eval failures — no new branch-protection registration is needed. To additionally require the eval job as its own named check:
-
-```bash
-gh api repos/:owner/:repo/branches/main/protection/required_status_checks/contexts \
-  --method POST --input - <<< '["CI / Agent Eval (deterministic)"]'
-```
-
-### Adding Eval Cases
-
-1. Author or capture a case: `adk web src` records sessions you can export as eval cases, or hand-edit `template_agent.evalset.json`.
-2. Pin the expected tool trajectory (exact tool name and args) and a reference response built from stable tokens.
-3. Replay interactively: `adk eval src/agent_foundation tests/eval/data/template_agent.evalset.json --config_file_path tests/eval/data/test_config.json`
-4. Validate gate fidelity and stability: run `uv run pytest tests/eval` at least 3 times before relying on the case in CI.
-
-See [ADK's evaluation docs](https://adk.dev/evaluate/) for the authoring workflow, the `EvalSet` schema, and migration utilities.
+The full eval surface this template ships — the `.test.json` and multi-turn formats, judge, rubric, hallucination, and safety metrics, dynamic user simulation, and every `adk` command — is documented in [Agent Evals](agent-evals.md).
 
 ## Examples
 

@@ -1,0 +1,74 @@
+{
+  "eval_set_id": "template_agent_multi_turn",
+  "name": "Template agent multi-turn behaviors",
+  "description": "A fixed (scripted) multi-turn conversation: the agent answers two sequential time queries in one session. Thin example of a multi-turn eval case; not part of the deterministic PR gate. Run with `adk eval src/agent_foundation tests/eval/data/multi_turn.evalset.json --config_file_path tests/eval/data/test_config.json`.",
+  "eval_cases": [
+    {
+      "eval_id": "current_time_two_cities",
+      "conversation": [
+        {
+          "invocation_id": "two_cities_inv_1",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "What is the current time in the America/New_York timezone?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Here is the current time in the America/New_York timezone."
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "get_current_time",
+                "args": {
+                  "timezone_name": "America/New_York"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "invocation_id": "two_cities_inv_2",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "And what about the Asia/Tokyo timezone?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Here is the current time in the Asia/Tokyo timezone."
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "get_current_time",
+                "args": {
+                  "timezone_name": "Asia/Tokyo"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "agent_foundation",
+        "user_id": "eval_user"
+      }
+    }
+  ]
+}

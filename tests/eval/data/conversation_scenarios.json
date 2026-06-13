@@ -1,0 +1,31 @@
+{
+  "scenarios": [
+    {
+      "starting_prompt": "Hi, what can you help me with?",
+      "conversation_plan": "Ask the agent for the current time in the America/New_York timezone. After it answers, ask for the current time in the Asia/Tokyo timezone.",
+      "user_persona": "NOVICE"
+    },
+    {
+      "starting_prompt": "I need a couple of times, quickly.",
+      "conversation_plan": "Ask for the current time in Europe/London, then ask for the current time in Australia/Sydney. Keep every message terse.",
+      "user_persona": {
+        "id": "IMPATIENT_USER",
+        "description": "A user in a hurry who keeps messages short and skips pleasantries.",
+        "behaviors": [
+          {
+            "name": "Short responses",
+            "description": "The user gives very short, sometimes incomplete responses.",
+            "behavior_instructions": [
+              "Keep responses under 10 words.",
+              "Omit polite phrases."
+            ],
+            "violation_rubrics": [
+              "The user response is over 10 words.",
+              "The user response is overly polite."
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
