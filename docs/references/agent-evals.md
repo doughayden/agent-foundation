@@ -2,15 +2,15 @@
 
 Every agent-evaluation path this template ships, the command to run each, and where each artifact lives.
 
-Agent behavior is the one thing unit and integration tests cannot catch, so this template ships a working slice of the full ADK eval surface: a deterministic PR gate plus runnable examples of judge metrics, rubric scoring, safety, and dynamic user-simulated conversations. ADK's [evaluation docs](https://adk.dev/evaluate/) are the source of truth for how evals work, and the [criteria reference](https://adk.dev/evaluate/criteria/) defines every metric. This page maps what is here and how to run it.
+We include a working slice of the full ADK eval surface: a deterministic PR gate plus runnable examples of judge metrics, rubric scoring, safety, and dynamic user-simulated conversations. ADK's [evaluation docs](https://adk.dev/evaluate/) are the source of truth for how evals work, and the [criteria reference](https://adk.dev/evaluate/criteria/) defines every metric. This page maps what is here and how to run it.
 
 > [!NOTE]
-> The eval lane calls Vertex AI and reads your ADC, so it cannot run as an autonomous Claude Code action: the command sandbox blocks the egress and credential read, and widening it would weaken the security posture. Run these commands yourself, or let CI run the gate.
+> The eval lane calls Google APIs and reads your local ADC. AI code assistants may use a sandbox to block credential reads and network egress. Run the eval commands yourself to maintain security posture, or let CI run the gate.
 
 ## Prerequisites
 
-- Vertex AI auth: a `.env` with `GOOGLE_GENAI_USE_VERTEXAI`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, and ADC (`gcloud auth application-default login`). This is the same setup as local development; see [Getting Started](../getting-started.md).
-- The judge, safety, and multi-turn metrics and user-simulation case generation additionally use the paid Vertex Gen AI Evaluation Service; enable it in your project (an owner can, in one click). The deterministic gate needs none of this.
+- The same authentication as local development: a `.env` with `GOOGLE_GENAI_USE_VERTEXAI`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, and ADC (`gcloud auth application-default login`). See [Getting Started](../getting-started.md).
+- The judge, safety, and multi-turn metrics and user-simulation case generation additionally use the [Gen AI evaluation service](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/evaluation-overview); enable it in your GCP project.
 
 ## What ships (`eval/data/`)
 
@@ -96,7 +96,7 @@ adk eval_set generate_eval_cases src/agent_foundation user_sim_generated \
   --user_simulation_config_file generation_config.json
 ```
 
-where `generation_config.json` looks like `{"count": 5, "model_name": "gemini-2.5-flash", "generation_instruction": "...", "environment_context": "..."}`. Generation uses the paid eval service. See ADK's [User Simulation](https://adk.dev/evaluate/user-sim/) guide for the persona model, the conversation-plan format, and the full simulator config.
+where `generation_config.json` looks like `{"count": 5, "model_name": "gemini-2.5-flash", "generation_instruction": "...", "environment_context": "..."}`. Generation uses the paid GCP Gen AI evaluation service. See ADK's [User Simulation](https://adk.dev/evaluate/user-sim/) guide for the persona model, the conversation-plan format, and the full simulator config.
 
 ### Optimizing prompts: `adk optimize`
 
@@ -106,7 +106,7 @@ ADK ships a GEPA prompt optimizer that rewrites the root agent's instructions ag
 adk optimize src/agent_foundation <optimizer_config_path>
 ```
 
-It is long-running and makes many LLM calls. Treat it as a last resort after manual instruction fixes, and run a single pass rather than looping on it. See `adk optimize --help` for the config format.
+It is long-running and makes multiple LLM calls. Treat it as a last resort after manual instruction fixes, and run a single pass rather than looping on it. See `adk optimize --help` for the config format.
 
 ### Migrating legacy eval data: `adk migrate`
 
@@ -145,11 +145,11 @@ See ADK's [evaluation docs](https://adk.dev/evaluate/) for the authoring workflo
 
 ## Limits and gotchas
 
-- **Cross-session memory is not eval-testable.** Each eval case runs in a fresh in-memory session, so the `load_memory` tool and the `add_session_to_memory` callback, which recall across separate sessions, cannot be exercised here. Validate that continuity in the integration lane (`tests/integration/`), not in evals.
+- **Cross-session memory is not eval-testable.** Each eval case runs in a fresh in-memory session, so behavior that depends on a separate prior session, like memory recall across sessions, cannot be exercised here. Cover that continuity with an integration test instead.
 - **The gate's tool match is exact, by design.** `tool_trajectory_avg_score` matches tool name and args exactly (`IN_ORDER` only tolerates extra calls). That is deliberate: it is the only judge-free, zero-cost, deterministic option for a per-PR gate. For semantic tool-use scoring that tolerates reordered or alternative tool paths, use the rubric metrics in `full_eval_config.json` (LLM judge, not gate-able). Match the metric to the context: strict for the gate, rubric for deep evaluation.
 - **Thinking models may skip tools.** A model with thinking enabled can answer without calling a tool, which fails an exact-trajectory case. If you hit this, set `tool_config` to `mode="ANY"` on the agent, or use a non-thinking model for the evaluated path.
 - **Never lower the bar to pass.** Dropping a threshold or deleting a flaky case hides a real regression. Fix the agent (instructions, tools) or stabilize the case (stable reference tokens, `temperature=0`), not the gate.
-- **App name must match the package directory.** ADK keys sessions by `App(name=...)`; it must equal the agent package dir (here `agent_foundation`) and the eval `session_input.app_name`, or runs fail with "Session not found". Relevant if you rename the package in a fork.
+- **Eval cases reference the agent by app name.** Each case's `session_input.app_name` must match the agent's `App(name=...)`, or the run fails with "Session not found". The shipped cases already match; keep them aligned if you rename the app.
 - **Eval-service metrics default to the global endpoint.** The Vertex-backed metrics (`safety_v1`, `multi_turn_*`) do not inherit `GOOGLE_CLOUD_LOCATION`; the service supports only a region subset. You normally configure nothing; override only for data residency.
 
 ## Relationship to the Agent Platform Eval SDK
