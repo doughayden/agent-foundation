@@ -1,7 +1,7 @@
 {
   "eval_set_id": "template_agent_core",
   "name": "Template agent core behaviors",
-  "description": "Deterministic eval cases for the template root agent. Each case pins an expected tool trajectory (exact tool name and args) plus a reference response for ROUGE-1 matching. Author or replay cases interactively with `adk web src`; run the gate with `uv run pytest tests/eval`.",
+  "description": "Deterministic eval cases for the template root agent. Each case pins an expected tool trajectory (exact tool name and args) plus a reference response for ROUGE-1 matching. Author or replay cases interactively with `uv run server`; run the gate with `uv run pytest eval`.",
   "eval_cases": [
     {
       "eval_id": "get_current_time_new_york",

@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 from google.adk.evaluation.agent_evaluator import AgentEvaluator
 
 DATA_DIR = Path(__file__).parent / "data"
-NUM_RUNS = 1
+NUM_RUNS = 2
 
 
 @pytest.fixture(scope="session", autouse=True)

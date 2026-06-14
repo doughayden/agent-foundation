@@ -86,7 +86,7 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     name: Agent Eval (deterministic)
     runs-on: ubuntu-latest
-    timeout-minutes: 10  # Typical run: 2-3 min (sync + one live inference): 10 min prevents hanging
+    timeout-minutes: 10  # Typical run: 2-3 min (sync + two live inference runs): 10 min prevents hanging
     environment: dev
     permissions:
       contents: read
@@ -145,5 +145,5 @@ jobs:
               echo "✅ Code quality, tests, and agent evals passed"
             fi
           else
-            echo "⏭️ Code quality and tests skipped - no relevant files changed"
+            echo "⏭️ Code quality, tests, and agent evals skipped - no relevant files changed"
           fi

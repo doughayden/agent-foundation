@@ -127,8 +127,10 @@ The gate uses only judge-free, deterministic metrics; the deep and user-sim conf
 | `safety_v1` | eval service | `full`, `user_sim` | no |
 | `per_turn_user_simulator_quality_v1` | LLM judge | `user_sim` | no |
 | `multi_turn_task_success_v1` | eval service | `user_sim` | no |
+| `multi_turn_trajectory_quality_v1` | eval service | `user_sim` | no |
+| `multi_turn_tool_use_quality_v1` | eval service | `user_sim` | no |
 
-The `user_sim` config also references `multi_turn_trajectory_quality_v1` and `multi_turn_tool_use_quality_v1` (both eval-service, user-sim only). Reference-based metrics need an expected response, so they do not combine with user simulation.
+Reference-based metrics need an expected response, so they do not combine with user simulation.
 
 ## The CI gate
 

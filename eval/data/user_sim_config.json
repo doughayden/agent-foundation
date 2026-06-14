@@ -14,6 +14,12 @@
     "multi_turn_task_success_v1": {
       "threshold": 0.8
     },
+    "multi_turn_trajectory_quality_v1": {
+      "threshold": 0.8
+    },
+    "multi_turn_tool_use_quality_v1": {
+      "threshold": 0.8
+    },
     "per_turn_user_simulator_quality_v1": {
       "threshold": 1.0,
       "judge_model_options": {

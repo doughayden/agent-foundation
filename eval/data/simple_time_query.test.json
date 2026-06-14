@@ -1,7 +1,7 @@
 {
   "eval_set_id": "simple_time_query",
   "name": "Simple time query (test-file format)",
-  "description": "The `.test.json` single-file format, run with `adk test tests/eval/data`. Same `EvalSet`/`EvalCase` schema as the `.evalset.json` files; the convention is one focused case per file for fast, unit-style checks. Criteria come from the adjacent `test_config.json`.",
+  "description": "The `.test.json` single-file format, run with `adk test eval/data`. Same `EvalSet`/`EvalCase` schema as the `.evalset.json` files; the convention is one focused case per file for fast, unit-style checks. Criteria come from the adjacent `test_config.json`.",
   "eval_cases": [
     {
       "eval_id": "get_current_time_new_york",
