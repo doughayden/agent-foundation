@@ -130,13 +130,10 @@ Hooks are configured in `.pre-commit-config.yaml`. Versions for the `language: s
 Run the deterministic agent eval gate before merging changes that touch agent behavior (instructions, tools, callbacks, model):
 
 ```bash
-uv run pytest tests/eval     # Gate-fidelity runner (real model inference, deterministic scoring)
+uv run pytest eval     # real model inference, deterministic scoring; needs Vertex creds from .env
 ```
 
-CI runs the same command on every code PR. For interactive authoring, start the dev UI with `SERVE_WEB_INTERFACE=TRUE uv run server` (the template's replacement for `adk web`) and use its Eval tab. Requires Vertex AI credentials from `.env`. The full eval surface — `.test.json` and multi-turn formats, judge, rubric, hallucination, safety, and user-simulation paths, and every `adk` command — is in [Agent Evals](references/agent-evals.md).
-
-> [!NOTE]
-> Run the eval lane yourself or let CI run it on the PR. It cannot run as an autonomous Claude Code action: the command sandbox blocks both the outbound Vertex AI calls and the read of the ADC credentials the lane needs, and allowing those in the sandbox config would weaken its security posture (network egress to the model API plus read access to your credential file). Run it from your own terminal with the command above, where the sandbox does not apply.
+CI runs the same command on every code PR. Run it yourself or let CI run it; it calls the live model, so it cannot run as an autonomous Claude Code action. For interactive authoring use the dev UI (`SERVE_WEB_INTERFACE=TRUE uv run server`, the template's replacement for `adk web`, Eval tab). The full surface, every `adk` command, and the gotchas are in [Agent Evals](references/agent-evals.md).
 
 See [Testing Strategy](references/testing.md) and [Code Quality](references/code-quality.md) references for detailed patterns, tool usage, and exclusion strategies.
 

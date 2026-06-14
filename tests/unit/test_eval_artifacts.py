@@ -17,7 +17,7 @@ from google.adk.evaluation.eval_config import (
 )
 from google.adk.evaluation.eval_set import EvalSet
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "tests" / "eval" / "data"
+DATA_DIR = Path(__file__).resolve().parents[2] / "eval" / "data"
 
 EVAL_SET_FILES = [
     "template_agent.evalset.json",

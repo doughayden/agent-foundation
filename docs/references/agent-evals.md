@@ -12,7 +12,7 @@ Agent behavior is the one thing unit and integration tests cannot catch, so this
 - Vertex AI auth: a `.env` with `GOOGLE_GENAI_USE_VERTEXAI`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, and ADC (`gcloud auth application-default login`). This is the same setup as local development; see [Getting Started](../getting-started.md).
 - The judge, safety, and multi-turn metrics and user-simulation case generation additionally use the paid Vertex Gen AI Evaluation Service; enable it in your project (an owner can, in one click). The deterministic gate needs none of this.
 
-## What ships (`tests/eval/data/`)
+## What ships (`eval/data/`)
 
 | File | What it is |
 |---|---|
@@ -39,10 +39,10 @@ SERVE_WEB_INTERFACE=TRUE uv run server   # http://127.0.0.1:8000
 
 In the UI, run the agent to create a session, open the Eval tab, click "Add current session" to capture it as an eval case, then run the case and compare actual against expected output. The Trace tab shows each turn's model request, response, and tool-call graph. Set `SERVE_WEB_INTERFACE=TRUE` in `.env` to make it the default. For the full click-by-click walkthrough (creating cases from sessions, editing them, and the Trace view), see the `adk web` workflow in ADK's [evaluation docs](https://adk.dev/evaluate/).
 
-### The PR gate, locally: `uv run pytest tests/eval`
+### The PR gate, locally: `uv run pytest eval`
 
 ```bash
-uv run pytest tests/eval
+uv run pytest eval
 ```
 
 Calls `AgentEvaluator.evaluate()` against `test_config.json`, which raises on a sub-threshold metric. This is exactly what CI runs.
@@ -54,16 +54,16 @@ Calls `AgentEvaluator.evaluate()` against `test_config.json`, which raises on a 
 
 ```bash
 # Gate criteria, with detailed per-metric output
-adk eval src/agent_foundation tests/eval/data/template_agent.evalset.json \
-  --config_file_path tests/eval/data/test_config.json --print_detailed_results
+adk eval src/agent_foundation eval/data/template_agent.evalset.json \
+  --config_file_path eval/data/test_config.json --print_detailed_results
 
 # The scripted multi-turn case
-adk eval src/agent_foundation tests/eval/data/multi_turn.evalset.json \
-  --config_file_path tests/eval/data/test_config.json
+adk eval src/agent_foundation eval/data/multi_turn.evalset.json \
+  --config_file_path eval/data/test_config.json
 
 # Deep run: judge, rubric, hallucination, and safety metrics
-adk eval src/agent_foundation tests/eval/data/template_agent.evalset.json \
-  --config_file_path tests/eval/data/full_eval_config.json --print_detailed_results
+adk eval src/agent_foundation eval/data/template_agent.evalset.json \
+  --config_file_path eval/data/full_eval_config.json --print_detailed_results
 ```
 
 Run a subset of cases with `<evalset>:<eval_id_1>,<eval_id_2>`.
@@ -71,7 +71,7 @@ Run a subset of cases with `<evalset>:<eval_id_1>,<eval_id_2>`.
 ### Test files: `adk test`
 
 ```bash
-adk test tests/eval/data   # runs every *.test.json, criteria from the adjacent test_config.json
+adk test eval/data   # runs every *.test.json, criteria from the adjacent test_config.json
 ```
 
 ### Dynamic user simulation: `adk eval_set`
@@ -81,13 +81,13 @@ An LLM plays the user across a multi-turn conversation, following a plan and per
 ```bash
 adk eval_set create src/agent_foundation user_sim_demo
 adk eval_set add_eval_case src/agent_foundation user_sim_demo \
-  --scenarios_file tests/eval/data/conversation_scenarios.json \
-  --session_input_file tests/eval/data/session_input.json
+  --scenarios_file eval/data/conversation_scenarios.json \
+  --session_input_file eval/data/session_input.json
 adk eval src/agent_foundation user_sim_demo \
-  --config_file_path tests/eval/data/user_sim_config.json --print_detailed_results
+  --config_file_path eval/data/user_sim_config.json --print_detailed_results
 ```
 
-`adk eval_set` writes the eval set to the agent package as `src/agent_foundation/<eval_set_id>.evalset.json` (gitignored as generated scratch; copy anything worth keeping into `tests/eval/data/`). To keep generated eval sets out of the package entirely, pass `--eval_storage_uri gs://<bucket>` to every `adk eval_set` command and to `adk eval`; the eval set is then stored in and read from that GCS bucket. A cloud bucket is the only storage override, local paths are not configurable.
+`adk eval_set` writes the eval set to the agent package as `src/agent_foundation/<eval_set_id>.evalset.json` (gitignored as generated scratch; copy anything worth keeping into `eval/data/`). To keep generated eval sets out of the package entirely, pass `--eval_storage_uri gs://<bucket>` to every `adk eval_set` command and to `adk eval`; the eval set is then stored in and read from that GCS bucket. A cloud bucket is the only storage override, local paths are not configurable.
 
 To synthesize scenarios instead of writing them by hand:
 
@@ -132,14 +132,14 @@ The `user_sim` config also references `multi_turn_trajectory_quality_v1` and `mu
 
 ## The CI gate
 
-The `agent-eval` job in `.github/workflows/ci.yml` runs `uv run pytest tests/eval` on every PR that touches code, authenticating to Vertex AI with the dev environment's WIF principal. The always-run `status` sentinel requires it, so the existing `CI / status` required check blocks merges on eval failures with no separate registration. Only the deterministic config runs in CI; the judge, safety, and user-sim paths are for local and deep evaluation.
+The `agent-eval` job in `.github/workflows/ci.yml` runs `uv run pytest eval` on every PR that touches code, authenticating to Vertex AI with the dev environment's WIF principal. The always-run `status` sentinel requires it, so the existing `CI / status` required check blocks merges on eval failures with no separate registration. Only the deterministic config runs in CI; the judge, safety, and user-sim paths are for local and deep evaluation.
 
 ## Authoring and maintaining cases
 
-1. Capture or write a case: `SERVE_WEB_INTERFACE=TRUE uv run server` (Eval tab), or hand-edit a file in `tests/eval/data/`.
+1. Capture or write a case: `SERVE_WEB_INTERFACE=TRUE uv run server` (Eval tab), or hand-edit a file in `eval/data/`.
 2. Pin the expected tool trajectory (exact name and args) and a reference response built from stable tokens, no dates or clock values, so ROUGE stays stable against the real LLM.
-3. Replay: `adk eval src/agent_foundation <evalset> --config_file_path tests/eval/data/test_config.json`.
-4. Validate non-flaky: run `uv run pytest tests/eval` at least three times before relying on a new gate case.
+3. Replay: `adk eval src/agent_foundation <evalset> --config_file_path eval/data/test_config.json`.
+4. Validate non-flaky: run `uv run pytest eval` at least three times before relying on a new gate case.
 
 See ADK's [evaluation docs](https://adk.dev/evaluate/) for the authoring workflow, the `EvalSet` schema, and migration utilities.
 
@@ -156,9 +156,9 @@ See ADK's [evaluation docs](https://adk.dev/evaluate/) for the authoring workflo
 
 This template uses ADK-native evaluation deliberately. ADK's evaluator ships in `google-adk` (which the agent already depends on) and consumes ADK's own `EvalSet` schema with no adapter: the deterministic gate metrics (`tool_trajectory_avg_score`, ROUGE `response_match_score`) are local Python scorers, and the `*_v1` metrics delegate to the Vertex AI evaluation service.
 
-Google's `agents-cli` is a different front-end over that same Vertex eval service, with its own `EvaluationDataset` schema, an unsuffixed managed-metric catalog, and a richer workflow (`eval generate/grade/compare/analyze/optimize/synthesize`). Its datasets and configs are not interchangeable with ADK's. This template does not adopt it, to stay on a single dependency (`google-adk`) rather than a second CLI with its own release cadence.
+Google's `agents-cli` is a productivity layer over the Agent Platform Eval SDK. For most of its eval surface (run, grade, author, user simulation, optimize, custom metrics) it overlaps what `adk eval` already does natively; its non-overlapping value, regression-diff and failure-clustering across many runs, is scaled-suite tooling. Its `EvaluationDataset` schema and configs are not interchangeable with ADK's `EvalSet`. This template stays on `adk eval` because it is the base primitive shipped in `google-adk`, and it uniquely provides free, deterministic, local scorers (`tool_trajectory_avg_score`, ROUGE) suited to a zero-cost per-PR gate, where `agents-cli`'s managed metrics would add cost and nondeterminism. ADK's eval is also the more mature of the two front-ends.
 
-The practical boundary: ADK-native covers authoring, a deterministic gate, and on-demand judge, safety, and user-simulation evaluation. It has no built-in regression-diff (scoring deltas between two result sets) or failure-clustering across many runs, which are scaled-suite tools. A project that grows a large, judge-heavy eval suite and needs those should reach for the Agent Platform Eval SDK directly (`google-cloud-aiplatform[evaluation]`) or `agents-cli` at that point; both are out of scope for this template.
+A project that grows a large, judge-heavy eval suite and needs regression-diff (scoring deltas between two result sets) or failure-clustering should reach for the Agent Platform Eval SDK directly (`google-cloud-aiplatform[evaluation]`) or `agents-cli` at that point; both are out of scope for this template.
 
 ---
 

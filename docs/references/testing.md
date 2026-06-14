@@ -11,9 +11,9 @@ A test's lane is decided by its runtime requirements and determinism, not by how
 | unit | in-process only (mocks at boundaries) | yes | free/fast | `uv run pytest` (default) |
 | integration | real external resource (Postgres) | yes | slower, no LLM/cloud | `uv run pytest tests/integration` |
 | smoke | a live deployed URL | yes | needs a deploy | `uv run pytest tests/smoke` |
-| eval | the real LLM (full suite) | gate metrics yes; judge metrics no | costs money | `uv run pytest tests/eval` |
+| eval (top-level `eval/`) | the real LLM | gate metrics yes; judge metrics no | costs money | `uv run pytest eval` |
 
-Non-unit lanes run by explicit path, both locally and in CI — the command or CI job is the selector. `testpaths = ["tests/unit"]` in `pyproject.toml` scopes a bare `uv run pytest` to the fast, free, deterministic lane so it can't accidentally require Postgres or spend LLM money. An explicit path argument overrides it.
+The `tests/` lanes never call the live model; the eval lane does, so it lives in a top-level `eval/` directory (not under `tests/`) with its own conftest that loads the real `.env`. Non-unit lanes run by explicit path, both locally and in CI — the command or CI job is the selector. `testpaths = ["tests/unit"]` in `pyproject.toml` scopes a bare `uv run pytest` to the fast, free, deterministic lane so it can't accidentally require Postgres. An explicit path argument overrides it. Eval mechanics, commands, and gotchas live in [Agent Evals](agent-evals.md).
 
 Only the unit lane runs `--cov` with the 100% gate.
 
@@ -49,10 +49,7 @@ tests/
   eval/                          # LLM eval lane
 ```
 
-The root `conftest.py` applies to all lanes (auth/dotenv mocking). Per-lane `conftest.py` files (e.g. a Postgres fixture in `integration/`) live in their lane directory.
-
-> [!NOTE]
-> The eval lane is the exception to the auth/dotenv mocks: when an invocation targets only `tests/eval`, the root `pytest_configure()` skips them so the agent can authenticate for real model inference. Run the eval lane standalone (`uv run pytest tests/eval`) — in a mixed-lane invocation the mocks stay on and the eval test fails on the mocked credentials.
+The root `tests/conftest.py` applies to all `tests/` lanes (auth/dotenv mocking, applied unconditionally). Per-lane `conftest.py` files (e.g. a Postgres fixture in `integration/`) live in their lane directory. The eval lane lives outside `tests/` in the top-level `eval/` directory with its own conftest that loads the real `.env`, so it is never collected here and the mocks never reach it.
 
 ### Naming Conventions
 
@@ -238,7 +235,7 @@ open htmlcov/index.html
 # Other lanes by explicit path
 uv run pytest tests/integration
 uv run pytest tests/smoke
-uv run pytest tests/eval
+uv run pytest eval                  # top-level eval/, not under tests/
 
 # Specific tests
 uv run pytest tests/unit/test_callbacks.py -v
@@ -250,14 +247,9 @@ uv run ptw
 
 ## Agent Evals
 
-The eval lane scores real agent behavior against committed eval sets and is the only lane that catches LLM behavioral regression. The CI gate is `uv run pytest tests/eval`, which calls `AgentEvaluator.evaluate()` against the deterministic criteria in `tests/eval/data/test_config.json` (judge-free: exact tool-trajectory match plus ROUGE-1 response overlap) and raises on a sub-threshold metric. Because the agent runs the real LLM, reference responses use stable tokens and `IN_ORDER` tolerates an extra LLM-decided `load_memory` call, keeping the case non-flaky.
+The eval lane (top-level `eval/`) scores real agent behavior against committed eval sets, the only lane that catches LLM behavioral regression. The deterministic gate, `uv run pytest eval`, runs on every code PR via the `agent-eval` job and folds into the `CI / status` required check. It calls the live model (real ADC, real cost), so it cannot run as an autonomous Claude Code action. `tests/unit/test_eval_artifacts.py` schema-checks every eval artifact in the unit lane, so malformed eval data fails fast with no LLM cost.
 
-The `agent-eval` job in `.github/workflows/ci.yml` runs this on every code PR (Vertex AI auth via the dev WIF principal) and folds into the `CI / status` required check, so eval failures block merges.
-
-> [!NOTE]
-> The eval lane needs Vertex AI egress and your ADC, so it cannot run as an autonomous Claude Code action; run it yourself or let CI run the gate. `tests/unit/test_eval_artifacts.py` schema-checks every eval artifact in the unit lane, so malformed eval data fails fast with no LLM cost.
-
-The full eval surface this template ships — the `.test.json` and multi-turn formats, judge, rubric, hallucination, and safety metrics, dynamic user simulation, and every `adk` command — is documented in [Agent Evals](agent-evals.md).
+The full eval surface, formats, every `adk` command, the metrics table, the deterministic-gate rationale, user simulation, and gotchas, lives in [Agent Evals](agent-evals.md).
 
 ## Examples
 

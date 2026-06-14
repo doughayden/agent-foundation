@@ -22,10 +22,13 @@ jobs:
         with:
           filters: |
             # Tracks the PyPA src-layout convention: source under src/, tests under tests/.
+            # The agent eval lane lives in top-level eval/ (it calls the live model,
+            # so it is not a tests/ lane); include it so eval-set changes trigger the gate.
             # https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/
             code:
               - 'src/**'
               - 'tests/**'
+              - 'eval/**'
               - 'pyproject.toml'
               - 'uv.lock'
               - '.github/workflows/ci.yml'
@@ -74,7 +77,7 @@ jobs:
         run: uv run pytest --cov
         if: success() || failure()
 
-  # Deterministic agent eval gate (tests/eval). The agent under test performs
+  # Deterministic agent eval gate (top-level eval/). The agent under test performs
   # real model inference on Vertex AI — authenticated with the dev
   # environment's WIF principal (roles/aiplatform.user, environment-scoped
   # GitHub Variables) — but scoring uses only deterministic metrics (exact
@@ -124,7 +127,7 @@ jobs:
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Run deterministic agent evals
-        run: uv run pytest tests/eval
+        run: uv run pytest eval
 
   # Always-runs sentinel for branch protection.
   status:
