@@ -49,7 +49,7 @@ tests/
   smoke/                         # Live deployed-URL lane
 ```
 
-The root `tests/conftest.py` applies to all `tests/` lanes (auth/dotenv mocking). Per-lane `conftest.py` files (e.g. a Postgres fixture in `integration/`) live in their lane directory. The eval lane lives outside `tests/` in the top-level `eval/` directory with its own conftest that loads the real `.env`.
+The root `tests/conftest.py` applies to all `tests/` lanes (auth/dotenv mocking). Per-lane `conftest.py` files (e.g. a Postgres fixture in `integration/`) live in their lane directory. The eval lane lives outside `tests/` in the top-level `eval/` directory and loads the real `.env` itself (an autouse fixture in the test module).
 
 ### Naming Conventions
 

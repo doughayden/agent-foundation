@@ -86,10 +86,7 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     name: Agent Eval (deterministic)
     runs-on: ubuntu-latest
-    timeout-minutes: 10  # Typical run: 2-3 min (sync + one live inference). 10 min prevents hanging
-    # Assumes the dev environment has no protection rules (bootstrap default,
-    # also relied on by ci-cd.yml). Reviewers or wait timers on dev would
-    # stall this job on every PR.
+    timeout-minutes: 10  # Typical run: 2-3 min (sync + one live inference): 10 min prevents hanging
     environment: dev
     permissions:
       contents: read

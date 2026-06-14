@@ -2,26 +2,34 @@
 
 Runs ``AgentEvaluator.evaluate()`` against the deterministic criteria in
 ``eval/data/test_config.json`` (auto-discovered from the eval set's
-directory). The agent under test performs real model inference, but the
-metrics themselves are deterministic — exact tool-trajectory matching and
-ROUGE-1 response overlap, no LLM judge.
+directory). The agent performs real model inference, but the metrics are
+deterministic: exact tool-trajectory matching and ROUGE-1 response overlap,
+no LLM judge.
 
 This pytest entry point is the CI gate because ``AgentEvaluator.evaluate()``
 raises ``AssertionError`` on sub-threshold metrics. The ``adk eval`` CLI
 renders the same eval set for interactive authoring but exits 0 even when
-cases fail (verified against google-adk 2.2.0), so it cannot gate CI.
+cases fail, so it cannot gate CI.
 
 Run with ``uv run pytest eval`` (real credentials and LLM cost). This lane
 lives in the top-level ``eval/`` directory, not under ``tests/``, because it
-calls the live model; it is never collected by the bare ``pytest`` unit lane.
+calls the live model, and is never collected by the bare ``pytest`` unit lane.
 """
 
 from pathlib import Path
 
+import pytest
+from dotenv import load_dotenv
 from google.adk.evaluation.agent_evaluator import AgentEvaluator
 
 DATA_DIR = Path(__file__).parent / "data"
 NUM_RUNS = 1
+
+
+@pytest.fixture(scope="session", autouse=True)
+def load_env() -> None:
+    """Load the real ``.env`` for live inference (a no-op in CI)."""
+    load_dotenv()
 
 
 async def test_template_agent_deterministic_eval() -> None:
