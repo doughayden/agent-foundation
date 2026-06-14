@@ -209,8 +209,7 @@ __marimo__/
 ### Custom patterns
 # Google ADK local storage (v1.20.0+)
 .adk/
-# Eval sets created by `adk eval_set` land in the agent package dir; curated
-# eval data lives in tests/eval/data/, so treat these as generated scratch
+# Eval sets created by the adk cli
 src/**/*.evalset.json
 
 # Ephemeral github actions creds

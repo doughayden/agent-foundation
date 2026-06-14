@@ -11,9 +11,9 @@ A test's lane is decided by its runtime requirements and determinism, not by how
 | unit | in-process only (mocks at boundaries) | yes | free/fast | `uv run pytest` (default) |
 | integration | real external resource (Postgres) | yes | slower, no LLM/cloud | `uv run pytest tests/integration` |
 | smoke | a live deployed URL | yes | needs a deploy | `uv run pytest tests/smoke` |
-| eval (top-level `eval/`) | the real LLM | gate metrics yes; judge metrics no | costs money | `uv run pytest eval` |
+| eval | the real LLM | gate metrics yes; judge metrics no | costs money | `uv run pytest eval` |
 
-The `tests/` lanes never call the live model; the eval lane does, so it lives in a top-level `eval/` directory (not under `tests/`) with its own conftest that loads the real `.env`. Non-unit lanes run by explicit path, both locally and in CI — the command or CI job is the selector. `testpaths = ["tests/unit"]` in `pyproject.toml` scopes a bare `uv run pytest` to the fast, free, deterministic lane so it can't accidentally require Postgres. An explicit path argument overrides it. Eval mechanics, commands, and gotchas live in [Agent Evals](agent-evals.md).
+The `tests/` lanes never call the live model; the `eval/` lane does. Non-unit lanes run by explicit path, both locally and in CI — the command or CI job is the selector. `testpaths = ["tests/unit"]` in `pyproject.toml` scopes a bare `uv run pytest` to the fast, free, deterministic lane so it can't accidentally require Postgres. An explicit path argument overrides it. Eval mechanics, commands, and gotchas live in [Agent Evals](agent-evals.md).
 
 Only the unit lane runs `--cov` with the 100% gate.
 
@@ -37,6 +37,7 @@ Only the unit lane runs `--cov` with the 100% gate.
 Lanes are top-level directories; unit test modules mirror source structure:
 
 ```
+eval/                            # LLM eval lane
 tests/
   conftest.py                    # Shared fixtures, mocks, and test environment setup (all lanes)
   unit/
@@ -46,10 +47,9 @@ tests/
     ...
   integration/                   # Postgres + FastAPI lane
   smoke/                         # Live deployed-URL lane
-  eval/                          # LLM eval lane
 ```
 
-The root `tests/conftest.py` applies to all `tests/` lanes (auth/dotenv mocking, applied unconditionally). Per-lane `conftest.py` files (e.g. a Postgres fixture in `integration/`) live in their lane directory. The eval lane lives outside `tests/` in the top-level `eval/` directory with its own conftest that loads the real `.env`, so it is never collected here and the mocks never reach it.
+The root `tests/conftest.py` applies to all `tests/` lanes (auth/dotenv mocking). Per-lane `conftest.py` files (e.g. a Postgres fixture in `integration/`) live in their lane directory. The eval lane lives outside `tests/` in the top-level `eval/` directory with its own conftest that loads the real `.env`.
 
 ### Naming Conventions
 
@@ -235,7 +235,7 @@ open htmlcov/index.html
 # Other lanes by explicit path
 uv run pytest tests/integration
 uv run pytest tests/smoke
-uv run pytest eval                  # top-level eval/, not under tests/
+uv run pytest eval
 
 # Specific tests
 uv run pytest tests/unit/test_callbacks.py -v
@@ -247,7 +247,7 @@ uv run ptw
 
 ## Agent Evals
 
-The eval lane (top-level `eval/`) scores real agent behavior against committed eval sets, the only lane that catches LLM behavioral regression. The deterministic gate, `uv run pytest eval`, runs on every code PR via the `agent-eval` job and folds into the `CI / status` required check. It calls the live model (real ADC, real cost), so it cannot run as an autonomous Claude Code action. `tests/unit/test_eval_artifacts.py` schema-checks every eval artifact in the unit lane, so malformed eval data fails fast with no LLM cost.
+The eval lane scores real agent behavior against committed eval sets, the only lane that catches LLM behavioral regression. The deterministic gate, `uv run pytest eval`, runs on every code PR via the `agent-eval` job and folds into the `CI / status` required check. `tests/unit/test_eval_artifacts.py` schema-checks every eval artifact in the unit lane, so malformed eval data fails fast with no LLM cost.
 
 The full eval surface, formats, every `adk` command, the metrics table, the deterministic-gate rationale, user simulation, and gotchas, lives in [Agent Evals](agent-evals.md).
 

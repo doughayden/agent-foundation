@@ -40,10 +40,6 @@ def pytest_configure(config: pytest.Config) -> None:
     bodies or guarded by TYPE_CHECKING. A top-level ``from package.x import Y``
     would execute during test collection — before these patches take effect —
     possibly triggering real API calls.
-
-    The eval lane lives in the top-level ``eval/`` directory with its own
-    conftest that loads the real ``.env``; it is never collected under
-    ``tests/``, so these mocks apply unconditionally here.
     """
     from unittest.mock import Mock, patch
 

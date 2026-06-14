@@ -77,23 +77,19 @@ jobs:
         run: uv run pytest --cov
         if: success() || failure()
 
-  # Deterministic agent eval gate (top-level eval/). The agent under test performs
-  # real model inference on Vertex AI — authenticated with the dev
-  # environment's WIF principal (roles/aiplatform.user, environment-scoped
-  # GitHub Variables) — but scoring uses only deterministic metrics (exact
-  # tool trajectory, ROUGE-1 response match): no LLM judge, no flake.
-  # pytest is the gate because AgentEvaluator.evaluate() raises on
-  # sub-threshold metrics; the `adk eval` CLI exits 0 even when cases fail
-  # (verified against google-adk 2.2.0), so it cannot gate CI.
+  # Deterministic agent eval gate: runs the agent on Vertex AI (dev WIF
+  # principal) but scores with judge-free metrics, so it is cheap and stable.
+  # pytest is the gate because AgentEvaluator.evaluate() raises on a
+  # sub-threshold metric; the `adk eval` CLI exits 0 on failure and cannot gate.
   agent-eval:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     name: Agent Eval (deterministic)
     runs-on: ubuntu-latest
     timeout-minutes: 10  # Typical run: 2-3 min (sync + one live inference). 10 min prevents hanging
-    # Assumes the dev environment has no protection rules (bootstrap default;
-    # ci-cd.yml build/dev-plan already rely on this) — adding required
-    # reviewers or wait timers to dev stalls this job on every PR.
+    # Assumes the dev environment has no protection rules (bootstrap default,
+    # also relied on by ci-cd.yml). Reviewers or wait timers on dev would
+    # stall this job on every PR.
     environment: dev
     permissions:
       contents: read

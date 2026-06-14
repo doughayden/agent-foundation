@@ -27,7 +27,6 @@ server = "agent_foundation.server:main"
 
 [dependency-groups]
 dev = [
-    # eval lane (top-level eval/): the [eval] extra provides AgentEvaluator and its metric deps
     "google-adk[eval]==2.2.0",
     "ruff>=0.12.7,<1.0.0",
     "mypy>=1.17.1,<2.0.0",

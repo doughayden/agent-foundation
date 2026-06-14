@@ -133,7 +133,7 @@ Run the deterministic agent eval gate before merging changes that touch agent be
 uv run pytest eval     # real model inference, deterministic scoring; needs Vertex creds from .env
 ```
 
-CI runs the same command on every code PR. Run it yourself or let CI run it; it calls the live model, so it cannot run as an autonomous Claude Code action. For interactive authoring use the dev UI (`SERVE_WEB_INTERFACE=TRUE uv run server`, the template's replacement for `adk web`, Eval tab). The full surface, every `adk` command, and the gotchas are in [Agent Evals](references/agent-evals.md).
+See [Agent Evals](references/agent-evals.md) for the full evaluation suite reference.
 
 See [Testing Strategy](references/testing.md) and [Code Quality](references/code-quality.md) references for detailed patterns, tool usage, and exclusion strategies.
 
