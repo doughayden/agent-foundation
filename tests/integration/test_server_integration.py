@@ -126,6 +126,66 @@ class TestAgentRunStatePersistence:
         )
 
 
+class TestSessionDeleteCascadesToEvents:
+    """A raw session delete cascades to its events via the Postgres FK.
+
+    The scheduled ``pg_cron`` retention job deletes stale rows straight from the
+    ``sessions`` table with raw SQL, relying on the events FK's ``ON DELETE CASCADE``
+    to remove the orphaned events. ADK's API delete instead uses the ORM relationship
+    cascade (``all, delete-orphan``), so only a direct ``DELETE`` exercises the
+    database-level constraint the retention job actually depends on — a dropped
+    ``ondelete="CASCADE"`` would orphan events here while the API path still passed.
+    """
+
+    async def test_raw_session_delete_removes_events(
+        self, client, app_name, database_uri
+    ) -> None:
+        """Deleting a session row directly leaves none of its events behind."""
+        create = await client.post(
+            f"/apps/{app_name}/users/{USER_ID}/sessions",
+            json={"state": {}},
+        )
+        assert create.status_code == 200
+        session_id = create.json()["id"]
+
+        run = await client.post(
+            "/run",
+            json={
+                "app_name": app_name,
+                "user_id": USER_ID,
+                "session_id": session_id,
+                "new_message": {"role": "user", "parts": [{"text": "hello"}]},
+            },
+        )
+        assert run.status_code == 200
+
+        params = {"app": app_name, "user": USER_ID, "sid": session_id}
+        count_stmt = text(
+            "SELECT count(*) FROM events "
+            "WHERE app_name = :app AND user_id = :user AND session_id = :sid"
+        )
+        engine = create_async_engine(database_uri)
+        try:
+            async with engine.connect() as conn:
+                before = (await conn.execute(count_stmt, params)).scalar_one()
+            assert before > 0
+
+            async with engine.begin() as conn:
+                await conn.execute(
+                    text(
+                        "DELETE FROM sessions "
+                        "WHERE app_name = :app AND user_id = :user AND id = :sid"
+                    ),
+                    params,
+                )
+
+            async with engine.connect() as conn:
+                after = (await conn.execute(count_stmt, params)).scalar_one()
+            assert after == 0
+        finally:
+            await engine.dispose()
+
+
 class TestPostgresDialectStrictness:
     """asyncpg rejects ISO strings for typed columns where sqlite tolerates them.
 
