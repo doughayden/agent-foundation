@@ -27,6 +27,7 @@ server = "agent_foundation.server:main"
 
 [dependency-groups]
 dev = [
+    "google-adk[eval]==2.2.0",
     "ruff>=0.12.7,<1.0.0",
     "mypy>=1.17.1,<2.0.0",
     "pytest>=8.3.4,<9.0.0",
@@ -133,7 +134,6 @@ testpaths = ["tests/unit"]
 markers = [
     "integration: requires a real external resource (e.g. Postgres); no LLM or cloud",
     "smoke: requires a live deployed service URL",
-    "eval: runs the real LLM; nondeterministic and costs money",
 ]
 filterwarnings = [
     # ADK 2.x deprecated the config-defined agent family; fires at import via ABCMeta

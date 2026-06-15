@@ -22,10 +22,13 @@ jobs:
         with:
           filters: |
             # Tracks the PyPA src-layout convention: source under src/, tests under tests/.
+            # The agent eval lane lives in top-level eval/ (it calls the live model,
+            # so it is not a tests/ lane); include it so eval-set changes trigger the gate.
             # https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/
             code:
               - 'src/**'
               - 'tests/**'
+              - 'eval/**'
               - 'pyproject.toml'
               - 'uv.lock'
               - '.github/workflows/ci.yml'
@@ -74,11 +77,56 @@ jobs:
         run: uv run pytest --cov
         if: success() || failure()
 
+  # Deterministic agent eval gate: runs the agent on Vertex AI (dev WIF
+  # principal) but scores with judge-free metrics, so it is cheap and stable.
+  # pytest is the gate because AgentEvaluator.evaluate() raises on a
+  # sub-threshold metric; the `adk eval` CLI exits 0 on failure and cannot gate.
+  agent-eval:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: Agent Eval (deterministic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10  # Typical run: 2-3 min (sync + two live inference runs): 10 min prevents hanging
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write  # WIF auth for Vertex AI inference
+    env:
+      GOOGLE_GENAI_USE_VERTEXAI: "TRUE"
+      GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+      GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-extras --locked
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Run deterministic agent evals
+        run: uv run pytest eval
+
   # Always-runs sentinel for branch protection.
   status:
     runs-on: ubuntu-latest
     timeout-minutes: 5  # Typical run: <1 min (status check). 5 min is generous buffer
-    needs: [changes, code-quality]
+    needs: [changes, code-quality, agent-eval]
     if: always()
     steps:
       - name: Check required status
@@ -87,12 +135,15 @@ jobs:
             echo "❌ Changes detection failed (result: ${{ needs.changes.result }})"
             exit 1
           elif [[ "${{ needs.changes.outputs.code }}" == "true" ]]; then
-            if [[ "${{ needs.code-quality.result }}" == "success" ]]; then
-              echo "✅ Code quality and tests passed"
-            else
+            if [[ "${{ needs.code-quality.result }}" != "success" ]]; then
               echo "❌ Code quality and tests failed"
               exit 1
+            elif [[ "${{ needs.agent-eval.result }}" != "success" ]]; then
+              echo "❌ Agent eval gate failed"
+              exit 1
+            else
+              echo "✅ Code quality, tests, and agent evals passed"
             fi
           else
-            echo "⏭️ Code quality and tests skipped - no relevant files changed"
+            echo "⏭️ Code quality, tests, and agent evals skipped - no relevant files changed"
           fi

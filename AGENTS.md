@@ -34,6 +34,7 @@ docker compose up --build --watch           # File sync + auto-restart
 uv run server                               # API at 127.0.0.1:8000
 LOG_LEVEL=DEBUG uv run server               # Debug mode
 uv run pytest --cov --cov-report=term-missing  # Tests + 100% coverage required
+uv run pytest eval                    # Deterministic agent eval gate (real LLM, Vertex AI creds)
 
 # Code quality (all required)
 uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --cov
@@ -58,6 +59,7 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 | Add a custom tool | define `func` in `tools.py` + register in `agent.py` | `root_agent = LlmAgent(..., tools=[..., FunctionTool(func)])` |
 | Add a callback | `callbacks.py` | ADK callbacks return `None` to observe, or a modified value to mutate/short-circuit — choose per intent |
 | Customize agent instructions | `prompt.py` | InstructionProvider pattern (function ref, called at runtime) |
+| Add an agent eval case | `eval/data/*.evalset.json` | Deterministic gate criteria in `test_config.json` (auto-discovered); judge/rubric/safety criteria in `full_eval_config.json`, user-simulation in `conversation_scenarios.json` + `user_sim_config.json` (none in the PR gate). Validate non-flaky: run `uv run pytest eval` ≥3 times. `adk eval`/`uv run server` (Eval tab) are authoring tools only — the `adk eval` CLI exits 0 on failed cases, never gate CI on it. Full surface + commands: `docs/references/agent-evals.md` |
 | Add an env var | `ServerEnv` in `config.py` + `docs/environment-variables.md` | **CRITICAL:** every new env var MUST be in `docs/environment-variables.md` (purpose, default, where to set, required/optional) |
 | Enable a GCP API | `terraform/main/services.tf` | `google_project_service`; downstream resources `depends_on = [time_sleep.service_enablement_propagation["api.googleapis.com"]]` |
 | Grant a WIF role | `terraform/main/iam.tf` | `google_project_iam_member`; downstream resources `depends_on = [time_sleep.wif_iam_propagation["roles/example"]]` |
@@ -130,14 +132,16 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 
 **Tools:** pytest, pytest-cov (100% required), pytest-asyncio, pytest-mock (`MockerFixture`, `MockType`)
 
-**Lanes:** A test's lane = its runtime requirements + determinism, not how many components it touches. Lanes select by explicit path (the command or CI job IS the selector); `testpaths = ["tests/unit"]` guards a bare `pytest` from spinning Postgres or spending LLM money. Only `unit` carries the `--cov` 100% gate. **Never add pytest to pre-commit hooks** — hooks stay static-checks-only; tests run in CI.
+**Lanes:** A test's lane = its runtime requirements + determinism, not how many components it touches. Lanes select by explicit path (the command or CI job IS the selector); `testpaths = ["tests/unit"]` guards a bare `pytest` from spinning Postgres. The dividing line for `tests/` vs `eval/`: `tests/` lanes never call the live model (deterministic); the eval lane does, so it lives in a top-level `eval/` directory (not under `tests/`) and loads the real `.env` itself (autouse fixture in the test module). Only `unit` carries the `--cov` 100% gate. **Never add pytest to pre-commit hooks** — hooks stay static-checks-only; tests run in CI.
 
 | Lane | Needs | Deterministic | Local command |
 |---|---|---|---|
 | `tests/unit` | in-process only (mocks at boundaries) | yes | `uv run pytest` (default) |
 | `tests/integration` | real external resource (Postgres) | yes | `uv run pytest tests/integration` |
 | `tests/smoke` | live deployed URL | yes | `uv run pytest tests/smoke` |
-| `tests/eval` | real LLM (nondeterministic, costs money) | no | `uv run pytest tests/eval` |
+| `eval/` (top-level) | real LLM + Vertex AI creds (costs money) | gate metrics yes; judge metrics no | `uv run pytest eval` |
+
+**Eval lane:** Gate-fidelity runner is pytest calling `AgentEvaluator.evaluate()` (raises on sub-threshold metrics); `adk eval` CLI exits 0 on failed cases — authoring only, NEVER a CI gate. Deterministic PR-gate criteria (`tool_trajectory_avg_score` IN_ORDER 1.0, `response_match_score` ROUGE-1) in `eval/data/test_config.json`; judge metrics in `full_eval_config.json` (104-B/local only). The lane lives in top-level `eval/` (the test module loads the real `.env`), so `tests/conftest.py` mocks auth/dotenv unconditionally. Lane deps come from the `google-adk[eval]` extra in the dev group. **Not runnable as an autonomous sandboxed action** — the command sandbox blocks the Vertex AI egress and ADC credential read it needs; run it in CI or a developer's own terminal, never by widening the sandbox. Eval artifacts (`eval/data/`) are schema-validated on every PR by `tests/unit/test_eval_artifacts.py`. Cross-session memory (`load_memory`/`add_session_to_memory`) is NOT eval-testable (fresh session per case) — cover that continuity in the integration lane. Deliberately ADK-native (not the `agents-cli`/Agent Platform Eval SDK); regression-diff and failure-clustering live there, out of scope here. Full surface (`.test.json`, multi-turn, judge/rubric/safety metrics, user simulation, all `adk` commands): `docs/references/agent-evals.md`.
 
 **pytest_configure()** - Only place using unittest.mock (runs before pytest-mock available). Mocks `dotenv.load_dotenv` and Google auth defaults to prevent real credential lookups during collection. See `tests/conftest.py` for the current mock set and the lifecycle docstring.
 - No env var assignments needed (PEP 562 lazy loading, Pydantic validates only when called)
@@ -194,7 +198,7 @@ uv lock --upgrade               # Update all
 
 **Job Summaries:** Use `mktemp`, `tee "$FILE"`, `${PIPESTATUS[0]}` for streaming + capture. Export GitHub context to shell vars, capture once, check for empty outputs.
 
-**Required checks (Template Internals):** Self-contained `ci.yml` workflow (not called by orchestrator). Owns a three-job pipeline: `changes` (dorny/paths-filter — file-scope path detection), `code-quality` (gated on changes output — runs ruff/mypy/pytest), and `status` (always-runs sentinel; reports skipped or pass/fail for branch protection). Branch protection requires `CI / status`.
+**Required checks (Template Internals):** Self-contained `ci.yml` workflow (not called by orchestrator). Owns a four-job pipeline: `changes` (dorny/paths-filter — file-scope path detection), `code-quality` (gated on changes output — runs ruff/mypy/pytest), `agent-eval` (gated on changes output — deterministic agent eval via `uv run pytest eval`, WIF auth against the dev environment), and `status` (always-runs sentinel; reports skipped or pass/fail for branch protection). Branch protection requires `CI / status`.
 
 ## Terraform
 

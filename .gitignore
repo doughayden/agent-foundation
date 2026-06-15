@@ -209,6 +209,8 @@ __marimo__/
 ### Custom patterns
 # Google ADK local storage (v1.20.0+)
 .adk/
+# Eval sets created by the adk cli
+src/**/*.evalset.json
 
 # Ephemeral github actions creds
 gha-creds-*.json
