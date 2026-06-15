@@ -36,6 +36,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "google-adk", extra = ["eval"] },
+    { name = "httpx" },
     { name = "ipykernel" },
     { name = "mypy" },
     { name = "pre-commit" },
@@ -69,6 +70,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "google-adk", extras = ["eval"], specifier = "==2.2.0" },
+    { name = "httpx", specifier = ">=0.28.1,<1.0.0" },
     { name = "ipykernel", specifier = ">=7.0.0,<8.0.0" },
     { name = "mypy", specifier = ">=1.17.1,<2.0.0" },
     { name = "pre-commit", specifier = ">=4.6.0" },

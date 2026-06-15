@@ -77,6 +77,52 @@ jobs:
         run: uv run pytest --cov
         if: success() || failure()
 
+  # Integration lane: real Postgres via service container, no LLM, no GCP creds.
+  # Runs without --cov (the 100% gate is unit-lane-only and would fail on fail_under).
+  integration:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: Integration Tests (Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10  # Typical run: 2-3 min (deps + Postgres lane). 10 min prevents hanging
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sessions
+        ports:
+          - 5432:5432
+        # Wait for Postgres to accept connections before tests run
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      INTEGRATION_DATABASE_URI: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/sessions
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-extras --locked
+
+      - name: Run integration tests
+        run: uv run pytest tests/integration
+
   # Deterministic agent eval gate: runs the agent on Vertex AI (dev WIF
   # principal) but scores with judge-free metrics, so it is cheap and stable.
   # pytest is the gate because AgentEvaluator.evaluate() raises on a
@@ -126,7 +172,7 @@ jobs:
   status:
     runs-on: ubuntu-latest
     timeout-minutes: 5  # Typical run: <1 min (status check). 5 min is generous buffer
-    needs: [changes, code-quality, agent-eval]
+    needs: [changes, code-quality, integration, agent-eval]
     if: always()
     steps:
       - name: Check required status
@@ -138,12 +184,15 @@ jobs:
             if [[ "${{ needs.code-quality.result }}" != "success" ]]; then
               echo "❌ Code quality and tests failed"
               exit 1
+            elif [[ "${{ needs.integration.result }}" != "success" ]]; then
+              echo "❌ Integration tests failed"
+              exit 1
             elif [[ "${{ needs.agent-eval.result }}" != "success" ]]; then
               echo "❌ Agent eval gate failed"
               exit 1
             else
-              echo "✅ Code quality, tests, and agent evals passed"
+              echo "✅ Code quality, tests, integration, and agent evals passed"
             fi
           else
-            echo "⏭️ Code quality, tests, and agent evals skipped - no relevant files changed"
+            echo "⏭️ Code quality, tests, integration, and agent evals skipped - no relevant files changed"
           fi
