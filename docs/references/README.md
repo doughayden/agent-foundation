@@ -24,6 +24,7 @@ Deep-dive technical documentation for optional follow-up.
 ## Development
 
 - [Testing Strategy](testing.md) - Detailed testing patterns and organization
+- [Agent Evals](agent-evals.md) - The full agent-evaluation surface: formats, commands, metrics, and user simulation
 - [Code Quality](code-quality.md) - Tool usage and exclusion strategies
 - [Cloud Backend Options](cloud-backend-options.md) - Advanced options for uv run server with cloud backends
 - [Docker Compose Workflow](docker-compose-workflow.md) - Watch mode, volumes, and configuration

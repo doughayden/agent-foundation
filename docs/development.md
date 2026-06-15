@@ -125,6 +125,16 @@ uv run pre-commit run ruff-format              # Run a single hook
 
 Hooks are configured in `.pre-commit-config.yaml`. Versions for the `language: system` hooks (ruff, mypy) are pinned in `uv.lock`. `pre-commit autoupdate` is a no-op for these hooks; update versions with `uv lock --upgrade` instead.
 
+### Agent Evals
+
+Run the deterministic agent eval gate before merging changes that touch agent behavior (instructions, tools, callbacks, model):
+
+```bash
+uv run pytest eval     # real model inference, deterministic scoring; needs Vertex creds from .env
+```
+
+See [Agent Evals](references/agent-evals.md) for the full evaluation suite reference.
+
 See [Testing Strategy](references/testing.md) and [Code Quality](references/code-quality.md) references for detailed patterns, tool usage, and exclusion strategies.
 
 ## Docker Compose for Standard Development
