@@ -26,7 +26,7 @@ One-time configuration:
 
 ```bash
 # Add template repository as foundation remote
-git remote add foundation https://github.com/your-org/agent-foundation.git
+git remote add foundation https://github.com/doughayden/agent-foundation.git
 git remote -v  # Verify
 
 # Fetch foundation tags to refs/foundation-tags/* (avoids conflicts with local tags)

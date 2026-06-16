@@ -52,17 +52,22 @@ Calls `AgentEvaluator.evaluate()` against `test_config.json`, which raises on a 
 
 ### The CLI: `adk eval`
 
+The `adk` commands take the agent package directory. Set it once (the template has a single package under `src/`); the later examples reuse it:
+
 ```bash
+# The agent package dir (single package under src/)
+AGENT_PACKAGE=$(basename src/*/)
+
 # Gate criteria, with detailed per-metric output
-adk eval src/agent_foundation eval/data/template_agent.evalset.json \
+adk eval src/$AGENT_PACKAGE eval/data/template_agent.evalset.json \
   --config_file_path eval/data/test_config.json --print_detailed_results
 
 # The scripted multi-turn case
-adk eval src/agent_foundation eval/data/multi_turn.evalset.json \
+adk eval src/$AGENT_PACKAGE eval/data/multi_turn.evalset.json \
   --config_file_path eval/data/test_config.json
 
 # Deep run: judge, rubric, hallucination, and safety metrics
-adk eval src/agent_foundation eval/data/template_agent.evalset.json \
+adk eval src/$AGENT_PACKAGE eval/data/template_agent.evalset.json \
   --config_file_path eval/data/full_eval_config.json --print_detailed_results
 ```
 
@@ -79,20 +84,20 @@ adk test eval/data   # runs every *.test.json, criteria from the adjacent test_c
 An LLM plays the user across a multi-turn conversation, following a plan and persona instead of a fixed script. Build an eval set from the shipped scenarios, then run it. Only `hallucinations_v1`, `safety_v1`, and the simulator and multi-turn metrics apply here, because there is no fixed expected response to match against.
 
 ```bash
-adk eval_set create src/agent_foundation user_sim_demo
-adk eval_set add_eval_case src/agent_foundation user_sim_demo \
+adk eval_set create src/$AGENT_PACKAGE user_sim_demo
+adk eval_set add_eval_case src/$AGENT_PACKAGE user_sim_demo \
   --scenarios_file eval/data/conversation_scenarios.json \
   --session_input_file eval/data/session_input.json
-adk eval src/agent_foundation user_sim_demo \
+adk eval src/$AGENT_PACKAGE user_sim_demo \
   --config_file_path eval/data/user_sim_config.json --print_detailed_results
 ```
 
-`adk eval_set` writes the eval set to the agent package as `src/agent_foundation/<eval_set_id>.evalset.json` (gitignored as generated scratch; copy anything worth keeping into `eval/data/`). To keep generated eval sets out of the package entirely, pass `--eval_storage_uri gs://<bucket>` to every `adk eval_set` command and to `adk eval`; the eval set is then stored in and read from that GCS bucket. A cloud bucket is the only storage override, local paths are not configurable.
+`adk eval_set` writes the eval set to the agent package as `src/$AGENT_PACKAGE/<eval_set_id>.evalset.json` (gitignored as generated scratch; copy anything worth keeping into `eval/data/`). To keep generated eval sets out of the package entirely, pass `--eval_storage_uri gs://<bucket>` to every `adk eval_set` command and to `adk eval`; the eval set is then stored in and read from that GCS bucket. A cloud bucket is the only storage override, local paths are not configurable.
 
 To synthesize scenarios instead of writing them by hand:
 
 ```bash
-adk eval_set generate_eval_cases src/agent_foundation user_sim_generated \
+adk eval_set generate_eval_cases src/$AGENT_PACKAGE user_sim_generated \
   --user_simulation_config_file generation_config.json
 ```
 
@@ -103,7 +108,7 @@ where `generation_config.json` looks like `{"count": 5, "model_name": "gemini-2.
 ADK ships a GEPA prompt optimizer that rewrites the root agent's instructions against a target metric, driven by an optimizer config file:
 
 ```bash
-adk optimize src/agent_foundation <optimizer_config_path>
+adk optimize src/$AGENT_PACKAGE <optimizer_config_path>
 ```
 
 It is long-running and makes multiple LLM calls. Treat it as a last resort after manual instruction fixes, and run a single pass rather than looping on it. See `adk optimize --help` for the config format.
@@ -140,7 +145,7 @@ The `agent-eval` job in `.github/workflows/ci.yml` runs `uv run pytest eval` on 
 
 1. Capture or write a case: `SERVE_WEB_INTERFACE=TRUE uv run server` (Eval tab), or hand-edit a file in `eval/data/`.
 2. Pin the expected tool trajectory (exact name and args) and a reference response built from stable tokens, no dates or clock values, so ROUGE stays stable against the real LLM.
-3. Replay: `adk eval src/agent_foundation <evalset> --config_file_path eval/data/test_config.json`.
+3. Replay: `adk eval src/$AGENT_PACKAGE <evalset> --config_file_path eval/data/test_config.json`.
 4. Validate non-flaky: run `uv run pytest eval` at least three times before relying on a new gate case.
 
 See ADK's [evaluation docs](https://adk.dev/evaluate/) for the authoring workflow, the `EvalSet` schema, and migration utilities.

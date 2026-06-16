@@ -32,7 +32,7 @@ The integration lane (`tests/integration/`) exercises the real FastAPI app again
 Start an ephemeral Postgres container, run the lane, then tear it down:
 
 ```bash
-docker run -d --rm --name agent-foundation-pg \
+docker run -d --rm --name your-agent-pg \
   -p 127.0.0.1:5432:5432 \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=postgres \
@@ -41,7 +41,7 @@ docker run -d --rm --name agent-foundation-pg \
 
 uv run pytest tests/integration
 
-docker stop agent-foundation-pg
+docker stop your-agent-pg
 ```
 
 The connection defaults to `postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/sessions`. Override it with the `INTEGRATION_DATABASE_URI` environment variable to point at a different host or port. This is a test-harness variable, not application runtime config, so it lives here rather than in `docs/environment-variables.md`.
@@ -70,16 +70,16 @@ The `ci.yml` `integration` job runs a `postgres:17` service container (with a `p
 
 ### Directory Structure
 
-Lanes are top-level directories; unit test modules mirror source structure:
+Lanes are top-level directories; unit test modules mirror source structure (`your-agent/src/your_agent/...`):
 
 ```
 eval/                            # LLM eval lane
 tests/
   conftest.py                    # Shared fixtures, mocks, and test environment setup (all lanes)
   unit/
-    test_callbacks.py            # Tests for src/agent_foundation/callbacks.py
-    test_tools.py                # Tests for src/agent_foundation/tools.py
-    test_config.py               # Tests for src/agent_foundation/config.py
+    test_callbacks.py            # Tests for src/your_agent/callbacks.py
+    test_tools.py                # Tests for src/your_agent/tools.py
+    test_config.py               # Tests for src/your_agent/config.py
     ...
   integration/                   # Postgres + FastAPI lane
   smoke/                         # Live deployed-URL lane

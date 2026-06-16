@@ -559,8 +559,9 @@ def main() -> NoReturn:
         compose_files = Path().glob("docker-compose*.yml")
         files_to_update.extend(str(path) for path in compose_files)
 
-        # Glob the docs directory
-        doc_files = Path("docs").rglob("*.md")
+        # Skip template-management.md: its foundation refs must survive forking.
+        skip_docs = {Path("docs/template-management.md")}
+        doc_files = (p for p in Path("docs").rglob("*.md") if p not in skip_docs)
         files_to_update.extend(str(path) for path in doc_files)
 
         # Glob the test suite
