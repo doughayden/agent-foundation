@@ -138,10 +138,12 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 |---|---|---|---|
 | `tests/unit` | in-process only (mocks at boundaries) | yes | `uv run pytest` (default) |
 | `tests/integration` | real external resource (Postgres) | yes | `uv run pytest tests/integration` |
-| `tests/smoke` | live deployed URL | yes | `uv run pytest tests/smoke` |
+| `tests/smoke` | live deployed URL | assertion yes; generation no | `uv run pytest tests/smoke` |
 | `eval/` (top-level) | real LLM + Vertex AI creds (costs money) | gate metrics yes; judge metrics no | `uv run pytest eval` |
 
 **Eval lane:** Gate-fidelity runner is pytest calling `AgentEvaluator.evaluate()` (raises on sub-threshold metrics); `adk eval` CLI exits 0 on failed cases — authoring only, NEVER a CI gate. Deterministic PR-gate criteria (`tool_trajectory_avg_score` IN_ORDER 1.0, `response_match_score` ROUGE-1) in `eval/data/test_config.json`; judge metrics in `full_eval_config.json` (104-B/local only). The lane lives in top-level `eval/` (the test module loads the real `.env`), so `tests/conftest.py` mocks auth/dotenv unconditionally. Lane deps come from the `google-adk[eval]` extra in the dev group. **Not runnable as an autonomous sandboxed action** — the command sandbox blocks the Vertex AI egress and ADC credential read it needs; run it in CI or a developer's own terminal, never by widening the sandbox. Eval artifacts (`eval/data/`) are schema-validated on every PR by `tests/unit/test_eval_artifacts.py`. Cross-session memory (`load_memory`/`add_session_to_memory`) is NOT eval-testable (fresh session per case) — cover that continuity in the integration lane. Deliberately ADK-native (not the `agents-cli`/Agent Platform Eval SDK); regression-diff and failure-clustering live there, out of scope here. Full surface (`.test.json`, multi-turn, judge/rubric/safety metrics, user simulation, all `adk` commands): `docs/references/agent-evals.md`.
+
+**Smoke lane:** Runs POST-DEPLOY from `ci-cd.yml` (reusable `.github/workflows/smoke.yml`) after each env apply — dev in dev-only mode, dev+stage in production mode — NOT in `ci.yml`. Layered cheapest-first against the live revision (L0 `/health`, L1 session-create → Cloud SQL reachability, L2 thin `/run_sse` turn asserting presence of a text part only, then delete-and-404 cleanup). L2 invokes the real model but the assertion is presence-only (no content, no judge). Auth: the WIF principal impersonates a dedicated invoker SA (`terraform/main/smoke.tf`) to mint a Cloud Run ID token; smoke.yml resolves the service URL and that SA's email (by display name), exporting `SMOKE_BASE_URL`/`SMOKE_ID_TOKEN` to the test step. CI-only — fixtures fail clearly if those env vars are unset.
 
 **pytest_configure()** - Only place using unittest.mock (runs before pytest-mock available). Mocks `dotenv.load_dotenv` and Google auth defaults to prevent real credential lookups during collection. See `tests/conftest.py` for the current mock set and the lifecycle docstring.
 - No env var assignments needed (PEP 562 lazy loading, Pydantic validates only when called)
@@ -219,6 +221,7 @@ uv lock --upgrade               # Update all
 
 **Main Module (Template Internals except `services.tf`/`iam.tf`):** Cloud Run deployment in `terraform/main/` (may require downstream env var customization or extension). Provisions VPC + Cloud SQL private IP, bastion, app SA, Cloud Run with Auth Proxy sidecar, Agent Engine, and GCS bucket. See `terraform/main/` for resource definitions.
 - Shared `local.cloud_sql_proxy_args` between bastion cloud-init and Cloud Run sidecar (bastion adds `--address=0.0.0.0`, `--impersonate-service-account`, COS iptables rule)
+- `smoke.tf` — post-deploy smoke-test identity (dedicated invoker SA, service-level `roles/run.invoker`, WIF `serviceAccountOpenIdTokenCreator`); consumed by `.github/workflows/smoke.yml`
 - Remote state in GCS; inputs from `TF_VAR_*` (GitHub Environment variables)
 - Requires `TF_VAR_environment` (dev/stage/prod)
 - Outputs: `bastion_instance`, `bastion_zone` (for docker-compose `.env`)
