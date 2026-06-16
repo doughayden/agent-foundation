@@ -58,7 +58,7 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 |---|---|---|
 | Add a custom tool | define `func` in `tools.py` + register in `agent.py` | `root_agent = LlmAgent(..., tools=[..., FunctionTool(func)])` |
 | Add a callback | `callbacks.py` | ADK callbacks return `None` to observe, or a modified value to mutate/short-circuit — choose per intent |
-| Customize agent instructions | `prompt.py` | InstructionProvider pattern (function ref, called at runtime) |
+| Customize agent instructions | `prompt.py` | InstructionProvider pattern (function ref, called at runtime). Keep per-turn-volatile values (wall-clock time, request IDs) out of the returned string: it is the cached system-instruction prefix, so volatility there busts prompt caching every turn. Expose precise time via a tool (`get_current_time`) instead |
 | Add an agent eval case | `eval/data/*.evalset.json` | Deterministic gate criteria in `test_config.json` (auto-discovered); judge/rubric/safety criteria in `full_eval_config.json`, user-simulation in `conversation_scenarios.json` + `user_sim_config.json` (none in the PR gate). Validate non-flaky: run `uv run pytest eval` ≥3 times. `adk eval`/`uv run server` (Eval tab) are authoring tools only — the `adk eval` CLI exits 0 on failed cases, never gate CI on it. Full surface + commands: `docs/references/agent-evals.md` |
 | Add an env var | `ServerEnv` in `config.py` + `docs/environment-variables.md` | **CRITICAL:** every new env var MUST be in `docs/environment-variables.md` (purpose, default, where to set, required/optional) |
 | Enable a GCP API | `terraform/main/services.tf` | `google_project_service`; downstream resources `depends_on = [time_sleep.service_enablement_propagation["api.googleapis.com"]]` |
