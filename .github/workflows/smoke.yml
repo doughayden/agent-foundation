@@ -67,12 +67,11 @@ jobs:
           fi
 
           # Resolve the invoker SA by display name (decoupled from the 30-char account_id truncation).
-          # --limit=1 plus an explicit single-line check guards against a duplicate display name
-          # (e.g. a TF replace in flight) yielding multiple newline-separated emails.
+          # Return all matches so a duplicate display name (e.g. a TF replace in flight) yields
+          # multiple newline-separated emails and the single-line check below aborts.
           SMOKE_SA=$(gcloud iam service-accounts list \
             --filter="displayName='${SERVICE} Smoke Invoker'" \
-            --format='value(email)' \
-            --limit=1)
+            --format='value(email)')
           if [ -z "$SMOKE_SA" ]; then
             echo "::error::No smoke invoker SA found for $SERVICE"
             exit 1
@@ -87,6 +86,10 @@ jobs:
           ID_TOKEN=$(gcloud auth print-identity-token \
             --impersonate-service-account="$SMOKE_SA" \
             --audiences="$SERVICE_URL")
+          if [ -z "$ID_TOKEN" ]; then
+            echo "::error::Failed to mint identity token impersonating $SMOKE_SA. Check roles/iam.serviceAccountOpenIdTokenCreator on the invoker SA."
+            exit 1
+          fi
           echo "::add-mask::$ID_TOKEN"
           echo "Resolved $SERVICE -> $SERVICE_URL (invoker: $SMOKE_SA)"
 
