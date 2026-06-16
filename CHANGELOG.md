@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-06-15
+
 ### Added
 - Integration test lane (`tests/integration/`): exercises the real FastAPI app against a real Postgres session service with no mocks, covering session create/list/get/delete, an agent run that persists and reads session state, and FK cascade-on-delete (a raw `DELETE` on `sessions` removes the session's events through the Postgres `ON DELETE CASCADE`, the database-level path the `pg_cron` retention job relies on). Builds the production app via ADK `get_fast_api_app()` with a `postgresql+asyncpg://` URI and drives it in-process with httpx `ASGITransport`; the LLM is stubbed so the lane is deterministic and free. Includes a Postgres-dialect strictness test (asyncpg rejects ISO strings for `timestamptz` where sqlite tolerates them). Runs in the `ci.yml` required check via a `postgres:17` service container, gated on `changes` and folded into the `CI / status` sentinel, without `--cov` (#102)
 - Agent eval harness in a top-level `eval/` lane (separate from `tests/` because it calls the live model): `eval/data/template_agent.evalset.json` (ADK `EvalSet` schema) with a deterministic `get_current_time` tool-trajectory case, and `test_config.json` deterministic PR-gate criteria (`tool_trajectory_avg_score` IN_ORDER 1.0 + `response_match_score` ROUGE-1 0.4) (#104)
@@ -571,7 +573,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/doughayden/agent-foundation/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/doughayden/agent-foundation/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/doughayden/agent-foundation/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/doughayden/agent-foundation/compare/v0.14.1...v0.15.0
