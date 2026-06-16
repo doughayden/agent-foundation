@@ -1,0 +1,121 @@
+name: Smoke
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'GitHub Environment (dev, stage) for vars/secrets and the deployed target'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  smoke:
+    name: Smoke Tests (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 10  # Typical run: 2-3 min (deps + 4 live HTTP checks). 10 min prevents hanging
+    env:
+      # Resolved once here, referenced via ${{ env.X }} below (self-documents the source).
+      ENV: ${{ inputs.environment }}
+      IMAGE_NAME: ${{ vars.IMAGE_NAME }}
+      REGION: ${{ vars.REGION }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-extras --locked
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Resolve deployed service URL and invoker token
+        id: target
+        run: |
+          set -euo pipefail
+          SERVICE="${IMAGE_NAME}-${ENV}"
+
+          # Service naming is ${agent_name}-${environment}; agent_name == vars.IMAGE_NAME.
+          SERVICE_URL=$(gcloud run services describe "$SERVICE" \
+            --region "$REGION" \
+            --format='value(urls[0])')
+          if [ -z "$SERVICE_URL" ]; then
+            echo "::error::No serving URL for $SERVICE in $REGION — the revision did not deploy"
+            exit 1
+          fi
+
+          # Resolve the invoker SA by display name (decoupled from the 30-char account_id truncation).
+          SMOKE_SA=$(gcloud iam service-accounts list \
+            --filter="displayName='${SERVICE} Smoke Invoker'" \
+            --format='value(email)')
+          if [ -z "$SMOKE_SA" ]; then
+            echo "::error::No smoke invoker SA found for $SERVICE"
+            exit 1
+          fi
+
+          # Mint a Cloud Run ID token by impersonating the invoker SA (audience = service URL).
+          ID_TOKEN=$(gcloud auth print-identity-token \
+            --impersonate-service-account="$SMOKE_SA" \
+            --audiences="$SERVICE_URL")
+
+          echo "service_url=$SERVICE_URL" >> "$GITHUB_OUTPUT"
+          echo "::add-mask::$ID_TOKEN"
+          echo "id_token=$ID_TOKEN" >> "$GITHUB_OUTPUT"
+          echo "Resolved $SERVICE -> $SERVICE_URL (invoker: $SMOKE_SA)"
+
+      - name: Run smoke tests
+        id: smoke
+        shell: bash {0}  # Removes -e flag to allow capturing output on failure
+        env:
+          SMOKE_BASE_URL: ${{ steps.target.outputs.service_url }}
+          SMOKE_ID_TOKEN: ${{ steps.target.outputs.id_token }}
+        run: |
+          OUTPUT_FILE=$(mktemp)
+
+          # Stream to logs (real-time) and a file (for the summary), capturing pytest's exit code.
+          uv run pytest tests/smoke 2>&1 | tee "$OUTPUT_FILE"
+          EXIT_CODE=${PIPESTATUS[0]}  # pytest's exit code, not tee's
+
+          {
+            echo "## 🔥 Smoke Tests (${ENV})"
+            echo ""
+            echo "Target: \`${SMOKE_BASE_URL}\`"
+            echo ""
+            if [ "$EXIT_CODE" -eq 0 ]; then
+              echo "✅ All smoke checks passed against the deployed revision."
+            else
+              echo "❌ Smoke checks failed (exit ${EXIT_CODE}) — the revision is not serving correctly."
+            fi
+            echo ""
+            echo '<details><summary>pytest output</summary>'
+            echo ""
+            echo '```'
+            cat "$OUTPUT_FILE"
+            echo '```'
+            echo ""
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          rm -f "$OUTPUT_FILE"
+          exit $EXIT_CODE
