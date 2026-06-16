@@ -70,7 +70,7 @@ The `ci.yml` `integration` job runs a `postgres:17` service container (with a `p
 
 ### Directory Structure
 
-Lanes are top-level directories; unit test modules mirror source structure (`your-agent/src/your_agent/...`):
+Lanes are top-level directories; unit test modules mirror source structure:
 
 ```
 eval/                            # LLM eval lane
