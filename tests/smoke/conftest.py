@@ -35,6 +35,13 @@ APP_NAME = "agent_foundation"
 
 USER_ID = "smoke-user"
 
+# Declare the lane contract for the whole directory so any future smoke module
+# inherits the marker (kept out of a bare `pytest`) and the session-scoped loop.
+pytestmark = [
+    pytest.mark.smoke,
+    pytest.mark.asyncio(loop_scope="session"),
+]
+
 
 @pytest.fixture(scope="session")
 def base_url() -> str:

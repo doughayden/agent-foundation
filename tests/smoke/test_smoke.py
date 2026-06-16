@@ -65,9 +65,23 @@ class TestSmoke:
         resp = await client.get("/health")
         assert resp.status_code == 200
 
-    async def test_l1_session_create(self, smoke_session_id: str) -> None:
-        """L1: a session persists, proving Cloud SQL reachability via Auth Proxy."""
-        assert smoke_session_id
+    async def test_l1_session_create(
+        self,
+        client: AsyncClient,
+        app_name: str,
+        user_id: str,
+        smoke_session_id: str,
+    ) -> None:
+        """L1: the created session is readable back, proving Cloud SQL reachability.
+
+        GETs the session the fixture created so the round-trip is an independent
+        signal distinct from the fixture's create-time assertion.
+        """
+        resp = await client.get(
+            f"/apps/{app_name}/users/{user_id}/sessions/{smoke_session_id}"
+        )
+        assert resp.status_code == 200
+        assert resp.json()["id"] == smoke_session_id
 
     async def test_l2_agent_turn_streams_text(
         self,
