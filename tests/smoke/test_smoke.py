@@ -109,7 +109,11 @@ class TestSmoke:
                 detail = (await resp.aread()).decode(errors="replace")
                 pytest.fail(f"/run_sse returned {resp.status_code}: {detail}")
             async for line in resp.aiter_lines():
-                if not line.startswith("data:"):
+                # Keep draining once a text part is seen rather than breaking early:
+                # closing the stream mid-flight makes Cloud Run log a spurious client
+                # disconnect on every run, eroding the post-deploy log signal. The
+                # trivial prompt's response is small, so draining is cheap.
+                if saw_text or not line.startswith("data:"):
                     continue
                 payload = line.removeprefix("data:").strip()
                 if not payload:
@@ -118,7 +122,6 @@ class TestSmoke:
                 parts = event.get("content", {}).get("parts", [])
                 if any(isinstance(p.get("text"), str) and p["text"] for p in parts):
                     saw_text = True
-                    break
 
         assert saw_text, "no text-bearing event in the /run_sse stream"
 

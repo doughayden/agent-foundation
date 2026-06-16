@@ -23,6 +23,7 @@ jobs:
       ENV: ${{ inputs.environment }}
       IMAGE_NAME: ${{ vars.IMAGE_NAME }}
       REGION: ${{ vars.REGION }}
+      GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -59,6 +60,7 @@ jobs:
 
           # Service naming is ${agent_name}-${environment}; agent_name == vars.IMAGE_NAME.
           SERVICE_URL=$(gcloud run services describe "$SERVICE" \
+            --project "$GOOGLE_CLOUD_PROJECT" \
             --region "$REGION" \
             --format='value(urls[0])')
           if [ -z "$SERVICE_URL" ]; then
@@ -70,6 +72,7 @@ jobs:
           # Return all matches so a duplicate display name (e.g. a TF replace in flight) yields
           # multiple newline-separated emails and the single-line check below aborts.
           SMOKE_SA=$(gcloud iam service-accounts list \
+            --project "$GOOGLE_CLOUD_PROJECT" \
             --filter="displayName='${SERVICE} Smoke Invoker'" \
             --format='value(email)')
           if [ -z "$SMOKE_SA" ]; then

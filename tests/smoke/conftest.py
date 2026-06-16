@@ -35,12 +35,9 @@ APP_NAME = "agent_foundation"
 
 USER_ID = "smoke-user"
 
-# Declare the lane contract for the whole directory so any future smoke module
-# inherits the marker (kept out of a bare `pytest`) and the session-scoped loop.
-pytestmark = [
-    pytest.mark.smoke,
-    pytest.mark.asyncio(loop_scope="session"),
-]
+# A conftest `pytestmark` does not propagate to sibling test modules: each smoke test
+# module declares its own `pytestmark` (smoke marker + session loop scope, see
+# test_smoke.py) so it is selected under the lane and shares the client's event loop.
 
 
 @pytest.fixture(scope="session")

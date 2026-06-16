@@ -41,6 +41,19 @@ resource "google_service_account_iam_member" "smoke_token_creator" {
   member             = var.workload_identity_pool_principal_identifier
 }
 
+# GCP SA-level IAM is eventually consistent. On a first apply (or SA replace) the
+# token-mint impersonation can fail before this binding propagates, surfacing as a
+# false-negative smoke result. Gate apply completion on a short propagation wait,
+# mirroring time_sleep.wif_iam_propagation in iam.tf. The trigger on the binding id
+# fires this only on create/replace; steady-state applies don't re-wait.
+resource "time_sleep" "smoke_token_creator_propagation" {
+  create_duration = "60s"
+
+  triggers = {
+    iam_member_id = google_service_account_iam_member.smoke_token_creator.id
+  }
+}
+
 output "smoke_invoker_service_account_email" {
   description = "Email of the SA the CI smoke lane impersonates to invoke Cloud Run"
   value       = google_service_account.smoke_invoker.email
