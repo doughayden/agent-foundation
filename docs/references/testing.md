@@ -53,6 +53,40 @@ The connection defaults to `postgresql+asyncpg://postgres:postgres@127.0.0.1:543
 
 The `ci.yml` `integration` job runs a `postgres:17` service container (with a `pg_isready` health check) and sets `INTEGRATION_DATABASE_URI` to reach it. It is gated on the `changes` job and folded into the always-runs `status` sentinel, so the single required check `CI / status` covers it. The job runs `uv run pytest tests/integration` without `--cov` — the 100% coverage gate is unit-lane-only.
 
+## Smoke Lane
+
+The smoke lane (`tests/smoke/`) hits the live deployed Cloud Run service URL after each environment apply to confirm a freshly deployed revision actually serves end to end. Unlike the integration lane, which builds the app in-process via httpx `ASGITransport`, nothing here is substituted: the request crosses the real network, the Auth Proxy sidecar, and Cloud SQL. The L2 turn invokes the real model, but the lane is still a deterministic gate. Behavioral correctness stays owned by the eval lane, pre-deploy wiring by the integration lane.
+
+### What each layer catches
+
+Checks run cheapest-first, each a distinct failure class so a failure localizes the broken subsystem:
+
+- **L0 liveness**: `GET /health` -> 200. The revision serves HTTP at all.
+- **L1 session create**: create a session, read it back -> 200. Cloud SQL is reachable through the Auth Proxy sidecar over VPC egress, and a session row persists. Deterministic, no model. A module-scoped fixture owns the create so teardown deletes the row unconditionally even when a later check fails.
+- **L2 thin agent turn**: `POST /run_sse` with a trivial prompt, parse the SSE event stream, and assert at least one event carries a text part. The real model is invoked, but the assertion checks only that a text part returned, never what it says, so the check is robust to the model's stochastic output and carries no LLM-judge dependency.
+- **Cleanup**: delete the smoke session, then a follow-up GET returns 404. Proves the delete path and leaves no residue.
+
+### Run it locally
+
+The lane targets a live deployed URL with an authenticated client, so it reads two env vars and fails clearly if either is unset:
+
+```bash
+SMOKE_BASE_URL="https://your-agent-dev-...run.app" \
+SMOKE_ID_TOKEN="$(gcloud auth print-identity-token \
+  --impersonate-service-account=SMOKE_INVOKER_SA \
+  --audiences=https://your-agent-dev-...run.app)" \
+  uv run pytest tests/smoke
+```
+
+- `SMOKE_BASE_URL`: the deployed service URL (the httpx `base_url`).
+- `SMOKE_ID_TOKEN`: a Cloud Run ID token, sent as `Authorization: Bearer`.
+
+Both are test-harness variables, not application runtime config, so they live here rather than in `docs/environment-variables.md`. A bare `uv run pytest` never collects this lane; select it explicitly with `uv run pytest tests/smoke`.
+
+### How CI runs it post-deploy
+
+The `smoke.yml` reusable workflow resolves the service URL with `gcloud run services describe`, resolves the dedicated invoker SA by display name, mints a Cloud Run ID token by impersonating it (`gcloud auth print-identity-token --impersonate-service-account --audiences`), runs the lane, and surfaces pass/fail in the GitHub job summary. The service deploys `--no-allow-unauthenticated`, so requests need an identity token; Cloud Run authorizes the token identity, the invoker SA. The `ci-cd.yml` orchestrator calls it as `smoke-dev` after `dev-apply` (and `smoke-stage` after `stage-apply` in production mode). This runs post-deploy against the live revision, not in the PR gate. The invoker identity and its least-privilege scoping are documented in [Security Posture](security-posture.md).
+
 ## Coverage Requirements
 
 **100% coverage required on production code.**

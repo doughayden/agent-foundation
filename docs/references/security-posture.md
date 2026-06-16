@@ -45,9 +45,12 @@ The project enforces security at every layer of the stack, from network topology
 
 **Cross-project promotion uses WIF principals, not service accounts.** Stage reads from dev's Artifact Registry, prod reads from stage's — but the IAM binding uses the WIF pool principal, not a service account. This avoids org policies that restrict cross-project service account usage and keeps the trust boundary at the identity pool level.
 
+**Dedicated smoke invoker, scoped to one service.** The post-deploy smoke lane calls the live Cloud Run revision, which deploys `--no-allow-unauthenticated` and so requires a Cloud Run identity token. Rather than reuse the runtime app SA, the template provisions a separate invoker service account whose only grant is `roles/run.invoker` on the app Cloud Run service resource, not project-wide, so it can call that one service and nothing else. The GitHub Actions WIF principal is granted `roles/iam.serviceAccountOpenIdTokenCreator` on the invoker SA so CI can mint an ID token by impersonation; a raw federated principal cannot mint one directly. ID tokens authenticate to Cloud Run, so this is the OpenID token-creator role, not the access-token `serviceAccountTokenCreator`. Smoke access lives on its own identity, scoped to invocation and auditable independently of the runtime SA.
+
 - Source: `terraform/bootstrap/module/gcp/main.tf` (WIF pool, provider, attribute conditions)
 - Source: `terraform/main/database.tf` (IAM database user, password policy)
-- GCP docs: [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation), [IAM database authentication](https://cloud.google.com/sql/docs/postgres/iam-authentication)
+- Source: `terraform/main/smoke.tf` (smoke invoker SA, resource-scoped `run.invoker`, WIF token-creator grant)
+- GCP docs: [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation), [IAM database authentication](https://cloud.google.com/sql/docs/postgres/iam-authentication), [Cloud Run authentication](https://cloud.google.com/run/docs/authenticating/service-to-service)
 - Guide: [Infrastructure](../infrastructure.md), Reference: [Bootstrap](bootstrap.md)
 
 ## Database Layer

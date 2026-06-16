@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Post-deploy smoke test lane (`tests/smoke/`): hits the live Cloud Run service URL after each environment apply to confirm a freshly deployed revision actually serves end to end. Layered cheapest-first so a failure localizes the broken subsystem: L0 `GET /health` -> 200 (the revision serves HTTP at all), L1 session create + read-back -> 200 (Cloud SQL is reachable through the Auth Proxy sidecar over VPC egress, no model), L2 a thin `/run_sse` agent turn that parses the SSE stream and asserts at least one event carries a text part (presence only, never content, so no LLM-judge dependency), then cleanup deletes the smoke session and a follow-up GET returns 404. Drives the live URL over a real network with an authenticated httpx client reading `SMOKE_BASE_URL` and `SMOKE_ID_TOKEN`; runs only by explicit path (`uv run pytest tests/smoke`), never under a bare `pytest`. New `smoke.yml` reusable workflow resolves the service URL with `gcloud run services describe`, mints a Cloud Run ID token by impersonating a dedicated invoker SA, runs the lane, and surfaces pass/fail in the job summary; `ci-cd.yml` runs `smoke-dev` after `dev-apply` (and `smoke-stage` after `stage-apply` in production mode). Runs post-deploy, not in the PR gate (#101)
+- Dedicated smoke invoker service account (`terraform/main/smoke.tf`): a least-privilege identity distinct from the runtime app SA, granted `roles/run.invoker` at the Cloud Run service resource (not project-wide), with the GitHub Actions WIF principal granted `roles/iam.serviceAccountOpenIdTokenCreator` on it so the runner can mint a Cloud Run ID token by impersonation. The service deploys `--no-allow-unauthenticated`, so requests need an identity token, and a raw WIF principal cannot mint one directly. A `time_sleep` mirrors the `iam.tf` propagation-wait pattern so a first apply does not race the binding (#101)
+
 ## [0.18.0] - 2026-06-15
 
 ### Added

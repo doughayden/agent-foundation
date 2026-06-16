@@ -14,6 +14,7 @@ GitHub Actions workflow architecture, mechanics, and customization.
 - **`pull-and-promote.yml`** - Image promotion between registries (production mode)
 - **`resolve-image-digest.yml`** - Digest lookup by tag (production mode)
 - **`terraform-plan-apply.yml`** - Terraform deployment
+- **`smoke.yml`** - Post-deploy smoke tests against the live deployed revision
 
 **Standalone CI Workflow:**
 - **`ci.yml`** - Code quality (ruff, mypy, pytest with coverage), Postgres integration lane, and deterministic agent eval gate
@@ -56,7 +57,9 @@ GitHub Actions workflow architecture, mechanics, and customization.
 - `build` - Build Docker image (branch events only, not tags)
 - `resolve-digest` - Look up image in stage by tag (tag events in production mode)
 - `dev-plan` / `dev-apply` - Dev environment (branch events)
+- `smoke-dev` - Post-deploy smoke against the live dev revision (after `dev-apply`)
 - `stage-promote` / `stage-plan` / `stage-apply` - Stage environment (merge in production mode)
+- `smoke-stage` - Post-deploy smoke against the live stage revision (after `stage-apply`, production mode only)
 - `prod-promote` / `prod-plan` / `prod-apply` - Prod environment (tags in production mode)
 
 **Concurrency:**
@@ -109,28 +112,32 @@ config → metadata-extract → docker-build → dev-plan
 
 **Dev-only mode:**
 ```
-config → metadata-extract → docker-build → dev-plan → dev-apply
+config → metadata-extract → docker-build → dev-plan → dev-apply → smoke-dev
                               ↓
                            Push to dev registry: {sha}, latest
                               ↓
                            Deploy to dev Cloud Run
+                              ↓
+                           Smoke the live dev revision
 ```
 
 **Production mode:**
 ```
 config → metadata-extract → docker-build
            ↓                    ↓
-           └────────────────────┴─→ dev-plan → dev-apply
+           └────────────────────┴─→ dev-plan → dev-apply → smoke-dev
                                     (parallel)
                                 ↓
-                              stage-promote → stage-plan → stage-apply
+                              stage-promote → stage-plan → stage-apply → smoke-stage
                                 ↓
                            Pull from dev, push to stage
                                 ↓
                            Deploy to stage Cloud Run
+                                ↓
+                           Smoke the live stage revision
 ```
 
-**Result:** Dev deployed (always), stage deployed (production mode only).
+**Result:** Dev deployed and smoked (always), stage deployed and smoked (production mode only). The smoke lane detail lives in [Testing Strategy](testing.md).
 
 ### Tag Flow
 
@@ -293,6 +300,23 @@ config → metadata-extract → resolve-digest → prod-promote → prod-plan �
 - `plan` job on PR: Comment plan, don't save artifact
 - `plan` job on merge: Save plan artifact (no comment)
 - `apply` job: Use saved plan artifact
+
+### smoke.yml
+
+**Purpose:** Run the post-deploy smoke lane against the live deployed Cloud Run revision.
+
+**Inputs:**
+- `environment` (dev/stage) - selects the GitHub Environment vars and the deployed target
+
+**How it works:**
+1. Authenticate to GCP via WIF
+2. Resolve the service URL with `gcloud run services describe`
+3. Resolve the dedicated invoker SA by display name and mint a Cloud Run ID token by impersonating it (`gcloud auth print-identity-token --impersonate-service-account --audiences`)
+4. Run `uv run pytest tests/smoke` with `SMOKE_BASE_URL` and `SMOKE_ID_TOKEN` set, surfacing pass/fail in the job summary
+
+The service deploys `--no-allow-unauthenticated`, so requests need a Cloud Run identity token. The invoker SA is a least-privilege identity distinct from the runtime app SA. See [Security Posture](security-posture.md) for the identity model. The lane layering and assertions live in [Testing Strategy](testing.md).
+
+**When it runs:** Called by `ci-cd.yml` as `smoke-dev` after `dev-apply` (and `smoke-stage` after `stage-apply` in production mode), on branch push events only. Not part of the PR gate.
 
 ## Standalone CI Workflow
 
