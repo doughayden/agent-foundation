@@ -35,13 +35,6 @@ APP_NAME = "agent_foundation"
 
 USER_ID = "smoke-user"
 
-pytestmark = [
-    pytest.mark.smoke,
-    # The client fixture is session-scoped (one connection per run); its async setup
-    # and these tests must share one event loop.
-    pytest.mark.asyncio(loop_scope="session"),
-]
-
 
 @pytest.fixture(scope="session")
 def base_url() -> str:
