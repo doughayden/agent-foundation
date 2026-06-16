@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Drop the preventive `litellm<=1.82.6` constraint-dependency. The supply-chain compromise that prompted it is contained: the two malicious versions (1.82.7, 1.82.8) are deleted from PyPI and all current releases are verified clean ([BerriAI/litellm#24518](https://github.com/BerriAI/litellm/issues/24518)). The `exclude-newer` dependency cooldown remains the general guard against newly-compromised packages, so no version-specific litellm pin is needed. Unblocks the `google-adk[eval]` extra
 
+### Fixed
+- Drop the per-turn microsecond timestamp from the global instruction; use day-precision date so the cached system-instruction prefix holds across a session, fixing Gemini/Anthropic prompt-cache misses every turn (#199)
+
 ## [0.17.0] - 2026-06-08
 
 ### Added
