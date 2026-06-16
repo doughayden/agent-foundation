@@ -50,10 +50,11 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
 
-      - name: Resolve deployed service URL and invoker token
-        id: target
+      - name: Resolve target, mint token, and run smoke tests
+        id: smoke
+        shell: bash {0}  # Removes -e flag so pytest's exit code is captured for the summary
         run: |
-          set -euo pipefail
+          set -uo pipefail
           SERVICE="${IMAGE_NAME}-${ENV}"
 
           # Service naming is ${agent_name}-${environment}; agent_name == vars.IMAGE_NAME.
@@ -61,51 +62,50 @@ jobs:
             --region "$REGION" \
             --format='value(urls[0])')
           if [ -z "$SERVICE_URL" ]; then
-            echo "::error::No serving URL for $SERVICE in $REGION — the revision did not deploy"
+            echo "::error::No serving URL for $SERVICE in $REGION. The revision did not deploy."
             exit 1
           fi
 
           # Resolve the invoker SA by display name (decoupled from the 30-char account_id truncation).
+          # --limit=1 plus an explicit single-line check guards against a duplicate display name
+          # (e.g. a TF replace in flight) yielding multiple newline-separated emails.
           SMOKE_SA=$(gcloud iam service-accounts list \
             --filter="displayName='${SERVICE} Smoke Invoker'" \
-            --format='value(email)')
+            --format='value(email)' \
+            --limit=1)
           if [ -z "$SMOKE_SA" ]; then
             echo "::error::No smoke invoker SA found for $SERVICE"
             exit 1
           fi
+          if [ "$(printf '%s' "$SMOKE_SA" | grep -c '')" -ne 1 ]; then
+            echo "::error::Multiple smoke invoker SAs matched '${SERVICE} Smoke Invoker'"
+            exit 1
+          fi
 
           # Mint a Cloud Run ID token by impersonating the invoker SA (audience = service URL).
+          # Kept as a local shell var so the token never reaches $GITHUB_OUTPUT or the summary.
           ID_TOKEN=$(gcloud auth print-identity-token \
             --impersonate-service-account="$SMOKE_SA" \
             --audiences="$SERVICE_URL")
-
-          echo "service_url=$SERVICE_URL" >> "$GITHUB_OUTPUT"
           echo "::add-mask::$ID_TOKEN"
-          echo "id_token=$ID_TOKEN" >> "$GITHUB_OUTPUT"
           echo "Resolved $SERVICE -> $SERVICE_URL (invoker: $SMOKE_SA)"
 
-      - name: Run smoke tests
-        id: smoke
-        shell: bash {0}  # Removes -e flag to allow capturing output on failure
-        env:
-          SMOKE_BASE_URL: ${{ steps.target.outputs.service_url }}
-          SMOKE_ID_TOKEN: ${{ steps.target.outputs.id_token }}
-        run: |
           OUTPUT_FILE=$(mktemp)
 
           # Stream to logs (real-time) and a file (for the summary), capturing pytest's exit code.
-          uv run pytest tests/smoke 2>&1 | tee "$OUTPUT_FILE"
+          SMOKE_BASE_URL="$SERVICE_URL" SMOKE_ID_TOKEN="$ID_TOKEN" \
+            uv run pytest tests/smoke 2>&1 | tee "$OUTPUT_FILE"
           EXIT_CODE=${PIPESTATUS[0]}  # pytest's exit code, not tee's
 
           {
-            echo "## 🔥 Smoke Tests (${ENV})"
+            echo "## Smoke Tests (${ENV})"
             echo ""
-            echo "Target: \`${SMOKE_BASE_URL}\`"
+            echo "Target: \`${SERVICE_URL}\`"
             echo ""
             if [ "$EXIT_CODE" -eq 0 ]; then
-              echo "✅ All smoke checks passed against the deployed revision."
+              echo "PASSED: all smoke checks passed against the deployed revision."
             else
-              echo "❌ Smoke checks failed (exit ${EXIT_CODE}) — the revision is not serving correctly."
+              echo "FAILED: smoke checks failed (exit ${EXIT_CODE}). The revision is not serving correctly."
             fi
             echo ""
             echo '<details><summary>pytest output</summary>'
