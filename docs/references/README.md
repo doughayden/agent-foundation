@@ -23,7 +23,8 @@ Deep-dive technical documentation for optional follow-up.
 
 ## Development
 
-- [Testing Strategy](testing.md) - Detailed testing patterns and organization
+- [Testing Strategy](testing.md) - Lane taxonomy and the unit-test guide
+- [Integration Tests](integration-tests.md) - The Postgres + FastAPI lane: coverage, running locally, and CI
 - [Agent Evals](agent-evals.md) - The full agent-evaluation surface: formats, commands, metrics, and user simulation
 - [Code Quality](code-quality.md) - Tool usage and exclusion strategies
 - [Cloud Backend Options](cloud-backend-options.md) - Advanced options for uv run server with cloud backends

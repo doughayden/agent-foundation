@@ -2,8 +2,7 @@
 
 Loads every eval data file through ADK's own pydantic schemas and metric
 registry, the same way ``adk eval`` parses them, so a malformed eval set,
-criteria config, or conversation scenario fails on every PR in the fast unit
-lane (no LLM cost) instead of only when the live eval lane runs.
+criteria config, or conversation scenario fails fast on every PR with no LLM cost.
 """
 
 from pathlib import Path

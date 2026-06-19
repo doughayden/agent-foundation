@@ -85,7 +85,7 @@ From `pyproject.toml`:
 
 **Real example from our codebase:**
 ```python
-# tests/conftest.py:42
+# tests/unit/conftest.py
 mock_credentials.token = "test-mock-token-totally-not-real"  # noqa: S105
 ```
 

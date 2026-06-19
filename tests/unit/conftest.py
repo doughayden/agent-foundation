@@ -1,17 +1,27 @@
-"""Shared pytest fixtures for all test lanes.
+"""Shared pytest fixtures for unit tests.
 
-This root conftest applies to every lane. Per-lane fixtures (like a Postgres
-connection for integration tests) belong in a lane-level conftest such as
-tests/integration/conftest.py.
+``pytest_configure()`` mocks auth/dotenv so unit collection never touches real
+credentials.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import pytest
 from pytest_mock import MockerFixture, MockType
+
+# Source root holding the single agent package (src/<package>/). The package name is
+# derived from it so a downstream fork that renames the package reuses these fixtures
+# with no edits — patch targets below build off PACKAGE_NAME rather than a literal.
+SRC_DIR = Path(__file__).parents[2] / "src"
+
+# The package directory name. The template has exactly one package under src/, so the
+# lone dir with an __init__.py is unambiguous; the marker skips non-package entries
+# (.DS_Store, *.egg-info).
+PACKAGE_NAME = next(SRC_DIR.glob("*/__init__.py")).parent.name
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -21,7 +31,7 @@ def pytest_configure(config: pytest.Config) -> None:
     including pytest-mock. We must use unittest.mock.patch here because:
 
     1. This hook runs before test collection
-    2. Test collection imports test modules, which imports agent_foundation modules
+    2. Test collection imports test modules, which imports source package modules
     3. Agent modules may trigger API calls during import (auth, config loading)
     4. pytest-mock's mocker/session_mocker fixtures aren't available until AFTER
        test collection completes
@@ -37,9 +47,9 @@ def pytest_configure(config: pytest.Config) -> None:
     (fixtures and tests) uses pytest-mock's mocker fixture.
 
     CONSEQUENCE: All src package imports in this file MUST be deferred to fixture
-    bodies or guarded by TYPE_CHECKING. A top-level ``from package.x import Y``
-    would execute during test collection — before these patches take effect —
-    possibly triggering real API calls.
+    or function bodies. A top-level ``from package.x import Y`` would execute
+    during test collection — before these patches take effect — possibly triggering
+    real API calls.
     """
     from unittest.mock import Mock, patch
 
@@ -456,7 +466,7 @@ def create_mock_usage_metadata() -> Callable[..., MockUsageMetadata]:
 def mock_span(mocker: MockerFixture) -> MockType:
     """Mock span returned by ``trace.get_current_span()`` in callbacks."""
     span = mocker.Mock()
-    mocker.patch("agent_foundation.callbacks.trace.get_current_span", return_value=span)
+    mocker.patch(f"{PACKAGE_NAME}.callbacks.trace.get_current_span", return_value=span)
     return span
 
 
@@ -527,30 +537,13 @@ def mock_memory_callback_context() -> MockMemoryCallbackContext:
 
 
 @pytest.fixture
-def mock_memory_callback_context_no_service() -> MockMemoryCallbackContext:
-    """Create a mock callback context that raises ValueError (no service)."""
-    return MockMemoryCallbackContext(
-        should_raise=ValueError,
-        error_message="Cannot add session to memory: memory service is not available.",
-    )
+def create_mock_memory_callback_context() -> Callable[..., MockMemoryCallbackContext]:
+    """Factory for MockMemoryCallbackContext with custom parameters."""
 
+    def _factory(**kwargs: Any) -> MockMemoryCallbackContext:
+        return MockMemoryCallbackContext(**kwargs)
 
-@pytest.fixture
-def mock_memory_callback_context_with_runtime_error() -> MockMemoryCallbackContext:
-    """Create a mock callback context that raises RuntimeError."""
-    return MockMemoryCallbackContext(
-        should_raise=RuntimeError,
-        error_message="Memory service connection failed",
-    )
-
-
-@pytest.fixture
-def mock_memory_callback_context_with_attribute_error() -> MockMemoryCallbackContext:
-    """Create a mock callback context that raises AttributeError."""
-    return MockMemoryCallbackContext(
-        should_raise=AttributeError,
-        error_message="'MockMemoryCallbackContext' has no invocation context",
-    )
+    return _factory
 
 
 @pytest.fixture
@@ -585,7 +578,7 @@ def mock_load_dotenv(mocker: MockerFixture) -> MockType:
     Returns:
         Mock object for load_dotenv function.
     """
-    return mocker.patch("agent_foundation.config.load_dotenv")
+    return mocker.patch(f"{PACKAGE_NAME}.config.load_dotenv")
 
 
 @pytest.fixture

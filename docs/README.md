@@ -60,7 +60,8 @@ Deep dives for optional follow-up:
 - [OpenTelemetry Architecture](references/opentelemetry-architecture.md) - ADK coexistence, instrumentation strategy, dependency management
 
 ### Development
-- [Testing Strategy](references/testing.md) - Detailed testing patterns and organization
+- [Testing Strategy](references/testing.md) - Lane taxonomy and the unit-test guide
+- [Integration Tests](references/integration-tests.md) - The Postgres + FastAPI lane: coverage, running locally, and CI
 - [Agent Evals](references/agent-evals.md) - The full agent-evaluation surface: formats, commands, metrics, and user simulation
 - [Code Quality](references/code-quality.md) - Tool usage and exclusion strategies
 - [Cloud Backend Options](references/cloud-backend-options.md) - Advanced options for uv run server with cloud backends
