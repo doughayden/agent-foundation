@@ -112,7 +112,7 @@ Commands per phase. Complete [Setup](#setup) and [Prepare](#prepare) first to cr
 
 **Phase 1 — Test fixtures:**
 ```bash
-git diff foundation-tags/$VERSION -- tests/conftest.py
+git diff foundation-tags/$VERSION -- tests/unit/conftest.py
 # Adapt fixtures, preserving downstream-only fixtures. Replace agent_foundation with your package name.
 ```
 

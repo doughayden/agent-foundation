@@ -80,6 +80,8 @@ nav:
       - OpenTelemetry Architecture: references/opentelemetry-architecture.md
     - Development:
       - Testing Patterns: references/testing.md
+      - Integration Tests: references/integration-tests.md
+      - Agent Evals: references/agent-evals.md
       - Code Quality Tools: references/code-quality.md
       - Cloud Backend Options: references/cloud-backend-options.md
       - Docker Compose: references/docker-compose-workflow.md

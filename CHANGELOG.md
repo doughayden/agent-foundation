@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Test-lane credential mocking is now per-lane instead of shared: the root `tests/conftest.py` moved to `tests/unit/conftest.py`, so its auth/dotenv `pytest_configure()` mocking scopes to the unit lane only. A future smoke lane can run against real credentials without the shared conftest suppressing them
+- Integration lane collapsed into a single module: the lane-level `tests/integration/conftest.py` is removed, with its fixtures, the `MockLlm` stub, and an autouse session fixture that blocks real credentials now inlined in `test_server_integration.py`
+- Integration and eval lanes resolve the agent package name from `src/` at import time instead of hard-coding it, so a downstream fork that renames the package reuses both lanes (and the eval gate) with no edits
+- Restructured `docs/references/testing.md` into the lane taxonomy plus the unit-test guide, splitting the integration lane into its own `docs/references/integration-tests.md` (added to the docs indexes and MkDocs nav); non-unit lanes now point to their own reference docs
+- Integration test lane and the `ci.yml` `integration` job now run against a `postgres:18` service container, matching the deployed `POSTGRES_18` Cloud SQL major version (previously `postgres:17`)
+
+### Fixed
+- `docs/references/agent-evals.md` is now listed in the MkDocs site nav (previously reachable only through the docs index pages)
+
 ## [0.18.0] - 2026-06-15
 
 ### Added

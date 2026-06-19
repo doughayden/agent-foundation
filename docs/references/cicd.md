@@ -303,7 +303,7 @@ config → metadata-extract → resolve-digest → prod-promote → prod-plan �
 **Pipeline (five jobs):**
 1. `changes` - dorny/paths-filter detects whether relevant files changed
 2. `code-quality` - runs ruff format check, ruff linting, mypy, pytest with coverage. Gated on `changes.outputs.code == 'true'`.
-3. `integration` - runs `pytest tests/integration` against a `postgres:17` service container (no coverage gate; the 100% gate is unit-lane-only). Gated on `changes.outputs.code == 'true'`.
+3. `integration` - runs `pytest tests/integration` against a `postgres:18` service container (no coverage gate; the 100% gate is unit-lane-only). Gated on `changes.outputs.code == 'true'`.
 4. `agent-eval` - runs the deterministic agent eval (`uv run pytest eval`) against Vertex AI, authenticating with the dev environment's WIF principal (no coverage gate). Gated on `changes.outputs.code == 'true'`.
 5. `status` - always-runs sentinel that aggregates results for branch protection
 

@@ -1,6 +1,6 @@
 # Testing Strategy
 
-Detailed testing patterns, organization, and requirements for the project.
+The lane taxonomy and the unit-test guide; the specialized lanes link to their own references.
 
 ## Test Lanes
 
@@ -13,45 +13,17 @@ A test's lane is decided by its runtime requirements and determinism, not by how
 | smoke | a live deployed URL | yes | needs a deploy | `uv run pytest tests/smoke` |
 | eval | the real LLM | gate metrics yes; judge metrics no | costs money | `uv run pytest eval` |
 
-The `tests/` lanes never call the live model; the `eval/` lane does. Non-unit lanes run by explicit path, both locally and in CI — the command or CI job is the selector. `testpaths = ["tests/unit"]` in `pyproject.toml` scopes a bare `uv run pytest` to the fast, free, deterministic lane so it can't accidentally require Postgres. An explicit path argument overrides it. Eval mechanics, commands, and gotchas live in [Agent Evals](agent-evals.md).
+The `tests/` lanes never call the live model; the `eval/` lane does. Non-unit lanes run by explicit path, both locally and in CI — the command or CI job is the selector. `testpaths = ["tests/unit"]` in `pyproject.toml` scopes a bare `uv run pytest` to the fast, free, deterministic lane so it can't accidentally require Postgres. An explicit path argument overrides it.
 
 Only the unit lane runs `--cov` with the 100% gate.
 
-## Integration Lane
+## Specialized Lanes
 
-The integration lane (`tests/integration/`) exercises the real FastAPI app against a real Postgres session service with no mocks. It builds the production app via ADK `get_fast_api_app()` with a `postgresql+asyncpg://` URI (a real `DatabaseSessionService`) and drives it in-process with httpx `ASGITransport`. The only substitution is the LLM: `root_agent.model` is replaced with a deterministic stub, so the run path persists and reads session state without a network call or cost. Agent behavior is owned by the eval lane, not this one.
+The rest of this guide covers the unit lane. The non-unit lanes each carry their own reference doc:
 
-### What it covers
-
-- Session lifecycle through the API: create, get, list, delete
-- An agent run that persists events and reads back session state
-- Postgres dialect strictness: asyncpg rejects ISO strings for `timestamptz` where sqlite tolerates them, so direct SQL binds native Python objects via typed `bindparam`. These tests demonstrate the asyncpg strictness constraint that motivates the typed-bindparam convention in AGENTS.md; the session-lifecycle and agent-run tests are what actually catch dialect regressions through `DatabaseSessionService`.
-
-### Run it locally
-
-Start an ephemeral Postgres container, run the lane, then tear it down:
-
-```bash
-docker run -d --rm --name your-agent-pg \
-  -p 127.0.0.1:5432:5432 \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=sessions \
-  postgres:17
-
-uv run pytest tests/integration
-
-docker stop your-agent-pg
-```
-
-The connection defaults to `postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/sessions`. Override it with the `INTEGRATION_DATABASE_URI` environment variable to point at a different host or port. This is a test-harness variable, not application runtime config, so it lives here rather than in `docs/environment-variables.md`.
-
-> [!NOTE]
-> The lane needs no GCP credentials. The root `tests/conftest.py` `pytest_configure()` patches `dotenv.load_dotenv` and `google.auth.default` for every lane.
-
-### How CI provides Postgres
-
-The `ci.yml` `integration` job runs a `postgres:17` service container (with a `pg_isready` health check) and sets `INTEGRATION_DATABASE_URI` to reach it. It is gated on the `changes` job and folded into the always-runs `status` sentinel, so the single required check `CI / status` covers it. The job runs `uv run pytest tests/integration` without `--cov` — the 100% coverage gate is unit-lane-only.
+- **Integration** (`tests/integration/`) — the real FastAPI app against a real Postgres session service, no mocks. See [Integration Tests](integration-tests.md).
+- **Smoke** (`tests/smoke/`) — assertions against a live deployed URL. Documented with the smoke lane when it lands.
+- **Eval** (`eval/`) — real agent behavior scored against committed eval sets; the only lane that catches LLM behavioral regression. The deterministic gate runs on every code PR, and `tests/unit/test_eval_artifacts.py` schema-checks the eval data in the unit lane. See [Agent Evals](agent-evals.md).
 
 ## Coverage Requirements
 
@@ -75,17 +47,18 @@ Lanes are top-level directories; unit test modules mirror source structure:
 ```
 eval/                            # LLM eval lane
 tests/
-  conftest.py                    # Shared fixtures, mocks, and test environment setup (all lanes)
   unit/
+    conftest.py                  # Shared fixtures, mocks, and unit test environment setup
     test_callbacks.py            # Tests for src/your_agent/callbacks.py
     test_tools.py                # Tests for src/your_agent/tools.py
     test_config.py               # Tests for src/your_agent/config.py
     ...
   integration/                   # Postgres + FastAPI lane
+    test_server_integration.py   # Fixtures, mocks, and tests in one module
   smoke/                         # Live deployed-URL lane
 ```
 
-The root `tests/conftest.py` applies to all `tests/` lanes (auth/dotenv mocking). Per-lane `conftest.py` files (e.g. a Postgres fixture in `integration/`) live in their lane directory. The eval lane lives outside `tests/` in the top-level `eval/` directory and loads the real `.env` itself (an autouse fixture in the test module).
+Each lane owns its credential posture: the unit lane's `tests/unit/conftest.py` mocks credentials within the `pytest_configure` hook; the integration lane mocks credentials in an autouse session fixture; the smoke lane uses real credentials. The eval lane lives outside `tests/` in the top-level `eval/` directory and loads the real `.env` itself (an autouse fixture in the test module).
 
 ### Naming Conventions
 
@@ -95,7 +68,7 @@ The root `tests/conftest.py` applies to all `tests/` lanes (auth/dotenv mocking)
 
 ### Shared Fixtures
 
-All reusable fixtures go in `tests/conftest.py`:
+All reusable unit-lane fixtures go in `tests/unit/conftest.py`:
 - Type hint fixture definitions with both parameters and return types
 - Use pytest-mock type aliases for returns: `MockType`, `AsyncMockType`
 - Factory pattern (not context managers)
@@ -104,7 +77,7 @@ All reusable fixtures go in `tests/conftest.py`:
 
 ### Test Double Naming
 
-Test double classes and fixtures follow a strict naming convention (established in root `conftest.py`):
+Test double classes and fixtures follow a strict naming convention (established in `tests/unit/conftest.py`):
 
 | Kind | Prefix | Example | Returns |
 |---|---|---|---|
@@ -202,7 +175,7 @@ def pytest_configure() -> None:
     # os.environ["KEY"] = "value"
 ```
 
-See `tests/conftest.py` for the complete implementation with detailed lifecycle comments.
+See `tests/unit/conftest.py` for the complete implementation with detailed lifecycle comments.
 
 ## Pydantic Validation Testing
 
@@ -281,15 +254,9 @@ uv run pytest tests/unit/test_file.py::test_name -v
 uv run ptw
 ```
 
-## Agent Evals
-
-The eval lane scores real agent behavior against committed eval sets, the only lane that catches LLM behavioral regression. The deterministic gate, `uv run pytest eval`, runs on every code PR via the `agent-eval` job and folds into the `CI / status` required check. `tests/unit/test_eval_artifacts.py` schema-checks every eval artifact in the unit lane, so malformed eval data fails fast with no LLM cost.
-
-The full eval surface, formats, every `adk` command, the metrics table, the deterministic-gate rationale, user simulation, and gotchas, lives in [Agent Evals](agent-evals.md).
-
 ## Examples
 
-See `tests/conftest.py` and existing test files for complete patterns:
+See `tests/unit/conftest.py` and existing test files for complete patterns:
 - Fixture factories
 - ADK mocks
 - Environment mocking

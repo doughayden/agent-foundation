@@ -87,7 +87,7 @@ jobs:
     timeout-minutes: 10  # Typical run: 2-3 min (deps + Postgres lane). 10 min prevents hanging
     services:
       postgres:
-        image: postgres:17
+        image: postgres:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
