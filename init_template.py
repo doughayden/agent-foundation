@@ -551,7 +551,6 @@ def main() -> NoReturn:
             "Dockerfile",
             "pyproject.toml",
             "README.md",
-            "tests/conftest.py",
             "mkdocs.yml",
         ]
 
@@ -564,7 +563,9 @@ def main() -> NoReturn:
         doc_files = (p for p in Path("docs").rglob("*.md") if p not in skip_docs)
         files_to_update.extend(str(path) for path in doc_files)
 
-        # Glob the test suite
+        # Glob the test suite. conftest.py is intentionally excluded: it derives the
+        # package name at runtime (next(SRC_DIR.glob("*/__init__.py"))), so it needs no
+        # rewriting.
         test_files = Path("tests").rglob("test_*.py")
         files_to_update.extend(str(path) for path in test_files)
 

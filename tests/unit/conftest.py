@@ -7,10 +7,21 @@ credentials.
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import pytest
 from pytest_mock import MockerFixture, MockType
+
+# Source root holding the single agent package (src/<package>/). The package name is
+# derived from it so a downstream fork that renames the package reuses these fixtures
+# with no edits — patch targets below build off PACKAGE_NAME rather than a literal.
+SRC_DIR = Path(__file__).parents[2] / "src"
+
+# The package directory name. The template has exactly one package under src/, so the
+# lone dir with an __init__.py is unambiguous; the marker skips non-package entries
+# (.DS_Store, *.egg-info).
+PACKAGE_NAME = next(SRC_DIR.glob("*/__init__.py")).parent.name
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -455,7 +466,7 @@ def create_mock_usage_metadata() -> Callable[..., MockUsageMetadata]:
 def mock_span(mocker: MockerFixture) -> MockType:
     """Mock span returned by ``trace.get_current_span()`` in callbacks."""
     span = mocker.Mock()
-    mocker.patch("agent_foundation.callbacks.trace.get_current_span", return_value=span)
+    mocker.patch(f"{PACKAGE_NAME}.callbacks.trace.get_current_span", return_value=span)
     return span
 
 
@@ -567,7 +578,7 @@ def mock_load_dotenv(mocker: MockerFixture) -> MockType:
     Returns:
         Mock object for load_dotenv function.
     """
-    return mocker.patch("agent_foundation.config.load_dotenv")
+    return mocker.patch(f"{PACKAGE_NAME}.config.load_dotenv")
 
 
 @pytest.fixture

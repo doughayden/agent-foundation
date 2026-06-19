@@ -19,7 +19,8 @@ connections get created on a loop that's closed before engine disposal.
 
 Postgres connection is read from ``INTEGRATION_DATABASE_URI`` (default points at a
 local ephemeral container on ``127.0.0.1:5432``). CI provides Postgres via a service
-container; locally, run an ephemeral container (see ``docs/references/testing.md``).
+container; locally, run an ephemeral container (see
+``docs/references/integration-tests.md``).
 
 The lane needs no GCP credentials. The ``_mock_gcp_credentials`` autouse session
 fixture below blocks real ADC and ``.env`` lookups. A fixture suffices because this
