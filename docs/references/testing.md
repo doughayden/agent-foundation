@@ -22,7 +22,7 @@ Only the unit lane runs `--cov` with the 100% gate.
 The rest of this guide covers the unit lane. The non-unit lanes each carry their own reference doc:
 
 - **Integration** (`tests/integration/`) — the real FastAPI app against a real Postgres session service, no mocks. See [Integration Tests](integration-tests.md).
-- **Smoke** (`tests/smoke/`) — assertions against a live deployed URL. Documented with the smoke lane when it lands.
+- **Smoke** (`tests/smoke/`) — assertions against a live deployed URL, run post-deploy against a freshly applied Cloud Run revision. See [Smoke Tests](smoke-tests.md).
 - **Eval** (`eval/`) — real agent behavior scored against committed eval sets; the only lane that catches LLM behavioral regression. The deterministic gate runs on every code PR, and `tests/unit/test_eval_artifacts.py` schema-checks the eval data in the unit lane. See [Agent Evals](agent-evals.md).
 
 ## Coverage Requirements

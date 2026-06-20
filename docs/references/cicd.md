@@ -13,6 +13,7 @@ GitHub Actions workflow architecture, mechanics, and customization.
 - **`docker-build.yml`** - Docker image build and push
 - **`pull-and-promote.yml`** - Image promotion between registries (production mode)
 - **`resolve-image-digest.yml`** - Digest lookup by tag (production mode)
+- **`smoke.yml`** - Post-deploy smoke tests against the live deployed revision
 - **`terraform-plan-apply.yml`** - Terraform deployment
 
 **Standalone CI Workflow:**
@@ -56,8 +57,11 @@ GitHub Actions workflow architecture, mechanics, and customization.
 - `build` - Build Docker image (branch events only, not tags)
 - `resolve-digest` - Look up image in stage by tag (tag events in production mode)
 - `dev-plan` / `dev-apply` - Dev environment (branch events)
+- `dev-smoke` - Post-deploy smoke against the live dev revision (after `dev-apply`)
 - `stage-promote` / `stage-plan` / `stage-apply` - Stage environment (merge in production mode)
+- `stage-smoke` - Post-deploy smoke against the live stage revision (after `stage-apply`, production mode only)
 - `prod-promote` / `prod-plan` / `prod-apply` - Prod environment (tags in production mode)
+- `prod-smoke` - Post-deploy smoke against the live prod revision (after `prod-apply`, production mode only)
 
 **Concurrency:**
 - PR builds: Cancel in-progress on new push (`cancel-in-progress: true`)
@@ -79,6 +83,7 @@ paths:
   - '.github/workflows/metadata-extract.yml'
   - '.github/workflows/pull-and-promote.yml'
   - '.github/workflows/resolve-image-digest.yml'
+  - '.github/workflows/smoke.yml'
   - '.github/workflows/terraform-plan-apply.yml'
 ```
 
@@ -109,51 +114,54 @@ config → metadata-extract → docker-build → dev-plan
 
 **Dev-only mode:**
 ```
-config → metadata-extract → docker-build → dev-plan → dev-apply
+config → metadata-extract → docker-build → dev-plan → dev-apply → dev-smoke
                               ↓
                            Push to dev registry: {sha}, latest
                               ↓
                            Deploy to dev Cloud Run
+                              ↓
+                           Smoke the live dev revision
 ```
 
 **Production mode:**
 ```
 config → metadata-extract → docker-build
            ↓                    ↓
-           └────────────────────┴─→ dev-plan → dev-apply
+           └────────────────────┴─→ dev-plan → dev-apply → dev-smoke
                                     (parallel)
                                 ↓
-                              stage-promote → stage-plan → stage-apply
+                              stage-promote → stage-plan → stage-apply → stage-smoke
                                 ↓
                            Pull from dev, push to stage
                                 ↓
                            Deploy to stage Cloud Run
+                                ↓
+                           Smoke the live stage revision
 ```
 
-**Result:** Dev deployed (always), stage deployed (production mode only).
+**Result:** Dev deployed and smoked (always), stage deployed and smoked (production mode only). The smoke lane detail lives in [Smoke Tests](smoke-tests.md).
 
 ### Tag Flow
 
 **Dev-only mode:**
 ```
-config → metadata-extract → docker-build → dev-plan → dev-apply
-                              ↓
-                           Push to dev registry: {sha}, latest, {version}
-                              ↓
-                           Deploy to dev Cloud Run
+config → metadata-extract → (no deploy)
 ```
+Tags are a no-op in dev-only mode: `build` skips on tag events and `dev-plan`/`dev-apply` are branch-only, so only `meta` and `config` run. Dev-only mode deploys on merge to main, not on tags.
 
 **Production mode:**
 ```
-config → metadata-extract → resolve-digest → prod-promote → prod-plan → prod-apply
+config → metadata-extract → resolve-digest → prod-promote → prod-plan → prod-apply → prod-smoke
                               ↓                  ↓                          ↑
                            Look up image in     Pull from stage         (requires
                            stage by tag         Push to prod             approval)
                               ↓
                            Deploy to prod Cloud Run (after approval)
+                              ↓
+                           Smoke the live prod revision
 ```
 
-**Result:** Version-tagged deployment. Prod requires manual approval in `prod-apply` environment.
+**Result:** Version-tagged deployment, smoked after apply. Prod requires manual approval in `prod-apply` environment.
 
 ## Image Tagging Strategy
 
@@ -293,6 +301,23 @@ config → metadata-extract → resolve-digest → prod-promote → prod-plan �
 - `plan` job on PR: Comment plan, don't save artifact
 - `plan` job on merge: Save plan artifact (no comment)
 - `apply` job: Use saved plan artifact
+
+### smoke.yml
+
+**Purpose:** Run the post-deploy smoke lane against the live deployed Cloud Run revision.
+
+**Inputs:**
+- `environment` (dev/stage/prod) - selects the GitHub Environment vars and secrets
+- `service_url` - deployed Cloud Run URL, from the apply job's `smoke_target_url` output
+- `invoker_service_account` - invoker SA email to impersonate, from the apply job's `smoke_invoker_service_account_email` output
+
+**How it works:**
+1. Authenticate to GCP via WIF
+2. Run `uv run pytest tests/smoke` with `SMOKE_BASE_URL` and `SMOKE_INVOKER_SA` set from the inputs, surfacing pass/fail in the job summary
+
+The service deploys `--no-allow-unauthenticated`, so requests need a Cloud Run ID token. The lane mints one in-process by impersonating a dedicated invoker SA (the runner's WIF principal holds `serviceAccountOpenIdTokenCreator` on it), so no token crosses the environment. The service URL and SA email come from `terraform-plan-apply.yml` outputs. See [Security Posture](security-posture.md) for the identity model. The lane layering and assertions live in [Smoke Tests](smoke-tests.md).
+
+**When it runs:** Called by `ci-cd.yml` after each environment apply — `dev-smoke` after `dev-apply` on merge, and in production mode `stage-smoke` after `stage-apply` on merge and `prod-smoke` after `prod-apply` on tag. Not part of the PR gate.
 
 ## Standalone CI Workflow
 

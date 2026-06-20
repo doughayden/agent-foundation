@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Post-deploy smoke test lane (`tests/smoke/`): after each `terraform apply`, drives the live Cloud Run URL over the real network to confirm the new revision serves end to end. Layered cheapest-first so a failure localizes the broken subsystem (L0 `/health`, L1 session create + read-back, L2 a thin `/run_sse` turn asserting only that a text part streamed, L3 delete + 404), with a readiness wait that absorbs cold-start latency. Authenticates by impersonating a dedicated invoker SA in-process to mint a Cloud Run ID token, so the same code runs locally and in CI. Runs by explicit path only (`uv run pytest tests/smoke`); `ci-cd.yml` runs it after each environment apply (`dev-smoke`/`stage-smoke`/`prod-smoke`), not in the PR gate (#101)
+- Dedicated smoke invoker service account (`terraform/main/smoke.tf`): a least-privilege identity with resource-scoped `roles/run.invoker`, plus `roles/iam.serviceAccountOpenIdTokenCreator` for the WIF principal so CI can mint the Cloud Run ID token by impersonation. `terraform-plan-apply.yml` exposes the service URL and invoker SA email as outputs for the smoke job (#101)
+
 ### Changed
-- Test-lane credential mocking is now per-lane instead of shared: the root `tests/conftest.py` moved to `tests/unit/conftest.py`, so its auth/dotenv `pytest_configure()` mocking scopes to the unit lane only. A future smoke lane can run against real credentials without the shared conftest suppressing them
+- Test-lane credential mocking is now per-lane instead of shared: the root `tests/conftest.py` moved to `tests/unit/conftest.py`, so its auth/dotenv `pytest_configure()` mocking scopes to the unit lane only. A smoke lane can run against real credentials without the shared conftest suppressing them
 - Integration lane collapsed into a single module: the lane-level `tests/integration/conftest.py` is removed, with its fixtures, the `MockLlm` stub, and an autouse session fixture that blocks real credentials now inlined in `test_server_integration.py`
 - Unit, integration, and eval lanes resolve the agent package name from `src/` at import time instead of hard-coding it, so a downstream fork that renames the package reuses every lane (and the eval gate) with no edits. The unit `conftest.py` builds its mock patch targets from the discovered name, so `init_template.py` no longer rewrites it and template syncs diff it clean
 - Restructured `docs/references/testing.md` into the lane taxonomy plus the unit-test guide, splitting the integration lane into its own `docs/references/integration-tests.md` (added to the docs indexes and MkDocs nav); non-unit lanes now point to their own reference docs

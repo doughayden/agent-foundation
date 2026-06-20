@@ -16,6 +16,7 @@ on:
       - '.github/workflows/metadata-extract.yml'
       - '.github/workflows/pull-and-promote.yml'
       - '.github/workflows/resolve-image-digest.yml'
+      - '.github/workflows/smoke.yml'
       - '.github/workflows/terraform-plan-apply.yml'
   push:
     branches: [main]
@@ -32,6 +33,7 @@ on:
       - '.github/workflows/metadata-extract.yml'
       - '.github/workflows/pull-and-promote.yml'
       - '.github/workflows/resolve-image-digest.yml'
+      - '.github/workflows/smoke.yml'
       - '.github/workflows/terraform-plan-apply.yml'
     tags:
       - 'v*'
@@ -107,6 +109,18 @@ jobs:
       use_saved_plan: ${{ github.event_name == 'push' }}  # Matches the dev-plan job's save_plan pattern
     secrets: inherit
 
+  dev-smoke:
+    name: Smoke Dev
+    # Post-deploy smoke test against the live revision: same gate as apply
+    if: github.ref_type == 'branch' && github.event_name == 'push'
+    needs: dev-apply
+    uses: ./.github/workflows/smoke.yml
+    with:
+      environment: dev
+      service_url: ${{ needs.dev-apply.outputs.smoke_target_url }}
+      invoker_service_account: ${{ needs.dev-apply.outputs.smoke_invoker_service_account_email }}
+    secrets: inherit
+
   # Stage environment (merge to main only, not PRs or tags, wait for dev to deploy)
   stage-promote:
     name: Promote to Stage
@@ -142,6 +156,18 @@ jobs:
       docker_image: ${{ needs.stage-promote.outputs.digest_uri }}
       terraform_action: apply
       use_saved_plan: true
+    secrets: inherit
+
+  stage-smoke:
+    name: Smoke Stage
+    # Post-deploy smoke test against the live revision: same gate as apply
+    if: needs.config.outputs.production_mode == 'true' && github.ref_type == 'branch' && github.event_name == 'push'
+    needs: [config, stage-apply]
+    uses: ./.github/workflows/smoke.yml
+    with:
+      environment: stage
+      service_url: ${{ needs.stage-apply.outputs.smoke_target_url }}
+      invoker_service_account: ${{ needs.stage-apply.outputs.smoke_invoker_service_account_email }}
     secrets: inherit
 
   # Production environment (tag events only)
@@ -181,4 +207,16 @@ jobs:
       docker_image: ${{ needs.prod-promote.outputs.digest_uri }}
       terraform_action: apply
       use_saved_plan: true
+    secrets: inherit
+
+  prod-smoke:
+    name: Smoke Prod
+    # Post-deploy smoke test against the live revision: same gate as apply
+    if: needs.config.outputs.production_mode == 'true' && github.ref_type == 'tag'
+    needs: [config, prod-apply]
+    uses: ./.github/workflows/smoke.yml
+    with:
+      environment: prod
+      service_url: ${{ needs.prod-apply.outputs.smoke_target_url }}
+      invoker_service_account: ${{ needs.prod-apply.outputs.smoke_invoker_service_account_email }}
     secrets: inherit
