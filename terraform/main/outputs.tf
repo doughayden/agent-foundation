@@ -98,3 +98,13 @@ output "workload_identity_pool_principal_identifier" {
   description = "GitHub Actions workload identity pool principalSet identifier"
   value       = var.workload_identity_pool_principal_identifier
 }
+
+output "smoke_target_url" {
+  description = "Cloud Run service URL the post-deploy smoke lane targets"
+  value       = google_cloud_run_v2_service.app[var.region].uri
+}
+
+output "smoke_invoker_service_account_email" {
+  description = "Email of the service account the CI smoke lane impersonates to invoke Cloud Run"
+  value       = google_service_account.smoke_invoker.email
+}

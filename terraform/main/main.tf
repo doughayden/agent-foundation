@@ -55,16 +55,10 @@ locals {
   # Create a unique Agent resource name per deployment environment
   resource_name = "${var.agent_name}-${var.environment}"
 
-  # Service account IDs — GCP 30-char limit. Truncate agent_name (prefix) to preserve environment suffix.
-  sa_limit = 30
-
+  # Service account ID 30-char limit: truncate prefix to preserve environment suffix
   sa_suffix_app = "-${var.environment}"
-  sa_prefix_app = substr(var.agent_name, 0, local.sa_limit - length(local.sa_suffix_app))
+  sa_prefix_app = substr(var.agent_name, 0, 30 - length(local.sa_suffix_app))
   sa_id_app     = "${local.sa_prefix_app}${local.sa_suffix_app}"
-
-  sa_suffix_bastion = "-bastion-${var.environment}"
-  sa_prefix_bastion = substr(var.agent_name, 0, local.sa_limit - length(local.sa_suffix_bastion))
-  sa_id_bastion     = "${local.sa_prefix_bastion}${local.sa_suffix_bastion}"
 
   # Create labels for billing organization
   labels = {

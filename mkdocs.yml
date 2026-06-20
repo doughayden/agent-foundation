@@ -81,6 +81,7 @@ nav:
     - Development:
       - Testing Patterns: references/testing.md
       - Integration Tests: references/integration-tests.md
+      - Smoke Tests: references/smoke-tests.md
       - Agent Evals: references/agent-evals.md
       - Code Quality Tools: references/code-quality.md
       - Cloud Backend Options: references/cloud-backend-options.md

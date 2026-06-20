@@ -1,0 +1,113 @@
+name: Smoke
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'GitHub Environment (dev, stage, prod) for vars/secrets'
+        required: true
+        type: string
+      service_url:
+        description: 'Deployed Cloud Run service URL (terraform smoke_target_url output)'
+        required: true
+        type: string
+      invoker_service_account:
+        description: 'Invoker SA email to impersonate (terraform smoke_invoker_service_account_email output)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  smoke:
+    name: Smoke Tests (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 10  # Typical run: 2-3 min (deps + readiness wait + 4 live HTTP checks). 10 min prevents hanging
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-extras --locked
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Run smoke tests
+        shell: bash {0}  # Removes -e flag so pytest's exit code is captured for the summary
+        env:
+          # The lane impersonates the invoker SA in-process (caller = the runner's WIF
+          # principal) to mint the Cloud Run ID token; no token crosses the environment.
+          SMOKE_BASE_URL: ${{ inputs.service_url }}
+          SMOKE_INVOKER_SA: ${{ inputs.invoker_service_account }}
+        run: |
+          # Map environments to emojis (mirrors the terraform summary's envIcon)
+          get_env_emoji() {
+            case "$1" in
+              dev) echo "🧪" ;;
+              stage) echo "🔬" ;;
+              prod) echo "🚀" ;;
+              *) echo "🌎" ;;
+            esac
+          }
+
+          # Create secure temp file
+          OUTPUT_FILE=$(mktemp)
+
+          # Stream output to both logs (real-time) and file (for summary)
+          uv run pytest tests/smoke 2>&1 | tee "$OUTPUT_FILE"
+          EXIT_CODE=${PIPESTATUS[0]}  # pytest's exit code, not tee's
+
+          if [ "$EXIT_CODE" -eq 0 ]; then
+            STATUS_ICON="✅"
+            STATUS="success"
+          else
+            STATUS_ICON="❌"
+            STATUS="failure"
+          fi
+          ENV_EMOJI=$(get_env_emoji "${{ inputs.environment }}")
+
+          # Build job summary
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 💨 Smoke Test Summary
+
+          **Environment:** ${ENV_EMOJI} \`${{ inputs.environment }}\`
+          **Target:** 🔗 \`${{ inputs.service_url }}\`
+          **Status:** ${STATUS_ICON} \`${STATUS}\`
+
+          <details><summary>Smoke output</summary>
+
+          \`\`\`
+          EOF
+
+          cat "$OUTPUT_FILE" >> $GITHUB_STEP_SUMMARY
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          \`\`\`
+
+          </details>
+
+          ---
+          EOF
+
+          # Clean up temp file
+          rm -f "$OUTPUT_FILE"
+
+          exit $EXIT_CODE

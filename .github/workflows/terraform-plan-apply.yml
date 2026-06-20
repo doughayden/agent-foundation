@@ -37,6 +37,13 @@ on:
         required: false
         type: boolean
         default: false
+    outputs:
+      smoke_target_url:
+        description: 'Cloud Run service URL for the post-deploy smoke lane (apply only)'
+        value: ${{ jobs.terraform.outputs.smoke_target_url }}
+      smoke_invoker_service_account_email:
+        description: 'Invoker SA email the smoke lane impersonates (apply only)'
+        value: ${{ jobs.terraform.outputs.smoke_invoker_service_account_email }}
 
 permissions:
   contents: read
@@ -70,6 +77,9 @@ jobs:
     needs: resolve-env
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    outputs:
+      smoke_target_url: ${{ steps.tf_outputs.outputs.smoke_target_url }}
+      smoke_invoker_service_account_email: ${{ steps.tf_outputs.outputs.smoke_invoker_service_account_email }}
 
     env:
       # Plan file naming (consistent across plan/upload/download/apply)
@@ -261,7 +271,7 @@ jobs:
             | 🤖 Validation | ${statusIcon('${{ steps.validate.outcome }}')} \`${{ steps.validate.outcome }}\` |
             | 📖 Plan | ${statusIcon('${{ steps.plan.outcome }}')} \`${{ steps.plan.outcome }}\` |
             ${validationOutput}
-            <details><summary>Plan Output</summary>
+            <details><summary>Plan output</summary>
 
             \`\`\`terraform
             ${process.env.PLAN_OUTPUT}
@@ -319,6 +329,14 @@ jobs:
           echo "::error::Terraform apply failed with exit code ${{ steps.apply.outputs.exitcode }}"
           exit 1
 
+      - name: Capture Terraform outputs
+        id: tf_outputs
+        if: inputs.terraform_action == 'apply' && steps.apply.outputs.exitcode == '0'
+        working-directory: terraform/main
+        run: |
+          echo "smoke_target_url=$(terraform output -raw smoke_target_url)" >> $GITHUB_OUTPUT
+          echo "smoke_invoker_service_account_email=$(terraform output -raw smoke_invoker_service_account_email)" >> $GITHUB_OUTPUT
+
       - name: Generate Apply Summary
         if: always() && steps.apply.outcome != 'skipped'
         uses: actions/github-script@v8
@@ -350,7 +368,7 @@ jobs:
             const environment = '${{ needs.resolve-env.outputs.terraform_environment }}';
             const usedSavedPlan = ${{ inputs.use_saved_plan }} === true;
             const planSource = usedSavedPlan
-              ? '**📦 Plan Source:** Saved artifact `${{ env.PLAN_FILE }}`\n\n'
+              ? '**Plan Source:** 📦 `${{ env.PLAN_FILE }}`\n\n'
               : '';
 
             const body = `
@@ -362,7 +380,7 @@ jobs:
             |------|:------:|
             | 🚀 Apply | ${statusIcon('${{ steps.apply.outcome }}')} \`${{ steps.apply.outcome }}\` |
 
-            <details><summary>Apply Output</summary>
+            <details><summary>Apply output</summary>
 
             \`\`\`terraform
             ${process.env.APPLY_OUTPUT}

@@ -5,6 +5,11 @@ locals {
     "roles/monitoring.metricWriter",
   ])
 
+  # Service account ID 30-char limit: truncate prefix to preserve environment suffix
+  sa_suffix_bastion = "-bastion-${var.environment}"
+  sa_prefix_bastion = substr(var.agent_name, 0, 30 - length(local.sa_suffix_bastion))
+  sa_id_bastion     = "${local.sa_prefix_bastion}${local.sa_suffix_bastion}"
+
   bastion_user_data = templatefile(
     "${path.module}/templates/bastion-cloud-init.yaml",
     {
