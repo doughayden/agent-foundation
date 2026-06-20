@@ -43,8 +43,8 @@ from google.auth import impersonated_credentials
 from google.auth.transport.requests import Request
 from httpx import AsyncClient, TransportError
 
-# Source root holding the single agent package (src/<package>/). The ADK app name is
-# its directory name, discovered so a renamed fork reuses the lane with no edits.
+# Source root holding the single agent package (src/<package>/)
+# The ADK app name is its directory name: auto-discovered for renamed forks
 SRC_DIR = Path(__file__).parents[2] / "src"
 APP_NAME = next(SRC_DIR.glob("*/__init__.py")).parent.name
 
@@ -65,12 +65,15 @@ if not SMOKE_INVOKER_SA:
 # Smoke test session user
 USER_ID = "smoke-user"
 
-# Scope for the impersonation exchange; Cloud Run authorizes on IAM, not the scope.
+# Scope for the impersonation exchange; Cloud Run authorizes on IAM, not the scope
 CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform"
 
-# Cold-start budget for the post-deploy readiness wait (Cloud Run startup-probe window).
+# Cold-start budget for the post-deploy readiness wait (Cloud Run startup-probe window)
 READINESS_DEADLINE = 180.0
 READINESS_INTERVAL = 3.0
+
+# Per-request timeout for the live client once the revision is serving
+CLIENT_TIMEOUT = 30.0
 
 pytestmark = [
     pytest.mark.smoke,
@@ -126,7 +129,7 @@ async def client() -> AsyncIterator[AsyncClient]:
     async with AsyncClient(
         base_url=SMOKE_BASE_URL,
         headers={"Authorization": f"Bearer {id_token_credentials.token}"},
-        timeout=30.0,
+        timeout=CLIENT_TIMEOUT,
     ) as http_client:
         await _wait_until_serving(http_client)
         yield http_client
