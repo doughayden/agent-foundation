@@ -14,6 +14,7 @@ GitHub Actions workflow architecture, mechanics, and customization.
 - **`pull-and-promote.yml`** - Image promotion between registries (production mode)
 - **`resolve-image-digest.yml`** - Digest lookup by tag (production mode)
 - **`smoke.yml`** - Post-deploy smoke tests against the live deployed revision
+- **`require-stage-success.yml`** - Tag-time gate requiring the tagged SHA's stage run to have passed before prod promotion (production mode)
 - **`terraform-plan-apply.yml`** - Terraform deployment
 
 **Standalone CI Workflow:**
@@ -60,6 +61,7 @@ GitHub Actions workflow architecture, mechanics, and customization.
 - `dev-smoke` - Post-deploy smoke against the live dev revision (after `dev-apply`)
 - `stage-promote` / `stage-plan` / `stage-apply` - Stage environment (merge in production mode)
 - `stage-smoke` - Post-deploy smoke against the live stage revision (after `stage-apply`, production mode only)
+- `require-stage-success` - Tag-time gate: requires the tagged SHA's stage run to have passed before promotion (production mode, upstream of `prod-promote`)
 - `prod-promote` / `prod-plan` / `prod-apply` - Prod environment (tags in production mode)
 - `prod-smoke` - Post-deploy smoke against the live prod revision (after `prod-apply`, production mode only)
 
@@ -84,6 +86,7 @@ paths:
   - '.github/workflows/pull-and-promote.yml'
   - '.github/workflows/resolve-image-digest.yml'
   - '.github/workflows/smoke.yml'
+  - '.github/workflows/require-stage-success.yml'
   - '.github/workflows/terraform-plan-apply.yml'
 ```
 
@@ -151,17 +154,19 @@ Tags are a no-op in dev-only mode: `build` skips on tag events and `dev-plan`/`d
 
 **Production mode:**
 ```
-config → metadata-extract → resolve-digest → prod-promote → prod-plan → prod-apply → prod-smoke
-                              ↓                  ↓                          ↑
-                           Look up image in     Pull from stage         (requires
-                           stage by tag         Push to prod             approval)
-                              ↓
+config → metadata-extract → resolve-digest → require-stage-success → prod-promote → prod-plan → prod-apply → prod-smoke
+                              ↓                ↓                       ↓                          ↑
+                           Look up image in  Require the tagged     Pull from stage           (requires
+                           stage by tag      SHA's stage to pass    Push to prod               approval)
+                              ↓                ↓
                            Deploy to prod Cloud Run (after approval)
                               ↓
                            Smoke the live prod revision
 ```
 
-**Result:** Version-tagged deployment, smoked after apply. Prod requires manual approval in `prod-apply` environment.
+`require-stage-success` gates the prod pipeline tag run. See [Require Stage Success](#require-stage-successyml) for details.
+
+**Result:** Version-tagged deployment, gated on stage success and smoked after apply. Prod requires manual approval in `prod-apply` environment.
 
 ## Image Tagging Strategy
 
@@ -318,6 +323,24 @@ config → metadata-extract → resolve-digest → prod-promote → prod-plan �
 The service deploys `--no-allow-unauthenticated`, so requests need a Cloud Run ID token. The lane mints one in-process by impersonating a dedicated invoker SA (the runner's WIF principal holds `serviceAccountOpenIdTokenCreator` on it), so no token crosses the environment. The service URL and SA email come from `terraform-plan-apply.yml` outputs. See [Security Posture](security-posture.md) for the identity model. The lane layering and assertions live in [Smoke Tests](smoke-tests.md).
 
 **When it runs:** Called by `ci-cd.yml` after each environment apply — `dev-smoke` after `dev-apply` on merge, and in production mode `stage-smoke` after `stage-apply` on merge and `prod-smoke` after `prod-apply` on tag. Not part of the PR gate.
+
+### require-stage-success.yml
+
+**Purpose:** Tag-time gate that requires the tagged SHA's stage release candidate to have passed before prod promotion.
+
+**Inputs:**
+- `head_sha` - the tagged commit whose stage run is required to have passed (`github.sha` on the tag event)
+- `stage_run_workflow` (optional, default `ci-cd.yml`) - the workflow whose merge-to-main run deployed stage
+
+**How it works:**
+1. Find the merge run for `head_sha` on the default branch (the tag run is excluded because its head branch is the tag ref)
+2. Require that run's `Apply Stage` and `Smoke Stage` jobs both concluded `success` (matching the reusable-workflow `X / <inner>` job-naming; anything but success, including `skipped`, fails closed)
+
+Stage success is the whole prod gate. The promotion workflow copies the image digest-for-digest and prod deploys by digest, so prod runs exactly the digest `resolve-digest` reads from stage `{sha7}` — the fidelity guarantee lives there, not in this gate. So the gate only has to confirm that digest was validated, and a green `Smoke Stage` does: stage `{sha7}` is written only by that commit's own merge-run attempts, the tag run never rebuilds (it only re-reads `{sha7}` and promotes it), and the jobs API reports the latest attempt, so a green smoke means `{sha7}` resolves to the digest that was smoked. No separate digest comparison is needed (and conclusions, not outputs, are what the REST API exposes after a run). The only way to break that equivalence is an out-of-band registry repoint of `{sha7}`, governed by Artifact Registry IAM. Because `prod-promote` declares `needs: require-stage-success`, a failure halts the tag run upstream of the `prod-apply` approval.
+
+**Permissions:** `actions: read` (read the merge run's job conclusions), `contents: read`. No GCP credentials.
+
+**When it runs:** Called by `ci-cd.yml` on tag events in production mode, before `prod-promote`. Generic and agent-agnostic, so every fork inherits it.
 
 ## Standalone CI Workflow
 
