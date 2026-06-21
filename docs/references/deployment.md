@@ -135,7 +135,8 @@ build (push to dev registry)
 **Git tag push:**
 ```
 resolve-digest (look up image in stage registry by tag)
-  ↓
+require-stage-success (gate: tagged SHA's stage run passed)
+  ↓  (both required by prod-promote)
 prod-promote (pull from stage → push to prod)
   ↓
 prod-plan (auto, saves tfplan-prod)
@@ -147,6 +148,7 @@ prod-apply (gated: requires manual approval, uses saved plan)
 - Dev deployment never waits for stage or prod
 - Stage validates every merge (continuous feedback)
 - Prod deploys only on explicit git tags (release discipline)
+- Prod promotion is gated on the tagged commit's stage run passing (see [CI/CD Workflows: Require Stage Success](cicd.md#require-stage-successyml))
 - Uniform plan → apply pattern across all environments
 
 ## Image Promotion
@@ -177,7 +179,10 @@ Production mode uses **image promotion** (pull from source, push to target) inst
 1. resolve-digest job:
    - Queries stage registry for image by tag: `v1.0.0`
    - Extracts digest: `sha256:abc123`
-2. prod-promote job:
+2. require-stage-success job (gates prod-promote):
+   - Confirms the tagged commit's merge run had `Apply Stage` and `Smoke Stage` both succeed
+   - Fails closed otherwise, halting the tag run before the `prod-apply` approval
+3. prod-promote job:
    - Authenticates to stage and prod registries via WIF
    - Pulls image from stage registry by digest
    - Re-tags with all source tags

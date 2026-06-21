@@ -1,0 +1,120 @@
+# Require Stage Success
+#
+# Tag-time gate that requires the tagged commit's stage release candidate to have passed
+# before prod promotion. The tag run and the original merge share a SHA, and the tag run
+# never rebuilds (it only re-reads stage `{sha7}` and promotes it), so verifying the
+# merge run's stage gates passed is sufficient: stage `{sha7}` is written only by that
+# commit's own merge-run attempts, and the jobs API reports the latest attempt, so a
+# green `Smoke Stage` means `{sha7}` resolves to the digest that was smoked. The
+# promotion workflow (digest-preserving copy) and deploy-by-digest then guarantee prod
+# runs exactly that digest.
+name: Require Stage Success
+
+on:
+  workflow_call:
+    inputs:
+      head_sha:
+        description: 'Tagged commit SHA whose stage run is required to have passed'
+        required: true
+        type: string
+      stage_run_workflow:
+        description: 'Workflow file whose merge-to-main run deployed stage'
+        required: false
+        type: string
+        default: ci-cd.yml
+
+permissions:
+  contents: read
+  actions: read  # Read the merge run's job conclusions
+
+jobs:
+  require-stage-success:
+    name: Require Stage Success
+    runs-on: ubuntu-latest
+    timeout-minutes: 10  # Typical run: <1 min (two API lookups)
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ inputs.head_sha }}
+      WORKFLOW_FILE: ${{ inputs.stage_run_workflow }}
+      # The merge run lands on the default branch; the tag run's head_branch is the tag
+      # ref. Filtering by the default branch selects the merge run, not the tag run.
+      BASE_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - name: Require the stage gates for the tagged SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # A reusable-workflow caller job named "X" surfaces its inner jobs as "X / <inner>"
+          # when it runs, or a bare "X" with conclusion "skipped" when it does not. Matching
+          # the exact name or that prefix covers both. Echo a single status word for the
+          # prefix (success, the first non-success conclusion, or "missing") and return
+          # non-zero unless every matched job succeeded. An unfinished job has a null
+          # conclusion, so fall back to its live status ("in_progress"/"queued") to fail
+          # closed (a null would otherwise be swallowed and read as success). Annotations go
+          # to stderr so they do not pollute the captured status word.
+          job_status() {
+            local prefix="$1" total nonsuccess
+            total=$(jq --arg p "$prefix" \
+              '[.jobs[] | select(.name == $p or (.name | startswith($p + " / ")))] | length' \
+              <<< "$JOBS_JSON")
+            if [ "$total" -eq 0 ]; then
+              echo "::error::No '${prefix}' job in stage run ${RUN_ID}." >&2
+              echo "missing"
+              return 1
+            fi
+            nonsuccess=$(jq -r --arg p "$prefix" \
+              '[.jobs[] | select(.name == $p or (.name | startswith($p + " / "))) | (.conclusion // .status) | select(. != "success")] | first // empty' \
+              <<< "$JOBS_JSON")
+            if [ -n "$nonsuccess" ]; then
+              echo "::error::'${prefix}' is '${nonsuccess}' (not success) in stage run ${RUN_ID}." >&2
+              echo "$nonsuccess"
+              return 1
+            fi
+            echo "success"
+          }
+
+          status_icon() { if [ "$1" = "success" ]; then echo "✅"; else echo "❌"; fi; }
+
+          # The merge run for this commit (one run per SHA; re-runs update its attempts).
+          RUN_ID=$(gh api \
+            "repos/${REPO}/actions/workflows/${WORKFLOW_FILE}/runs?head_sha=${HEAD_SHA}&event=push&branch=${BASE_BRANCH}&per_page=20" \
+            --jq '.workflow_runs[0].id // empty')
+
+          # Evaluate every gate without aborting, so the summary reports each row even on
+          # failure (a missing merge run included); fail closed at the end if anything did
+          # not succeed.
+          overall=0
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::No ${WORKFLOW_FILE} merge run on ${BASE_BRANCH} found for ${HEAD_SHA}. Stage must deploy before tagging."
+            overall=1
+            run_icon="❌"
+            run_display="not found"
+            apply_status="no run"
+            smoke_status="no run"
+          else
+            echo "Checking stage run: ${RUN_ID}"
+            run_icon="✅"
+            run_display="$RUN_ID"
+            JOBS_JSON=$(gh api "repos/${REPO}/actions/runs/${RUN_ID}/jobs?per_page=100")
+            apply_status=$(job_status "Apply Stage") || overall=1
+            smoke_status=$(job_status "Smoke Stage") || overall=1
+          fi
+
+          {
+            echo "## 🔒 Require Stage Success"
+            echo ""
+            echo "| Check | Result |"
+            echo "|-------|:------:|"
+            echo "| Stage run for \`${HEAD_SHA}\` | ${run_icon} \`${run_display}\` |"
+            echo "| 🚀 Apply Stage | $(status_icon "$apply_status") \`${apply_status}\` |"
+            echo "| 💨 Smoke Stage | $(status_icon "$smoke_status") \`${smoke_status}\` |"
+            echo ""
+            echo "---"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$overall" -ne 0 ]; then
+            exit 1
+          fi
+          echo "✅ Apply Stage and Smoke Stage succeeded for ${HEAD_SHA}"
