@@ -50,8 +50,10 @@ jobs:
           # when it runs, or a bare "X" with conclusion "skipped" when it does not. Matching
           # the exact name or that prefix covers both. Echo a single status word for the
           # prefix (success, the first non-success conclusion, or "missing") and return
-          # non-zero unless every matched job succeeded. Annotations go to stderr so they do
-          # not pollute the captured status word.
+          # non-zero unless every matched job succeeded. An unfinished job has a null
+          # conclusion, so fall back to its live status ("in_progress"/"queued") to fail
+          # closed (a null would otherwise be swallowed and read as success). Annotations go
+          # to stderr so they do not pollute the captured status word.
           job_status() {
             local prefix="$1" total nonsuccess
             total=$(jq --arg p "$prefix" \
@@ -63,10 +65,10 @@ jobs:
               return 1
             fi
             nonsuccess=$(jq -r --arg p "$prefix" \
-              '[.jobs[] | select(.name == $p or (.name | startswith($p + " / "))) | select(.conclusion != "success") | .conclusion] | first // empty' \
+              '[.jobs[] | select(.name == $p or (.name | startswith($p + " / "))) | (.conclusion // .status) | select(. != "success")] | first // empty' \
               <<< "$JOBS_JSON")
             if [ -n "$nonsuccess" ]; then
-              echo "::error::'${prefix}' concluded '${nonsuccess}' (not success) in stage run ${RUN_ID}." >&2
+              echo "::error::'${prefix}' is '${nonsuccess}' (not success) in stage run ${RUN_ID}." >&2
               echo "$nonsuccess"
               return 1
             fi
