@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unit, integration, and eval lanes resolve the agent package name from `src/` at import time instead of hard-coding it, so a downstream fork that renames the package reuses every lane (and the eval gate) with no edits. The unit `conftest.py` builds its mock patch targets from the discovered name, so `init_template.py` no longer rewrites it and template syncs diff it clean
 - Restructured `docs/references/testing.md` into the lane taxonomy plus the unit-test guide, splitting the integration lane into its own `docs/references/integration-tests.md` (added to the docs indexes and MkDocs nav); non-unit lanes now point to their own reference docs
 - Integration test lane and the `ci.yml` `integration` job now run against a `postgres:18` service container, matching the deployed `POSTGRES_18` Cloud SQL major version (previously `postgres:17`)
+- pytest now runs with `--import-mode=importlib` (pytest's recommended import mode for new projects), which keeps test directories free of `__init__.py` and avoids same-named modules colliding across lanes. Lane selection stays by explicit path; the registered `integration`/`smoke` markers are kept for ad-hoc `-m` selection (e.g. `-m "not integration"`)
 
 ### Fixed
 - `docs/references/agent-evals.md` is now listed in the MkDocs site nav (previously reachable only through the docs index pages)
