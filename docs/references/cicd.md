@@ -128,18 +128,16 @@ config → metadata-extract → docker-build → dev-plan → dev-apply → dev-
 
 **Production mode:**
 ```
-config → metadata-extract → docker-build
-           ↓                    ↓
-           └────────────────────┴─→ dev-plan → dev-apply → dev-smoke
-                                    (parallel)
-                                ↓
-                              stage-promote → stage-plan → stage-apply → stage-smoke
-                                ↓
-                           Pull from dev, push to stage
-                                ↓
-                           Deploy to stage Cloud Run
-                                ↓
-                           Smoke the live stage revision
+config ─→ metadata-extract ─→ docker-build
+                               ├─→ dev-plan → dev-apply → dev-smoke
+                               │
+                               └─→ stage-promote → stage-plan → stage-apply → stage-smoke
+                                   ↓
+                                Pull from dev, push to stage
+                                   ↓
+                                Deploy to stage Cloud Run
+                                   ↓
+                                Smoke the live stage revision
 ```
 
 **Result:** Dev deployed and smoked (always), stage deployed and smoked (production mode only). The smoke lane detail lives in [Smoke Tests](smoke-tests.md).
@@ -154,14 +152,18 @@ Tags are a no-op in dev-only mode: `build` skips on tag events and `dev-plan`/`d
 
 **Production mode:**
 ```
-config → metadata-extract → resolve-digest → require-stage-success → prod-promote → prod-plan → prod-apply → prod-smoke
-                              ↓                ↓                       ↓                          ↑
-                           Look up image in  Require the tagged     Pull from stage           (requires
-                           stage by tag      SHA's stage to pass    Push to prod               approval)
-                              ↓                ↓
-                           Deploy to prod Cloud Run (after approval)
-                              ↓
-                           Smoke the live prod revision
+config ──┬─→ resolve-digest ──────┐
+         │   (look up image       │
+         │    in stage by tag)    │
+         │                        │
+         └─→ require-stage-success ──┤
+             (gate: tagged SHA's    │
+              stage run passed)     │
+                                    ↓
+                          prod-promote → prod-plan → prod-apply → prod-smoke
+                              ↓                          ↓
+                          Pull from stage     (Apply prod,
+                          Push to prod        manual approval required)
 ```
 
 `require-stage-success` gates the prod pipeline tag run. See [Require Stage Success](#require-stage-successyml) for details.
