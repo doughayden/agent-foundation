@@ -102,13 +102,8 @@ Job-level dependency graphs showing how GitHub Actions jobs chain together. For 
 
 **What happens (both modes):**
 ```
-config → metadata-extract → docker-build → dev-plan
-                              ↓
-                           Push to dev registry: pr-{number}-{sha}
-                              ↓
-                           Terraform plan (no apply)
-                              ↓
-                           Comment plan on PR
+config (parallel root: selects mode, gates via if-conditions)
+metadata-extract → docker-build → dev-plan
 ```
 
 **Result:** Plan preview in PR comment, no actual deployment.
@@ -117,29 +112,15 @@ config → metadata-extract → docker-build → dev-plan
 
 **Dev-only mode:**
 ```
-config → metadata-extract → docker-build → dev-plan → dev-apply → dev-smoke
-                              ↓
-                           Push to dev registry: {sha}, latest
-                              ↓
-                           Deploy to dev Cloud Run
-                              ↓
-                           Smoke the live dev revision
+config (parallel root: selects mode, gates via if-conditions)
+metadata-extract → docker-build → dev-plan → dev-apply → dev-smoke
 ```
 
 **Production mode:**
 ```
-config → metadata-extract → docker-build
-           ↓                    ↓
-           └────────────────────┴─→ dev-plan → dev-apply → dev-smoke
-                                    (parallel)
-                                ↓
-                              stage-promote → stage-plan → stage-apply → stage-smoke
-                                ↓
-                           Pull from dev, push to stage
-                                ↓
-                           Deploy to stage Cloud Run
-                                ↓
-                           Smoke the live stage revision
+metadata-extract ─→ docker-build ─┬─→ dev-plan → dev-apply → dev-smoke
+                                  │
+config ───────────────────────────┴─→ stage-promote → stage-plan → stage-apply → stage-smoke
 ```
 
 **Result:** Dev deployed and smoked (always), stage deployed and smoked (production mode only). The smoke lane detail lives in [Smoke Tests](smoke-tests.md).
@@ -148,20 +129,19 @@ config → metadata-extract → docker-build
 
 **Dev-only mode:**
 ```
-config → metadata-extract → (no deploy)
+config, metadata-extract → (no deploy)
 ```
 Tags are a no-op in dev-only mode: `build` skips on tag events and `dev-plan`/`dev-apply` are branch-only, so only `meta` and `config` run. Dev-only mode deploys on merge to main, not on tags.
 
 **Production mode:**
 ```
-config → metadata-extract → resolve-digest → require-stage-success → prod-promote → prod-plan → prod-apply → prod-smoke
-                              ↓                ↓                       ↓                          ↑
-                           Look up image in  Require the tagged     Pull from stage           (requires
-                           stage by tag      SHA's stage to pass    Push to prod               approval)
-                              ↓                ↓
-                           Deploy to prod Cloud Run (after approval)
-                              ↓
-                           Smoke the live prod revision
+metadata-extract ─┐
+                  ├─→ resolve-digest ──────┐
+config ──┬────────┘                        │
+         │                                 │
+         └─→ require-stage-success ────────┤
+                                           ↓
+                                 prod-promote → prod-plan → prod-apply → prod-smoke
 ```
 
 `require-stage-success` gates the prod pipeline tag run. See [Require Stage Success](#require-stage-successyml) for details.

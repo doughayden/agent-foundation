@@ -87,62 +87,33 @@ All environments use **identical infrastructure configuration**. Stage validates
 
 ### Deployment Flow
 
+For detailed job-level dependency graphs, see [CI/CD Workflows: Workflow Flows](cicd.md#workflow-flows).
+
 #### Dev-Only Mode
 
 **Pull Request:**
-```
-build (push to dev registry)
-  ↓
-dev-plan (plan only, PR comment)
-```
+- Build Docker image → Plan infrastructure (no apply)
+- Comment plan on PR
 
 **Merge to main:**
-```
-build (push to dev registry)
-  ↓
-dev-plan (auto, saves tfplan-dev)
-  ↓
-dev-apply (auto-proceeds, uses saved plan)
-```
+- Build Docker image → Plan infrastructure → Apply to dev → Smoke test
 
 **Tag push:**
-No effect on deployment in dev-only mode
+- No effect on deployment in dev-only mode
 
 #### Production Mode
 
 **Pull Request:**
-```
-build (push to dev registry)
-  ↓
-dev-plan (plan only, PR comment)
-```
+- Build Docker image → Plan infrastructure (no apply)
+- Comment plan on PR
 
 **Merge to main:**
-```
-build (push to dev registry)
-  ↓
-  ├─→ dev-plan (auto, saves tfplan-dev)
-  │     ↓
-  │   dev-apply (auto-proceeds, uses saved plan)
-  │
-  └─→ stage-promote (pull from dev → push to stage)
-        ↓
-      stage-plan (auto, saves tfplan-stage)
-        ↓
-      stage-apply (auto-proceeds, uses saved plan)
-```
+- Build Docker image, then in parallel:
+  - Deploy to dev → Smoke
+  - Deploy to stage → Smoke
 
 **Git tag push:**
-```
-resolve-digest (look up image in stage registry by tag)
-require-stage-success (gate: tagged SHA's stage run passed)
-  ↓  (both required by prod-promote)
-prod-promote (pull from stage → push to prod)
-  ↓
-prod-plan (auto, saves tfplan-prod)
-  ↓
-prod-apply (gated: requires manual approval, uses saved plan)
-```
+- Verify staged image exists and stage run passed (parallel gates) → Deploy to prod (manual approval) → Smoke
 
 **Key principles:**
 - Dev deployment never waits for stage or prod
