@@ -108,12 +108,12 @@ For detailed job-level dependency graphs, see [CI/CD Workflows: Workflow Flows](
 - Comment plan on PR
 
 **Merge to main:**
-- Build Docker image (parallel)
+- Build Docker image, then in parallel:
   - Deploy to dev → Smoke
   - Deploy to stage → Smoke
 
 **Git tag push:**
-- Verify staged image exists → Check stage run passed → Deploy to prod (manual approval) → Smoke
+- Verify staged image exists and stage run passed (parallel gates) → Deploy to prod (manual approval) → Smoke
 
 **Key principles:**
 - Dev deployment never waits for stage or prod
