@@ -21,14 +21,11 @@ jobs:
         id: filter
         with:
           filters: |
-            # Tracks the PyPA src-layout convention: source under src/, tests under tests/.
-            # The agent eval lane lives in top-level eval/ (it calls the live model,
-            # so it is not a tests/ lane); include it so eval-set changes trigger the gate.
+            # Tracks the PyPA src-layout convention: source under src/, tests under tests/
             # https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/
             code:
               - 'src/**'
               - 'tests/**'
-              - 'eval/**'
               - 'pyproject.toml'
               - 'uv.lock'
               - '.github/workflows/ci.yml'
@@ -151,7 +148,7 @@ jobs:
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Run deterministic agent evals
-        run: uv run pytest eval
+        run: uv run pytest tests/eval -m "deterministic"
 
   # Always-runs sentinel for branch protection.
   status:
