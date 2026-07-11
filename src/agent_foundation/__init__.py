@@ -40,7 +40,10 @@ try:
     from ._eval_app_aware_patch import apply_app_aware_eval_patch
 
     apply_app_aware_eval_patch()
-except ImportError:
+except ModuleNotFoundError:
+    # Only the absent-eval-deps case (prod image) is a no-op. Catch
+    # ModuleNotFoundError, not bare ImportError, so a renamed ADK symbol
+    # surfaces loudly instead of silently disabling App-aware eval.
     pass
 
 

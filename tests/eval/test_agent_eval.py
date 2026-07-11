@@ -40,8 +40,8 @@ DATA_DIR = Path(__file__).parent / "data"
 # package there, so the lone dir with an __init__.py is unambiguous; the marker skips
 # non-package entries (.DS_Store, *.egg-info). Discovered rather than hard-coded so a
 # downstream fork that renames the package runs this gate with no edits. ADK loads the
-# agent purely from this module; the ``app_name`` in the eval data is a dummy ADK
-# ignores during inference.
+# agent purely from this module; a case's ``session_input.app_name`` namescopes the eval
+# session and the Runner but does not select the agent.
 SRC_DIR = Path(__file__).parents[2] / "src"
 AGENT_MODULE = next(SRC_DIR.glob("*/__init__.py")).parent.name
 

@@ -14,7 +14,7 @@ We include a working slice of the full ADK eval surface: a deterministic PR gate
 
 ## App-aware execution
 
-Eval inference runs the full `App` with its plugins applied, so evals score the same agent that `adk web` chat and the deployed server run, and LLM-judge metrics that read `app_details` get real context. Stock ADK eval unwraps to the bare `root_agent` and drops the wrapping `App`; a monkey-patch (`_eval_app_aware_patch.py`, applied at package import) restores App-aware execution. The patch is guarded by `try/except ImportError`, so it is a no-op in the production runtime image where eval dependencies are absent. All four dev surfaces are App-aware: `uv run pytest tests/eval`, the `adk eval` CLI, the `adk web` eval tab, and `adk web` chat. The patch is removed once an App-aware fix lands in a released ADK — tracking [google/adk-python#5503](https://github.com/google/adk-python/issues/5503).
+Eval inference runs the full `App` with its plugins applied, so evals score the same agent that `adk web` chat and the deployed server run, and LLM-judge metrics that read `app_details` get real context. Stock ADK eval unwraps to the bare `root_agent` and drops the wrapping `App`; a monkey-patch (`_eval_app_aware_patch.py`, applied at package import) restores App-aware execution. The patch is guarded by `except ModuleNotFoundError`, so it is a no-op in the production runtime image where eval dependencies are absent (and narrow enough that a renamed ADK symbol surfaces as a real error instead of silently disabling it). All four dev surfaces are App-aware: `uv run pytest tests/eval`, the `adk eval` CLI, the `adk web` eval tab, and `adk web` chat. The patch is removed once an App-aware fix lands in a released ADK — tracking [google/adk-python#5503](https://github.com/google/adk-python/issues/5503).
 
 ## What ships (`tests/eval/data/`)
 
@@ -55,6 +55,12 @@ Cases in the eval lane carry one of two pytest markers:
 - `judge` — LLM-judged, non-deterministic; `test_template_agent_judge_eval` scores against `full_eval_config.json` via `AgentEvaluator.evaluate_eval_set`.
 
 Both markers run the agent with live model inference, so both need real credentials (the same `.env` and ADC as local development). The split is about scoring: `judge` additionally calls the paid Gen AI evaluation service, `deterministic` scores locally with exact-match and ROUGE.
+
+```bash
+uv run pytest tests/eval                      # both markers (the whole lane)
+uv run pytest tests/eval -m "deterministic"   # the PR gate only
+uv run pytest tests/eval -m "judge"           # LLM-judged deep evaluation only
+```
 
 The gate selects `-m "deterministic"` by explicit opt-in: a case joins the gate only when marked `deterministic`, so an unmarked live-model case can't leak cost or flakiness into the fast gate. It calls `AgentEvaluator.evaluate()` against `test_config.json`, which raises on a sub-threshold metric. This is exactly what CI runs today; wiring the judge tests as their own CI job is future work. Both markers' tests run App-aware.
 
