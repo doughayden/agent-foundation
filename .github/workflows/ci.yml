@@ -81,24 +81,7 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     name: Integration Tests (Postgres)
     runs-on: ubuntu-latest
-    timeout-minutes: 10  # Typical run: 2-3 min (deps + Postgres lane). 10 min prevents hanging
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: sessions
-        ports:
-          - 5432:5432
-        # Wait for Postgres to accept connections before tests run
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      INTEGRATION_DATABASE_URI: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/sessions
+    timeout-minutes: 10  # Typical run: 2-3 min (deps + Postgres lane, incl. image pull). 10 min prevents hanging
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -117,6 +100,8 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --locked
 
+      # testcontainers starts a throwaway postgres:18 via the runner's Docker daemon
+      # (ubuntu-latest ships Docker); no service container. No --cov (unit-lane-only).
       - name: Run integration tests
         run: uv run pytest tests/integration
 
