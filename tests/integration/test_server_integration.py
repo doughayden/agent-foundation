@@ -17,10 +17,11 @@ runs only by explicit path, ``uv run pytest tests/integration``) and
 run): their async setup and these tests must share one event loop, or the pool's asyncpg
 connections get created on a loop that's closed before engine disposal.
 
-Postgres connection is read from ``INTEGRATION_DATABASE_URI`` (default points at a
-local ephemeral container on ``127.0.0.1:5432``). CI provides Postgres via a service
-container; locally, run an ephemeral container (see
-``docs/references/integration-tests.md``).
+Postgres is provided by a throwaway ``testcontainers`` container started once per run
+(the ``database_uri`` fixture below), so ``uv run pytest tests/integration`` needs only
+a running Docker daemon — no manual container setup, in CI or locally. Set
+``INTEGRATION_DATABASE_URI`` to point the lane at an already-running Postgres instead
+(see ``docs/references/integration-tests.md``).
 
 The lane needs no GCP credentials. The ``_mock_gcp_credentials`` autouse session
 fixture below blocks real ADC and ``.env`` lookups. A fixture suffices because this
@@ -33,7 +34,7 @@ from __future__ import annotations
 import datetime
 import importlib
 import os
-from collections.abc import AsyncGenerator, AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator, Iterator
 from pathlib import Path
 
 import pytest
@@ -47,12 +48,11 @@ from pytest_mock import MockerFixture
 from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.types import DateTime
+from testcontainers.postgres import PostgresContainer
 
-DEFAULT_DATABASE_URI = "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/sessions"
-
-# Postgres URI for the session service. Defaults to a local ephemeral container;
-# CI points it at a service container via INTEGRATION_DATABASE_URI.
-DATABASE_URI = os.environ.get("INTEGRATION_DATABASE_URI", DEFAULT_DATABASE_URI)
+# Postgres major tracks the deployed Cloud SQL instance (POSTGRES_18 in
+# terraform/main/database.tf) so the lane exercises the dialect production runs.
+POSTGRES_IMAGE = "postgres:18"
 
 # Source root holding the single agent package (src/<package>/). Both the ADK app name
 # and the agent module are derived from it so a downstream fork that renames the package
@@ -118,8 +118,32 @@ def _mock_gcp_credentials(session_mocker: MockerFixture) -> None:
     )
 
 
+@pytest.fixture(scope="session")
+def database_uri() -> Iterator[str]:
+    """Yield an ``asyncpg`` Postgres URI for the lane, starting a container by default.
+
+    When ``INTEGRATION_DATABASE_URI`` is set, that URI is used verbatim (point the lane
+    at an already-running Postgres). Otherwise a throwaway ``postgres:18`` container is
+    started via the local Docker daemon and torn down at session end — this replaces the
+    manual ``docker run`` workflow, so the lane needs only Docker, in CI or locally.
+
+    Synchronous and session-scoped: the container starts once, before the async
+    ``integration_app`` fixture that consumes this URI, and stops after it (fixtures
+    tear down in reverse setup order), so engine disposal never races the container
+    shutdown.
+    ``PostgresContainer.__enter__`` blocks until Postgres accepts connections, so no
+    separate readiness wait is needed.
+    """
+    override = os.environ.get("INTEGRATION_DATABASE_URI")
+    if override:
+        yield override
+        return
+    with PostgresContainer(POSTGRES_IMAGE, driver="asyncpg") as postgres:
+        yield postgres.get_connection_url()
+
+
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
-async def integration_app() -> AsyncIterator[FastAPI]:
+async def integration_app(database_uri: str) -> AsyncIterator[FastAPI]:
     """Build the production FastAPI app against real Postgres with a stubbed model.
 
     Reuses production wiring (``get_fast_api_app`` with a real ``postgresql+asyncpg://``
@@ -146,7 +170,7 @@ async def integration_app() -> AsyncIterator[FastAPI]:
 
     agent_mod = importlib.import_module(f"{APP_NAME}.agent")
 
-    session_service = DatabaseSessionService(db_url=DATABASE_URI)
+    session_service = DatabaseSessionService(db_url=database_uri)
     original_model = agent_mod.root_agent.model
     agent_mod.root_agent.model = MockLlm()
     original_factory = fast_api_mod.create_session_service_from_options
@@ -286,7 +310,9 @@ class TestSessionDeleteCascadesToEvents:
     ``ondelete="CASCADE"`` would orphan events here while the API path still passed.
     """
 
-    async def test_raw_session_delete_removes_events(self, client) -> None:
+    async def test_raw_session_delete_removes_events(
+        self, client, database_uri
+    ) -> None:
         """Deleting a session row directly leaves none of its events behind."""
         create = await client.post(
             f"/apps/{APP_NAME}/users/{USER_ID}/sessions",
@@ -311,7 +337,7 @@ class TestSessionDeleteCascadesToEvents:
             "SELECT count(*) FROM events "
             "WHERE app_name = :app AND user_id = :user AND session_id = :sid"
         )
-        engine = create_async_engine(DATABASE_URI)
+        engine = create_async_engine(database_uri)
         try:
             async with engine.connect() as conn:
                 before = (await conn.execute(count_stmt, params)).scalar_one()
@@ -343,9 +369,9 @@ class TestPostgresDialectStrictness:
     coerces under sqlite, so a sqlite-only suite would miss the bug.
     """
 
-    async def test_timestamptz_requires_typed_bindparam(self) -> None:
+    async def test_timestamptz_requires_typed_bindparam(self, database_uri) -> None:
         """A native datetime via a typed bindparam round-trips through timestamptz."""
-        engine = create_async_engine(DATABASE_URI)
+        engine = create_async_engine(database_uri)
         try:
             async with engine.connect() as conn:
                 now = datetime.datetime.now(tz=datetime.UTC)
@@ -358,9 +384,9 @@ class TestPostgresDialectStrictness:
         finally:
             await engine.dispose()
 
-    async def test_timestamptz_rejects_iso_string(self) -> None:
+    async def test_timestamptz_rejects_iso_string(self, database_uri) -> None:
         """An ISO string bound without type info is rejected by asyncpg."""
-        engine = create_async_engine(DATABASE_URI)
+        engine = create_async_engine(database_uri)
         try:
             async with engine.connect() as conn:
                 # The CAST target drives asyncpg's timestamptz codec inference, so the
