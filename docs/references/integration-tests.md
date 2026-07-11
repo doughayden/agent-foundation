@@ -16,29 +16,27 @@ The lane is deterministic and runs only by explicit path (`uv run pytest tests/i
 
 ## Run it locally
 
-Start an ephemeral Postgres container, run the lane, then tear it down:
+The lane starts its own Postgres, so a running Docker daemon is the only prerequisite:
 
 ```bash
-docker run -d --rm --name your-agent-pg \
-  -p 127.0.0.1:5432:5432 \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=sessions \
-  postgres:18
-
 uv run pytest tests/integration
-
-docker stop your-agent-pg
 ```
 
-The connection defaults to `postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/sessions`. Override it with the `INTEGRATION_DATABASE_URI` environment variable to point at a different host or port. This is a test-harness variable, not application runtime config, so it lives here rather than in `docs/environment-variables.md`.
+The `database_uri` fixture starts a throwaway Postgres container via [testcontainers](https://testcontainers.com/) (image pinned by `POSTGRES_IMAGE` in the test module) and tears it down at session end. To point the lane at an already-running Postgres instead (and skip the container), set `INTEGRATION_DATABASE_URI`:
+
+```bash
+INTEGRATION_DATABASE_URI=postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/sessions \
+  uv run pytest tests/integration
+```
+
+This is a test-harness variable, not application runtime config, so it lives here rather than in `docs/environment-variables.md`.
 
 > [!NOTE]
 > The lane needs no GCP credentials. An autouse session fixture (`_mock_gcp_credentials`) in the test module patches `dotenv.load_dotenv` and `google.auth.default`. A fixture suffices because the lane imports the source package lazily — inside `integration_app`, after collection — so the patch lands before any agent code runs.
 
 ## How CI provides Postgres
 
-The `ci.yml` `integration` job runs a `postgres:18` service container (with a `pg_isready` health check) and sets `INTEGRATION_DATABASE_URI` to reach it. The major version tracks the deployed Cloud SQL instance (`POSTGRES_18` in `terraform/main/database.tf`), so the lane exercises the dialect production actually runs. It is gated on the `changes` job and folded into the always-runs `status` sentinel, so the single required check `CI / status` covers it. The job runs `uv run pytest tests/integration` without `--cov` — the 100% coverage gate is unit-lane-only.
+The `ci.yml` `integration` job needs no service container: `testcontainers` starts a throwaway Postgres on the runner's Docker daemon (present on `ubuntu-latest`), the same path a developer runs locally. The major version tracks the deployed Cloud SQL instance (`POSTGRES_18` in `terraform/main/database.tf`), so the lane exercises the dialect production actually runs, and pinning the image in one place (`POSTGRES_IMAGE` in the test module) keeps the CI workflow and the lane from drifting on the version. The job is gated on the `changes` job and folded into the always-runs `status` sentinel, so the single required check `CI / status` covers it. It runs `uv run pytest tests/integration` without `--cov` — the 100% coverage gate is unit-lane-only.
 
 ---
 

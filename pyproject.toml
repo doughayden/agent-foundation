@@ -38,6 +38,7 @@ dev = [
     "pytest-mock>=3.15.1,<4.0.0",
     "pre-commit>=4.6.0",
     "httpx>=0.28.1,<1.0.0",
+    "testcontainers[postgres]>=4.0.0,<5.0.0",
 ]
 docs = [
     "mkdocs-callouts>=1.16.0,<2.0.0",
@@ -129,12 +130,18 @@ fail_under = 100
 directory = "htmlcov"
 
 [tool.pytest.ini_options]
+# https://docs.pytest.org/en/stable/explanation/goodpractices.html
+addopts = "--import-mode=importlib"
 # Bare `pytest` runs only the fast, deterministic unit lane; other lanes run by
-# explicit path (e.g. `pytest tests/integration`) — see AGENTS.md Testing Patterns
+# explicit path (e.g. `uv run pytest tests/integration`) — see AGENTS.md Testing Patterns
 testpaths = ["tests/unit"]
+# Registered markers (pytest-native categorization) enable `-m` selection like
+# `-m "not integration"`; lanes themselves still run by explicit path above
 markers = [
     "integration: requires a real external resource (e.g. Postgres); no LLM or cloud",
     "smoke: requires a live deployed service URL",
+    "deterministic: eval case scored by exact/ROUGE match (the PR gate)",
+    "judge: eval case scored by an LLM judge (non-deterministic; adds the Gen AI eval service)",
 ]
 filterwarnings = [
     # ADK 2.x deprecated the config-defined agent family; fires at import via ABCMeta

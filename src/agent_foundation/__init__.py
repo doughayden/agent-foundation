@@ -21,12 +21,30 @@ Lazy loading workflow:
 3. server.py creates FastAPI app (does not access agent attribute)
 4. First access to agent attribute → agent.py imports and executes
 5. At that point, all .env variables like FAQ_DATA_STORE are available
+
+App-aware eval trigger:
+The import-time block below makes ADK's eval-inference path run the full App
+(its plugins), not the bare root_agent, so it covers every non-live eval
+surface. It
+catches ModuleNotFoundError (not bare ImportError) so the prod runtime image,
+where the eval dependencies and thus google.adk.evaluation are absent, is a
+no-op, while a renamed ADK symbol surfaces loudly instead of silently disabling
+App-aware eval. See _eval_app_aware_patch for the full rationale. Remove this
+block along with _eval_app_aware_patch when the upstream App-aware eval fix
+(adk-python#5503) lands in a released ADK.
 """
 
 import importlib
 from types import ModuleType
 
 __all__ = ["agent"]
+
+try:
+    from ._eval_app_aware_patch import apply_app_aware_eval_patch
+
+    apply_app_aware_eval_patch()
+except ModuleNotFoundError:
+    pass
 
 
 def __getattr__(name: str) -> ModuleType:
