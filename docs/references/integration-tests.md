@@ -22,7 +22,7 @@ The lane starts its own Postgres, so a running Docker daemon is the only prerequ
 uv run pytest tests/integration
 ```
 
-The `database_uri` fixture starts a throwaway `postgres:18` container via [testcontainers](https://testcontainers.com/) and tears it down at session end. To point the lane at an already-running Postgres instead (and skip the container), set `INTEGRATION_DATABASE_URI`:
+The `database_uri` fixture starts a throwaway Postgres container via [testcontainers](https://testcontainers.com/) (image pinned by `POSTGRES_IMAGE` in the test module) and tears it down at session end. To point the lane at an already-running Postgres instead (and skip the container), set `INTEGRATION_DATABASE_URI`:
 
 ```bash
 INTEGRATION_DATABASE_URI=postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/sessions \
@@ -36,7 +36,7 @@ This is a test-harness variable, not application runtime config, so it lives her
 
 ## How CI provides Postgres
 
-The `ci.yml` `integration` job needs no service container: `testcontainers` starts a throwaway `postgres:18` on the runner's Docker daemon (present on `ubuntu-latest`), the same path a developer runs locally. The major version tracks the deployed Cloud SQL instance (`POSTGRES_18` in `terraform/main/database.tf`), so the lane exercises the dialect production actually runs, and the image version lives in one place (`POSTGRES_IMAGE` in the test module) rather than duplicated across the workflow and the docs. The job is gated on the `changes` job and folded into the always-runs `status` sentinel, so the single required check `CI / status` covers it. It runs `uv run pytest tests/integration` without `--cov` — the 100% coverage gate is unit-lane-only.
+The `ci.yml` `integration` job needs no service container: `testcontainers` starts a throwaway Postgres on the runner's Docker daemon (present on `ubuntu-latest`), the same path a developer runs locally. The major version tracks the deployed Cloud SQL instance (`POSTGRES_18` in `terraform/main/database.tf`), so the lane exercises the dialect production actually runs, and pinning the image in one place (`POSTGRES_IMAGE` in the test module) keeps the CI workflow and the lane from drifting on the version. The job is gated on the `changes` job and folded into the always-runs `status` sentinel, so the single required check `CI / status` covers it. It runs `uv run pytest tests/integration` without `--cov` — the 100% coverage gate is unit-lane-only.
 
 ---
 
