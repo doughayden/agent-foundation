@@ -102,7 +102,7 @@ Job-level dependency graphs showing how GitHub Actions jobs chain together. For 
 
 **What happens (both modes):**
 ```
-config              (parallel root: selects mode, gates via if-conditions)
+config (parallel root: selects mode, gates via if-conditions)
 metadata-extract → docker-build → dev-plan
 ```
 
@@ -112,7 +112,7 @@ metadata-extract → docker-build → dev-plan
 
 **Dev-only mode:**
 ```
-config              (parallel root: selects mode, gates via if-conditions)
+config (parallel root: selects mode, gates via if-conditions)
 metadata-extract → docker-build → dev-plan → dev-apply → dev-smoke
 ```
 
