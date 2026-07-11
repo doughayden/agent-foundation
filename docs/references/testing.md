@@ -11,9 +11,9 @@ A test's lane is decided by its runtime requirements and determinism, not by how
 | unit | in-process only (mocks at boundaries) | yes | free/fast | `uv run pytest` (default) |
 | integration | real external resource (Postgres) | yes | slower, no LLM/cloud | `uv run pytest tests/integration` |
 | smoke | a live deployed URL | yes | needs a deploy | `uv run pytest tests/smoke` |
-| eval | the real LLM | gate metrics yes; judge metrics no | costs money | `uv run pytest eval` |
+| eval | the real LLM | gate metrics yes; judge metrics no | costs money | `uv run pytest tests/eval` |
 
-The `tests/` lanes never call the live model; the `eval/` lane does. Non-unit lanes run by explicit path, both locally and in CI — the command or CI job is the selector. `testpaths = ["tests/unit"]` in `pyproject.toml` scopes a bare `uv run pytest` to the fast, free, deterministic lane so it can't accidentally require Postgres. An explicit path argument overrides it.
+The unit, integration, and smoke lanes never call the live model; the eval lane does. Evals are still a test shape, so the lane lives under `tests/` alongside the others — pytest uses importlib import mode (location-agnostic), and `adk eval` takes explicit evalset and config filepaths, so nothing depends on where the lane sits. Non-unit lanes run by explicit path, both locally and in CI — the command or CI job is the selector. `testpaths = ["tests/unit"]` in `pyproject.toml` scopes a bare `uv run pytest` to the fast, free, deterministic lane so it can't accidentally require Postgres. An explicit path argument overrides it.
 
 Only the unit lane runs `--cov` with the 100% gate.
 
@@ -23,7 +23,7 @@ The rest of this guide covers the unit lane. The non-unit lanes each carry their
 
 - **Integration** (`tests/integration/`) — the real FastAPI app against a real Postgres session service, no mocks. See [Integration Tests](integration-tests.md).
 - **Smoke** (`tests/smoke/`) — assertions against a live deployed URL, run post-deploy against a freshly applied Cloud Run revision. See [Smoke Tests](smoke-tests.md).
-- **Eval** (`eval/`) — real agent behavior scored against committed eval sets; the only lane that catches LLM behavioral regression. The deterministic gate runs on every code PR, and `tests/unit/test_eval_artifacts.py` schema-checks the eval data in the unit lane. See [Agent Evals](agent-evals.md).
+- **Eval** (`tests/eval/`) — real agent behavior scored against committed eval sets; the only lane that catches LLM behavioral regression. Cases split by pytest marker: `deterministic` (exact tool-trajectory + ROUGE match, the PR gate) and `judge` (LLM-judged, non-deterministic). Inference runs the full `App` and its plugins, so evals score the same agent the deployed server runs. The deterministic gate runs on every code PR, and `tests/unit/test_eval_artifacts.py` schema-checks the eval data in the unit lane. See [Agent Evals](agent-evals.md).
 
 ## Coverage Requirements
 
@@ -45,8 +45,8 @@ The rest of this guide covers the unit lane. The non-unit lanes each carry their
 Lanes are top-level directories; unit test modules mirror source structure:
 
 ```
-eval/                            # LLM eval lane
 tests/
+  eval/                          # LLM eval lane (real model, deterministic + judge markers)
   unit/
     conftest.py                  # Shared fixtures, mocks, and unit test environment setup
     test_callbacks.py            # Tests for src/your_agent/callbacks.py
@@ -58,7 +58,7 @@ tests/
   smoke/                         # Live deployed-URL lane
 ```
 
-Each lane owns its credential posture: the unit lane's `tests/unit/conftest.py` mocks credentials within the `pytest_configure` hook; the integration lane mocks credentials in an autouse session fixture; the smoke lane uses real credentials. The eval lane lives outside `tests/` in the top-level `eval/` directory and loads the real `.env` itself (an autouse fixture in the test module).
+Each lane owns its credential posture: the unit lane's `tests/unit/conftest.py` mocks credentials within the `pytest_configure` hook; the integration lane mocks credentials in an autouse session fixture; the smoke lane uses real credentials. The eval lane loads the real `.env` itself (an autouse fixture in the test module). There is deliberately no shared `tests/conftest.py` — its absence keeps the unit lane's credential mocking out of the eval and smoke lanes, which run against real credentials.
 
 ### Naming Conventions
 
@@ -244,7 +244,7 @@ open htmlcov/index.html
 # Other lanes by explicit path
 uv run pytest tests/integration
 uv run pytest tests/smoke
-uv run pytest eval
+uv run pytest tests/eval
 
 # Specific tests
 uv run pytest tests/unit/test_callbacks.py -v
