@@ -48,6 +48,7 @@ from google.adk.evaluation import evaluation_generator as _eg
 logger = logging.getLogger(__name__)
 
 _PATCHED_FLAG = "_app_aware_eval_patched"
+_LEAF_NAME = "_generate_inferences_from_root_agent"
 
 
 def _resolve_package_app() -> App | None:
@@ -57,6 +58,10 @@ def _resolve_package_app() -> App | None:
     but sourced from this package so any un-threaded eval caller becomes
     App-aware. Resolved lazily at inference time (not at patch-apply time) so the
     package's lazy ``.env`` loading is not triggered early.
+
+    Assumes this package is the only agent evaluated in-process: a fork that
+    evaluates a foreign agent module in the same process would run it under this
+    package's plugins.
     """
     agent_module = importlib.import_module(f"{__package__}.agent")
     app = getattr(agent_module, "app", None)
@@ -166,11 +171,24 @@ async def _app_aware_generate_inferences_from_root_agent(
 
 
 def apply_app_aware_eval_patch() -> None:
-    """Install the App-aware eval-inference patch (idempotent)."""
+    """Install the App-aware eval-inference patch (idempotent).
+
+    Raises ``AttributeError`` if ADK no longer exposes the patched leaf, so a
+    future rename fails loudly instead of installing a dead attribute and
+    silently reverting eval to the bare root_agent.
+    """
     if getattr(_eg.EvaluationGenerator, _PATCHED_FLAG, False):
         return
-    _eg.EvaluationGenerator._generate_inferences_from_root_agent = staticmethod(  # type: ignore[method-assign]
-        _app_aware_generate_inferences_from_root_agent
+    if getattr(_eg.EvaluationGenerator, _LEAF_NAME, None) is None:
+        raise AttributeError(
+            f"google.adk EvaluationGenerator.{_LEAF_NAME} is missing; the "
+            "App-aware eval patch is stale for this ADK version (re-verify the "
+            "vendored copy)."
+        )
+    setattr(
+        _eg.EvaluationGenerator,
+        _LEAF_NAME,
+        staticmethod(_app_aware_generate_inferences_from_root_agent),
     )
     setattr(_eg.EvaluationGenerator, _PATCHED_FLAG, True)
     logger.debug("Applied App-aware eval-inference patch to EvaluationGenerator.")

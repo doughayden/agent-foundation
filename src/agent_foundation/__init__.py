@@ -24,7 +24,8 @@ Lazy loading workflow:
 
 App-aware eval trigger:
 The import-time block below makes ADK's eval-inference path run the full App
-(its plugins), not the bare root_agent, so it covers every eval surface. It
+(its plugins), not the bare root_agent, so it covers every non-live eval
+surface. It
 catches ModuleNotFoundError (not bare ImportError) so the prod runtime image,
 where the eval dependencies and thus google.adk.evaluation are absent, is a
 no-op, while a renamed ADK symbol surfaces loudly instead of silently disabling

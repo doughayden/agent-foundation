@@ -86,6 +86,13 @@ class TestPatchInstallation:
         patch_mod.apply_app_aware_eval_patch()
         assert getattr(eg.EvaluationGenerator, "_app_aware_eval_patched", False)
 
+    def test_apply_raises_when_leaf_missing(self, mocker):
+        """A future ADK rename of the patched leaf fails loudly, not silently."""
+        mocker.patch.object(eg.EvaluationGenerator, patch_mod._PATCHED_FLAG, False)
+        mocker.patch.object(eg.EvaluationGenerator, patch_mod._LEAF_NAME, None)
+        with pytest.raises(AttributeError, match="stale for this ADK version"):
+            patch_mod.apply_app_aware_eval_patch()
+
 
 class TestAppAwareRunner:
     """The eval Runner is built from the App, applying its plugins."""
