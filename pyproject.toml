@@ -139,6 +139,8 @@ testpaths = ["tests/unit"]
 markers = [
     "integration: requires a real external resource (e.g. Postgres); no LLM or cloud",
     "smoke: requires a live deployed service URL",
+    "deterministic: eval case scored by exact/ROUGE match (the PR gate)",
+    "judge: eval case scored by an LLM judge (non-deterministic; adds the Gen AI eval service)",
 ]
 filterwarnings = [
     # ADK 2.x deprecated the config-defined agent family; fires at import via ABCMeta
