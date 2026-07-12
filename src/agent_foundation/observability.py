@@ -12,7 +12,6 @@ Google Cloud observability (all environments).
 import logging
 import os
 import uuid
-import warnings
 
 import google.auth
 import google.auth.transport.requests
@@ -34,8 +33,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.google_genai import GoogleGenAiSdkInstrumentor
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.sdk._events import EventLoggerProvider
-from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
-from opentelemetry.sdk._logs._internal import LogDeprecatedInitWarning
+from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.resources import (
     SERVICE_INSTANCE_ID,
@@ -45,8 +43,6 @@ from opentelemetry.sdk.resources import (
 )
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
-warnings.filterwarnings("ignore", category=LogDeprecatedInitWarning)
 
 
 def configure_otel_resource(agent_name: str, project_id: str) -> None:
@@ -164,10 +160,6 @@ def setup_opentelemetry(
     root = logging.getLogger()
     root.setLevel(log_level)
 
-    # Attach the OTel handler to the root logger
-    otel_handler = LoggingHandler(logger_provider=logger_provider)
-    root.addHandler(otel_handler)
-
     # Set up OTLP auth
     request = google.auth.transport.requests.Request()
     auth_metadata_plugin = AuthMetadataPlugin(credentials=credentials, request=request)
@@ -196,8 +188,8 @@ def setup_opentelemetry(
         tracer_provider.add_span_processor(span_processor)
         trace.set_tracer_provider(tracer_provider)
 
-    # Inject OTel trace attributes in LogRecords
-    LoggingInstrumentor().instrument()
+    # Inject trace attributes in LogRecords + attach the OTel handler to root logger
+    LoggingInstrumentor().instrument(log_code_attributes=True)
 
     # ADK uses the Google Gen AI SDK
     GoogleGenAiSdkInstrumentor().instrument()
