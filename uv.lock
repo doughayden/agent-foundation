@@ -17,7 +17,7 @@ wheels = [
 
 [[package]]
 name = "agent-foundation"
-version = "0.19.0"
+version = "0.19.1"
 source = { editable = "." }
 dependencies = [
     { name = "google-adk", extra = ["gcp", "otel-gcp"] },
