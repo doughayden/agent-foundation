@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-07-12
+
 ### Added
 - Require-stage-success prod gate (`.github/workflows/require-stage-success.yml`): a tag-time, agent-agnostic gate that runs before `prod-promote` (and so before the `prod-apply` approval), so a failure halts the tag run before any reviewer is prompted. It finds the tagged commit's merge run and requires `Apply Stage` and `Smoke Stage` to have both concluded success, failing closed otherwise. Stage success is the whole gate: the promotion workflow copies the image digest-for-digest and prod deploys by digest, so prod runs exactly the digest stage validated. No digest comparison is needed: stage `{sha7}` is written only by that commit's own merge-run attempts and the tag run never rebuilds, so a green `Smoke Stage` (latest attempt) already means `{sha7}` resolves to the digest that was smoked (#211)
 - Post-deploy smoke test lane (`tests/smoke/`): after each `terraform apply`, drives the live Cloud Run URL over the real network to confirm the new revision serves end to end. Layered cheapest-first so a failure localizes the broken subsystem (L0 `/health`, L1 session create + read-back, L2 a thin `/run_sse` turn asserting only that a text part streamed, L3 delete + 404), with a readiness wait that absorbs cold-start latency. Authenticates by impersonating a dedicated invoker SA in-process to mint a Cloud Run ID token, so the same code runs locally and in CI. Runs by explicit path only (`uv run pytest tests/smoke`); `ci-cd.yml` runs it after each environment apply (`dev-smoke`/`stage-smoke`/`prod-smoke`), not in the PR gate (#101)
@@ -23,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Integration test lane now provisions Postgres with `testcontainers`: `uv run pytest tests/integration` starts a throwaway `postgres:18` via the Docker daemon and tears it down at session end, so a running Docker daemon is the only prerequisite (no manual `docker run`). The `ci.yml` `integration` job drops its service container and uses the same path, so local and CI runs are identical and the image version lives in one place. Set `INTEGRATION_DATABASE_URI` to point the lane at an already-running Postgres. The `postgres:18` major still matches the deployed `POSTGRES_18` Cloud SQL version (previously a `postgres:17` service container)
 - pytest now runs with `--import-mode=importlib` (pytest's recommended import mode for new projects), which keeps test directories free of `__init__.py` and avoids same-named modules colliding across lanes. Lane selection stays by explicit path; the registered `integration`/`smoke` markers are kept for ad-hoc `-m` selection (e.g. `-m "not integration"`)
 - Move the agent eval lane from the top-level `eval/` directory to `tests/eval/`, grouping it with the other test lanes (it stays live-model-distinct by loading the real `.env` itself). The deterministic PR gate now runs `uv run pytest tests/eval -m "deterministic"` (was `uv run pytest eval`) (#212)
+- Upgrade `google-adk` to 2.4.0 and the OpenTelemetry stack (API/SDK 1.42.1, instrumentation 0.63b1). Migrate the logging bridge to `LoggingInstrumentor().instrument(log_code_attributes=True)`, which now owns root-logger handler attachment: drop the manual SDK `LoggingHandler` (deprecated upstream; keeping it alongside the upgraded instrumentor would double-export every log record) while retaining the `code.file.path`/`function.name`/`line.number` attributes. Cap the fastapi and logging instrumentors at `<0.64`: ADK pins `opentelemetry-api<=1.42.1`, and the 0.64b0 line requires api 1.43.0 (via `semantic-conventions`), so it cannot resolve in an ADK project. Remove the obsolete `LogDeprecatedInitWarning` filter (the symbol was removed upstream) (#225)
 
 ### Fixed
 - `docs/references/agent-evals.md` is now listed in the MkDocs site nav (previously reachable only through the docs index pages)
@@ -593,7 +596,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/doughayden/agent-foundation/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/doughayden/agent-foundation/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/doughayden/agent-foundation/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/doughayden/agent-foundation/compare/v0.15.0...v0.16.0
