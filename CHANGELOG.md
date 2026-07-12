@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-07-12
+
+### Fixed
+- CI: make the `code-quality` job the sole writer of the shared uv cache in `ci.yml`. The `integration` and `agent-eval` jobs set `save-cache: false` on `astral-sh/setup-uv` so they restore the same key but no longer save it, removing the concurrent cache-reserve race that produced "Failed to save cache" warning annotations on a cold cache. All three jobs keep `enable-cache: true`, so cache reuse is unchanged (#227)
+
 ## [0.19.0] - 2026-07-12
 
 ### Added
@@ -596,7 +601,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.19.1...HEAD
+[0.19.1]: https://github.com/doughayden/agent-foundation/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/doughayden/agent-foundation/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/doughayden/agent-foundation/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/doughayden/agent-foundation/compare/v0.16.0...v0.17.0

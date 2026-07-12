@@ -74,8 +74,6 @@ jobs:
         run: uv run pytest --cov
         if: success() || failure()
 
-  # Integration lane: real Postgres via service container, no LLM, no GCP creds.
-  # Runs without --cov (the 100% gate is unit-lane-only and would fail on fail_under).
   integration:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -93,6 +91,8 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
+          # Restore-only: same key as code-quality, which is the sole saver (avoids reserve race)
+          save-cache: false
 
       - name: Set up Python
         run: uv python install 3.13
@@ -100,15 +100,10 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --locked
 
-      # testcontainers starts a throwaway postgres:18 via the runner's Docker daemon
-      # (ubuntu-latest ships Docker); no service container. No --cov (unit-lane-only).
       - name: Run integration tests
         run: uv run pytest tests/integration
 
-  # Deterministic agent eval gate: runs the agent on Vertex AI (dev WIF
-  # principal) but scores with judge-free metrics, so it is cheap and stable.
-  # pytest is the gate because AgentEvaluator.evaluate() raises on a
-  # sub-threshold metric; the `adk eval` CLI exits 0 on failure and cannot gate.
+  # Agent eval using deterministic scoring metrics (no LLM judge)
   agent-eval:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -134,6 +129,8 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
+          # Restore-only: same key as code-quality, which is the sole saver (avoids reserve race)
+          save-cache: false
 
       - name: Set up Python
         run: uv python install 3.13
@@ -150,7 +147,7 @@ jobs:
       - name: Run deterministic agent evals
         run: uv run pytest tests/eval -m "deterministic"
 
-  # Always-runs sentinel for branch protection.
+  # Always-runs sentinel for branch protection
   status:
     runs-on: ubuntu-latest
     timeout-minutes: 5  # Typical run: <1 min (status check). 5 min is generous buffer
