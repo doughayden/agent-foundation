@@ -338,6 +338,17 @@ The dev project's bootstrap already enables the Vertex AI API and grants its WIF
 > [!NOTE]
 > Without this step the review job fails fast with `is_error: true` (a 403 on the model call). This is separate from the agent's own Gemini model, which is enabled by default.
 
+### Editing the review workflow
+
+`claude-code-action` obtains its GitHub token by exchanging an OIDC token, and that exchange only succeeds when `claude.yml` matches the version on the repository's default branch. This is a security guard in the action, not standard GitHub Actions behavior. A pull request that changes `claude.yml` therefore skips its own review, logging:
+
+```text
+Workflow validation failed. The workflow file must exist and have identical content to the version on the repository's default branch.
+Action skipped due to workflow validation error. ... your workflow will begin working once you merge your PR.
+```
+
+This is expected ([claude-code-action#443](https://github.com/anthropics/claude-code-action/issues/443)). The updated review runs on pull requests opened after the change merges to the default branch. A fresh repo created from the template already ships the matching workflow, so its first pull request is reviewed normally.
+
 ## Important Notes
 
 **Migrating Existing Local Bootstrap State:**

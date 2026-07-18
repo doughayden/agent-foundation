@@ -1,3 +1,9 @@
+# Editing this workflow: claude-code-action only runs when this file matches the
+# repository's default branch. It validates during the GitHub App token exchange
+# (a security guard, not standard GitHub Actions behavior), so a pull request
+# that changes this file skips its own review and the change takes effect only
+# after it merges. Expected: https://github.com/anthropics/claude-code-action/issues/443
+
 name: Claude PR Assistant
 
 on:
