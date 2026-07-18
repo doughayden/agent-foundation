@@ -27,7 +27,7 @@ This project includes production-ready OpenTelemetry observability that provides
 - `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`: Capture LLM message content - `TRUE` or `FALSE` (required)
 
 **Optional variables:**
-- `GOOGLE_CLOUD_LOCATION`: Vertex AI region (default: `us-central1`)
+- `GOOGLE_CLOUD_LOCATION`: Vertex AI model endpoint location, not the deployment region
 - `LOG_LEVEL`: Logging verbosity - `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` (default: `INFO`)
 - `TELEMETRY_NAMESPACE`: Service namespace for trace grouping (default: `local`, auto-set to workspace in deployed environments)
 

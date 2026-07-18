@@ -1,3 +1,9 @@
+# Editing this workflow: claude-code-action only runs when this file matches the
+# repository's default branch. It validates during the GitHub App token exchange
+# (a security guard, not standard GitHub Actions behavior), so a pull request
+# that changes this file skips its own review and the change takes effect only
+# after it merges. Expected: https://github.com/anthropics/claude-code-action/issues/443
+
 name: Claude PR Assistant
 
 on:
@@ -38,7 +44,6 @@ jobs:
           fetch-depth: 1
 
       - name: Authenticate to Google Cloud
-        id: auth
         uses: google-github-actions/auth@v3
         with:
           project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
@@ -58,10 +63,9 @@ jobs:
             Provide specific, actionable feedback with line-by-line suggestions where appropriate.
           use_vertex: "true"
           claude_args: |
-            --model claude-sonnet-4-5@20250929
+            --model claude-sonnet-5
         env:
-          ANTHROPIC_VERTEX_PROJECT_ID: ${{ steps.auth.outputs.project_id }}
-          CLOUD_ML_REGION: us-east5
+          CLOUD_ML_REGION: global
 
   claude-manual-trigger:
     if: |
@@ -84,7 +88,6 @@ jobs:
           fetch-depth: 1
 
       - name: Authenticate to Google Cloud
-        id: auth
         uses: google-github-actions/auth@v3
         with:
           project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
@@ -97,10 +100,9 @@ jobs:
           trigger_phrase: "@claude"
           use_vertex: "true"
           claude_args: |
-            --model claude-sonnet-4-5@20250929
+            --model claude-sonnet-5
         env:
-          ANTHROPIC_VERTEX_PROJECT_ID: ${{ steps.auth.outputs.project_id }}
-          CLOUD_ML_REGION: us-east5
+          CLOUD_ML_REGION: global
 
 # Claude Code Github Action
 # https://docs.anthropic.com/en/docs/claude-code/github-actions

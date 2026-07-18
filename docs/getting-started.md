@@ -32,7 +32,15 @@ Bootstrap creates the infrastructure for automated deployments:
 - Remote Terraform state (GCS) for bootstrap and main module — bucket created by pre-bootstrap
 - GitHub Environment and Variables for CI/CD
 
-### 1. Create State Buckets (Pre-Bootstrap)
+### 1. Authenticate
+
+```bash
+gcloud auth application-default login
+gcloud config set project YOUR_PROJECT_ID  # Optional
+gh auth login
+```
+
+### 2. Create State Buckets (Pre-Bootstrap)
 
 Pre-bootstrap creates the GCS state buckets used by bootstrap and the main module. Run it before bootstrapping each environment — start with dev only, or provision all three environments at once.
 
@@ -46,7 +54,7 @@ terraform -chdir=terraform/bootstrap/pre apply
 
 See [Bootstrap Reference: Pre-Bootstrap](references/bootstrap.md#pre-bootstrap) for scope options (dev-only, full production, incremental) and how to skip pre-bootstrap if you already have a GCS bucket.
 
-### 2. Configure
+### 3. Configure
 
 Dev-only mode (default): bootstrap only the dev environment.
 
@@ -69,14 +77,6 @@ Required variables in `terraform/bootstrap/dev/terraform.tfvars`:
 > [!NOTE]
 > For production mode (dev → stage → prod), see [Infrastructure](infrastructure.md).
 
-### 3. Authenticate
-
-```bash
-gcloud auth application-default login
-gcloud config set project YOUR_PROJECT_ID  # Optional
-gh auth login
-```
-
 ### 4. Bootstrap
 
 ```bash
@@ -91,6 +91,10 @@ terraform -chdir=terraform/bootstrap/dev apply
 # Check GitHub Variables
 gh variable list --env dev  # or GitHub repo Settings > Environments > dev
 ```
+
+### 6. Set Up Claude PR Review
+
+Opening a pull request triggers an automated Claude code review via Vertex AI. It needs a one-time setup (install the Claude GitHub App and enable the Vertex model in the dev project) before the first PR. See [Claude PR Review](references/claude-pr-review.md).
 
 See [Bootstrap Reference](references/bootstrap.md) for complete bootstrap setup instructions.
 

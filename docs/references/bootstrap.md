@@ -2,6 +2,9 @@
 
 Complete bootstrap instructions for dev-only and production modes, including cross-project IAM for image promotion.
 
+> [!IMPORTANT]
+> First-time setup starts in [Getting Started](../getting-started.md) — complete its [prerequisites](../getting-started.md#prerequisites) and authenticate before running any command here. This reference is the deep dive.
+
 ## Overview
 
 Bootstrap creates one-time CI/CD infrastructure per environment:
@@ -320,6 +323,10 @@ gh api repos/:owner/:repo/rulesets | jq '.[] | {name, enforcement, target}'
 5. Click **Save protection rules**
 
 See [Protection Strategies](protection-strategies.md) for detailed setup instructions.
+
+## Claude PR Review
+
+The `claude.yml` workflow adds an automated Claude code review on pull requests plus a manual `@claude` trigger. It needs a one-time setup beyond bootstrap: install the Claude GitHub App and enable the Vertex model in the dev project. See [Claude PR Review](claude-pr-review.md).
 
 ## Important Notes
 
