@@ -92,6 +92,10 @@ terraform -chdir=terraform/bootstrap/dev apply
 gh variable list --env dev  # or GitHub repo Settings > Environments > dev
 ```
 
+### 6. Enable the Claude PR-Review Model
+
+Opening a pull request triggers an automated Claude code review via Vertex AI. Enable its model in the dev project once, before the first PR. See [Enable the Claude PR-Review Model](references/bootstrap.md#enable-the-claude-pr-review-model-required).
+
 See [Bootstrap Reference](references/bootstrap.md) for complete bootstrap setup instructions.
 
 ## Deploy

@@ -324,6 +324,20 @@ gh api repos/:owner/:repo/rulesets | jq '.[] | {name, enforcement, target}'
 
 See [Protection Strategies](protection-strategies.md) for detailed setup instructions.
 
+## Enable the Claude PR-Review Model (Required)
+
+The `claude.yml` workflow runs an automated code review on every pull request, plus a manual `@claude` trigger, using Claude on Vertex AI. Claude models on Vertex require a one-time enablement that Terraform cannot perform, since it needs manual acceptance of Anthropic's terms.
+
+Both review jobs run in the `dev` GitHub Environment, so they authenticate with the dev project's WIF and call Vertex in the dev project. Enable the model in the dev project only, even in production mode:
+
+1. Enable the Claude model the workflow pins (model ID at `claude_args: --model <model_id>`) in the dev project and accept the Anthropic terms, following [Use Claude models on Google Cloud](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/use-claude).
+2. Confirm the model supports the endpoint configured by `CLOUD_ML_REGION` in `claude.yml`.
+
+The dev project's bootstrap already enables the Vertex AI API and grants its WIF principal `roles/aiplatform.user`, so no further API or IAM changes are needed.
+
+> [!NOTE]
+> Without this step the review job fails fast with `is_error: true` (a 403 on the model call). This is separate from the agent's own Gemini model, which is enabled by default.
+
 ## Important Notes
 
 **Migrating Existing Local Bootstrap State:**
