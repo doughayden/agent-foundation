@@ -2,6 +2,9 @@
 
 Complete bootstrap instructions for dev-only and production modes, including cross-project IAM for image promotion.
 
+> [!IMPORTANT]
+> First-time setup starts in [Getting Started](../getting-started.md) — complete its [prerequisites](../getting-started.md#prerequisites) and authenticate before running any command here. This reference is the deep dive.
+
 ## Overview
 
 Bootstrap creates one-time CI/CD infrastructure per environment:

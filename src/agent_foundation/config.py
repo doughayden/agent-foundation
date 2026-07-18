@@ -40,7 +40,7 @@ def initialize_environment[T: BaseModel](
         Validated environment configuration instance
 
     Raises:
-        SystemExit: If validation fails
+        SystemExit: Exits with code 1 if Pydantic validation fails.
 
     Examples:
         >>> # Simple case (most common)

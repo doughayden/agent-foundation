@@ -10,7 +10,7 @@ See `.env.example` in the repository root for template configuration with inline
 |----------|----------|---------|---------|
 | **[GOOGLE_GENAI_USE_VERTEXAI](#google-cloud-vertex-ai)** | ✅ | - | Enable Vertex AI authentication |
 | **[GOOGLE_CLOUD_PROJECT](#google-cloud-vertex-ai)** | ✅ | - | GCP project ID |
-| **[GOOGLE_CLOUD_LOCATION](#google-cloud-vertex-ai)** | ✅ | - | GCP region |
+| **[GOOGLE_CLOUD_LOCATION](#google-cloud-vertex-ai)** | ✅ | - | Vertex AI model endpoint location |
 | **[AGENT_NAME](#agent-identification)** | ✅ | - | Unique agent identifier |
 | **[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT](#opentelemetry)** | ✅ | - | Capture LLM content in traces |
 | **[BASTION_INSTANCE](#cloud-resources)** | Recommended | - | Bastion host name for IAP tunnel (docker-compose) |
@@ -51,9 +51,9 @@ These must be set for the agent to function.
 - **Where:** Set locally in `.env`, configured via Terraform for Cloud Run
 
 **GOOGLE_CLOUD_LOCATION**
-- **Value:** GCP region (e.g., `us-central1`)
-- **Purpose:** Sets the region for Vertex AI model calls and resource deployment
-- **Where:** Set locally in `.env`, configured via Terraform for Cloud Run
+- **Value:** Vertex AI model endpoint location (e.g., `global` or `us-central1`)
+- **Purpose:** Routes Vertex AI model calls only. Does not set the deployment region. Infrastructure placement is controlled separately by the `region` Terraform variable (`REGION` GitHub Environment Variable)
+- **Where:** Set locally in `.env`, configured via Terraform for Cloud Run (`TF_VAR_google_cloud_location`)
 
 ### Agent Identification
 
