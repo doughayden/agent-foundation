@@ -48,6 +48,7 @@ Deep dives for optional follow-up:
 - [Protection Strategies](references/protection-strategies.md) - Branch, tag, environment protection
 - [Deployment Modes](references/deployment.md) - Multi-environment strategy and infrastructure
 - [CI/CD Workflows](references/cicd.md) - Workflow architecture and mechanics
+- [Claude PR Review](references/claude-pr-review.md) - Automated PR review setup: GitHub App, Vertex model, and workflow behavior
 - [Cloud SQL Scaling and Reliability](references/cloud-sql.md) - Instance tiers, backups, HA, connection pooling, monitoring
 - [Cloud Run Concurrency Tuning](references/cloud-run-concurrency-tuning.md) - Async runtime model and concurrency sizing
 
