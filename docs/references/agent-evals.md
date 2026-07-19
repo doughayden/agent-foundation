@@ -67,6 +67,16 @@ The gate selects `-m "deterministic"` by explicit opt-in: a case joins the gate 
 > [!WARNING]
 > Never gate CI on the `adk eval` CLI. It exits 0 even when cases fail (verified against google-adk 2.2.0), so a CLI-based gate is silently always green. Only the pytest runner fails the build.
 
+### Watching eval logs live
+
+pytest captures logs and shows them only when a test fails, so a passing eval run is quiet. To watch each eval step as it happens (locally or in CI), raise the live-log level:
+
+```bash
+uv run pytest tests/eval -m "deterministic" --log-cli-level=DEBUG
+```
+
+`DEBUG` is the level that surfaces ADK's LLM request and response detail, the most useful eval output; `INFO` shows only higher-level lifecycle. It is verbose. To stream logs on every run instead of per-invocation, uncomment the `log_cli` block in `[tool.pytest.ini_options]` in `pyproject.toml`. In CI, append the flag to the eval step's command.
+
 ### The CLI: `adk eval`
 
 The `adk` commands take the agent package directory. Set it once (the template has a single package under `src/`); the later examples reuse it:
