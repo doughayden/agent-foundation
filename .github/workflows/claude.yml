@@ -66,6 +66,7 @@ jobs:
             --model claude-sonnet-5
         env:
           CLOUD_ML_REGION: global
+          ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.GOOGLE_CLOUD_PROJECT }}
 
   claude-manual-trigger:
     if: |
@@ -103,6 +104,7 @@ jobs:
             --model claude-sonnet-5
         env:
           CLOUD_ML_REGION: global
+          ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.GOOGLE_CLOUD_PROJECT }}
 
 # Claude Code Github Action
 # https://docs.anthropic.com/en/docs/claude-code/github-actions
