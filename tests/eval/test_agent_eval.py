@@ -108,9 +108,11 @@ def load_env() -> None:
 
 
 async def _assert_model_live(session: pytest.Session, model: str) -> None:
-    """Fail with the exact reply or error if ``model``'s endpoint is unreachable.
+    """Fail if ``model`` can't be resolved or its endpoint doesn't answer.
 
-    On failure, arms ``session.shouldfail`` (the knob ``-x`` sets) so the lane
+    Resolution, request construction, and the live call all run inside the
+    ``try`` so any failure (bad model string, registry miss, dead endpoint)
+    arms ``session.shouldfail`` (the knob ``-x`` sets) so the lane
     aborts before the paid ``AgentEvaluator`` tests run — the eval is meaningless
     against a dead endpoint, and this keeps fail-fast in the module rather than in
     a command flag or a ``conftest.py`` this lane omits.
@@ -126,20 +128,19 @@ async def _assert_model_live(session: pytest.Session, model: str) -> None:
         session.shouldfail = "eval aborted: model endpoint liveness check failed"
         pytest.fail(reason)
 
-    llm = LLMRegistry.new_llm(model)
-    llm_request = LlmRequest(
-        model=model,
-        contents=[types.UserContent(LIVENESS_PROMPT)],
-        config=types.GenerateContentConfig(
-            max_output_tokens=LIVENESS_MAX_OUTPUT_TOKENS,
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
-        ),
-    )
-
     try:
+        llm = LLMRegistry.new_llm(model)
+        llm_request = LlmRequest(
+            model=model,
+            contents=[types.UserContent(LIVENESS_PROMPT)],
+            config=types.GenerateContentConfig(
+                max_output_tokens=LIVENESS_MAX_OUTPUT_TOKENS,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            ),
+        )
         responses = [resp async for resp in llm.generate_content_async(llm_request)]
     except Exception as exc:
-        _abort(f"Model endpoint unreachable for {model!r}: {exc!r}")
+        _abort(f"Model endpoint check failed for {model!r}: {exc!r}")
 
     errors = [
         f"{resp.error_code}: {resp.error_message}"
