@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Agent eval gate no longer false-passes when model inference is entirely unavailable. ADK swallows per-case inference failures (403/quota/network) and drops the case from scoring, so `AgentEvaluator` passed vacuously over an empty metric set and a dead endpoint read as green. Preflight liveness probes now make one minimal live call per model role before the gates run, the agent's inference model and each judge autorater, and fail the lane fast (reporting the exact endpoint reply or error) when one is unreachable. Each probe reads its role's model from source (`ROOT_AGENT_MODEL`, `full_eval_config.json`), so swapping a model re-points its probe automatically (#229)
+
 ## [0.19.1] - 2026-07-12
 
 ### Fixed
