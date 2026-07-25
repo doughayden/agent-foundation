@@ -271,7 +271,7 @@ Set in GitHub Actions > Secrets and variables > Actions. Both select the model a
 
 **CLAUDE_CODE_OAUTH_TOKEN**
 - **Source:** Repository secret (optional, set manually; generate with `claude setup-token`)
-- **Purpose:** Runs the review against the Anthropic API with an individual account's Claude Code OAuth token instead of Vertex AI. Ignored when `ANTHROPIC_API_KEY` is set. Expires about a year after issue and must be rotated
+- **Purpose:** Runs the review against the Anthropic API with an individual account's Claude Code OAuth token instead of Vertex AI. Ignored when `ANTHROPIC_API_KEY` is set. Expires about a year after creation and must be rotated
 
 > [!NOTE]
 > These two names are also what the local Claude Code CLI reads for its own authentication. The "do not set locally" guidance above applies to the `TF_VAR_*` variables, not to these.

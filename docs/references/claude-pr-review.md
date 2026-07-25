@@ -36,7 +36,7 @@ The workflow reaches Claude one of three ways. Vertex AI is the default; either 
 | Requires GCP | Yes | No | No |
 | Credential owner | The GCP organization | The Anthropic organization | An individual's Claude account |
 | Billed to | The dev project's Google Cloud billing account | The Anthropic organization's workspace | The account's Claude subscription |
-| Expires | No | No | Yes, about a year after issue |
+| Expires | No | No | Yes, about a year after creation |
 | Model endpoint | `CLOUD_ML_REGION` in `claude.yml` | Anthropic API | Anthropic API |
 
 **Precedence:** `ANTHROPIC_API_KEY` wins if both secrets are set, and either one takes precedence over Vertex AI. The workflow applies this explicitly rather than leaving it to credential resolution inside the action, so the rule is visible in `claude.yml`.
@@ -85,7 +85,7 @@ Nothing else changes. The workflow skips its Google Cloud authentication step wh
 Leave `ANTHROPIC_API_KEY` unset, or the API key takes precedence.
 
 > [!IMPORTANT]
-> The token expires roughly a year after it is issued, and nothing warns you beforehand. The review simply starts failing. Re-run `claude setup-token` and replace the secret to rotate it.
+> The token expires roughly a year after creation, and nothing warns you beforehand. The review simply starts failing. Re-run `claude setup-token` and replace the secret to rotate it.
 
 ## Troubleshooting
 
