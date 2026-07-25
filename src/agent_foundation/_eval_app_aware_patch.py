@@ -27,13 +27,17 @@ not the module name. The bare-``root_agent`` branch is preserved for the case
 where no ``App`` is defined.
 
 Upstream: https://github.com/google/adk-python/issues/5503
+          https://github.com/google/adk-python/pull/6480 (our fix, open)
           https://github.com/google/adk-python/pull/5534 (CLI-only fix, stalled)
-TODO: Remove this module and its apply-trigger in ``__init__`` once an App-aware
-      eval fix lands in a released ADK. The plan is to contribute this simplified
-      leaf fix directly and subsume the stalled #5534.
+TODO: Remove this module and its apply-trigger in ``__init__`` once #6480 (or an
+      equivalent App-aware eval fix) ships in a released ADK.
 
-ADK version pin: the replaced body is copied from google-adk 2.2.0
-(``evaluation_generator.py`` lines 537-614). Re-verify against the source when
+The upstream fix threads ``app=`` from each eval caller into the leaf and covers
+the live inference path as well, so it is broader than this patch. Removal stays
+clean either way: this module only replaces the leaf.
+
+ADK version pin: the replaced body is copied from google-adk 2.4.0
+(``evaluation_generator.py`` lines 545-623). Re-verify against the source when
 bumping ADK and refresh the copy if upstream changes the leaf.
 # --- End monkey-patch ---
 """
@@ -81,7 +85,7 @@ async def _app_aware_generate_inferences_from_root_agent(
 ) -> list[Any]:
     """App-aware replacement for ``_generate_inferences_from_root_agent``.
 
-    Identical to the ADK 2.2.0 body except: it self-sources the package ``App``
+    Identical to the ADK 2.4.0 body except: it self-sources the package ``App``
     when ``app`` is ``None``, and builds the ``Runner`` from a copy of that ``App``
     (plugins merged, ``root_agent`` overridden) instead of the bare agent.
     """
