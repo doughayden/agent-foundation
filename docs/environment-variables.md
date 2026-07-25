@@ -30,7 +30,7 @@ See `.env.example` in the repository root for template configuration with inline
 
 **Cloud Run auto-set:** [K_REVISION](#cloud-run-auto-set-read-only)
 
-**CI/CD only:** [TF_VAR_*](#cicd-only) variables (GitHub Actions)
+**CI/CD only:** [TF_VAR_*](#terraform-inputs-tf_var_) variables and [repository secrets](#repository-secrets) (GitHub Actions)
 
 ---
 
@@ -260,6 +260,21 @@ Override runtime config via GitHub Environment Variables (mapped to `TF_VAR_*`):
 **TF_VAR_otel_instrumentation_genai_capture_message_content**
 - **Source:** `${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}` (optional GitHub Environment Variable)
 - **Purpose:** Override OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT for Cloud Run deployment
+
+### Repository Secrets
+
+Set in GitHub Actions > Secrets and variables > Actions. Both select the model auth path for the `claude.yml` PR review; when neither is set, the review authenticates via Workload Identity Federation and calls Vertex AI. See [Claude PR Review](references/claude-pr-review.md).
+
+**ANTHROPIC_API_KEY**
+- **Source:** Repository secret (optional, set manually)
+- **Purpose:** Runs the review against the Anthropic API with an organization API key instead of Vertex AI. Takes precedence over `CLAUDE_CODE_OAUTH_TOKEN`
+
+**CLAUDE_CODE_OAUTH_TOKEN**
+- **Source:** Repository secret (optional, set manually; generate with `claude setup-token`)
+- **Purpose:** Runs the review against the Anthropic API with an individual account's Claude Code OAuth token instead of Vertex AI. Ignored when `ANTHROPIC_API_KEY` is set. Expires about a year after issue and must be rotated
+
+> [!NOTE]
+> These two names are also what the local Claude Code CLI reads for its own authentication. The "do not set locally" guidance above applies to the `TF_VAR_*` variables, not to these.
 
 ---
 

@@ -94,7 +94,7 @@ gh variable list --env dev  # or GitHub repo Settings > Environments > dev
 
 ### 6. Set Up Claude PR Review
 
-Opening a pull request triggers an automated Claude code review via Vertex AI. It needs a one-time setup (install the Claude GitHub App and enable the Vertex model in the dev project) before the first PR. See [Claude PR Review](references/claude-pr-review.md).
+Opening a pull request triggers an automated Claude code review. It needs a one-time setup before the first PR: install the Claude GitHub App, then pick a model auth path, either Vertex AI in the dev project or a direct Anthropic credential. See [Claude PR Review](references/claude-pr-review.md).
 
 See [Bootstrap Reference](references/bootstrap.md) for complete bootstrap setup instructions.
 

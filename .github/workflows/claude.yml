@@ -1,3 +1,14 @@
+# Inline review comments: the tag-mode tool allowlist is fixed, and the inline
+# comment MCP server is only started when the allowlist names one of its tools,
+# so create_inline_comment is granted through claude_args. Classification of
+# buffered comments is off: it only runs when an Anthropic API key is present,
+# which would make the set of posted comments depend on the auth path below.
+#
+# Model auth: Vertex AI by default. Either the ANTHROPIC_API_KEY or the
+# CLAUDE_CODE_OAUTH_TOKEN repository secret overrides it and calls the Anthropic
+# API directly instead, with no GCP dependency. ANTHROPIC_API_KEY wins if both
+# are set. See docs/references/claude-pr-review.md.
+#
 # Editing this workflow: claude-code-action only runs when this file matches the
 # repository's default branch. It validates during the GitHub App token exchange
 # (a security guard, not standard GitHub Actions behavior), so a pull request
@@ -37,13 +48,30 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write
+    env:
+      USE_ANTHROPIC_AUTH: ${{ secrets.ANTHROPIC_API_KEY != '' || secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
+      - name: Report model auth path
+        env:
+          HAS_API_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          HAS_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          GCP_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+        run: |
+          if [[ "$HAS_API_KEY" == "true" ]]; then
+            echo "Model auth: Anthropic API key"
+          elif [[ "$HAS_OAUTH_TOKEN" == "true" ]]; then
+            echo "Model auth: Claude Code OAuth token"
+          else
+            echo "Model auth: Vertex AI (project $GCP_PROJECT)"
+          fi
+
       - name: Authenticate to Google Cloud
+        if: env.USE_ANTHROPIC_AUTH != 'true'
         uses: google-github-actions/auth@v3
         with:
           project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
@@ -53,6 +81,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           track_progress: true
+          classify_inline_comments: "false"
           prompt: |
             Please provide a comprehensive code review of this pull request. Focus on:
             - Code quality and best practices
@@ -60,10 +89,18 @@ jobs:
             - Performance implications
             - Documentation and testing completeness
 
-            Provide specific, actionable feedback with line-by-line suggestions where appropriate.
-          use_vertex: "true"
+            Post findings that concern specific lines as inline review comments on
+            those lines, using the create_inline_comment tool. Include a
+            ```suggestion``` block whenever you can express the fix as a drop-in
+            replacement for the lines you are commenting on. Reserve the tracking
+            comment for the overall summary and for findings that span the change
+            as a whole.
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.ANTHROPIC_API_KEY == '' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          use_vertex: ${{ env.USE_ANTHROPIC_AUTH != 'true' }}
           claude_args: |
             --model claude-sonnet-5
+            --allowedTools "mcp__github_inline_comment__create_inline_comment"
         env:
           CLOUD_ML_REGION: global
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.GOOGLE_CLOUD_PROJECT }}
@@ -82,13 +119,30 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write
+    env:
+      USE_ANTHROPIC_AUTH: ${{ secrets.ANTHROPIC_API_KEY != '' || secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
+      - name: Report model auth path
+        env:
+          HAS_API_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          HAS_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          GCP_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+        run: |
+          if [[ "$HAS_API_KEY" == "true" ]]; then
+            echo "Model auth: Anthropic API key"
+          elif [[ "$HAS_OAUTH_TOKEN" == "true" ]]; then
+            echo "Model auth: Claude Code OAuth token"
+          else
+            echo "Model auth: Vertex AI (project $GCP_PROJECT)"
+          fi
+
       - name: Authenticate to Google Cloud
+        if: env.USE_ANTHROPIC_AUTH != 'true'
         uses: google-github-actions/auth@v3
         with:
           project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
@@ -98,10 +152,14 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           track_progress: true
+          classify_inline_comments: "false"
           trigger_phrase: "@claude"
-          use_vertex: "true"
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.ANTHROPIC_API_KEY == '' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          use_vertex: ${{ env.USE_ANTHROPIC_AUTH != 'true' }}
           claude_args: |
             --model claude-sonnet-5
+            --allowedTools "mcp__github_inline_comment__create_inline_comment"
         env:
           CLOUD_ML_REGION: global
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.GOOGLE_CLOUD_PROJECT }}
@@ -125,3 +183,14 @@ jobs:
 # https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables
 # Set the GitHub Actions > Repository variables GOOGLE_CLOUD_PROJECT to the Google Cloud project ID
 # Set the GitHub Actions > Repository variables WORKLOAD_IDENTITY_PROVIDER to the workload ID federation principal identifier
+#
+# Configure Repository Secrets
+# https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets
+# Set the GitHub Actions > Repository secrets ANTHROPIC_API_KEY to use an Anthropic organization API key instead of Vertex AI
+# Set the GitHub Actions > Repository secrets CLAUDE_CODE_OAUTH_TOKEN to use a Claude Code OAuth token instead of Vertex AI
+#
+# Anthropic Console (organization API keys)
+# https://console.anthropic.com/settings/keys
+#
+# Claude Code OAuth token (generate with: claude setup-token)
+# https://code.claude.com/docs/en/github-actions

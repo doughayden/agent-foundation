@@ -326,7 +326,7 @@ See [Protection Strategies](protection-strategies.md) for detailed setup instruc
 
 ## Claude PR Review
 
-The `claude.yml` workflow adds an automated Claude code review on pull requests plus a manual `@claude` trigger. It needs a one-time setup beyond bootstrap: install the Claude GitHub App and enable the Vertex model in the dev project. See [Claude PR Review](claude-pr-review.md).
+The `claude.yml` workflow adds an automated Claude code review on pull requests plus a manual `@claude` trigger. It needs a one-time setup beyond bootstrap: install the Claude GitHub App, then pick a model auth path, either enabling the Claude model in the dev project for the default Vertex AI path or setting a repository secret to call the Anthropic API instead. See [Claude PR Review](claude-pr-review.md).
 
 ## Important Notes
 

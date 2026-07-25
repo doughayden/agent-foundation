@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Inline review comments on the Claude PR review (`claude.yml`): line-specific findings now post on the lines they concern, with committable `suggestion` blocks, instead of collapsing into one tracking comment. Tag mode's tool allowlist is fixed, so `create_inline_comment` is granted via `claude_args`; without it the inline-comment MCP server never starts. Comment classification is disabled, since it runs only when an Anthropic API key is present and would otherwise make the set of posted comments depend on the auth path (#194)
+- Direct-to-Anthropic auth for the Claude PR review (`claude.yml`): setting either the `ANTHROPIC_API_KEY` repository secret (an Anthropic organization API key) or `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) overrides the default Vertex AI path, so the review runs without Vertex model access. `ANTHROPIC_API_KEY` wins when both are set; Vertex AI remains the default when neither is. A new "Report model auth path" step names the selected path in the job log
+
 ### Fixed
 - Agent eval gate no longer false-passes when model inference is entirely unavailable. ADK swallows per-case inference failures (403/quota/network) and drops the case from scoring, so `AgentEvaluator` passed vacuously over an empty metric set and a dead endpoint read as green. Preflight liveness probes now make one minimal live call per model role before the gates run, the agent's inference model and each judge autorater, and fail the lane fast (reporting the exact endpoint reply or error) when one is unreachable. Each probe reads its role's model from source (`ROOT_AGENT_MODEL`, `full_eval_config.json`), so swapping a model re-points its probe automatically (#229)
 
