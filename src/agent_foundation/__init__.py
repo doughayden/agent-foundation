@@ -31,7 +31,7 @@ where the eval dependencies and thus google.adk.evaluation are absent, is a
 no-op, while a renamed ADK symbol surfaces loudly instead of silently disabling
 App-aware eval. See _eval_app_aware_patch for the full rationale. Remove this
 block along with _eval_app_aware_patch when the upstream App-aware eval fix
-(adk-python#5503) lands in a released ADK.
+(adk-python#5503, proposed fix in #6480) lands in a released ADK.
 """
 
 import importlib

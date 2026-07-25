@@ -27,14 +27,14 @@ not the module name. The bare-``root_agent`` branch is preserved for the case
 where no ``App`` is defined.
 
 Upstream: https://github.com/google/adk-python/issues/5503
-          https://github.com/google/adk-python/pull/6480 (our fix, open)
+          https://github.com/google/adk-python/pull/6480 (proposed fix, open)
           https://github.com/google/adk-python/pull/5534 (CLI-only fix, stalled)
 TODO: Remove this module and its apply-trigger in ``__init__`` once #6480 (or an
       equivalent App-aware eval fix) ships in a released ADK.
 
-The upstream fix threads ``app=`` from each eval caller into the leaf and covers
-the live inference path as well, so it is broader than this patch. Removal stays
-clean either way: this module only replaces the leaf.
+The proposed upstream fix (#6480) threads ``app=`` from each eval caller into the
+leaf and covers the live inference path as well, so it is broader than this
+patch. Removal stays clean either way: this module only replaces the leaf.
 
 ADK version pin: the replaced body is copied from google-adk 2.4.0
 (``evaluation_generator.py`` lines 545-623). Re-verify against the source when
