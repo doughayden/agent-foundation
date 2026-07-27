@@ -3,11 +3,15 @@
 # Tag-time gate that requires the tagged commit's stage release candidate to have passed
 # before prod promotion. The tag run and the original merge share a SHA, and the tag run
 # never rebuilds (it only re-reads stage `{sha7}` and promotes it), so verifying the
-# merge run's stage gates passed is sufficient: stage `{sha7}` is written only by that
+# merge run's gates passed is sufficient: stage `{sha7}` is written only by that
 # commit's own merge-run attempts, and the jobs API reports the latest attempt, so a
 # green `Smoke Stage` means `{sha7}` resolves to the digest that was smoked. The
 # promotion workflow (digest-preserving copy) and deploy-by-digest then guarantee prod
 # runs exactly that digest.
+#
+# `Judge Eval` is required alongside the two stage jobs. It scores the same commit's
+# agent code in-process rather than a deployed revision, so it gates the behavior the
+# promoted digest carries without depending on the stage rollout.
 name: Require Stage Success
 
 on:
@@ -93,6 +97,7 @@ jobs:
             run_display="not found"
             apply_status="no run"
             smoke_status="no run"
+            eval_status="no run"
           else
             echo "Checking stage run: ${RUN_ID}"
             run_icon="✅"
@@ -100,6 +105,7 @@ jobs:
             JOBS_JSON=$(gh api "repos/${REPO}/actions/runs/${RUN_ID}/jobs?per_page=100")
             apply_status=$(job_status "Apply Stage") || overall=1
             smoke_status=$(job_status "Smoke Stage") || overall=1
+            eval_status=$(job_status "Judge Eval") || overall=1
           fi
 
           {
@@ -110,6 +116,7 @@ jobs:
             echo "| Stage run for \`${HEAD_SHA}\` | ${run_icon} \`${run_display}\` |"
             echo "| 🚀 Apply Stage | $(status_icon "$apply_status") \`${apply_status}\` |"
             echo "| 💨 Smoke Stage | $(status_icon "$smoke_status") \`${smoke_status}\` |"
+            echo "| ⚖️ Judge Eval | $(status_icon "$eval_status") \`${eval_status}\` |"
             echo ""
             echo "---"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -117,4 +124,4 @@ jobs:
           if [ "$overall" -ne 0 ]; then
             exit 1
           fi
-          echo "✅ Apply Stage and Smoke Stage succeeded for ${HEAD_SHA}"
+          echo "✅ Apply Stage, Smoke Stage, and Judge Eval succeeded for ${HEAD_SHA}"

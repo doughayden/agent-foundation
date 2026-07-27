@@ -1,0 +1,162 @@
+# Judge Eval
+#
+# Reusable LLM-as-judge behavioral gate. Runs the App-aware in-process judge eval
+# (the `judge` marker in `tests/eval`) under the eval lane's credential posture
+# (WIF to Vertex AI), so it scores the checked-out agent code and needs no deployed
+# revision and no service-target auth.
+#
+# What gets scored (eval set, judge criteria, run counts) is fixed in the eval lane,
+# not passed in here. Changing it is a code edit in `tests/eval/`, which is where a
+# consumer adding cases is already working.
+#
+# `gating` decides whether a sub-threshold score fails the job. It is an input rather
+# than `continue-on-error` on the caller because a job that calls a reusable workflow
+# may not use that keyword, and the tag-time gate reads this job's conclusion.
+name: Judge Eval
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'GitHub Environment (dev, stage, prod) supplying the WIF principal and the Vertex AI project'
+        required: true
+        type: string
+      gating:
+        description: 'Fail the job on a sub-threshold score. False reports the result and exits 0'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  judge-eval:
+    name: Judge Eval (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    # Measured ~2 min for the shipped one-case config at JUDGE_NUM_RUNS 5, which ADK runs
+    # serially. The margin covers deps, a slow Vertex day, and added eval cases. A timeout
+    # is a job failure `gating` cannot absorb, so leave room rather than trimming this.
+    timeout-minutes: 30
+    env:
+      GOOGLE_GENAI_USE_VERTEXAI: "TRUE"
+      GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+      GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          save-cache: false  # Restore-only: same key as ci.yml's code-quality, which runs concurrently and owns the save
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-extras --locked
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+
+      # Separate invocation so the scored step's exit code speaks only about scoring.
+      # Runs under the default shell, so a dead endpoint fails the job in every mode:
+      # `gating` absorbs a behavioral regression, never a broken model. A transient
+      # Vertex error here therefore also reds a "signal only" run, which is the
+      # intended trade — a flaky red is recoverable by re-running, a silent green is not.
+      - name: Preflight model liveness
+        run: uv run pytest tests/eval -m "judge and liveness" 2>&1 | tee "$RUNNER_TEMP/judge-eval.log"
+
+      - name: Run judge evals
+        shell: bash {0}  # Removes -e flag so pytest's exit code is captured for the summary
+        env:
+          GATING: ${{ inputs.gating }}
+        run: |
+          # Stream output to both logs (real-time) and file (for the summary step)
+          uv run pytest tests/eval -m "judge and not liveness" 2>&1 | tee -a "$RUNNER_TEMP/judge-eval.log"
+          EXIT_CODE=${PIPESTATUS[0]}  # pytest's exit code, not tee's
+
+          # Hand the code to the summary step, which runs even when this one fails
+          echo "EXIT_CODE=${EXIT_CODE}" >> "$GITHUB_ENV"
+
+          # Exit 1 is a sub-threshold score and nothing else: the preflight ruled out a
+          # dead endpoint, and the eval test converts every non-assertion failure to
+          # EVAL_ERROR_EXIT_CODE. Every other non-zero code is a broken run and fails
+          # regardless of `gating`.
+          if [ "$EXIT_CODE" -eq 1 ] && [ "$GATING" != "true" ]; then
+            echo "::warning::Judge eval scored below threshold. This run is signal only (gating=false), so the job passes."
+            exit 0
+          fi
+
+          exit "$EXIT_CODE"
+
+      # Always runs, so a failed preflight still reports. An unset EXIT_CODE means the
+      # scored step never ran, which only happens when the preflight failed.
+      - name: Report result
+        if: always()
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          GATING: ${{ inputs.gating }}
+        run: |
+          # Map environments to emojis (mirrors the terraform summary's envIcon)
+          get_env_emoji() {
+            case "$1" in
+              dev) echo "🧪" ;;
+              stage) echo "🔬" ;;
+              prod) echo "🚀" ;;
+              *) echo "🌎" ;;
+            esac
+          }
+
+          if [ -z "${EXIT_CODE:-}" ]; then
+            STATUS_ICON="❌"
+            STATUS="model preflight failed"
+          elif [ "$EXIT_CODE" -eq 0 ]; then
+            STATUS_ICON="✅"
+            STATUS="success"
+          elif [ "$EXIT_CODE" -ne 1 ]; then
+            STATUS_ICON="❌"
+            STATUS="eval could not run (pytest exit ${EXIT_CODE})"
+          elif [ "$GATING" = "true" ]; then
+            STATUS_ICON="❌"
+            STATUS="regression"
+          else
+            STATUS_ICON="⚠️"
+            STATUS="regression (non-blocking)"
+          fi
+
+          if [ "$GATING" = "true" ]; then
+            GATING_DISPLAY="🚦 \`blocking\`"
+          else
+            GATING_DISPLAY="📊 \`signal only\`"
+          fi
+          ENV_EMOJI=$(get_env_emoji "$ENVIRONMENT")
+
+          # Build job summary
+          {
+            echo "## ⚖️ Judge Eval Summary"
+            echo ""
+            echo "**Environment:** ${ENV_EMOJI} \`${ENVIRONMENT}\`"
+            echo "**Gating:** ${GATING_DISPLAY}"
+            echo "**Status:** ${STATUS_ICON} \`${STATUS}\`"
+            echo ""
+            echo "<details><summary>Judge eval output</summary>"
+            echo ""
+            echo '```'
+            cat "$RUNNER_TEMP/judge-eval.log" 2>/dev/null || echo "(no eval output captured)"
+            echo '```'
+            echo ""
+            echo "</details>"
+            echo ""
+            echo "---"
+          } >> "$GITHUB_STEP_SUMMARY"

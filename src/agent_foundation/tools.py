@@ -25,7 +25,9 @@ def get_current_time(
 
     Returns:
         A dictionary describing either the current time lookup result or the
-        validation error for an unsupported timezone.
+        validation error for an unsupported timezone. ``timezone_abbreviation``
+        is ``None`` for the many zones that have no customary abbreviation;
+        name the UTC offset in that case rather than supplying one.
     """
     # tool_context: ToolContext injected by ADK for session state access.
     # Not included in the docstring to avoid confusing the LlmAgent.
@@ -51,12 +53,17 @@ def get_current_time(
     formatted_utc_offset = f"{utc_offset[:3]}:{utc_offset[3:]}"
     utc_time = current_time.astimezone(UTC)
 
+    # tzdata reports a numeric offset for zones with no customary abbreviation
+    abbreviation = current_time.strftime("%Z")
+    timezone_abbreviation = abbreviation if abbreviation.isalpha() else None
+
     message = f"Retrieved current time for {normalized_timezone_name}."
     return {
         "status": SUCCESS_STATUS,
         "code": SUCCESS_CODE,
         "message": message,
         "timezone_name": normalized_timezone_name,
+        "timezone_abbreviation": timezone_abbreviation,
         "current_time": current_time.isoformat(timespec="seconds"),
         "current_date": current_time.date().isoformat(),
         "day_of_week": current_time.strftime("%A"),

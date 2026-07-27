@@ -151,7 +151,7 @@ Production mode uses **image promotion** (pull from source, push to target) inst
    - Queries stage registry for image by tag: `v1.0.0`
    - Extracts digest: `sha256:abc123`
 2. require-stage-success job (gates prod-promote):
-   - Confirms the tagged commit's merge run had `Apply Stage` and `Smoke Stage` both succeed
+   - Confirms the tagged commit's merge run had `Apply Stage`, `Smoke Stage`, and `Judge Eval` all succeed
    - Fails closed otherwise, halting the tag run before the `prod-apply` approval
 3. prod-promote job:
    - Authenticates to stage and prod registries via WIF

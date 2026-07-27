@@ -17,6 +17,7 @@ on:
       - '.github/workflows/pull-and-promote.yml'
       - '.github/workflows/resolve-image-digest.yml'
       - '.github/workflows/smoke.yml'
+      - '.github/workflows/judge-eval.yml'
       - '.github/workflows/require-stage-success.yml'
       - '.github/workflows/terraform-plan-apply.yml'
   push:
@@ -35,6 +36,7 @@ on:
       - '.github/workflows/pull-and-promote.yml'
       - '.github/workflows/resolve-image-digest.yml'
       - '.github/workflows/smoke.yml'
+      - '.github/workflows/judge-eval.yml'
       - '.github/workflows/require-stage-success.yml'
       - '.github/workflows/terraform-plan-apply.yml'
     tags:
@@ -121,6 +123,17 @@ jobs:
       environment: dev
       service_url: ${{ needs.dev-apply.outputs.smoke_target_url }}
       invoker_service_account: ${{ needs.dev-apply.outputs.smoke_invoker_service_account_email }}
+    secrets: inherit
+
+  # Behavioral judge gate (merge to main only, blocking in production mode)
+  judge-eval:
+    name: Judge Eval
+    if: github.ref_type == 'branch' && github.event_name == 'push'
+    needs: config
+    uses: ./.github/workflows/judge-eval.yml
+    with:
+      environment: dev
+      gating: ${{ needs.config.outputs.production_mode == 'true' }}
     secrets: inherit
 
   # Stage environment (merge to main only, not PRs or tags, wait for dev to deploy)

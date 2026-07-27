@@ -32,6 +32,8 @@ See `.env.example` in the repository root for template configuration with inline
 
 **CI/CD only:** [TF_VAR_*](#terraform-inputs-tf_var_) variables and [repository secrets](#repository-secrets) (GitHub Actions)
 
+**Test lanes:** [test lane inputs](#test-lane-inputs) (set by CI, or as a prefix on a local test command)
+
 ---
 
 ## Required
@@ -260,6 +262,21 @@ Override runtime config via GitHub Environment Variables (mapped to `TF_VAR_*`):
 **TF_VAR_otel_instrumentation_genai_capture_message_content**
 - **Source:** `${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}` (optional GitHub Environment Variable)
 - **Purpose:** Override OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT for Cloud Run deployment
+
+### Test Lane Inputs
+
+Read by test lanes rather than by the application, so they never appear in `ServerEnv` or on Cloud Run. CI sets them from workflow inputs; set them locally only to run a lane by hand, as a prefix on the command itself.
+
+> [!NOTE]
+> `.env` does not set these. The smoke lane never loads `.env` at all and raises on an unset `SMOKE_*`. The eval lane takes no environment input: what it scores is fixed in constants in `tests/eval/test_agent_eval.py`, so a run cannot be reconfigured from outside the file it is defined in.
+
+**SMOKE_BASE_URL**, **SMOKE_INVOKER_SA**
+- **Source:** `smoke.yml`, from the apply job's `smoke_target_url` and `smoke_invoker_service_account_email` outputs
+- **Purpose:** Deployed service URL and the invoker SA the smoke client impersonates. See [Smoke Tests](references/smoke-tests.md)
+
+**INTEGRATION_DATABASE_URI**
+- **Source:** Not set in CI (the lane starts a throwaway `postgres:18` via testcontainers)
+- **Purpose:** Point the integration lane at an already-running Postgres instead. See [Integration Tests](references/integration-tests.md)
 
 ### Repository Secrets
 

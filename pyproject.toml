@@ -131,7 +131,10 @@ directory = "htmlcov"
 
 [tool.pytest.ini_options]
 # https://docs.pytest.org/en/stable/explanation/goodpractices.html
-addopts = "--import-mode=importlib"
+# --strict-markers: an unregistered marker is an error, not a warning. The eval lane's
+# markers are a CI contract (judge-eval.yml selects on them), so a typo must fail
+# collection rather than silently route a test into the wrong workflow step.
+addopts = "--import-mode=importlib --strict-markers"
 # Bare `pytest` runs only the fast, deterministic unit lane; other lanes run by
 # explicit path (e.g. `uv run pytest tests/integration`) — see AGENTS.md Testing Patterns
 testpaths = ["tests/unit"]
@@ -142,6 +145,7 @@ markers = [
     "smoke: requires a live deployed service URL",
     "deterministic: eval case scored by exact/ROUGE match (the PR gate)",
     "judge: eval case scored by an LLM judge (non-deterministic; adds the Gen AI eval service)",
+    "liveness: eval preflight probing a model endpoint; never a behavioral result",
 ]
 filterwarnings = [
     # ADK 2.x deprecated the config-defined agent family; fires at import via ABCMeta

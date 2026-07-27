@@ -24,7 +24,7 @@ Eval inference runs the full `App` with its plugins applied, so evals score the 
 | `multi_turn.evalset.json` | A scripted multi-turn conversation case |
 | `simple_time_query.test.json` | The `.test.json` single-file format, for `adk test` |
 | `test_config.json` | Deterministic gate criteria |
-| `full_eval_config.json` | Deep criteria: judge, rubric, hallucination, and safety metrics |
+| `full_eval_config.json` | Merge-gate criteria: judge, rubric, hallucination, and safety metrics |
 | `conversation_scenarios.json` | User-simulation scenarios (a pre-built and a custom persona) |
 | `session_input.json` | Session seed for user-simulation cases |
 | `user_sim_config.json` | User-simulation criteria plus simulator config |
@@ -62,7 +62,7 @@ uv run pytest tests/eval -m "deterministic"   # the PR gate only
 uv run pytest tests/eval -m "judge"           # LLM-judged deep evaluation only
 ```
 
-The gate selects `-m "deterministic"` by explicit opt-in: a case joins the gate only when marked `deterministic`, so an unmarked live-model case can't leak cost or flakiness into the fast gate. It calls `AgentEvaluator.evaluate()` against `test_config.json`, which raises on a sub-threshold metric. This is exactly what CI runs today; wiring the judge tests as their own CI job is future work. Both markers' tests run App-aware.
+The gate selects `-m "deterministic"` by explicit opt-in: a case joins the gate only when marked `deterministic`, so an unmarked live-model case can't leak cost or flakiness into the fast gate. It calls `AgentEvaluator.evaluate()` against `test_config.json`, which raises on a sub-threshold metric. The `judge` marker gets its own gate one step later, on merge to main. Both markers' tests run App-aware.
 
 > [!WARNING]
 > Never gate CI on the `adk eval` CLI. It exits 0 even when cases fail (verified against google-adk 2.2.0), so a CLI-based gate is silently always green. Only the pytest runner fails the build.
@@ -76,6 +76,29 @@ uv run pytest tests/eval -m "deterministic" --log-cli-level=DEBUG
 ```
 
 `DEBUG` is the level that surfaces ADK's LLM request and response detail, the most useful eval output; `INFO` shows only higher-level lifecycle. It is verbose. To stream logs on every run instead of per-invocation, uncomment the `log_cli` block in `[tool.pytest.ini_options]` in `pyproject.toml`. In CI, append the flag to the eval step's command.
+
+### Confirming what a run actually did
+
+The loop over `num_runs` belongs to ADK's `AgentEvaluator`, which does not announce it, so the evidence that a run happened is the agent invocations themselves. Each one is bracketed by the logging callbacks in `callbacks.py`:
+
+```
+INFO agent_foundation.callbacks *** Starting agent 'your_agent' with invocation_id 'e-d4ba1ea5…' ***
+INFO agent_foundation.callbacks *** Before LLM call … ***
+INFO agent_foundation.callbacks *** Before invoking tool 'get_current_time' … ***
+INFO agent_foundation.callbacks *** Leaving agent 'your_agent' with invocation_id 'e-d4ba1ea5…' ***
+INFO google_adk…runners Runner closed.
+```
+
+One such block per run per eval case, each with its own `invocation_id`. Count them:
+
+```bash
+uv run pytest tests/eval -m "judge" --log-cli-level=INFO 2>&1 \
+  | grep -c "Starting agent"          # JUDGE_NUM_RUNS per eval case
+```
+
+Scoring leaves its own trail, one block per run: `rouge_scorer: Using default tokenizer` for the ROUGE metric, and `vertexai…_evals_common: Evaluation run completed.` with a duration for each eval-service metric pass. Counting either cross-checks the inference count.
+
+Count the invocations rather than trusting the constant: `JUDGE_NUM_RUNS` states what was asked for, while the invocation IDs are what ADK actually ran.
 
 ### The CLI: `adk eval`
 
@@ -146,42 +169,88 @@ Older non-pydantic eval files convert to the current schema with `adk migrate` (
 
 ## Metrics
 
-The gate uses only judge-free, deterministic metrics; the deep and user-sim configs exercise the rest. The [ADK criteria reference](https://adk.dev/evaluate/criteria/) defines each one.
+The PR gate uses only judge-free, deterministic metrics; the merge gate adds the judged and eval-service ones, and the user-sim config exercises the rest. The [ADK criteria reference](https://adk.dev/evaluate/criteria/) defines each one.
 
-| Metric | Kind | Config | In gate |
+| Metric | Kind | Config | Gate |
 |---|---|---|---|
-| `tool_trajectory_avg_score` | deterministic | `test_config`, `full` | yes |
-| `response_match_score` | deterministic (ROUGE-1) | `test_config`, `full` | yes |
-| `final_response_match_v2` | LLM judge vs reference | `full` | no |
-| `rubric_based_final_response_quality_v1` | LLM judge vs rubrics | `full` | no |
-| `rubric_based_tool_use_quality_v1` | LLM judge vs rubrics | `full` | no |
-| `hallucinations_v1` | LLM judge (groundedness) | `full`, `user_sim` | no |
-| `safety_v1` | eval service | `full`, `user_sim` | no |
-| `per_turn_user_simulator_quality_v1` | LLM judge | `user_sim` | no |
-| `multi_turn_task_success_v1` | eval service | `user_sim` | no |
-| `multi_turn_trajectory_quality_v1` | eval service | `user_sim` | no |
-| `multi_turn_tool_use_quality_v1` | eval service | `user_sim` | no |
+| `tool_trajectory_avg_score` | deterministic | `test_config` | PR |
+| `response_match_score` | deterministic (ROUGE-1) | `test_config` | PR |
+| `final_response_match_v2` | LLM judge vs reference | not shipped | none |
+| `rubric_based_final_response_quality_v1` | LLM judge vs rubrics | `full` | merge |
+| `rubric_based_tool_use_quality_v1` | LLM judge vs rubrics | `full` | merge |
+| `hallucinations_v1` | LLM judge (groundedness) | `full`, `user_sim` | merge |
+| `safety_v1` | eval service | `full`, `user_sim` | merge |
+| `per_turn_user_simulator_quality_v1` | LLM judge | `user_sim` | none |
+| `multi_turn_task_success_v1` | eval service | `user_sim` | none |
+| `multi_turn_trajectory_quality_v1` | eval service | `user_sim` | none |
+| `multi_turn_tool_use_quality_v1` | eval service | `user_sim` | none |
+
+"Merge" means the `judge-eval` job on merge to main, which scores `full_eval_config.json`. The two deterministic criteria are deliberately not in that file: the PR gate already scores them, and re-scoring them at `JUDGE_NUM_RUNS` would quietly make an exact-match threshold demand five perfect runs where the PR gate demands two, a merge-only failure the PR gate could never reproduce. It blocks only in production mode. `final_response_match_v2` is listed for reference but is deliberately absent from the shipped config, for the reason in "Limits and gotchas" below.
 
 Reference-based metrics need an expected response, so they do not combine with user simulation.
 
-## The CI gate
+## The CI gates
 
-The `agent-eval` job in `.github/workflows/ci.yml` runs `uv run pytest tests/eval -m "deterministic"` on every PR that touches code, authenticating to Vertex AI with the dev environment's WIF principal. The always-run `status` sentinel requires it, so the existing `CI / status` required check blocks merges on eval failures with no separate registration. Only the deterministic gate runs in CI today; the judge, safety, and user-sim paths are for local and deep evaluation, and wiring the judge tests as their own CI job is future work.
+Two gates run in CI, at two different points, both authenticating to Vertex AI with the dev environment's WIF principal.
+
+**Deterministic, on every PR.** The `agent-eval` job in `.github/workflows/ci.yml` runs `uv run pytest tests/eval -m "deterministic"` on every PR that touches code. The always-run `status` sentinel requires it, so the existing `CI / status` required check blocks merges on eval failures with no separate registration.
+
+**Judge, on every merge to main.** The `judge-eval` job in `.github/workflows/ci-cd.yml` calls the reusable `judge-eval.yml` workflow. It runs in-process, so it needs no deployed revision and starts without waiting on a deploy. The workflow runs the lane in two steps:
+
+1. `pytest tests/eval -m "judge and liveness"` — the model-endpoint liveness probes, always blocking.
+2. `pytest tests/eval -m "judge and not liveness"` — the scored eval, where the deployment mode decides whether a failure blocks.
+
+Splitting them is what makes the second step's exit code readable. Exit 1 means a sub-threshold score and nothing else: the preflight has ruled out a dead endpoint, and the judge test converts every non-assertion failure (a missing eval extra, an empty dataset, an eval-service error) into `EVAL_ERROR_EXIT_CODE`. Every other non-zero code is a broken run and fails the job in either mode. Note that a job timeout and a failed preflight are job failures, not exit codes, so `gating: false` cannot absorb those either. Locally the whole lane still runs as one session, where a failed probe arms `session.shouldfail` to abort before the paid tests.
+
+Mode decides how the scored step's failure is treated:
+
+- **Dev-only mode** (the default): signal only. A sub-threshold score is reported in the job summary and as a warning annotation, then the job exits 0. A failed preflight or a broken run still fails, so a dead endpoint is never mistaken for a passing gate.
+- **Production mode**: blocking. A sub-threshold score fails the job, and `require-stage-success` requires that job's conclusion at tag time, so a behavioral regression blocks the prod tag for that commit. Stage has already deployed by then and is not reverted.
+
+The judge gate is off the PR path deliberately: it is non-deterministic and calls the paid Gen AI evaluation service, so it belongs where a failure is investigated rather than where it would flake a merge queue. The user-simulation paths stay local and manual.
+
+`judge-eval` runs only when `ci-cd.yml` itself triggers, so a merge touching nothing under its path filter produces no judge run. That includes a change to `tests/eval/` alone, which is the change most likely to alter what the gate asserts. Adding `tests/eval/**` to the filter would fix that but would also build and deploy unchanged source on every eval-data merge, so the tradeoff is tracked in issue #238 rather than settled here. In production mode, tagging a commit whose merge triggered no run fails `require-stage-success` closed on a missing run.
+
+### Varying a run
+
+What a run scores is fixed in `tests/eval/test_agent_eval.py`: the eval set path, the judge config path, and the per-gate run counts are module constants. There are no workflow inputs or environment variables for them, so CI and a local run always score the same thing, and the command you run locally is the command CI runs.
+
+```python
+DETERMINISTIC_NUM_RUNS = 2
+JUDGE_NUM_RUNS = 5
+```
+
+The judge gate averages more runs because its metrics return a binary verdict each time. At 2 the only achievable scores are 0, 0.5, and 1, so every threshold above 0.5 silently demands unanimity; 5 gives the average enough resolution for a `0.7` to mean "four of five". The deterministic gate keeps 2: exact trajectory matching wants unanimity regardless, and ROUGE produces continuous per-run scores that average sensibly at any sample size. ADK runs the passes serially, so raising `JUDGE_NUM_RUNS` costs proportional wall clock on every merge.
+
+To vary either one, edit the constant. That is a reviewable diff in the same file as the eval cases, rather than a value threaded through a workflow input.
+
+**Stress-test by looping, not by raising the count.** Repeated runs at the shipped setting measure flakiness better than one run at a higher setting, because a marginal metric passes a high-`num_runs` invocation while still sitting one bad draw from red.
+
+```bash
+# Five invocations, each scoring JUDGE_NUM_RUNS passes per case
+for i in 1 2 3 4 5; do uv run pytest tests/eval -m "judge" -q || echo "RUN $i FAILED"; done
+```
+
+If you want the harshest signal, temporarily drop `JUDGE_NUM_RUNS` to 2 and loop: at 2 a single bad draw scores 0.5 and fails, so repeated green proves every individual run was unanimous. Put it back before committing.
 
 ## Authoring and maintaining cases
 
 1. Capture or write a case: `SERVE_WEB_INTERFACE=TRUE uv run server` (Eval tab), or hand-edit a file in `tests/eval/data/`.
 2. Pin the expected tool trajectory (exact name and args) and a reference response built from stable tokens, no dates or clock values, so ROUGE stays stable against the real LLM.
 3. Replay: `adk eval src/$AGENT_PACKAGE <evalset> --config_file_path tests/eval/data/test_config.json`.
-4. Validate: run `uv run pytest tests/eval -m "deterministic"` at least three times before relying on a new gate case.
+4. Validate: run `uv run pytest tests/eval -m "deterministic"` at least three times before relying on a new gate case. For a case the judge gate will score, loop `-m "judge"` rather than raising the run count — see "Stress-test by looping" above.
 
 See ADK's [evaluation docs](https://adk.dev/evaluate/) for the authoring workflow, the `EvalSet` schema, and migration utilities.
 
 ## Limits and gotchas
 
 - **Cross-session memory is not eval-testable.** Each eval case runs in a fresh in-memory session, so behavior that depends on a separate prior session, like memory recall across sessions, cannot be exercised here. Cover that continuity with an integration test instead.
-- **The gate's tool match is exact, by design.** `tool_trajectory_avg_score` matches tool name and args exactly (`IN_ORDER` only tolerates extra calls). That is deliberate: it is the only judge-free, deterministic option that scores at no added cost (beyond the agent's own inference), which is what a per-PR gate needs. For semantic tool-use scoring that tolerates reordered or alternative tool paths, use the rubric metrics in `full_eval_config.json` (LLM judge, not gate-able). Match the metric to the context: strict for the gate, rubric for deep evaluation.
+- **The gate's tool match is exact, by design.** `tool_trajectory_avg_score` matches tool name and args exactly (`IN_ORDER` only tolerates extra calls). That is deliberate: it is the only judge-free, deterministic option that scores at no added cost (beyond the agent's own inference), which is what a per-PR gate needs. For semantic tool-use scoring that tolerates reordered or alternative tool paths, use the rubric metrics in `full_eval_config.json`, which an LLM judge scores on every merge rather than on every PR. Match the metric to the gate: strict and cheap per PR, rubric and non-deterministic per merge.
+- **A reference-based judge cannot score a case whose answer is not deterministic.** `final_response_match_v2` asks an LLM whether the response matches the case's `expected_response`. That only works when the correct answer is stable enough to write down. Our gate case asks for the current time, and the guidance above says to build the reference from stable tokens with no clock values so ROUGE stays stable, so the reference names the timezone but never states a time while every actual response does. The judge has no stable basis for a verdict and splits roughly evenly: measured over four runs, exactly one of each pair passed every time, scoring 0.5 against a 0.7 threshold, with the verdict uncorrelated with any observable difference (the ISO-formatted answer failed in one run and passed in another). This is why `final_response_match_v2` is not in `full_eval_config.json`. A ROUGE gate wants a clock-free reference and a semantic judge wants a complete one; one case cannot serve both. Reference-free metrics (the rubric, hallucination, and safety ones) score this case stably, and a fork whose agent has deterministic answers can add `final_response_match_v2` back.
+- **Text emitted before a tool call is not judged by default.** ADK hands an LLM-judge metric only the invocation's `final_response`, so for an agent that greets before calling a tool and answers after, the greeting is invisible to the judge. If a reference or rubric covers the whole turn, set `include_intermediate_responses_in_final: true` on that criterion to concatenate the intermediate text before judging. This agent has that shape (its instructions say to greet by name).
 - **Thinking models may skip tools.** A model with thinking enabled can answer without calling a tool, which fails an exact-trajectory case. If you hit this, set `tool_config` to `mode="ANY"` on the agent, or use a non-thinking model for the evaluated path.
+- **`num_runs` quantizes the score, so a low threshold can still mean unanimity.** Metrics that return a binary per-run verdict (the judge metrics observed here do) are averaged across `num_runs`. At 2 runs the only achievable scores are 0, 0.5, and 1, so every threshold above 0.5 requires both to pass. A `0.7` threshold reads like it tolerates a bad draw and does not. This is why `JUDGE_NUM_RUNS` is 5 while `DETERMINISTIC_NUM_RUNS` is 2: at 5 runs, `0.7` means four of five. Resolution costs proportionally more inference on every gated run, so it is a deliberate tradeoff per gate, not a number to raise reflexively.
+- **Groundedness is scored against tool output, so a tool that under-reports produces "hallucinations".** `hallucinations_v1` classifies each response sentence as supported, unsupported, or contradictory against the context, and is instructed not to apply world knowledge unless trivial. A value the model can derive but the tool never returned reads as unsupported. `get_current_time` returns `timezone_abbreviation` for exactly this reason: the model renders times in prose as "3:39 PM EDT", and without the abbreviation in the result that answer is ungrounded. Grounding a value the tool cannot actually source is worse than omitting it, so that field is `None` for the roughly 39% of IANA zones tzdata renders numerically (`Asia/Ho_Chi_Minh` reports `+07`, not `ICT`) and the docstring tells the model to name the offset instead. When this metric fails, check whether the tool result actually contains what the answer asserts before touching the metric.
 - **Never lower the bar to pass.** Dropping a threshold or deleting a flaky case hides a real regression. Fix the agent (instructions, tools) or stabilize the case (stable reference tokens, `temperature=0`), not the gate.
 - **Eval cases reference the agent by app name.** Each case's `session_input.app_name` must match the agent's `App(name=...)`, or the run fails with "Session not found". The shipped cases already match; keep them aligned if you rename the app.
 - **Eval-service metrics default to the global endpoint.** The Vertex-backed metrics (`safety_v1`, `multi_turn_*`) do not inherit `GOOGLE_CLOUD_LOCATION`; the service supports only a region subset. You normally configure nothing; override only for data residency.

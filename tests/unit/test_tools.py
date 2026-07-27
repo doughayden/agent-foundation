@@ -24,6 +24,7 @@ class TestGetCurrentTime:
         assert result["status"] == SUCCESS_STATUS
         assert result["code"] == SUCCESS_CODE
         assert result["timezone_name"] == DEFAULT_TIMEZONE_NAME
+        assert result["timezone_abbreviation"] == "UTC"
         assert result["utc_offset"] == "+00:00"
         assert result["message"] == "Retrieved current time for UTC."
         assert result["day_of_week"]
@@ -45,6 +46,22 @@ class TestGetCurrentTime:
         assert result["timezone_name"] == "America/New_York"
         assert result["message"] == "Retrieved current time for America/New_York."
         assert result["utc_offset"] in {"-05:00", "-04:00"}
+        # Paired with the offset: whichever side of daylight saving the run lands on,
+        # the abbreviation the model would otherwise infer is in the tool result.
+        assert result["timezone_abbreviation"] in {"EST", "EDT"}
+
+    def test_get_current_time_returns_no_abbreviation_for_numeric_zone(
+        self, mock_tool_context
+    ) -> None:
+        """Test that a zone tzdata renders numerically reports no abbreviation."""
+        result = get_current_time(
+            tool_context=mock_tool_context, timezone_name="Asia/Ho_Chi_Minh"
+        )
+
+        assert result["status"] == SUCCESS_STATUS
+        assert result["utc_offset"] == "+07:00"
+        # Passing tzdata's "+07" off as an abbreviation would restate the offset
+        assert result["timezone_abbreviation"] is None
 
     def test_get_current_time_uses_default_timezone_for_blank_input(
         self, mock_tool_context

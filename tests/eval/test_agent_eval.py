@@ -12,7 +12,7 @@ Two gates share the eval set:
   LLM judge. This is the CI PR gate.
 - Judge (``full_eval_config.json``, loaded explicitly): adds LLM-judge and
   safety metrics whose ``app_details`` context is populated in-process by the
-  App-aware patch. Runs locally; its own WIF->Vertex CI job is future work.
+  App-aware patch. This is the CI merge gate, run by ``judge-eval.yml``.
 
 Both gates run the agent with live model inference, so both need real
 credentials; the judge gate additionally calls the Gen AI evaluation service.
@@ -22,13 +22,13 @@ metrics, so a pytest failure IS the gate. The ``adk eval`` CLI renders the same
 eval set for interactive authoring but exits 0 even when cases fail, so it
 cannot gate CI.
 
-Preflight liveness tests make one minimal live call per model role before the
-gates run. ADK silently drops inference-failed cases from scoring, so without
-them a totally unreachable endpoint passes vacuously over an empty metric set
-(issue #229). ``test_liveness_agent_model`` probes the agent's inference model
-(both gates run the agent); ``test_liveness_judge_model`` probes each autorater
-in the judge config (``judge`` gate only). Each probe reads its role's own
-source of truth, so changing a model re-points the matching probe automatically.
+Preflight liveness tests make one minimal live call per model role before the gates run.
+ADK silently drops inference-failed cases from scoring, so without them a totally
+unreachable endpoint passes vacuously over an empty metric set (issue #229).
+``test_liveness_agent_model`` probes the agent's inference model (both gates run
+the agent); ``test_liveness_judge_model`` probes each autorater in the judge
+config (``judge`` gate only). Each probe reads its role's own source of truth, so
+changing a model re-points the matching probe automatically.
 
 A failed probe arms ``session.shouldfail`` (the knob ``-x`` sets), so the lane
 aborts before the paid ``AgentEvaluator`` tests run instead of grinding every
@@ -36,6 +36,11 @@ case against a dead endpoint. This keeps fail-fast in the module: ``maxfail`` vi
 ``pytest_configure`` would need a ``conftest.py``, which this lane deliberately
 omits. The liveness tests are defined before the eval tests so the abort lands
 before any inference.
+
+What a run scores is fixed in this module, not passed in: the file paths and run
+counts below are plain constants. A consumer changing what is evaluated is already
+editing ``tests/eval/data/``, so the values live one file away rather than behind
+workflow inputs and environment variables.
 
 Run with ``uv run pytest tests/eval`` (real credentials and LLM cost). It lives
 under ``tests/eval/`` and exercises the live model.
@@ -45,11 +50,12 @@ import importlib
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import pytest
 from dotenv import load_dotenv
 from google.adk.evaluation.agent_evaluator import AgentEvaluator
-from google.adk.evaluation.eval_config import get_evaluation_criteria_or_default
+from google.adk.evaluation.eval_config import EvalConfig
 from google.adk.evaluation.eval_set import EvalSet
 from google.adk.models import LLMRegistry, LlmRequest
 from google.genai import types
@@ -70,21 +76,43 @@ AGENT_MODULE = next(SRC_DIR.glob("*/__init__.py")).parent.name
 EVAL_SET_FILE = DATA_DIR / "template_agent.evalset.json"
 JUDGE_CONFIG_FILE = DATA_DIR / "full_eval_config.json"
 
-NUM_RUNS = 2
+# Times each case is run and averaged, per gate. The judge metrics return a binary
+# verdict per run, so at 2 every threshold above 0.5 would demand unanimity and read
+# as more tolerant than it is; 5 gives the average enough resolution for the shipped
+# thresholds to mean what they say. Read that as "four of the five runs that produced
+# a score": ADK drops a run whose metric evaluation errored rather than counting it as
+# a miss. The deterministic gate keeps 2 because exact trajectory matching wants
+# unanimity anyway and ROUGE scores continuously. ADK runs these serially, so the
+# judge gate costs proportionally more wall clock.
+DETERMINISTIC_NUM_RUNS = 2
+JUDGE_NUM_RUNS = 5
+
+# Exit code for "the judge eval could not run", as opposed to pytest's 1 for "a test
+# failed". `judge-eval.yml` treats 1 as a sub-threshold score its `gating` input may
+# absorb, so a lane error has to leave through a different door or a broken gate would
+# report as a behavioral regression and pass in dev-only mode. Any value outside
+# pytest's own 0-5 works; the workflow only tests for 0 and 1.
+EVAL_ERROR_EXIT_CODE = 6
 
 LIVENESS_PROMPT = "pls respond with a single 'ready' to confirm you're able to respond"
 LIVENESS_MAX_OUTPUT_TOKENS = 16
 
 
-def _judge_models(config_file: Path) -> list[str]:
+def _judge_models(config_data: dict[str, Any]) -> list[str]:
     """Distinct autorater models an eval config's judge criteria call.
 
-    Read from the config file the judge gate actually loads, so changing a
+    Read from the config data the judge gate actually loads, so changing a
     ``judge_model`` in the JSON re-points the liveness probe with no code edit.
-    Reads explicit ``judge_model`` entries only; a criterion that relies on
-    ADK's default autorater (no ``judge_model_options``) is not probed.
+
+    Reads explicit ``judge_model`` entries only. A criterion relying on ADK's
+    default autorater (no ``judge_model_options``, or none naming a model) is not
+    probed, and a config where no criterion names one yields an empty list, which
+    ``pytest.mark.parametrize`` turns into a skipped ``test_liveness_judge_model``
+    rather than a failure. The #229 preflight is therefore only as complete as the
+    config is explicit; ``full_eval_config.json`` names a model on every judge
+    criterion, so keep naming it when adding one.
     """
-    criteria = json.loads(config_file.read_text())["criteria"]
+    criteria = config_data["criteria"]
     models = sorted(
         {
             opts["judge_model"]
@@ -98,7 +126,13 @@ def _judge_models(config_file: Path) -> list[str]:
     return models
 
 
-JUDGE_MODELS = _judge_models(JUDGE_CONFIG_FILE)
+JUDGE_CONFIG_DATA = json.loads(JUDGE_CONFIG_FILE.read_text())
+JUDGE_MODELS = _judge_models(JUDGE_CONFIG_DATA)
+# Validated at import so a malformed config fails at collection rather than part-way
+# through a paid judge run. Structural only: ADK validates dict criteria to base
+# `BaseCriterion`, which allows extras, so a misspelled metric name or a bad
+# `judge_model_options` still surfaces from the metric registry mid-run.
+JUDGE_EVAL_CONFIG = EvalConfig.model_validate(JUDGE_CONFIG_DATA)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -160,9 +194,10 @@ async def _assert_model_live(session: pytest.Session, model: str) -> None:
     if not reply:
         _abort(f"Model endpoint for {model!r} returned no text: {responses!r}")
 
-    logger.info("Model endpoint live for %s: %r", model, reply)
+    logger.info(f"Model endpoint live for {model}: {reply}")
 
 
+@pytest.mark.liveness
 @pytest.mark.deterministic
 @pytest.mark.judge
 async def test_liveness_agent_model(request: pytest.FixtureRequest) -> None:
@@ -180,6 +215,7 @@ async def test_liveness_agent_model(request: pytest.FixtureRequest) -> None:
     await _assert_model_live(request.session, model)
 
 
+@pytest.mark.liveness
 @pytest.mark.judge
 @pytest.mark.parametrize("model", JUDGE_MODELS)
 async def test_liveness_judge_model(request: pytest.FixtureRequest, model: str) -> None:
@@ -194,22 +230,40 @@ async def test_liveness_judge_model(request: pytest.FixtureRequest, model: str) 
 
 @pytest.mark.deterministic
 async def test_template_agent_deterministic_eval() -> None:
-    """PR-gate deterministic eval criteria."""
+    """PR-gate deterministic eval criteria.
+
+    Criteria come from the ``test_config.json`` ADK auto-discovers beside the eval
+    set, not from this module.
+    """
     await AgentEvaluator.evaluate(
         agent_module=AGENT_MODULE,
         eval_dataset_file_path_or_dir=str(EVAL_SET_FILE),
-        num_runs=NUM_RUNS,
+        num_runs=DETERMINISTIC_NUM_RUNS,
     )
 
 
 @pytest.mark.judge
 async def test_template_agent_judge_eval() -> None:
-    """LLM-judged eval criteria."""
-    eval_config = get_evaluation_criteria_or_default(str(JUDGE_CONFIG_FILE))
+    """LLM-judged eval criteria.
+
+    ``AgentEvaluator`` signals a sub-threshold score with ``AssertionError``, which is
+    the gate's verdict and propagates normally. Anything else it raises means the eval
+    did not run (a missing eval extra, an empty dataset, an eval-service error), so it
+    leaves through ``EVAL_ERROR_EXIT_CODE`` instead. Both are pytest exit 1 otherwise,
+    and ``judge-eval.yml`` lets its ``gating`` input absorb exit 1.
+    """
     eval_set = EvalSet.model_validate_json(EVAL_SET_FILE.read_text())
-    await AgentEvaluator.evaluate_eval_set(
-        agent_module=AGENT_MODULE,
-        eval_set=eval_set,
-        eval_config=eval_config,
-        num_runs=NUM_RUNS,
-    )
+    try:
+        await AgentEvaluator.evaluate_eval_set(
+            agent_module=AGENT_MODULE,
+            eval_set=eval_set,
+            eval_config=JUDGE_EVAL_CONFIG,
+            num_runs=JUDGE_NUM_RUNS,
+        )
+    except AssertionError:
+        raise
+    except Exception as exc:
+        pytest.exit(
+            reason=f"Judge eval could not run: {exc!r}",
+            returncode=EVAL_ERROR_EXIT_CODE,
+        )

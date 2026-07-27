@@ -14,6 +14,7 @@ GitHub Actions workflow architecture, mechanics, and customization.
 - **`pull-and-promote.yml`** - Image promotion between registries (production mode)
 - **`resolve-image-digest.yml`** - Digest lookup by tag (production mode)
 - **`smoke.yml`** - Post-deploy smoke tests against the live deployed revision
+- **`judge-eval.yml`** - LLM-as-judge behavioral gate, run in-process against the checked-out agent
 - **`require-stage-success.yml`** - Tag-time gate requiring the tagged SHA's stage run to have passed before prod promotion (production mode)
 - **`terraform-plan-apply.yml`** - Terraform deployment
 
@@ -59,9 +60,10 @@ GitHub Actions workflow architecture, mechanics, and customization.
 - `resolve-digest` - Look up image in stage by tag (tag events in production mode)
 - `dev-plan` / `dev-apply` - Dev environment (branch events)
 - `dev-smoke` - Post-deploy smoke against the live dev revision (after `dev-apply`)
+- `judge-eval` - LLM-judge behavioral gate on merge (blocking in production mode, signal only in dev-only mode)
 - `stage-promote` / `stage-plan` / `stage-apply` - Stage environment (merge in production mode)
 - `stage-smoke` - Post-deploy smoke against the live stage revision (after `stage-apply`, production mode only)
-- `require-stage-success` - Tag-time gate: requires the tagged SHA's stage run to have passed before promotion (production mode, upstream of `prod-promote`)
+- `require-stage-success` - Tag-time gate: requires the tagged SHA's merge run to have passed `Apply Stage`, `Smoke Stage`, and `Judge Eval` before promotion (production mode, upstream of `prod-promote`)
 - `prod-promote` / `prod-plan` / `prod-apply` - Prod environment (tags in production mode)
 - `prod-smoke` - Post-deploy smoke against the live prod revision (after `prod-apply`, production mode only)
 
@@ -86,6 +88,7 @@ paths:
   - '.github/workflows/pull-and-promote.yml'
   - '.github/workflows/resolve-image-digest.yml'
   - '.github/workflows/smoke.yml'
+  - '.github/workflows/judge-eval.yml'
   - '.github/workflows/require-stage-success.yml'
   - '.github/workflows/terraform-plan-apply.yml'
 ```
@@ -112,7 +115,7 @@ metadata-extract → docker-build → dev-plan
 
 **Dev-only mode:**
 ```
-config (parallel root: selects mode, gates via if-conditions)
+config ─→ judge-eval
 metadata-extract → docker-build → dev-plan → dev-apply → dev-smoke
 ```
 
@@ -120,10 +123,12 @@ metadata-extract → docker-build → dev-plan → dev-apply → dev-smoke
 ```
 metadata-extract ─→ docker-build ─┬─→ dev-plan → dev-apply → dev-smoke
                                   │
-config ───────────────────────────┴─→ stage-promote → stage-plan → stage-apply → stage-smoke
+config ───────────┬───────────────┴─→ stage-promote → stage-plan → stage-apply → stage-smoke
+                  │
+                  └─→ judge-eval
 ```
 
-**Result:** Dev deployed and smoked (always), stage deployed and smoked (production mode only). The smoke lane detail lives in [Smoke Tests](smoke-tests.md).
+**Result:** Dev deployed and smoked (always), stage deployed and smoked (production mode only), and the judge eval scored on every merge. `judge-eval` runs from source rather than against a revision, so it starts as soon as `config` resolves the mode and never waits on a deploy. It blocks the merge run in production mode and is signal only in dev-only mode. The smoke lane detail lives in [Smoke Tests](smoke-tests.md); the eval lane's in [Agent Evals](agent-evals.md).
 
 ### Tag Flow
 
@@ -144,9 +149,9 @@ config ──┬────────┘                        │
                                  prod-promote → prod-plan → prod-apply → prod-smoke
 ```
 
-`require-stage-success` gates the prod pipeline tag run. See [Require Stage Success](#require-stage-successyml) for details.
+`require-stage-success` gates the prod pipeline tag run. No eval runs at tag time; the gate reads the merge run's `Judge Eval` conclusion. See [Require Stage Success](#require-stage-successyml) for details.
 
-**Result:** Version-tagged deployment, gated on stage success and smoked after apply. Prod requires manual approval in `prod-apply` environment.
+**Result:** Version-tagged deployment, gated on stage success plus the behavioral judge gate, and smoked after apply. Prod requires manual approval in `prod-apply` environment.
 
 ## Image Tagging Strategy
 
@@ -304,6 +309,31 @@ The service deploys `--no-allow-unauthenticated`, so requests need a Cloud Run I
 
 **When it runs:** Called by `ci-cd.yml` after each environment apply — `dev-smoke` after `dev-apply` on merge, and in production mode `stage-smoke` after `stage-apply` on merge and `prod-smoke` after `prod-apply` on tag. Not part of the PR gate.
 
+### judge-eval.yml
+
+**Purpose:** Run the LLM-as-judge behavioral gate (the `judge` marker in `tests/eval`) against the checked-out agent.
+
+**Inputs:**
+- `environment` (dev/stage/prod) - selects the GitHub Environment vars and secrets, which supply the WIF principal and the Vertex AI project
+- `gating` (optional, default `true`) - whether a sub-threshold score fails the job
+
+What gets scored is not an input. The eval set, the judge criteria, and the per-gate run counts are constants in `tests/eval/test_agent_eval.py`, so CI and a local run score the same thing and changing either is a reviewable code diff.
+
+**How it works:**
+1. Authenticate to GCP via WIF
+2. Probe model liveness (`-m "judge and liveness"`) under the default shell, so a dead endpoint fails the job in either mode
+3. Run the scored eval (`-m "judge and not liveness"`), surfacing pass/fail in the job summary alongside the environment and whether the run was blocking
+
+The eval runs in-process and App-aware, so it scores the same agent the built image carries without a deployed revision, a service URL, or invoker auth. `ci-cd.yml` passes `environment: dev` in both deployment modes: the job needs Vertex AI credentials rather than a deployed target, and dev keeps it clear of stage's deployment protection rules. The judge gate scores `JUDGE_NUM_RUNS` passes per case, set to 5 in the eval module because judge metrics return a binary verdict per run and 2 would quantize the average to 0, 0.5, or 1 — see [Agent Evals](agent-evals.md). ADK runs those passes serially (`num_runs` is a `for` loop in `AgentEvaluator`; its `parallelism` semaphore fans out across eval cases, not runs), so wall clock scales linearly with the run count and sublinearly with case count.
+
+`gating` exists because a job that calls a reusable workflow may not use `continue-on-error`. With `gating: false` the workflow reports the regression in the summary, emits a warning annotation, and exits 0, so the job conclusion stays `success` — which is what the dev-only mode wants, since nothing reads that conclusion there.
+
+`gating` absorbs a sub-threshold score and nothing else. The preflight is a separate step, so the scored step's exit 1 can only be a failed eval; every other non-zero exit (2 interrupted, 3 internal error, 4 usage error, 5 nothing collected) fails the job in both modes, and the summary names the code. Without that split, a dead judge endpoint would abort the lane with the same exit 1 as a regression and report green forever in dev-only mode, which is the vacuous pass the preflight was added to prevent.
+
+**When it runs:** Called by `ci-cd.yml` as `judge-eval` on merge to main, blocking in production mode and signal only in dev-only mode. Not on PRs (the deterministic gate in `ci.yml` covers those) and not on tags.
+
+**Swapping the eval body:** A consumer changes what is scored by editing `tests/eval/data/` (the eval set and `full_eval_config.json`) and, for the file paths or run counts, the constants in `tests/eval/test_agent_eval.py`. The workflow takes no eval inputs, so there is nothing to override from the caller. Replacing the eval framework entirely (deepeval, ragas, or other) means pointing the `judge-eval` job at a different reusable workflow; the gate interface is just the job's name and conclusion, so `require-stage-success` needs no change as long as the job is still named `Judge Eval`.
+
 ### require-stage-success.yml
 
 **Purpose:** Tag-time gate that requires the tagged SHA's stage release candidate to have passed before prod promotion.
@@ -314,9 +344,11 @@ The service deploys `--no-allow-unauthenticated`, so requests need a Cloud Run I
 
 **How it works:**
 1. Find the merge run for `head_sha` on the default branch (the tag run is excluded because its head branch is the tag ref)
-2. Require that run's `Apply Stage` and `Smoke Stage` jobs both concluded `success` (matching the reusable-workflow `X / <inner>` job-naming; anything but success, including `skipped`, fails closed)
+2. Require that run's `Apply Stage`, `Smoke Stage`, and `Judge Eval` jobs all concluded `success` (matching the reusable-workflow `X / <inner>` job-naming; anything but success, including `skipped`, fails closed)
 
-Stage success is the whole prod gate. The promotion workflow copies the image digest-for-digest and prod deploys by digest, so prod runs exactly the digest `resolve-digest` reads from stage `{sha7}` — the fidelity guarantee lives there, not in this gate. So the gate only has to confirm that digest was validated, and a green `Smoke Stage` does: stage `{sha7}` is written only by that commit's own merge-run attempts, the tag run never rebuilds (it only re-reads `{sha7}` and promotes it), and the jobs API reports the latest attempt, so a green smoke means `{sha7}` resolves to the digest that was smoked. No separate digest comparison is needed (and conclusions, not outputs, are what the REST API exposes after a run). The only way to break that equivalence is an out-of-band registry repoint of `{sha7}`, governed by Artifact Registry IAM. Because `prod-promote` declares `needs: require-stage-success`, a failure halts the tag run upstream of the `prod-apply` approval.
+`Judge Eval` covers the behavioral dimension: it scores the same commit's agent code in-process, so requiring its conclusion gates the behavior the promoted digest carries without depending on the stage rollout. A behavioral regression reds the merge run after stage has already deployed, which blocks the prod tag rather than reverting stage.
+
+Stage success is the whole prod gate for image fidelity. The promotion workflow copies the image digest-for-digest and prod deploys by digest, so prod runs exactly the digest `resolve-digest` reads from stage `{sha7}` — the fidelity guarantee lives there, not in this gate. So the gate only has to confirm that digest was validated, and a green `Smoke Stage` does: stage `{sha7}` is written only by that commit's own merge-run attempts, the tag run never rebuilds (it only re-reads `{sha7}` and promotes it), and the jobs API reports the latest attempt, so a green smoke means `{sha7}` resolves to the digest that was smoked. No separate digest comparison is needed (and conclusions, not outputs, are what the REST API exposes after a run). The only way to break that equivalence is an out-of-band registry repoint of `{sha7}`, governed by Artifact Registry IAM. Because `prod-promote` declares `needs: require-stage-success`, a failure halts the tag run upstream of the `prod-apply` approval.
 
 **Permissions:** `actions: read` (read the merge run's job conclusions), `contents: read`. No GCP credentials.
 
