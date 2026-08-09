@@ -189,6 +189,91 @@ The PR gate uses only judge-free, deterministic metrics; the merge gate adds the
 
 Reference-based metrics need an expected response, so they do not combine with user simulation.
 
+## How a judge score is built
+
+A judge threshold is compared against a number that has been averaged three times over. ADK's [criteria reference](https://adk.dev/evaluate/criteria/) documents the per-metric half of this ("the overall score for an invocation is the average of its rubric scores"); the run-level half is not documented upstream, and the two together are what decide whether a threshold means what it reads. This section covers only that combination, and the config choices this template makes because of it.
+
+```
+per invocation, per metric
+    num_samples judge calls          one call carries every rubric in the metric
+          │                          and returns a verdict for each
+          │  majority vote, per rubric
+          ▼
+    one verdict per rubric  (0 or 1)
+          │  mean over rubrics
+          ▼
+    one invocation score
+
+per eval case, per metric
+    every invocation of every run    num_runs x invocations scores
+          │  mean, over the scores that are not None
+          ▼
+    criterion score   >=   threshold
+```
+
+Three consequences follow.
+
+### Resolution comes from rubrics times runs
+
+Sampling does not add resolution. A majority vote collapses `num_samples` draws back into one verdict per rubric, so it buys reliability and nothing else. The achievable scores are the multiples of `1 / (rubrics x num_runs)` for a single-invocation case, and a stated threshold is really its **effective threshold**: the smallest achievable score at or above it.
+
+| Rubrics | `num_runs` | Achievable scores | Stated `0.7` is effectively |
+|---|---|---|---|
+| 1 | 2 | 0, 0.5, 1 | 1.0 (unanimity) |
+| 1 | 5 | multiples of 0.2 | 0.8 (four of five) |
+| 2 | 5 | multiples of 0.1 | 0.7 (as written) |
+
+The trap is the first row: the threshold reads as tolerating a bad draw and tolerates none. It is why `JUDGE_NUM_RUNS` is 5 rather than the deterministic gate's 2, and why a fork adding a single-rubric metric should work out its achievable scores before trusting the number it typed.
+
+Also read the denominator as "the runs that produced a score". ADK drops a run whose metric evaluation errored instead of counting it as a miss, so errors shrink the denominator rather than pulling the mean down.
+
+### A trivially satisfied rubric subsidizes the score
+
+Rubrics inside one metric are averaged at equal weight, and ADK keys criteria by metric name in a JSON object, so a metric cannot carry two thresholds. One threshold covers every rubric it holds, always.
+
+`rubric_based_final_response_quality_v1` ships two rubrics: `answers_query` (correctness) and `concise` (style). `concise` passes essentially always, so it donates a constant, and the score can never fall below `(R - 1) / R`, which is 0.5 here. The usable band is 0.5 to 1.0, and the threshold has to be read inside that band:
+
+```
+concise:        yes yes yes yes yes     5 verdicts
+answers_query:    ?   ?   ?   ?   ?     a verdicts
+                                        ----------
+score = (5 + a) / 10
+```
+
+A threshold of 0.7 would clear with `a >= 2`, letting an agent that answers the user's actual question two times in five pass the merge gate. **The shipped threshold is 0.9 because that is what demands four of five on the rubric that matters** while leaving `concise` free to be the style hint it is. In general, to require a real rubric at pass rate `p` when `R - 1` rubrics are near-certain, set the threshold to `(R - 1 + p) / R`.
+
+Collapsing the metric to the one rubric that carries weight is the other way out of the subsidy, and it is simpler. This template keeps both so the multi-rubric shape is demonstrated and its arithmetic is visible rather than avoided. Either way, adding or removing a rubric moves the floor, so recompute the threshold when you change the rubric list.
+
+`hallucinations_v1` has a different shape, and its achievable scores are not even a fixed set. It scores supported sentences over total sentences, and the agent does not write the same number of sentences every run, so the denominator moves between runs and the spacing between achievable scores is unpredictable. Against a terse agent (ours is terse) a single unsupported sentence can be a large fraction of the response, so the threshold is coarser in practice than it looks. Treat its number as a floor on groundedness, not as a tuned pass rate.
+
+`safety_v1` is the third shape, and the simplest: it carries no rubrics and delegates to the Vertex pointwise safety autorater, whose [rating rubric](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/metrics-templates) scores 1 for safe and 0 for unsafe with nothing between. Its achievable scores are therefore the multiples of `1 / num_runs`, and any threshold below 1.0 is an explicit budget for unsafe output: at five runs, `0.8` permits one. It ships at 1.0, which costs nothing in flakiness precisely because the score has no partial-credit path, so a safe response cannot land just under the bar. Check the rubric before copying that reasoning to another eval-service metric: the quality autoraters are graded 1 to 5, where a 1.0 threshold would demand a perfect rating every run.
+
+### What a merge run costs
+
+LLM calls are `num_samples` per invocation per metric. One judge call carries every rubric in that metric, so rubric count does not multiply calls. `hallucinations_v1` is fixed at two calls per response (a segmenter and a validator) and ignores `num_samples` entirely.
+
+Per merge run, for the shipped config's one-invocation case at `JUDGE_NUM_RUNS = 5`:
+
+| Metric | Calls per run | Total |
+|---|---|---|
+| `rubric_based_final_response_quality_v1` | 5 | 25 |
+| `rubric_based_tool_use_quality_v1` | 5 | 25 |
+| `hallucinations_v1` | 2 | 10 |
+| `safety_v1` | 1 eval-service call | 5 |
+
+Plus the agent's own inference, five times. `num_runs` and `num_samples` are both serial loops, so wall clock is linear in each; the `parallelism` semaphore fans out across eval *cases*, which makes adding a case far cheaper than adding a run.
+
+### Sampling and temperature, and why this config sets neither
+
+The shipped config names a `judge_model` and a `threshold` and takes ADK's defaults for the rest (`num_samples: 5`, no `judge_model_config`). Two reasons:
+
+- Majority voting is self-consistency sampling. It extracts information only when the samples can disagree. For example, pinning `temperature: 0` and then paying for a 3-sample vote draws the same opinion three times and votes on it, converting zero uncertainty into confidence at triple the cost. Pick one posture, not both.
+- `num_samples` on `hallucinations_v1` does nothing. That evaluator overrides `evaluate_invocations` and never enters the sampling loop, so the field is accepted and ignored. ADK's [criteria reference](https://adk.dev/evaluate/criteria/) shows its `judge_model_options` with `judge_model` alone, which is the tell; check there before setting the field on any metric.
+
+The coherent low-cost posture is the other one: `judge_model_config: {"temperature": 0}` with `num_samples: 1`, leaving `num_runs` alone. That trades the vote's robustness for reproducibility and cuts judge calls by five, and it is a reasonable default for a fork paying for a large suite. What is not reasonable is `"temperature": 0` plus a vote.
+
+`judge_model` stays explicit even though it matches ADK's default, because the liveness preflight parametrizes off the `judge_model` entries in this file. A criterion that names no model is not probed.
+
 ## The CI gates
 
 Two gates run in CI, at two different points, both authenticating to Vertex AI with the dev environment's WIF principal.
@@ -220,7 +305,7 @@ DETERMINISTIC_NUM_RUNS = 2
 JUDGE_NUM_RUNS = 5
 ```
 
-The judge gate averages more runs because its metrics return a binary verdict each time. At 2 the only achievable scores are 0, 0.5, and 1, so every threshold above 0.5 silently demands unanimity; 5 gives the average enough resolution for a `0.7` to mean "four of five". The deterministic gate keeps 2: exact trajectory matching wants unanimity regardless, and ROUGE produces continuous per-run scores that average sensibly at any sample size. ADK runs the passes serially, so raising `JUDGE_NUM_RUNS` costs proportional wall clock on every merge.
+The judge gate averages more runs to buy resolution: its per-rubric verdicts are binary, so a case's achievable scores are the multiples of `1 / (rubrics x num_runs)` and a threshold that lands between them silently rounds up. Five runs put the shipped thresholds on the achievable set; see "How a judge score is built" above. The deterministic gate keeps 2: exact trajectory matching wants unanimity regardless, and ROUGE-1 is spaced finely enough that a two-run mean still carries information. Finely spaced is not the same as continuous. `response_match_score` is an f-measure over unigram overlap, so its denominators are the response's and the reference's token counts, and the response's token count moves between runs; its achievable scores shift run to run exactly as `hallucinations_v1`'s do. The difference is scale, tokens numbering in the tens where sentences number in the low single digits, so the same mechanism that makes groundedness coarse leaves ROUGE finer. ADK runs the passes serially, so raising `JUDGE_NUM_RUNS` costs proportional wall clock on every merge.
 
 To vary either one, edit the constant. That is a reviewable diff in the same file as the eval cases, rather than a value threaded through a workflow input.
 
@@ -249,8 +334,8 @@ See ADK's [evaluation docs](https://adk.dev/evaluate/) for the authoring workflo
 - **A reference-based judge cannot score a case whose answer is not deterministic.** `final_response_match_v2` asks an LLM whether the response matches the case's `expected_response`. That only works when the correct answer is stable enough to write down. Our gate case asks for the current time, and the guidance above says to build the reference from stable tokens with no clock values so ROUGE stays stable, so the reference names the timezone but never states a time while every actual response does. The judge has no stable basis for a verdict and splits roughly evenly: measured over four runs, exactly one of each pair passed every time, scoring 0.5 against a 0.7 threshold, with the verdict uncorrelated with any observable difference (the ISO-formatted answer failed in one run and passed in another). This is why `final_response_match_v2` is not in `full_eval_config.json`. A ROUGE gate wants a clock-free reference and a semantic judge wants a complete one; one case cannot serve both. Reference-free metrics (the rubric, hallucination, and safety ones) score this case stably, and a fork whose agent has deterministic answers can add `final_response_match_v2` back.
 - **Text emitted before a tool call is not judged by default.** ADK hands an LLM-judge metric only the invocation's `final_response`, so for an agent that greets before calling a tool and answers after, the greeting is invisible to the judge. If a reference or rubric covers the whole turn, set `include_intermediate_responses_in_final: true` on that criterion to concatenate the intermediate text before judging. This agent has that shape (its instructions say to greet by name).
 - **Thinking models may skip tools.** A model with thinking enabled can answer without calling a tool, which fails an exact-trajectory case. If you hit this, set `tool_config` to `mode="ANY"` on the agent, or use a non-thinking model for the evaluated path.
-- **`num_runs` quantizes the score, so a low threshold can still mean unanimity.** Metrics that return a binary per-run verdict (the judge metrics observed here do) are averaged across `num_runs`. At 2 runs the only achievable scores are 0, 0.5, and 1, so every threshold above 0.5 requires both to pass. A `0.7` threshold reads like it tolerates a bad draw and does not. This is why `JUDGE_NUM_RUNS` is 5 while `DETERMINISTIC_NUM_RUNS` is 2: at 5 runs, `0.7` means four of five. Resolution costs proportionally more inference on every gated run, so it is a deliberate tradeoff per gate, not a number to raise reflexively.
-- **Groundedness is scored against tool output, so a tool that under-reports produces "hallucinations".** `hallucinations_v1` classifies each response sentence as supported, unsupported, or contradictory against the context, and is instructed not to apply world knowledge unless trivial. A value the model can derive but the tool never returned reads as unsupported. `get_current_time` returns `timezone_abbreviation` for exactly this reason: the model renders times in prose as "3:39 PM EDT", and without the abbreviation in the result that answer is ungrounded. Grounding a value the tool cannot actually source is worse than omitting it, so that field is `None` for the roughly 39% of IANA zones tzdata renders numerically (`Asia/Ho_Chi_Minh` reports `+07`, not `ICT`) and the docstring tells the model to name the offset instead. When this metric fails, check whether the tool result actually contains what the answer asserts before touching the metric.
+- **A judge threshold is not always the number you typed.** Judge scores land on multiples of `1 / (rubrics x num_runs)` and nowhere in between, so a stated threshold is really the smallest achievable score at or above it, and a trivially satisfied rubric raises the floor under the whole metric. Both effects make a gate weaker or stricter than it reads, and both are why `JUDGE_NUM_RUNS` is 5 and the quality threshold is 0.9. Work the arithmetic before trusting a number: see "How a judge score is built" above.
+- **Groundedness is scored against tool output, so a tool that under-reports produces "hallucinations".** `hallucinations_v1` classifies each response sentence as supported, unsupported, or contradictory against the context, and is instructed not to apply world knowledge unless trivial. A value the model can derive but the tool never returned reads as unsupported. Its denominator is the response's sentence count, which the agent does not hold constant between runs, so this metric's achievable scores are a different set every run; against a terse agent one unsupported sentence can swing the score hard. `get_current_time` returns `timezone_abbreviation` for exactly this reason: the model renders times in prose as "3:39 PM EDT", and without the abbreviation in the result that answer is ungrounded. Grounding a value the tool cannot actually source is worse than omitting it, so that field is `None` for the roughly 39% of IANA zones tzdata renders numerically (`Asia/Ho_Chi_Minh` reports `+07`, not `ICT`) and the docstring tells the model to name the offset instead. When this metric fails, check whether the tool result actually contains what the answer asserts before touching the metric.
 - **Never lower the bar to pass.** Dropping a threshold or deleting a flaky case hides a real regression. Fix the agent (instructions, tools) or stabilize the case (stable reference tokens, `temperature=0`), not the gate.
 - **Eval cases reference the agent by app name.** Each case's `session_input.app_name` must match the agent's `App(name=...)`, or the run fails with "Session not found". The shipped cases already match; keep them aligned if you rename the app.
 - **Eval-service metrics default to the global endpoint.** The Vertex-backed metrics (`safety_v1`, `multi_turn_*`) do not inherit `GOOGLE_CLOUD_LOCATION`; the service supports only a region subset. You normally configure nothing; override only for data residency.
