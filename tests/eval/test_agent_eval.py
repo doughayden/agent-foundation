@@ -76,10 +76,12 @@ AGENT_MODULE = next(SRC_DIR.glob("*/__init__.py")).parent.name
 EVAL_SET_FILE = DATA_DIR / "template_agent.evalset.json"
 JUDGE_CONFIG_FILE = DATA_DIR / "full_eval_config.json"
 
-# Times each case is run and averaged, per gate. Judge scores land on multiples of
-# 1/(rubrics x num_runs), so a threshold between two of them silently rounds up to the
-# next achievable score; 5 puts the shipped thresholds on achievable scores, where 2
-# would make a single-rubric metric demand unanimity. Read the denominator as "the
+# Times each case is run and averaged, per gate. ADK means the per-invocation scores of
+# every run together, so judge scores land on multiples of 1/(rubrics x num_runs x
+# invocations) and a threshold between two of them silently rounds up to the next
+# achievable score. The gate case is single-turn (one invocation), so what is left to
+# tune here is the run count: 5 puts the shipped thresholds on achievable scores, where
+# 2 would make a single-rubric metric demand unanimity. Read the denominator as "the
 # runs that produced a score": ADK drops a run whose metric evaluation errored rather
 # than counting it as a miss. The deterministic gate keeps 2 because exact trajectory
 # matching wants unanimity anyway and ROUGE-1 is finely spaced (not continuous: its
