@@ -193,6 +193,8 @@ Reference-based metrics need an expected response, so they do not combine with u
 
 A judge threshold is compared against a number that has been averaged three times over. ADK's [criteria reference](https://adk.dev/evaluate/criteria/) documents the per-metric half of this ("the overall score for an invocation is the average of its rubric scores"); the run-level half is not documented upstream, and the two together are what decide whether a threshold means what it reads. This section covers only that combination, and the config choices this template makes because of it.
 
+Because the run-level half comes from reading ADK rather than from its docs, here is where each stage lives, so you can confirm any of it directly: `llm_as_judge.py` runs the `num_samples` loop and sends one prompt carrying every rubric, `rubric_based_evaluator.py` holds the per-rubric majority vote and the mean over rubrics, and `agent_evaluator.py` repeats the inference request `num_runs` times and then, in `_process_metrics_and_get_failures`, flattens every run's per-invocation scores into a single list, means it, and compares the result with `>=`. Those are internal names and can move between releases. The funnel is the durable part; check it against your pinned version if a number stops behaving the way this page describes.
+
 ```
 per invocation, per metric
     num_samples judge calls          one call carries every rubric in the metric
