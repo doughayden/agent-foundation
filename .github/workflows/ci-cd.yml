@@ -1,44 +1,35 @@
 name: CI/CD Pipeline
 
+# The `paths-ignore` exclusion lists prevent the CI/CD workflow from running on docs or local
+# development changes; the `changes` job selects which downstream jobs run when the change set
+# passes the workflow-level exclusions. A `paths-ignore` entry must never appear in a `changes`
+# filter, or that filter entry is unreachable. Workflow YAML rejects anchors, so the two `paths-ignore`
+# lists are duplicated deliberately and must be kept in sync.
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'src/**'
-      - 'pyproject.toml'
-      - 'uv.lock'
-      - 'Dockerfile'
-      - '.dockerignore'
-      - 'terraform/main/**'
-      - '.github/workflows/ci-cd.yml'
-      - '.github/workflows/config-summary.yml'
-      - '.github/workflows/docker-build.yml'
-      - '.github/workflows/metadata-extract.yml'
-      - '.github/workflows/pull-and-promote.yml'
-      - '.github/workflows/resolve-image-digest.yml'
-      - '.github/workflows/smoke.yml'
-      - '.github/workflows/judge-eval.yml'
-      - '.github/workflows/require-stage-success.yml'
-      - '.github/workflows/terraform-plan-apply.yml'
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - 'init_template.py'
+      - 'mkdocs.yml'
+      - 'LICENSE'
+      - 'notebooks/**'
+      - '.claude/**'
+      - '.env.example'
+      - '.pre-commit-config.yaml'
   push:
     branches: [main]
-    paths:
-      - 'src/**'
-      - 'pyproject.toml'
-      - 'uv.lock'
-      - 'Dockerfile'
-      - '.dockerignore'
-      - 'terraform/main/**'
-      - '.github/workflows/ci-cd.yml'
-      - '.github/workflows/config-summary.yml'
-      - '.github/workflows/docker-build.yml'
-      - '.github/workflows/metadata-extract.yml'
-      - '.github/workflows/pull-and-promote.yml'
-      - '.github/workflows/resolve-image-digest.yml'
-      - '.github/workflows/smoke.yml'
-      - '.github/workflows/judge-eval.yml'
-      - '.github/workflows/require-stage-success.yml'
-      - '.github/workflows/terraform-plan-apply.yml'
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - 'init_template.py'
+      - 'mkdocs.yml'
+      - 'LICENSE'
+      - 'notebooks/**'
+      - '.claude/**'
+      - '.env.example'
+      - '.pre-commit-config.yaml'
     tags:
       - 'v*'
 
@@ -53,6 +44,43 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    name: Detect Changes
+    # `branch` events only: GitHub skips path filters on tag pushes, and a tag push has no base to diff
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5  # Typical run: <1 min (path filtering). 5 min is generous buffer
+    outputs:
+      # `deploy` gates the build-and-deploy chain; `eval` gates the judge gate
+      deploy: ${{ steps.filter.outputs.deploy }}
+      eval: ${{ steps.filter.outputs.eval }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          # The action parses this string itself, so YAML anchors work here
+          filters: |
+            deploy: &deploy
+              - 'src/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - 'Dockerfile'
+              - '.dockerignore'
+              - 'terraform/main/**'
+              - '.github/workflows/ci-cd.yml'
+              - '.github/workflows/config-summary.yml'
+              - '.github/workflows/docker-build.yml'
+              - '.github/workflows/metadata-extract.yml'
+              - '.github/workflows/pull-and-promote.yml'
+              - '.github/workflows/resolve-image-digest.yml'
+              - '.github/workflows/smoke.yml'
+              - '.github/workflows/terraform-plan-apply.yml'
+            eval:
+              - *deploy
+              - 'tests/eval/**'
+              - '.github/workflows/judge-eval.yml'
+
   meta:
     name: Extract Metadata
     uses: ./.github/workflows/metadata-extract.yml
@@ -68,8 +96,9 @@ jobs:
 
   build:
     name: Build Docker Image
-    if: github.ref_type != 'tag'  # Skip on tag events (image already exists from merge)
-    needs: meta
+    # Skip on tag events (image already exists from merge) and when nothing deployable changed; every deploy job needs this one, so skipping here skips the whole chain
+    if: github.ref_type != 'tag' && needs.changes.outputs.deploy == 'true'
+    needs: [changes, meta]
     uses: ./.github/workflows/docker-build.yml
     with:
       environment: dev
@@ -128,8 +157,9 @@ jobs:
   # Behavioral judge gate (merge to main only, blocking in production mode)
   judge-eval:
     name: Judge Eval
-    if: github.ref_type == 'branch' && github.event_name == 'push'
-    needs: config
+    # The `eval` filter lets an eval-data-only merge score itself while build and deploy skip
+    if: github.ref_type == 'branch' && github.event_name == 'push' && needs.changes.outputs.eval == 'true'
+    needs: [changes, config]
     uses: ./.github/workflows/judge-eval.yml
     with:
       environment: dev

@@ -91,9 +91,9 @@ See [Terraform State Lock](#state-lock-timeout) in Terraform section below.
 ### Workflow Not Triggering
 
 **Check path filters:**
-- Workflows ignore documentation-only changes
-- See `ci-cd.yml` for complete path list
+- `ci.yml` has no path filter, so it runs on every push and pull request; `ci-cd.yml` and `deploy-docs.yml` both filter
 - Tag triggers (`v*`) always run regardless of paths
+- `ci-cd.yml` filters in two layers: `paths-ignore` exclusions on the trigger prevent the CI/CD workflow from running on docs or local development changes, and the `changes` job's `deploy` and `eval` filters select which downstream jobs run when the change set passes exclusion. No run at all points at the `paths-ignore` exclusions; a run where everything after `Detect Changes` skipped points at the `changes` job filters. See [CI/CD Reference: Path filtering](references/cicd.md#ci-cdyml-orchestrator)
 
 **Verify branch protection:**
 ```bash

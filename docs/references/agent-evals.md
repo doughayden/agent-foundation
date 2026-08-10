@@ -298,7 +298,9 @@ Mode decides how the scored step's failure is treated:
 
 The judge gate is off the PR path deliberately: it is non-deterministic and calls the paid Gen AI evaluation service, so it belongs where a failure is investigated rather than where it would flake a merge queue. The user-simulation paths stay local and manual.
 
-`judge-eval` runs only when `ci-cd.yml` itself triggers, so a merge touching nothing under its path filter produces no judge run. That includes a change to `tests/eval/` alone, which is the change most likely to alter what the gate asserts. Adding `tests/eval/**` to the filter would fix that but would also build and deploy unchanged source on every eval-data merge, so the tradeoff is tracked in issue #238 rather than settled here. In production mode, tagging a commit whose merge triggered no run fails `require-stage-success` closed on a missing run.
+**An eval-data change gets its own judge run.** A change to the eval set or the judge config is the change most likely to alter what the gate asserts, and it always gets a score. `ci-cd.yml` resolves two path filters in a `changes` job: `build` gates on `deploy`, and `judge-eval` gates on `eval`, which is `deploy` plus `tests/eval/**`. A merge touching only `tests/eval/data/` therefore runs the judge gate and builds no image. That works because `judge-eval` scores the checked-out agent in-process, independent of the build chain. Details in [CI/CD Reference: Path filtering](cicd.md#ci-cdyml-orchestrator).
+
+Such a merge has no `Apply Stage` or `Smoke Stage` conclusion, so in production mode tagging that commit fails `require-stage-success` closed. That is correct: no image was built, so there is nothing to promote. Put a release tag on a commit whose merge deployed stage.
 
 ### Varying a run
 

@@ -49,18 +49,19 @@ GitHub Actions workflow architecture, mechanics, and customization.
 ## ci-cd.yml (Orchestrator)
 
 **Triggers:**
-- Pull request to main (paths filtered)
-- Push to main (paths filtered)
+- Pull request to main (docs and local development changes excluded)
+- Push to main (docs and local development changes excluded)
 - Tag push matching `v*`
 
 **Key jobs:**
+- `changes` - dorny/paths-filter resolving the `deploy` and `eval` filters that gate `build` and `judge-eval` (branch events only)
 - `meta` - Extract metadata (tags, SHA, context)
 - `config` - Determine production mode
-- `build` - Build Docker image (branch events only, not tags)
+- `build` - Build Docker image (branch events only, not tags; gated on `changes.outputs.deploy == 'true'`)
 - `resolve-digest` - Look up image in stage by tag (tag events in production mode)
 - `dev-plan` / `dev-apply` - Dev environment (branch events)
 - `dev-smoke` - Post-deploy smoke against the live dev revision (after `dev-apply`)
-- `judge-eval` - LLM-judge behavioral gate on merge (blocking in production mode, signal only in dev-only mode)
+- `judge-eval` - LLM-judge behavioral gate on merge (blocking in production mode, signal only in dev-only mode; gated on `changes.outputs.eval == 'true'`)
 - `stage-promote` / `stage-plan` / `stage-apply` - Stage environment (merge in production mode)
 - `stage-smoke` - Post-deploy smoke against the live stage revision (after `stage-apply`, production mode only)
 - `require-stage-success` - Tag-time gate: requires the tagged SHA's merge run to have passed `Apply Stage`, `Smoke Stage`, and `Judge Eval` before promotion (production mode, upstream of `prod-promote`)
@@ -72,28 +73,47 @@ GitHub Actions workflow architecture, mechanics, and customization.
 - Main builds: Run sequentially (no cancellation, `cancel-in-progress: false`)
 - Per-environment Terraform locking prevents state corruption
 
-**Path filtering:**
+**Path filtering:** the trigger `paths-ignore` exclusions prevent the workflow from running on docs or local development changes; the `changes` job selects which jobs run when the change set passes the trigger exclusions.
+
+The trigger is a denylist, because the only thing it needs to answer is "could this possibly affect a deployment or a gate?" GitHub does not allow `paths` and `paths-ignore` on the same event, and a denylist is the correct polarity here: the list is short, provably non-deployable, and its failure direction is harmless. A path missing from it starts a run whose jobs all skip, costing seconds of runner time.
+
 ```yaml
-paths:
-  - 'src/**'
-  - 'pyproject.toml'
-  - 'uv.lock'
-  - 'Dockerfile'
-  - '.dockerignore'
-  - 'terraform/main/**'
-  - '.github/workflows/ci-cd.yml'
-  - '.github/workflows/config-summary.yml'
-  - '.github/workflows/docker-build.yml'
-  - '.github/workflows/metadata-extract.yml'
-  - '.github/workflows/pull-and-promote.yml'
-  - '.github/workflows/resolve-image-digest.yml'
-  - '.github/workflows/smoke.yml'
-  - '.github/workflows/judge-eval.yml'
-  - '.github/workflows/require-stage-success.yml'
-  - '.github/workflows/terraform-plan-apply.yml'
+paths-ignore:
+  - '*.md'
+  - 'docs/**'
+  - 'init_template.py'
+  - 'mkdocs.yml'
+  - 'LICENSE'
+  - 'notebooks/**'
+  - '.claude/**'
+  - '.env.example'
+  - '.pre-commit-config.yaml'
 ```
 
-Tag triggers (`v*`) always run regardless of paths.
+The Markdown pattern is shallow `'*.md'` and not recursive `'**.md'` to cover only the root files (`README.md`, `AGENTS.md`, `CHANGELOG.md`) and nothing else, while `docs/**` and `.claude/**` cover the Markdown that lives in those trees. A recursive `'**.md'` would also swallow Markdown a fork adds inside the package, like a prompt fragment or a skill definition under `src/`, and that file would silently stop triggering runs. Keeping the pattern shallow makes the safe behavior structural instead of something a fork has to remember.
+
+The rest of the list is local-developer and template scaffolding with no CI or image role: `init_template.py` is the one-time bootstrap script, `.pre-commit-config.yaml` drives local hooks that no workflow invokes, and `.env.example` is a template for local `.env`. The Dockerfile copies only `pyproject.toml`, `uv.lock`, and `src`, so none of them can reach an image.
+
+The `changes` job is the allowlist, and the only place that enumerates paths that *do* something. Allowlist is the correct polarity here for the opposite reason: a forgotten path means "no build", which is visible and safe, where a denylist controlling a deploy decision would fail open and roll out unchanged source. The action parses its `filters` input as YAML itself, so a YAML anchor removes the duplication that the workflow-level parser cannot (GitHub Actions rejects anchors in workflow syntax).
+
+```yaml
+filters: |
+  deploy: &deploy
+    - 'src/**'
+    # ...everything that lands in an image or the infrastructure running it
+  eval:
+    - *deploy
+    - 'tests/eval/**'
+    - '.github/workflows/judge-eval.yml'
+```
+
+`build` gates on `deploy`, `judge-eval` gates on `eval`. `eval` is a superset: a source or dependency change alters agent behavior, so the judge should score it too. `tests/eval/**` sits only in `eval`, which makes an eval-data merge score the change that altered what the gate asserts while building nothing. `judge-eval` scores the checked-out source in-process, so it depends on no image and no deploy job.
+
+One condition on `build` is enough to skip the whole deploy chain: every deploy job reaches `build` through `needs`, and a skipped dependency skips its dependents.
+
+**The invariant between the layers:** every `paths-ignore` entry must be absent from both filters. A path in both can never reach the allowlist, because the run never starts, and the allowlist entry is silently dead.
+
+Tag pushes always run: GitHub does not evaluate path filters for them. The `changes` job is branch-only for the same reason, plus a tag push has no base to diff against.
 
 ## Workflow Flows
 
@@ -106,29 +126,36 @@ Job-level dependency graphs showing how GitHub Actions jobs chain together. For 
 **What happens (both modes):**
 ```
 config (parallel root: selects mode, gates via if-conditions)
-metadata-extract → docker-build → dev-plan
+changes, metadata-extract ─→ docker-build → dev-plan
 ```
 
-**Result:** Plan preview in PR comment, no actual deployment.
+**Result:** Plan preview in PR comment, no actual deployment. A PR touching only `tests/eval/**` runs `changes`, `meta`, and `config` and skips the rest: there is no image to build and no plan to preview, and the judge gate is a merge-time job. The deterministic eval gate in `ci.yml` covers that PR.
 
 ### Merge Flow
 
 **Dev-only mode:**
 ```
-config ─→ judge-eval
-metadata-extract → docker-build → dev-plan → dev-apply → dev-smoke
+changes, config ─→ judge-eval
+changes, metadata-extract ─→ docker-build → dev-plan → dev-apply → dev-smoke
 ```
 
 **Production mode:**
 ```
-metadata-extract ─→ docker-build ─┬─→ dev-plan → dev-apply → dev-smoke
-                                  │
-config ───────────┬───────────────┴─→ stage-promote → stage-plan → stage-apply → stage-smoke
-                  │
-                  └─→ judge-eval
+changes, config ─→ judge-eval
+changes, metadata-extract ─→ docker-build ┬─→ dev-plan → dev-apply → dev-smoke
+                                          │
+config ───────────────────────────────────┴─→ stage-promote → stage-plan → stage-apply → stage-smoke
 ```
 
-**Result:** Dev deployed and smoked (always), stage deployed and smoked (production mode only), and the judge eval scored on every merge. `judge-eval` runs from source rather than against a revision, so it starts as soon as `config` resolves the mode and never waits on a deploy. It blocks the merge run in production mode and is signal only in dev-only mode. The smoke lane detail lives in [Smoke Tests](smoke-tests.md); the eval lane's in [Agent Evals](agent-evals.md).
+**Result:** Dev deployed and smoked (always), stage deployed and smoked (production mode only), and the judge eval scored on every merge that touches the agent or its eval data. `judge-eval` runs from source rather than against a revision, so it starts as soon as `changes` and `config` resolve and never waits on a deploy. It blocks the merge run in production mode and is signal only in dev-only mode. The smoke lane detail lives in [Smoke Tests](smoke-tests.md); the eval lane's in [Agent Evals](agent-evals.md).
+
+**Eval-data-only merge (both modes):**
+```
+changes, config ─→ judge-eval
+changes ─→ (docker-build and every deploy job skipped)
+```
+
+`eval` matches and `deploy` does not, so the judge gate scores the change that altered what it asserts and nothing is rebuilt or redeployed. In production mode this merge run has no `Apply Stage` or `Smoke Stage` conclusion, so tagging that commit fails `require-stage-success` closed. That is correct, not a defect; see [Require Stage Success](#require-stage-successyml).
 
 ### Tag Flow
 
@@ -350,6 +377,10 @@ The eval runs in-process and App-aware, so it scores the same agent the built im
 
 Stage success is the whole prod gate for image fidelity. The promotion workflow copies the image digest-for-digest and prod deploys by digest, so prod runs exactly the digest `resolve-digest` reads from stage `{sha7}` — the fidelity guarantee lives there, not in this gate. So the gate only has to confirm that digest was validated, and a green `Smoke Stage` does: stage `{sha7}` is written only by that commit's own merge-run attempts, the tag run never rebuilds (it only re-reads `{sha7}` and promotes it), and the jobs API reports the latest attempt, so a green smoke means `{sha7}` resolves to the digest that was smoked. No separate digest comparison is needed (and conclusions, not outputs, are what the REST API exposes after a run). The only way to break that equivalence is an out-of-band registry repoint of `{sha7}`, governed by Artifact Registry IAM. Because `prod-promote` declares `needs: require-stage-success`, a failure halts the tag run upstream of the `prod-apply` approval.
 
+**Tagging a commit that built no image.** Not every merge produces an image. A merge touching only `tests/eval/**` runs the judge gate and skips `build`, so `Apply Stage` and `Smoke Stage` are skipped in that run and this gate fails closed on them. It's intentional behavior: no image exists for that commit, so stage `{sha7}` resolves to nothing and prod's deploy-by-digest has nothing to promote. Relaxing the gate to accept a skipped stage job would trade a clear failure for an unsound pass.
+
+Practically, a release tag belongs on a commit whose merge deployed and smoked stage. If the last merge before a tag changed only eval data, tag the commit before it, or land a deployable change first.
+
 **Permissions:** `actions: read` (read the merge run's job conclusions), `contents: read`. No GCP credentials.
 
 **When it runs:** Called by `ci-cd.yml` on tag events in production mode, before `prod-promote`. Generic and agent-agnostic, so every fork inherits it.
@@ -481,6 +512,8 @@ The reusable workflows (`docker-build.yml`, `pull-and-promote.yml`, `resolve-ima
 
 **Pattern:** add a parallel `build-<name>` job per subproject in `ci-cd.yml`, calling `docker-build.yml` with the subproject's `image_name` and `context`. Mirror with parallel promote/resolve jobs (same `image_name` override) and pass each resulting `digest_uri` through to `terraform-plan-apply.yml` as a new `TF_VAR_*` input.
 
+**Path filters:** add the subproject's context path to the `changes` job's `deploy` filter and gate the new job on `needs.changes.outputs.deploy == 'true'` like `build`, or give the subproject its own filter output if it should build independently of the main app. Nothing to add at the trigger, which ignores documentation rather than allowlisting code, but confirm the new path is not swallowed by an existing `paths-ignore` entry.
+
 **Sub-context `.dockerignore` gotcha:** Docker reads `.dockerignore` from the *context root*, not the repo root. When `context: relay`, the build sees `relay/.dockerignore` (if it exists) and ignores the project-root `.dockerignore`. Add a `<context>/.dockerignore` per subproject if you need exclusions.
 
 **CI lane per subproject:** for code-quality coverage of a subproject, copy `ci.yml` to `ci-<name>.yml`, scope its `paths-filter` and step `working-directory` to the subdir, give the workflow a unique `name:` so its `status` check is uniquely addressable, and add the new `<Name> / status` to branch protection.
@@ -494,18 +527,22 @@ Edit `.github/workflows/ci-cd.yml` triggers:
 ```yaml
 on:
   pull_request:
-    paths:
-      - 'src/**'
-      # Add more paths
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      # Add more non-deployable paths (keep both lists identical)
   push:
     branches:
       - main
       # Add more branches
-  push:
+    paths-ignore:
+      - '*.md'
     tags:
       - 'v*'
       # Add more tag patterns
 ```
+
+Adding a path here only stops runs from starting. To change what a run *does*, edit the `changes` job's `deploy` or `eval` filter; see [Path filtering](#ci-cdyml-orchestrator). Never put a path in both, or the allowlist entry becomes unreachable.
 
 ---
 
