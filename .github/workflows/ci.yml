@@ -150,39 +150,30 @@ jobs:
       - name: Run deterministic agent evals
         run: uv run pytest tests/eval -m "deterministic"
 
-  # Static analysis of the workflow files themselves: expression validity, action
-  # input schemas, runner labels, and shell syntax inside `run:` blocks
+  # Static analysis of GHA workflow files
   actionlint:
     needs: changes
     if: needs.changes.outputs.workflows == 'true'
     name: Workflow Lint (actionlint)
     runs-on: ubuntu-latest
-    timeout-minutes: 5  # Typical run: <1 min (download + lint). 5 min is generous buffer
-    env:
-      ACTIONLINT_VERSION: 1.7.12
-      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+    timeout-minutes: 5  # Typical run: <1 min (image pull + lint). 5 min is generous buffer
     steps:
+      # actionlint reads the repo's git metadata to find the project root
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
-      # Pinned release plus checksum rather than the install script, so the gate
-      # is reproducible and the download is verified
-      - name: Install actionlint
-        run: |
-          set -euo pipefail
-          curl -fsSL -o actionlint.tar.gz \
-            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
-          echo "${ACTIONLINT_SHA256}  actionlint.tar.gz" | sha256sum --check --strict
-          tar -xzf actionlint.tar.gz actionlint
-
-      # `-shellcheck=` disables the shellcheck pass over inline `run:` blocks.
+      # Upstream's published image. Keep the tag in sync with `rev` in
+      # .pre-commit-config.yaml so the hook and this gate agree.
+      # TODO: `-shellcheck=` disables the shellcheck pass over inline `run:` blocks.
       # The runner ships shellcheck, so the pass is deterministic here; it is off
       # only because the 59 pre-existing SC2086/SC2129 findings are not yet fixed.
       # Remove the flag with those findings (#255).
       - name: Run actionlint
-        run: ./actionlint -color -shellcheck=
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color -shellcheck=
 
   # Always-runs sentinel for branch protection
   status:

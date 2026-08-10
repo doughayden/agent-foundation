@@ -44,8 +44,6 @@ repos:
         types: [python]
         pass_filenames: false
         require_serial: true
-      # `terraform validate` is deliberately absent: it requires `terraform init`
-      # per root, which is too heavy for a commit hook. CI validates.
       - id: terraform-fmt
         name: terraform fmt
         entry: terraform fmt
