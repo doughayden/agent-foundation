@@ -137,7 +137,7 @@ Hooks are configured in `.pre-commit-config.yaml`. `pre-commit autoupdate` is a 
 |---|---|---|
 | ruff, mypy | `uv.lock` | `uv lock --upgrade` |
 | terraform fmt | the `terraform` binary on `PATH` | your system package manager |
-| actionlint | the pinned `rev` here **and** the `docker://rhysd/actionlint:<ver>` tag in `ci.yml` | bump both together |
+| actionlint | the pinned `rev` here **and** the `docker://rhysd/actionlint:<ver>` tag in `ci.yml` | bump both together; `tests/unit/test_pinned_versions.py` fails if they drift |
 | everything else | the pinned `rev` in `.pre-commit-config.yaml` | `pre-commit autoupdate` |
 
 ### Agent Evals

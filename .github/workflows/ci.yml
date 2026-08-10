@@ -30,6 +30,8 @@ jobs:
               - 'pyproject.toml'
               - 'uv.lock'
               - '.github/workflows/ci.yml'
+              # Holds a pin that tests/unit/test_pinned_versions.py asserts against
+              - '.pre-commit-config.yaml'
             workflows:
               - '.github/workflows/**'
 
