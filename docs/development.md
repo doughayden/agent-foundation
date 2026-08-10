@@ -109,6 +109,10 @@ Run format, lint, type check, and unit tests (100% coverage required) **before e
 
 Pre-commit runs format, lint, and type checks as a fix-in-place git hook on every `git commit`. It does not run pytest, so coverage validation still requires `uv run pytest --cov`.
 
+Coverage spans Python (ruff, mypy), Terraform (`terraform fmt`), GitHub Actions workflows (actionlint), and the YAML/TOML/JSON config files. `terraform validate` is not a hook: it needs `terraform init` per root, which is too slow for a commit. CI validates instead.
+
+**Local tool requirements:** the Terraform hook calls the `terraform` binary, and the actionlint hook builds from source with the Go toolchain. Both are already needed to work on this repo's infrastructure. A fork that wants neither can drop the hooks, or swap actionlint's `id: actionlint` for `actionlint-docker` or `actionlint-system` from the same upstream repo.
+
 **One-time setup** (writes `.git/hooks/pre-commit`):
 
 ```bash
@@ -123,7 +127,7 @@ uv run pre-commit run --files path/to/file     # Scope to specific files
 uv run pre-commit run ruff-format              # Run a single hook
 ```
 
-Hooks are configured in `.pre-commit-config.yaml`. Versions for the `language: system` hooks (ruff, mypy) are pinned in `uv.lock`. `pre-commit autoupdate` is a no-op for these hooks; update versions with `uv lock --upgrade` instead.
+Hooks are configured in `.pre-commit-config.yaml`. Versions for the `language: system` hooks (ruff, mypy, terraform) come from the local toolchain, with ruff and mypy pinned in `uv.lock`. `pre-commit autoupdate` is a no-op for those; update them with `uv lock --upgrade` instead. It does update the pinned `rev` for the hooks sourced from upstream repos, including actionlint.
 
 ### Agent Evals
 

@@ -48,6 +48,10 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Generate Job Summary
+        # Branch name is attacker-controlled on fork PRs, so it reaches the shell
+        # through the environment rather than through ${{ }} interpolation
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
 
@@ -63,7 +67,7 @@ jobs:
 
           | Event | Branch | Commit |
           |-------|--------|--------|
-          | \`${{ github.event_name }}\` | \`${{ github.head_ref || github.ref_name }}\` | \`${SHA_SHORT}\` |
+          | \`${{ github.event_name }}\` | \`${BRANCH_NAME}\` | \`${SHA_SHORT}\` |
 
           ### 🏷️ Image Tags
           EOF

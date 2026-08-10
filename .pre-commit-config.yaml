@@ -10,11 +10,22 @@ repos:
       - id: check-yaml
         args: [--unsafe]
       - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
       - id: check-added-large-files
   - repo: https://github.com/astral-sh/uv-pre-commit
     rev: 0.11.14
     hooks:
       - id: uv-lock
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      # actionlint runs shellcheck over inline `run:` scripts whenever shellcheck
+      # is on PATH, which makes the finding set depend on the contributor's
+      # machine. Scope the hook to actionlint's own checks and track the
+      # shellcheck findings separately (#255).
+      - id: actionlint
+        args: [-shellcheck=]
   - repo: local
     hooks:
       - id: ruff-format
@@ -36,3 +47,10 @@ repos:
         types: [python]
         pass_filenames: false
         require_serial: true
+      # `terraform validate` is deliberately absent: it requires `terraform init`
+      # per root, which is too heavy for a commit hook. CI validates.
+      - id: terraform-fmt
+        name: terraform fmt
+        entry: terraform fmt
+        language: system
+        types: [terraform]
