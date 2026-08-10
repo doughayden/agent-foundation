@@ -107,7 +107,7 @@ filters: |
     - '.github/workflows/judge-eval.yml'
 ```
 
-`build` gates on `deploy`, `judge-eval` gates on `eval`. `eval` is a superset: a source or dependency change alters agent behavior, so the judge should score it too. `tests/eval/**` sits only in `eval`, which makes an eval-data merge score the change that altered what the gate asserts while building nothing. `judge-eval` scores the checked-out source in-process, so it depends on no image and no deploy job.
+`build` gates on `deploy`, `judge-eval` gates on `eval`. `deploy` lists every reusable workflow `ci-cd.yml` calls, tag-only ones included, so the rule stays uniform and a workflow-only edit lands on a commit that built an image and can be tagged. `eval` is a superset: a source or dependency change alters agent behavior, so the judge should score it too. `tests/eval/**` sits only in `eval`, which makes an eval-data merge score the change that altered what the gate asserts while building nothing. `judge-eval` scores the checked-out source in-process, so it depends on no image and no deploy job.
 
 One condition on `build` is enough to skip the whole deploy chain: every deploy job reaches `build` through `needs`, and a skipped dependency skips its dependents.
 

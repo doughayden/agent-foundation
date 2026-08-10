@@ -74,6 +74,7 @@ jobs:
               - '.github/workflows/metadata-extract.yml'
               - '.github/workflows/pull-and-promote.yml'
               - '.github/workflows/resolve-image-digest.yml'
+              - '.github/workflows/require-stage-success.yml'
               - '.github/workflows/smoke.yml'
               - '.github/workflows/terraform-plan-apply.yml'
             eval:
