@@ -17,6 +17,12 @@ repos:
     rev: 0.11.14
     hooks:
       - id: uv-lock
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      # Mirrors the ci.yml gate; keep the version and the flag in sync with it
+      - id: actionlint
+        args: [-shellcheck=]
   - repo: local
     hooks:
       - id: ruff-format

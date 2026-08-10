@@ -109,14 +109,13 @@ Run format, lint, type check, and unit tests (100% coverage required) **before e
 
 Pre-commit runs format, lint, and type checks as a fix-in-place git hook on every `git commit`. It does not run pytest, so coverage validation still requires `uv run pytest --cov`.
 
-Coverage spans Python (ruff, mypy), Terraform (`terraform fmt`), and the YAML/TOML/JSON config files. The only tool a hook needs beyond the uv environment is the `terraform` binary, already required to work on this repo's infrastructure.
+Coverage spans Python (ruff, mypy), Terraform (`terraform fmt`), GitHub Actions workflows (actionlint), and the YAML/TOML/JSON config files.
 
-Two checks are deliberately not hooks:
+Workflow linting runs in two places on purpose. The hook catches problems before you push; the `actionlint` job in `ci.yml` is the gate that actually blocks a merge, since a hook only fires for contributors who ran `pre-commit install` and `--no-verify` skips it. Both pin the same version and pass the same flags, so a clean commit means a clean gate. Bump them together.
 
-- `terraform validate` needs `terraform init` per root, which is too slow for a commit.
-- Workflow linting (actionlint) runs in CI instead. A hook only fires for contributors who ran `pre-commit install` and is skippable with `--no-verify`, so a merge gate is the enforcement point for files that define the pipeline itself.
+`terraform validate` is deliberately not a hook: it needs `terraform init` per root, which is too slow for a commit. CI validates instead. And note that CI's `terraform fmt -check` runs against `terraform/main` only, so the hook is the sole formatting gate for `terraform/bootstrap/**`.
 
-Note that CI's `terraform fmt -check` runs against `terraform/main` only, so the hook is the sole formatting gate for `terraform/bootstrap/**`.
+**Local tooling:** the Terraform hook calls the `terraform` binary, already required for infrastructure work. actionlint needs nothing installed — pre-commit builds it, using the Go toolchain on `PATH` if there is one and otherwise downloading one into its own cache.
 
 **One-time setup** (writes `.git/hooks/pre-commit`):
 
@@ -138,6 +137,7 @@ Hooks are configured in `.pre-commit-config.yaml`. `pre-commit autoupdate` is a 
 |---|---|---|
 | ruff, mypy | `uv.lock` | `uv lock --upgrade` |
 | terraform fmt | the `terraform` binary on `PATH` | your system package manager |
+| actionlint | the pinned `rev` here **and** `ACTIONLINT_VERSION` / `ACTIONLINT_SHA256` in `ci.yml` | bump both together |
 | everything else | the pinned `rev` in `.pre-commit-config.yaml` | `pre-commit autoupdate` |
 
 ### Agent Evals
