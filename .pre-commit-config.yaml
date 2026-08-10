@@ -17,15 +17,6 @@ repos:
     rev: 0.11.14
     hooks:
       - id: uv-lock
-  - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.12
-    hooks:
-      # actionlint runs shellcheck over inline `run:` scripts whenever shellcheck
-      # is on PATH, which makes the finding set depend on the contributor's
-      # machine. Scope the hook to actionlint's own checks and track the
-      # shellcheck findings separately (#255).
-      - id: actionlint
-        args: [-shellcheck=]
   - repo: local
     hooks:
       - id: ruff-format

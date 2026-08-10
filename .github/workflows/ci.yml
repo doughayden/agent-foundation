@@ -15,6 +15,7 @@ jobs:
     timeout-minutes: 5  # Typical run: <1 min (path filtering). 5 min is generous buffer
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      workflows: ${{ steps.filter.outputs.workflows }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v4
@@ -29,6 +30,8 @@ jobs:
               - 'pyproject.toml'
               - 'uv.lock'
               - '.github/workflows/ci.yml'
+            workflows:
+              - '.github/workflows/**'
 
   code-quality:
     needs: changes
@@ -147,31 +150,84 @@ jobs:
       - name: Run deterministic agent evals
         run: uv run pytest tests/eval -m "deterministic"
 
+  # Static analysis of the workflow files themselves: expression validity, action
+  # input schemas, runner labels, and shell syntax inside `run:` blocks
+  actionlint:
+    needs: changes
+    if: needs.changes.outputs.workflows == 'true'
+    name: Workflow Lint (actionlint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5  # Typical run: <1 min (download + lint). 5 min is generous buffer
+    env:
+      ACTIONLINT_VERSION: 1.7.12
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      # Pinned release plus checksum rather than the install script, so the gate
+      # is reproducible and the download is verified
+      - name: Install actionlint
+        run: |
+          set -euo pipefail
+          curl -fsSL -o actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint.tar.gz" | sha256sum --check --strict
+          tar -xzf actionlint.tar.gz actionlint
+
+      # `-shellcheck=` disables the shellcheck pass over inline `run:` blocks.
+      # The runner ships shellcheck, so the pass is deterministic here; it is off
+      # only because the 59 pre-existing SC2086/SC2129 findings are not yet fixed.
+      # Remove the flag with those findings (#255).
+      - name: Run actionlint
+        run: ./actionlint -color -shellcheck=
+
   # Always-runs sentinel for branch protection
   status:
     runs-on: ubuntu-latest
     timeout-minutes: 5  # Typical run: <1 min (status check). 5 min is generous buffer
-    needs: [changes, code-quality, integration, agent-eval]
+    needs: [changes, code-quality, integration, agent-eval, actionlint]
     if: always()
     steps:
+      # The code and workflows filters are independent, so each lane reports on
+      # its own and a failure in either fails the sentinel
       - name: Check required status
         run: |
           if [[ "${{ needs.changes.result }}" != "success" ]]; then
             echo "❌ Changes detection failed (result: ${{ needs.changes.result }})"
             exit 1
-          elif [[ "${{ needs.changes.outputs.code }}" == "true" ]]; then
+          fi
+
+          failed=0
+
+          if [[ "${{ needs.changes.outputs.code }}" == "true" ]]; then
             if [[ "${{ needs.code-quality.result }}" != "success" ]]; then
               echo "❌ Code quality and tests failed"
-              exit 1
+              failed=1
             elif [[ "${{ needs.integration.result }}" != "success" ]]; then
               echo "❌ Integration tests failed"
-              exit 1
+              failed=1
             elif [[ "${{ needs.agent-eval.result }}" != "success" ]]; then
               echo "❌ Agent eval gate failed"
-              exit 1
+              failed=1
             else
               echo "✅ Code quality, tests, integration, and agent evals passed"
             fi
           else
             echo "⏭️ Code quality, tests, integration, and agent evals skipped - no relevant files changed"
           fi
+
+          if [[ "${{ needs.changes.outputs.workflows }}" == "true" ]]; then
+            if [[ "${{ needs.actionlint.result }}" != "success" ]]; then
+              echo "❌ Workflow lint failed"
+              failed=1
+            else
+              echo "✅ Workflow lint passed"
+            fi
+          else
+            echo "⏭️ Workflow lint skipped - no workflow files changed"
+          fi
+
+          exit "${failed}"
