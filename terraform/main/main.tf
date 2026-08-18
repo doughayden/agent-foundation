@@ -33,7 +33,7 @@ locals {
     ARTIFACT_SERVICE_URI                               = google_storage_bucket.artifact_service.url
     GOOGLE_CLOUD_LOCATION                              = var.google_cloud_location
     GOOGLE_CLOUD_PROJECT                               = var.project
-    GOOGLE_GENAI_USE_VERTEXAI                          = "TRUE"
+    GOOGLE_GENAI_USE_ENTERPRISE                        = "TRUE"
     LOG_LEVEL                                          = coalesce(var.log_level, "INFO")
     MEMORY_SERVICE_URI                                 = "agentengine://${google_vertex_ai_reasoning_engine.session_and_memory.id}"
     OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = coalesce(var.otel_instrumentation_genai_capture_message_content, "FALSE")

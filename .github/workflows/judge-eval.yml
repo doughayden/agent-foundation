@@ -41,7 +41,7 @@ jobs:
     # is a job failure `gating` cannot absorb, so leave room rather than trimming this.
     timeout-minutes: 30
     env:
-      GOOGLE_GENAI_USE_VERTEXAI: "TRUE"
+      GOOGLE_GENAI_USE_ENTERPRISE: "TRUE"
       GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT }}
       GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION }}
     steps:

@@ -8,7 +8,7 @@ See `.env.example` in the repository root for template configuration with inline
 
 | Variable | Required | Default | Purpose |
 |----------|----------|---------|---------|
-| **[GOOGLE_GENAI_USE_VERTEXAI](#google-cloud-vertex-ai)** | ✅ | - | Enable Vertex AI authentication |
+| **[GOOGLE_GENAI_USE_ENTERPRISE](#google-cloud-vertex-ai)** | ✅ | - | Enable Vertex AI authentication |
 | **[GOOGLE_CLOUD_PROJECT](#google-cloud-vertex-ai)** | ✅ | - | GCP project ID |
 | **[GOOGLE_CLOUD_LOCATION](#google-cloud-vertex-ai)** | ✅ | - | Vertex AI model endpoint location |
 | **[AGENT_NAME](#agent-identification)** | ✅ | - | Unique agent identifier |
@@ -42,10 +42,11 @@ These must be set for the agent to function.
 
 ### Google Cloud Vertex AI
 
-**GOOGLE_GENAI_USE_VERTEXAI**
+**GOOGLE_GENAI_USE_ENTERPRISE**
 - **Value:** `TRUE`
 - **Purpose:** Enables Vertex AI authentication for Gemini models
 - **Where:** Set locally in `.env`, auto-configured in Cloud Run
+- **Note:** Replaces `GOOGLE_GENAI_USE_VERTEXAI`, deprecated in ADK 2.4.0. The old name still resolves, but every request that reads it emits a `DeprecationWarning`. Update an existing local `.env` to silence it. When both are set, `GOOGLE_GENAI_USE_ENTERPRISE` wins
 
 **GOOGLE_CLOUD_PROJECT**
 - **Value:** Your GCP project ID (e.g., `your-project-id`)
