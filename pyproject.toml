@@ -9,7 +9,7 @@ authors = [
 requires-python = ">=3.13,<3.14"
 dependencies = [
     # Pin ADK to test releases before locking upgrades
-    "google-adk[gcp,otel-gcp]==2.4.0",
+    "google-adk[gcp,otel-gcp]==2.13.0",
     "google-auth>=2.40.3,<3.0.0",
     "google-cloud-logging>=3.12.1,<4.0.0",
     "opentelemetry-exporter-gcp-logging>=1.12.0a0,<2.0.0",
@@ -27,7 +27,7 @@ server = "agent_foundation.server:main"
 
 [dependency-groups]
 dev = [
-    "google-adk[eval]==2.4.0",
+    "google-adk[eval]==2.13.0",
     "ruff>=0.12.7,<1.0.0",
     "mypy>=1.17.1,<2.0.0",
     "pytest>=8.3.4,<9.0.0",
@@ -147,11 +147,6 @@ markers = [
     "deterministic: eval case scored by exact/ROUGE match (the PR gate)",
     "judge: eval case scored by an LLM judge (non-deterministic; adds the Gen AI eval service)",
     "liveness: eval preflight probing a model endpoint; never a behavioral result",
-]
-filterwarnings = [
-    # ADK 2.x deprecated the config-defined agent family; fires at import via ABCMeta
-    # subclass creation (shows as <frozen abc>), unused here — match by message
-    "ignore:BaseAgentConfig is deprecated:DeprecationWarning",
 ]
 asyncio_mode = "auto"
 # Uncomment to enable live logging for debugging API calls

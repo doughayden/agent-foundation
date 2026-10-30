@@ -45,13 +45,12 @@ The explicit `GoogleGenAiSdkInstrumentor().instrument()` call in `observability.
 
 ### ADK Span Hierarchy
 
-ADK produces its own span hierarchy using the `gcp.vertex.agent` tracer:
+ADK produces its own span hierarchy using the `gcp.vertex.agent` tracer. The names below are ADK's default telemetry schema (OpenTelemetry GenAI semconv v2); setting `ADK_TELEMETRY_SCHEMA_VERSION_OPT_IN=otel_semconv_1_36` restores the legacy schema, which names the top-level span `invocation` and wraps each model call in a `call_llm` span:
 
 | Span Name | Purpose |
 |---|---|
-| `invocation` | Top-level span for a runner invocation |
+| `invoke_workflow` | Top-level span for a runner invocation |
 | `invoke_agent {name}` | Agent-level span with agent name, session ID |
-| `call_llm` | Wraps the LLM call |
 | `generate_content {model}` | Model inference (delegated to genai instrumentor when installed) |
 | `execute_tool {name}` | Individual tool execution |
 
@@ -78,7 +77,7 @@ ADK's `[otel-gcp]` extra includes `opentelemetry-instrumentation-google-genai>=0
 
 ADK's built-in tracing covers the agent orchestration layer:
 
-- `invocation` → `call_llm` → `generate_content` / `execute_tool` spans
+- `invoke_workflow` → `invoke_agent` → `generate_content` / `execute_tool` spans
 - Agent name, session ID, model, token usage, tool args/responses as span attributes
 - Gen AI semantic convention attributes (`gen_ai.operation.name`, `gen_ai.request.model`, etc.)
 
@@ -141,7 +140,7 @@ Both `attach()` and `detach()` execute inside the background task's own async `c
 
 ## HTTP Layer Instrumentation (FastAPI)
 
-`opentelemetry-instrumentation-fastapi` is an optional, opt-in instrumentor that adds HTTP-layer spans as parents to ADK's `invocation` spans. Enable it by passing the FastAPI instance to `setup_opentelemetry(..., app=app)`; leave `app` as `None` to skip.
+`opentelemetry-instrumentation-fastapi` is an optional, opt-in instrumentor that adds HTTP-layer spans as parents to ADK's `invoke_workflow` spans. Enable it by passing the FastAPI instance to `setup_opentelemetry(..., app=app)`; leave `app` as `None` to skip.
 
 A typical enabled trace tree looks like:
 
@@ -149,10 +148,9 @@ A typical enabled trace tree looks like:
 POST /some-route                     (FastAPI server span)
 ├── POST /some-route http receive    (ASGI http.request event)
 ├── <your custom handler spans>
-│   └── invocation                   (ADK)
+│   └── invoke_workflow              (ADK)
 │       └── invoke_agent {agent}
-│           └── call_llm
-│               └── generate_content {model}
+│           └── generate_content {model}
 ├── POST /some-route http send       (ASGI http.response.start)
 └── POST /some-route http send       (ASGI http.response.body)
 ```
