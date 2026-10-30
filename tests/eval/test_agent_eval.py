@@ -1,9 +1,9 @@
 """Gate-fidelity eval runner for the template root agent.
 
 Runs stock ``AgentEvaluator`` against the shipped eval set. The agent performs
-real model inference; the ``App`` (and its plugins) is applied via the
-App-aware eval patch (``agent_foundation._eval_app_aware_patch``), so these
-runs score the same agent adk web chat and the deployed server run.
+real model inference; ADK builds the eval runner from the module's ``App`` (and
+its plugins), so these runs score the same agent adk web chat and the deployed
+server run.
 
 Two gates share the eval set:
 
@@ -11,8 +11,8 @@ Two gates share the eval set:
   directory): exact tool-trajectory matching and ROUGE-1 response overlap, no
   LLM judge. This is the CI PR gate.
 - Judge (``full_eval_config.json``, loaded explicitly): adds LLM-judge and
-  safety metrics whose ``app_details`` context is populated in-process by the
-  App-aware patch. This is the CI merge gate, run by ``judge-eval.yml``.
+  safety metrics whose ``app_details`` context is populated in-process from the
+  ``App``. This is the CI merge gate, run by ``judge-eval.yml``.
 
 Both gates run the agent with live model inference, so both need real
 credentials; the judge gate additionally calls the Gen AI evaluation service.
