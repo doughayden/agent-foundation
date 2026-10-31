@@ -6,12 +6,17 @@ credentials.
 
 from __future__ import annotations
 
+import importlib.util
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from types import ModuleType
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from pytest_mock import MockerFixture, MockType
+
+if TYPE_CHECKING:
+    from google.adk.evaluation.eval_result import EvalCaseResult
 
 # Source root holding the single agent package (src/<package>/). The package name is
 # derived from it so a downstream fork that renames the package reuses these fixtures
@@ -22,6 +27,10 @@ SRC_DIR = Path(__file__).parents[2] / "src"
 # lone dir with an __init__.py is unambiguous; the marker skips non-package entries
 # (.DS_Store, *.egg-info).
 PACKAGE_NAME = next(SRC_DIR.glob("*/__init__.py")).parent.name
+
+# The eval lane's gate module. Tests have no __init__.py and run under
+# --import-mode=importlib, so it is loaded by path rather than imported by name.
+EVAL_GATE_MODULE_PATH = Path(__file__).parents[1] / "eval" / "test_agent_eval.py"
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -611,3 +620,66 @@ def mock_print_config(mocker: MockerFixture) -> Callable[[type], MockType]:
         return mocker.patch.object(model_class, "print_config", autospec=True)
 
     return _mock_print_config
+
+
+@pytest.fixture(scope="session")
+def eval_gate() -> ModuleType:
+    """The eval lane's gate module, loaded by path for its offline helpers.
+
+    Loading runs its module-level setup (package discovery, judge config
+    validation), which reads only repo files. Its fixtures and tests are not
+    registered, since pytest never collects this module object.
+    """
+    spec = importlib.util.spec_from_file_location(
+        "eval_gate_under_test", EVAL_GATE_MODULE_PATH
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def create_eval_case_result() -> Callable[..., EvalCaseResult]:
+    """Factory for one run's ``EvalCaseResult`` with chosen overall metric scores.
+
+    Returns:
+        Function taking ``scores`` (gating metric name to score, ``None`` for
+        unscored) and ``informational`` (informational metric name to score).
+    """
+    from google.adk.evaluation.eval_metrics import EvalMetricResult, EvalStatus
+    from google.adk.evaluation.eval_result import EvalCaseResult
+
+    def _factory(
+        scores: dict[str, float | None] | None = None,
+        informational: dict[str, float | None] | None = None,
+        eval_id: str = "case",
+    ) -> EvalCaseResult:
+        metrics = [
+            EvalMetricResult(
+                metric_name=name,
+                score=score,
+                eval_status=(
+                    EvalStatus.NOT_EVALUATED if score is None else EvalStatus.PASSED
+                ),
+            )
+            for name, score in (scores or {}).items()
+        ] + [
+            EvalMetricResult(
+                metric_name=name,
+                score=score,
+                eval_status=EvalStatus.INFORMATIONAL,
+            )
+            for name, score in (informational or {}).items()
+        ]
+        return EvalCaseResult(
+            eval_set_id="set",
+            eval_id=eval_id,
+            final_eval_status=EvalStatus.PASSED if metrics else EvalStatus.FAILED,
+            overall_eval_metric_results=metrics,
+            eval_metric_result_per_invocation=[],
+            session_id="session",
+        )
+
+    return _factory

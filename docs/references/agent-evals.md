@@ -229,7 +229,7 @@ The gate case is single-turn, so `invocations` is 1 and the table below reads as
 
 The trap is the first row: the threshold reads as tolerating a bad draw and tolerates none. It is why `JUDGE_NUM_RUNS` is 5 rather than the deterministic gate's 2, and why a fork adding a single-rubric metric should work out its achievable scores before trusting the number it typed.
 
-Also read the denominator as "the runs that produced a score". ADK drops a run whose metric evaluation errored instead of counting it as a miss, so errors shrink the denominator rather than pulling the mean down.
+The denominator assumes every run produced a score. ADK drops a run whose metric evaluation errored instead of counting it as a miss, which would shrink the denominator rather than pull the mean down, so both gates reject an eval with any unscored run (see "What each gate proves" below). A passing gate's denominator is always the full run count.
 
 ### A trivially satisfied rubric subsidizes the score
 
@@ -289,12 +289,22 @@ Two gates run in CI, at two different points, both authenticating to Vertex AI w
 1. `pytest tests/eval -m "judge and liveness"` — the model-endpoint liveness probes, always blocking.
 2. `pytest tests/eval -m "judge and not liveness"` — the scored eval, where the deployment mode decides whether a failure blocks.
 
-Splitting them is what makes the second step's exit code readable. Exit 1 means a sub-threshold score and nothing else: the preflight has ruled out a dead endpoint, and the judge test converts every non-assertion failure (a missing eval extra, an empty dataset, an eval-service error) into `EVAL_ERROR_EXIT_CODE`. Every other non-zero code is a broken run and fails the job in either mode. Note that a job timeout and a failed preflight are job failures, not exit codes, so `gating: false` cannot absorb those either. Locally the whole lane still runs as one session, where a failed probe arms `session.shouldfail` to abort before the paid tests.
+Splitting them is what makes the second step's exit code readable. Exit 1 means a sub-threshold score over fully scored runs and nothing else: the preflight has ruled out a dead endpoint, and the judge test converts every unscored run and every non-assertion failure (a missing eval extra, an empty dataset, an eval-service error) into `EVAL_ERROR_EXIT_CODE`. Every other non-zero code is a broken run and fails the job in either mode. Note that a job timeout and a failed preflight are job failures, not exit codes, so `gating: false` cannot absorb those either. Locally the whole lane still runs as one session, where a failed probe arms `session.shouldfail` to abort before the paid tests.
 
 Mode decides how the scored step's failure is treated:
 
 - **Dev-only mode** (the default): signal only. A sub-threshold score is reported in the job summary and as a warning annotation, then the job exits 0. A failed preflight or a broken run still fails, so a dead endpoint is never mistaken for a passing gate.
 - **Production mode**: blocking. A sub-threshold score fails the job, and `require-stage-success` requires that job's conclusion at tag time, so a behavioral regression blocks the prod tag for that commit. Stage has already deployed by then and is not reverted.
+
+### What each gate proves
+
+A green gate, deterministic or judge, means every run of every case produced an overall score for every gating metric and the averaged scores cleared their thresholds. Individual invocations inside a run may still be unscored; the guarantee is per run, per metric. Three checks at different layers back that up:
+
+- **ADK fails a run whose inference failed.** It records the run as failed with no metric results and fails the eval, so a dead endpoint cannot pass over an empty metric set. It reports that failure through the same `AssertionError` as a low score, which is why the next check classifies it.
+- **The gates reject unscored runs.** ADK isolates a metric whose evaluation raises: it records no score for that run and averages only the scores that exist, so a threshold could otherwise be decided by the surviving runs. Both gates capture every run's results through `AgentEvaluator`'s `eval_set_results_manager` parameter and exit `EVAL_ERROR_EXIT_CODE` when any run produced no metric results or left a gating metric without a score. A metric can also come back unscored without an error, when it finds nothing to score in that run (like a groundedness metric on a reply with no text). The captured results cannot tell that apart from an error, and either way the threshold would rest on the other runs, so it fails the same way, in both deployment modes. The check reads each run's overall score per metric rather than per invocation, and skips `INFORMATIONAL` metrics, which never gate. It covers the autorater metrics and the Gen AI evaluation service metrics like `safety_v1` alike, including the service's partial unavailability, which the preflight cannot reach.
+- **The liveness preflight fails fast.** An unreachable model would fail every run, but only after the lane paid for each attempt. The probes make one minimal call per model role first and, in CI, run as their own step, so `gating: false` never sees that failure.
+
+Exit 1 from either gate is therefore always ADK's verdict over fully scored runs, and in the judge workflow it is the only failure `gating: false` absorbs. Whether an unscored run should warn rather than fail is a policy choice; the template fails, and a fork changes it in `_gate` in `tests/eval/test_agent_eval.py`.
 
 The judge gate is off the PR path deliberately: it is non-deterministic and calls the paid Gen AI evaluation service, so it belongs where a failure is investigated rather than where it would flake a merge queue. The user-simulation paths stay local and manual.
 
