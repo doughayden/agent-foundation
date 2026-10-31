@@ -100,6 +100,7 @@ EVAL_ERROR_EXIT_CODE = 6
 
 LIVENESS_PROMPT = "pls respond with a single 'ready' to confirm you're able to respond"
 LIVENESS_MAX_OUTPUT_TOKENS = 16
+LIVENESS_TIMEOUT_MS = 60_000
 
 
 def _judge_models(config_data: dict[str, Any]) -> list[str]:
@@ -149,17 +150,21 @@ async def _assert_model_live(session: pytest.Session, model: str) -> None:
     """Fail if ``model`` can't be resolved or its endpoint doesn't answer.
 
     Resolution, request construction, and the live call all run inside the
-    ``try`` so any failure (bad model string, registry miss, dead endpoint)
-    arms ``session.shouldfail`` (the knob ``-x`` sets) so the lane
-    aborts before the paid ``AgentEvaluator`` tests run — the eval is meaningless
-    against a dead endpoint, and this keeps fail-fast in the module rather than in
-    a command flag or a ``conftest.py`` this lane omits.
+    ``try`` so any failure (bad model string, registry miss, dead endpoint,
+    a call exceeding ``LIVENESS_TIMEOUT_MS``) arms ``session.shouldfail`` (the
+    knob ``-x`` sets) so the lane aborts before the paid ``AgentEvaluator`` tests
+    run — the eval is meaningless against a dead endpoint, and this keeps
+    fail-fast in the module rather than in a command flag or a ``conftest.py``
+    this lane omits.
 
     One minimal live call resolved the same way ADK resolves a model string
-    (``LLMRegistry``). Thinking is disabled so the low output cap yields a text
-    reply instead of being spent on ``gemini-2.5-flash`` thinking tokens. This
-    assumes a registry-resolvable model string; a fork that swaps a role to a
-    connector instance (LiteLlm/Claude/Apigee) must call that instance directly.
+    (``LLMRegistry``). Thinking is set to ``LOW`` so the output cap yields a text
+    reply instead of being spent on thinking tokens; ``thinking_level`` replaces
+    the deprecated ``thinking_budget``, and some models reject ``MINIMAL``. The
+    request timeout turns a hung endpoint into a fast abort instead of a job
+    that waits out its own timeout. This assumes a registry-resolvable model
+    string; a fork that swaps a role to a connector instance
+    (LiteLlm/Claude/Apigee) must call that instance directly.
     """
 
     def _abort(reason: str) -> None:
@@ -173,7 +178,10 @@ async def _assert_model_live(session: pytest.Session, model: str) -> None:
             contents=[types.UserContent(LIVENESS_PROMPT)],
             config=types.GenerateContentConfig(
                 max_output_tokens=LIVENESS_MAX_OUTPUT_TOKENS,
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
+                thinking_config=types.ThinkingConfig(
+                    thinking_level=types.ThinkingLevel.LOW
+                ),
+                http_options=types.HttpOptions(timeout=LIVENESS_TIMEOUT_MS),
             ),
         )
         responses = [resp async for resp in llm.generate_content_async(llm_request)]
