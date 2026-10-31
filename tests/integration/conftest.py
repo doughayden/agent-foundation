@@ -17,9 +17,15 @@ def _docker(*args: str) -> str:
     docker = shutil.which("docker")
     if docker is None:
         raise pytest.UsageError("integration tests need docker on PATH")
-    result = subprocess.run(  # noqa: S603 - resolved docker binary, literal args
-        [docker, *args], check=True, capture_output=True, text=True
-    )
+    try:
+        result = subprocess.run(  # noqa: S603 - resolved docker binary, literal args
+            [docker, *args], check=True, capture_output=True, text=True
+        )
+    except subprocess.CalledProcessError as exc:
+        raise pytest.UsageError(
+            f"integration tests need a reachable docker daemon "
+            f"(docker {' '.join(args)}): {exc.stderr.strip()}"
+        ) from exc
     return result.stdout.strip()
 
 
