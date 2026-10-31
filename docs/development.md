@@ -288,7 +288,7 @@ your-agent-name/
     server.py             # FastAPI composition root (services, DI, routing)
     tools.py              # Custom FunctionTools for agent use
   tests/                  # Test suite (unit/integration/smoke/eval lanes)
-    conftest.py           # Shared fixtures, test env setup (all lanes)
+    unit/conftest.py      # Unit-lane fixtures, mocks, and test env setup
     unit/test_*.py        # Default lane; modules mirror source structure
   terraform/              # Infrastructure as code
     bootstrap/{env}       # One-time CI/CD setup per environment
