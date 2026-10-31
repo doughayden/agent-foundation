@@ -54,7 +54,8 @@ tests/
     test_config.py               # Tests for src/your_agent/config.py
     ...
   integration/                   # Postgres + FastAPI lane
-    test_server_integration.py   # Fixtures, mocks, and tests in one module
+    conftest.py                  # Docker setup for testcontainers only
+    test_server_integration.py   # Fixtures, mocks, and tests
   smoke/                         # Live deployed-URL lane
 ```
 
