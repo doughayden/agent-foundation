@@ -1,23 +1,31 @@
-"""Parity checks for tool versions pinned in more than one place.
+"""Parity checks for versions pinned in more than one place.
 
-A tool pinned in two files drifts silently: nothing connects the pins, and
+A value pinned in several files drifts silently: nothing connects the pins, and
 ``pre-commit autoupdate`` moves one of them on its own. Each check here reads
-both pins from their real files and fails the unit lane when they disagree.
+the pins from their real files and fails the unit lane when they disagree.
 
 Add a case whenever a new pin gains a second home.
 """
 
+import json
 import re
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PRE_COMMIT_CONFIG = REPO_ROOT / ".pre-commit-config.yaml"
 CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+EVAL_DATA_DIR = REPO_ROOT / "tests" / "eval" / "data"
 
 ACTIONLINT_REPO = "https://github.com/rhysd/actionlint"
 ACTIONLINT_IMAGE = re.compile(r"docker://rhysd/actionlint:(?P<version>[\w.\-]+)")
+
+# The eval pipeline's scoring model, accepted in one place. Change it here and in
+# every eval config together; the agent's ROOT_AGENT_MODEL is a separate choice.
+JUDGE_MODEL = "gemini-3.8-flash"
 
 
 def _hook_rev(repo_url: str) -> str:
@@ -38,4 +46,38 @@ class TestActionlintVersionParity:
         assert _hook_rev(ACTIONLINT_REPO) == match.group("version").lstrip("v"), (
             "actionlint version drift: bump the hook rev in .pre-commit-config.yaml "
             "and the image tag in ci.yml together"
+        )
+
+
+def _eval_model_pins(node: Any, path: str) -> Iterator[tuple[str, str]]:
+    """Yield ``(location, model)`` for every judge and user-simulator model."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            location = f"{path}.{key}"
+            if key == "judge_model" or (
+                key == "model" and path.endswith(".user_simulator_config")
+            ):
+                yield location, value
+            else:
+                yield from _eval_model_pins(value, location)
+    elif isinstance(node, list):
+        for index, item in enumerate(node):
+            yield from _eval_model_pins(item, f"{path}[{index}]")
+
+
+class TestJudgeModelPin:
+    """Every eval config scores with the accepted judge model."""
+
+    def test_eval_configs_use_the_pinned_judge_model(self):
+        pins = [
+            pin
+            for config in sorted(EVAL_DATA_DIR.glob("*.json"))
+            for pin in _eval_model_pins(json.loads(config.read_text()), config.name)
+        ]
+        assert pins, f"no judge_model entries found under {EVAL_DATA_DIR}"
+
+        drifted = [f"{loc} = {model!r}" for loc, model in pins if model != JUDGE_MODEL]
+        assert not drifted, (
+            f"judge model drift from JUDGE_MODEL = {JUDGE_MODEL!r}: {drifted}. "
+            "Bump JUDGE_MODEL and every eval config entry together"
         )
