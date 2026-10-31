@@ -161,7 +161,7 @@ ADK ships a GEPA prompt optimizer that rewrites the root agent's instructions ag
 adk optimize src/$AGENT_PACKAGE <optimizer_config_path>
 ```
 
-It is long-running and makes multiple LLM calls. Treat it as a last resort after manual instruction fixes, and run a single pass rather than looping on it. See `adk optimize --help` for the config format.
+It is long-running and makes multiple LLM calls. Treat it as a last resort after manual instruction fixes, and run a single pass rather than looping on it. See `adk optimize --help` for the config format. Set `optimizer_model` explicitly in the config rather than inheriting ADK's default, so the optimizer runs on a model you chose.
 
 ### Migrating legacy eval data: `adk migrate`
 
