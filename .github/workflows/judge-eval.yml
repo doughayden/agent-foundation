@@ -75,24 +75,25 @@ jobs:
       # Vertex error here therefore also reds a "signal only" run, which is the
       # intended trade — a flaky red is recoverable by re-running, a silent green is not.
       - name: Preflight model liveness
-        run: uv run pytest tests/eval -m "judge and liveness" 2>&1 | tee "$RUNNER_TEMP/judge-eval.log"
+        run: uv run pytest tests/eval -m "judge and liveness" -s 2>&1 | tee "$RUNNER_TEMP/judge-eval.log"
 
       - name: Run judge evals
         shell: bash {0}  # Removes -e flag so pytest's exit code is captured for the summary
         env:
           GATING: ${{ inputs.gating }}
         run: |
-          # Stream output to both logs (real-time) and file (for the summary step)
-          uv run pytest tests/eval -m "judge and not liveness" 2>&1 | tee -a "$RUNNER_TEMP/judge-eval.log"
+          # -s streams ADK's own output (logging plugin, progress bars, results tables);
+          # tee sends it to the job log in real time and to a file for the summary step
+          uv run pytest tests/eval -m "judge and not liveness" -s 2>&1 | tee -a "$RUNNER_TEMP/judge-eval.log"
           EXIT_CODE=${PIPESTATUS[0]}  # pytest's exit code, not tee's
 
           # Hand the code to the summary step, which runs even when this one fails
           echo "EXIT_CODE=${EXIT_CODE}" >> "$GITHUB_ENV"
 
-          # Exit 1 is a sub-threshold score and nothing else: the preflight ruled out a
-          # dead endpoint, and the eval test converts every non-assertion failure to
-          # EVAL_ERROR_EXIT_CODE. Every other non-zero code is a broken run and fails
-          # regardless of `gating`.
+          # Exit 1 is a sub-threshold score over fully scored runs and nothing else: the
+          # preflight ruled out a dead endpoint and malformed eval data, and the eval test
+          # converts every unscored run and non-assertion failure to EVAL_ERROR_EXIT_CODE.
+          # Every other non-zero code is a broken run and fails regardless of `gating`.
           if [ "$EXIT_CODE" -eq 1 ] && [ "$GATING" != "true" ]; then
             echo "::warning::Judge eval scored below threshold. This run is signal only (gating=false), so the job passes."
             exit 0
@@ -101,7 +102,8 @@ jobs:
           exit "$EXIT_CODE"
 
       # Always runs, so a failed preflight still reports. An unset EXIT_CODE means the
-      # scored step never ran, which only happens when the preflight failed.
+      # scored step never ran, which only happens when the preflight failed: a model
+      # endpoint did not answer, or the eval config or data failed to load at collection.
       - name: Report result
         if: always()
         env:
@@ -120,13 +122,13 @@ jobs:
 
           if [ -z "${EXIT_CODE:-}" ]; then
             STATUS_ICON="❌"
-            STATUS="model preflight failed"
+            STATUS="preflight failed (model endpoint or eval config)"
           elif [ "$EXIT_CODE" -eq 0 ]; then
             STATUS_ICON="✅"
             STATUS="success"
           elif [ "$EXIT_CODE" -ne 1 ]; then
             STATUS_ICON="❌"
-            STATUS="eval could not run (pytest exit ${EXIT_CODE})"
+            STATUS="eval could not run or left runs unscored (pytest exit ${EXIT_CODE})"
           elif [ "$GATING" = "true" ]; then
             STATUS_ICON="❌"
             STATUS="regression"

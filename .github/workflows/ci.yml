@@ -150,7 +150,7 @@ jobs:
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Run deterministic agent evals
-        run: uv run pytest tests/eval -m "deterministic"
+        run: uv run pytest tests/eval -m "deterministic" -s  # -s streams ADK output into the job log
 
   # Static analysis of GHA workflow files
   actionlint:

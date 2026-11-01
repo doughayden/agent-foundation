@@ -145,7 +145,8 @@ Hooks are configured in `.pre-commit-config.yaml`. `pre-commit autoupdate` is a 
 Run the deterministic agent eval gate before merging changes that touch agent behavior (instructions, tools, callbacks, model):
 
 ```bash
-uv run pytest tests/eval -m "deterministic"  # real model inference, deterministic scoring; needs Vertex creds from .env
+uv run pytest tests/eval -m "deterministic"     # real model inference, deterministic scoring; needs Vertex creds from .env
+uv run pytest tests/eval -m "deterministic" -s  # same, streaming ADK output as each run happens
 ```
 
 See [Agent Evals](references/agent-evals.md) for the full evaluation suite reference.

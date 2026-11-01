@@ -28,9 +28,11 @@ SRC_DIR = Path(__file__).parents[2] / "src"
 # (.DS_Store, *.egg-info).
 PACKAGE_NAME = next(SRC_DIR.glob("*/__init__.py")).parent.name
 
-# The eval lane's gate module. Tests have no __init__.py and run under
-# --import-mode=importlib, so it is loaded by path rather than imported by name.
-EVAL_GATE_MODULE_PATH = Path(__file__).parents[1] / "eval" / "test_agent_eval.py"
+# The eval lane's gate module and conftest. Tests have no __init__.py and run under
+# --import-mode=importlib, so they are loaded by path rather than imported by name.
+EVAL_LANE_DIR = Path(__file__).parents[1] / "eval"
+EVAL_GATE_MODULE_PATH = EVAL_LANE_DIR / "test_agent_eval.py"
+EVAL_CONFTEST_PATH = EVAL_LANE_DIR / "conftest.py"
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -622,17 +624,8 @@ def mock_print_config(mocker: MockerFixture) -> Callable[[type], MockType]:
     return _mock_print_config
 
 
-@pytest.fixture(scope="session")
-def eval_gate() -> ModuleType:
-    """The eval lane's gate module, loaded by path for its offline helpers.
-
-    Loading runs its module-level setup (package discovery, judge config
-    validation), which reads only repo files. Its fixtures and tests are not
-    registered, since pytest never collects this module object.
-    """
-    spec = importlib.util.spec_from_file_location(
-        "eval_gate_under_test", EVAL_GATE_MODULE_PATH
-    )
+def _load_module_by_path(name: str, path: Path) -> ModuleType:
+    spec = importlib.util.spec_from_file_location(name, path)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -640,20 +633,52 @@ def eval_gate() -> ModuleType:
     return module
 
 
+@pytest.fixture(scope="session")
+def eval_gate() -> ModuleType:
+    """The eval lane's gate module, loaded by path for its offline helpers.
+
+    Loading runs its module-level setup (package discovery, config and eval set
+    validation), which reads only repo files. Its fixtures and tests are not
+    registered, since pytest never collects this module object.
+    """
+    return _load_module_by_path("eval_gate_under_test", EVAL_GATE_MODULE_PATH)
+
+
+@pytest.fixture(scope="session")
+def eval_lane_conftest() -> ModuleType:
+    """The eval lane's conftest, loaded by path to test its exit-status hook."""
+    return _load_module_by_path("eval_lane_conftest_under_test", EVAL_CONFTEST_PATH)
+
+
 @pytest.fixture
 def create_eval_case_result() -> Callable[..., EvalCaseResult]:
-    """Factory for one run's ``EvalCaseResult`` with chosen overall metric scores.
+    """Factory for one run's ``EvalCaseResult`` shaped like ADK's real results.
 
     Returns:
-        Function taking ``scores`` (gating metric name to score, ``None`` for
-        unscored) and ``informational`` (informational metric name to score).
+        Function taking ``scores`` (gating metric name to overall score, ``None``
+        for unscored), ``efficiency`` (auto-added efficiency metric name to score;
+        ``None`` mimics a crashed one, which ADK reports as not evaluated),
+        ``rubrics`` (rubric metric name to its configured rubric ids) and
+        ``rubric_scores`` (rubric metric name to judged rubric id and score; an id
+        left out was never judged). A rubric metric's overall score is the mean of
+        its judged rubric scores, as ADK computes it.
     """
-    from google.adk.evaluation.eval_metrics import EvalMetricResult, EvalStatus
+    from google.adk.evaluation.eval_metrics import (
+        BaseCriterion,
+        EvalMetricResult,
+        EvalMetricResultDetails,
+        EvalStatus,
+        RubricScore,
+    )
     from google.adk.evaluation.eval_result import EvalCaseResult
+
+    threshold = 0.5
 
     def _factory(
         scores: dict[str, float | None] | None = None,
-        informational: dict[str, float | None] | None = None,
+        efficiency: dict[str, float | None] | None = None,
+        rubrics: dict[str, list[str]] | None = None,
+        rubric_scores: dict[str, dict[str, float | None]] | None = None,
         eval_id: str = "case",
         session_id: str = "session",
     ) -> EvalCaseResult:
@@ -661,19 +686,48 @@ def create_eval_case_result() -> Callable[..., EvalCaseResult]:
             EvalMetricResult(
                 metric_name=name,
                 score=score,
+                threshold=threshold,
                 eval_status=(
                     EvalStatus.NOT_EVALUATED if score is None else EvalStatus.PASSED
                 ),
             )
             for name, score in (scores or {}).items()
-        ] + [
+        ]
+        metrics += [
             EvalMetricResult(
                 metric_name=name,
                 score=score,
-                eval_status=EvalStatus.INFORMATIONAL,
+                eval_status=(
+                    EvalStatus.NOT_EVALUATED
+                    if score is None
+                    else EvalStatus.INFORMATIONAL
+                ),
             )
-            for name, score in (informational or {}).items()
+            for name, score in (efficiency or {}).items()
         ]
+        for name, rubric_ids in (rubrics or {}).items():
+            judged = (rubric_scores or {}).get(name, {})
+            values = [score for score in judged.values() if score is not None]
+            metrics.append(
+                EvalMetricResult(
+                    metric_name=name,
+                    score=sum(values) / len(values) if values else None,
+                    threshold=threshold,
+                    criterion=BaseCriterion.model_validate(
+                        {
+                            "threshold": threshold,
+                            "rubrics": [{"rubric_id": rid} for rid in rubric_ids],
+                        }
+                    ),
+                    eval_status=EvalStatus.PASSED,
+                    details=EvalMetricResultDetails(
+                        rubric_scores=[
+                            RubricScore(rubric_id=rid, score=score)
+                            for rid, score in judged.items()
+                        ]
+                    ),
+                )
+            )
         return EvalCaseResult(
             eval_set_id="set",
             eval_id=eval_id,
@@ -682,5 +736,67 @@ def create_eval_case_result() -> Callable[..., EvalCaseResult]:
             eval_metric_result_per_invocation=[],
             session_id=session_id,
         )
+
+    return _factory
+
+
+@pytest.fixture
+def create_mock_evaluate_eval_set(
+    mocker: MockerFixture, eval_gate: ModuleType
+) -> Callable[..., MockType]:
+    """Factory patching ``AgentEvaluator.evaluate_eval_set`` with a scripted run.
+
+    Returns:
+        Function taking ``runs`` (``EvalCaseResult`` objects saved to the gate's
+        results manager, as ADK saves them before raising) and ``raises``
+        (exception raised after saving). Returns the patch mock.
+    """
+
+    def _factory(
+        runs: list[EvalCaseResult] | None = None,
+        raises: BaseException | None = None,
+    ) -> MockType:
+        async def _evaluate(**kwargs: Any) -> None:
+            kwargs["eval_set_results_manager"].save_eval_set_result(
+                app_name=kwargs["app_name"],
+                eval_set_id="set",
+                eval_case_results=list(runs or []),
+            )
+            if raises is not None:
+                raise raises
+
+        return mocker.patch.object(
+            eval_gate.AgentEvaluator,
+            "evaluate_eval_set",
+            new_callable=mocker.AsyncMock,
+            side_effect=_evaluate,
+        )
+
+    return _factory
+
+
+@pytest.fixture
+def mock_set_exit_status(mocker: MockerFixture) -> MockType:
+    """Stand-in for the eval lane's ``set_exit_status`` fixture."""
+    return mocker.Mock(spec=lambda code: None)
+
+
+@pytest.fixture
+def create_mock_session(mocker: MockerFixture) -> Callable[..., MockType]:
+    """Factory for a ``pytest.Session`` double with a real stash.
+
+    Returns:
+        Function taking ``exitstatus`` and an optional ``stash_entries`` mapping
+        of stash key to value.
+    """
+
+    def _factory(
+        exitstatus: int = 1, stash_entries: dict[Any, Any] | None = None
+    ) -> MockType:
+        session = mocker.Mock(spec=pytest.Session, exitstatus=exitstatus)
+        session.config.stash = pytest.Stash()
+        for key, value in (stash_entries or {}).items():
+            session.config.stash[key] = value
+        return session
 
     return _factory
