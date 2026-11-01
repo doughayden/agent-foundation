@@ -655,6 +655,7 @@ def create_eval_case_result() -> Callable[..., EvalCaseResult]:
         scores: dict[str, float | None] | None = None,
         informational: dict[str, float | None] | None = None,
         eval_id: str = "case",
+        session_id: str = "session",
     ) -> EvalCaseResult:
         metrics = [
             EvalMetricResult(
@@ -679,7 +680,7 @@ def create_eval_case_result() -> Callable[..., EvalCaseResult]:
             final_eval_status=EvalStatus.PASSED if metrics else EvalStatus.FAILED,
             overall_eval_metric_results=metrics,
             eval_metric_result_per_invocation=[],
-            session_id="session",
+            session_id=session_id,
         )
 
     return _factory

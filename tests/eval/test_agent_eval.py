@@ -295,15 +295,16 @@ def _unscored_runs(eval_case_results: list[EvalCaseResult]) -> list[str]:
     leaves unscored does not read as a dropped run. ``INFORMATIONAL`` metrics never
     gate and are skipped. Capturing nothing at all counts as unscored too, since
     there is then no evidence behind a verdict.
+
+    A run is named by its eval session: ADK saves results in completion order and
+    gives them no run number, while each run has its own session unless the case
+    pins ``session_input.session_id``, which every run of that case then shares.
     """
     if not eval_case_results:
         return ["no eval results were captured"]
     unscored = []
-    runs_seen: dict[str, int] = {}
     for case in eval_case_results:
-        run = runs_seen.get(case.eval_id, 0)
-        runs_seen[case.eval_id] = run + 1
-        label = f"{case.eval_id} run {run}"
+        label = f"{case.eval_id} (session {case.session_id})"
         if not case.overall_eval_metric_results:
             unscored.append(f"{label}: produced no metric results")
             continue

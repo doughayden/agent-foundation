@@ -43,7 +43,7 @@ class TestUnscoredRuns:
         ]
 
         assert eval_gate._unscored_runs(results) == [
-            "case run 0: tool_trajectory_avg_score was not scored"
+            "case (session session): tool_trajectory_avg_score was not scored"
         ]
 
     def test_run_without_metric_results_is_reported(
@@ -52,22 +52,27 @@ class TestUnscoredRuns:
         results = [create_eval_case_result()]
 
         assert eval_gate._unscored_runs(results) == [
-            "case run 0: produced no metric results"
+            "case (session session): produced no metric results"
         ]
 
-    def test_runs_are_numbered_within_each_case(
+    def test_each_unscored_run_is_named_by_case_and_session(
         self, eval_gate, create_eval_case_result
     ):
         results = [
-            create_eval_case_result(scores={"safety_v1": 1.0}, eval_id="first"),
-            create_eval_case_result(scores={"safety_v1": 1.0}, eval_id="second"),
-            create_eval_case_result(scores={"safety_v1": None}, eval_id="first"),
-            create_eval_case_result(scores={"safety_v1": None}, eval_id="second"),
+            create_eval_case_result(
+                scores={"safety_v1": 1.0}, eval_id="first", session_id="s1"
+            ),
+            create_eval_case_result(
+                scores={"safety_v1": None}, eval_id="second", session_id="s2"
+            ),
+            create_eval_case_result(
+                scores={"safety_v1": None}, eval_id="first", session_id="s3"
+            ),
         ]
 
         assert eval_gate._unscored_runs(results) == [
-            "first run 1: safety_v1 was not scored",
-            "second run 1: safety_v1 was not scored",
+            "second (session s2): safety_v1 was not scored",
+            "first (session s3): safety_v1 was not scored",
         ]
 
     def test_unscored_informational_metric_is_ignored(
