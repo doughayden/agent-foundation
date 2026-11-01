@@ -25,7 +25,7 @@ ACTIONLINT_IMAGE = re.compile(r"docker://rhysd/actionlint:(?P<version>[\w.\-]+)"
 
 # The eval pipeline's scoring model, accepted in one place. Change it here and in
 # every eval config together; the agent's ROOT_AGENT_MODEL is a separate choice.
-JUDGE_MODEL = "gemini-3.8-flash"
+JUDGE_MODEL = "gemini-3.5-flash"
 
 
 def _hook_rev(repo_url: str) -> str:

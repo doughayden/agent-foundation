@@ -121,7 +121,7 @@ JUDGE_NUM_RUNS = 5
 EVAL_ERROR_EXIT_CODE = 6
 
 LIVENESS_PROMPT = "pls respond with a single 'ready' to confirm you're able to respond"
-LIVENESS_MAX_OUTPUT_TOKENS = 16
+LIVENESS_MAX_OUTPUT_TOKENS = 64
 LIVENESS_TIMEOUT_MS = 60_000
 
 
@@ -184,9 +184,11 @@ async def _assert_model_live(session: pytest.Session, model: str) -> None:
     fail-fast next to the probes rather than in a command flag.
 
     One minimal live call resolved the same way ADK resolves a model string
-    (``LLMRegistry``). Thinking is set to ``LOW`` so the output cap yields a text
-    reply instead of being spent on thinking tokens; ``thinking_level`` replaces
-    the deprecated ``thinking_budget``, and some models reject ``MINIMAL``. The
+    (``LLMRegistry``). Thinking is set to ``MINIMAL`` so the output cap yields a
+    text reply instead of being spent on thinking tokens (at ``LOW``,
+    ``gemini-3.5-flash`` hits ``MAX_TOKENS`` before replying). Accepted levels
+    vary by model: ``gemini-3.8-flash`` rejects ``MINIMAL`` with a 400, so a fork
+    that swaps a probed model must re-check this level. The
     request timeout turns a hung endpoint into a fast abort instead of a job
     that waits out its own timeout. This assumes a registry-resolvable model
     string; a fork that swaps a role to a connector instance
@@ -205,7 +207,7 @@ async def _assert_model_live(session: pytest.Session, model: str) -> None:
             config=types.GenerateContentConfig(
                 max_output_tokens=LIVENESS_MAX_OUTPUT_TOKENS,
                 thinking_config=types.ThinkingConfig(
-                    thinking_level=types.ThinkingLevel.LOW
+                    thinking_level=types.ThinkingLevel.MINIMAL
                 ),
                 http_options=types.HttpOptions(timeout=LIVENESS_TIMEOUT_MS),
             ),

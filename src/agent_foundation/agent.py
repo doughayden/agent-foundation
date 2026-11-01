@@ -16,7 +16,7 @@ from .tools import get_current_time
 
 APP_NAME = "agent_foundation"
 ROOT_AGENT_NAME = "agent_foundation"
-ROOT_AGENT_MODEL = "gemini-3.8-flash"
+ROOT_AGENT_MODEL = "gemini-3.5-flash"
 
 logging_callbacks = LoggingCallbacks()
 
