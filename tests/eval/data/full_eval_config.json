@@ -3,7 +3,12 @@
     "rubric_based_final_response_quality_v1": {
       "threshold": 0.9,
       "judge_model_options": {
-        "judge_model": "gemini-3.5-flash"
+        "judge_model": "gemini-3.5-flash",
+        "judge_model_config": {
+          "http_options": {
+            "timeout": 60000
+          }
+        }
       },
       "rubrics": [
         {
@@ -23,7 +28,12 @@
     "rubric_based_tool_use_quality_v1": {
       "threshold": 1.0,
       "judge_model_options": {
-        "judge_model": "gemini-3.5-flash"
+        "judge_model": "gemini-3.5-flash",
+        "judge_model_config": {
+          "http_options": {
+            "timeout": 60000
+          }
+        }
       },
       "rubrics": [
         {
@@ -38,7 +48,12 @@
       "threshold": 0.7,
       "evaluate_intermediate_nl_responses": false,
       "judge_model_options": {
-        "judge_model": "gemini-3.5-flash"
+        "judge_model": "gemini-3.5-flash",
+        "judge_model_config": {
+          "http_options": {
+            "timeout": 60000
+          }
+        }
       }
     },
     "safety_v1": {
