@@ -241,6 +241,10 @@ Add the roles or services AND the resources that use them in the same PR. The `t
 
 See [Extending the Main Module](references/bootstrap.md#extending-the-main-module) for the full pattern, code examples, and rationale.
 
+### Model Call Timeout
+
+`ROOT_AGENT_MODEL_TIMEOUT_MS` in `agent.py` caps each model call the agent makes, in evals and in the deployed service. A call that exceeds it raises `TimeoutError` and is not retried. The limit covers the whole call, including a streamed reply, not just the time to the first token. Size it to your agent's longest legitimate model response, not its whole turn: a long-running workload may also need a longer Cloud Run [request timeout](https://docs.cloud.google.com/run/docs/configuring/request-timeout), or a background task or queue instead of a synchronous request. The value travels in the agent's `generate_content_config` (ADK [LLM agent configuration](https://adk.dev/agents/llm-agents/#fine-tune-ai-model-operation)) as `google-genai`'s [`HttpOptions.timeout`](https://googleapis.github.io/python-genai/genai.html#genai.types.HttpOptions.timeout), in milliseconds; retries are [`HttpRetryOptions`](https://googleapis.github.io/python-genai/genai.html#genai.types.HttpRetryOptions) on the same object.
+
 ### Test Deployed Service
 
 Proxy Cloud Run service to test locally:

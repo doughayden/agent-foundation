@@ -279,7 +279,7 @@ Plus the agent's own inference, five times. `num_runs` and `num_samples` are bot
 
 ### Sampling and temperature, and why this config sets neither
 
-The shipped config names a `judge_model` and a `threshold` and takes ADK's defaults for the rest (`num_samples: 5`, no `judge_model_config`). Two reasons:
+The shipped config names a `judge_model`, a `threshold`, and a request timeout, and takes ADK's sampling defaults for the rest (`num_samples: 5`, nothing in `judge_model_config` but `http_options`). Two reasons:
 
 - Majority voting is self-consistency sampling. It extracts information only when the samples can disagree. For example, pinning `temperature: 0` and then paying for a 3-sample vote draws the same opinion three times and votes on it, converting zero uncertainty into confidence at triple the cost. Pick one posture, not both.
 - `num_samples` on `hallucinations_v1` does nothing. That evaluator overrides `evaluate_invocations` and never enters the sampling loop, so the field is accepted and ignored. ADK's [criteria reference](https://adk.dev/evaluate/criteria/) shows its `judge_model_options` with `judge_model` alone, which is the tell; check there before setting the field on any metric.
@@ -287,6 +287,14 @@ The shipped config names a `judge_model` and a `threshold` and takes ADK's defau
 The coherent low-cost posture is the other one: `judge_model_config: {"temperature": 0}` with `num_samples: 1`, leaving `num_runs` alone. That trades the vote's robustness for reproducibility and cuts judge calls by five, and it is a reasonable default for a fork paying for a large suite. What is not reasonable is `"temperature": 0` plus a vote.
 
 `judge_model` stays explicit on every criterion. A criterion that names no model inherits whatever ADK defaults to, which the pin below cannot check, and the liveness preflight parametrizes off the `judge_model` entries in this file, so a criterion that names no model is not probed either. `JUDGE_MODEL` in `tests/unit/test_pinned_versions.py` pins the accepted judge model: every `judge_model` and the user simulator's `model` under `tests/eval/data/` must equal it, so bump the constant and the entries together. The judge model is chosen independently of the agent's `ROOT_AGENT_MODEL`.
+
+### Timeouts and retries
+
+Each judge criterion in `full_eval_config.json` and `user_sim_config.json` sets `judge_model_config: {"http_options": {"timeout": <ms>}}`. ADK copies `judge_model_config` into every judge request and sets no temperature or thinking of its own, so a timeout-only config leaves sampling unchanged. A judge call that exceeds it raises `TimeoutError`, ADK logs the traceback and leaves the metric unscored, and the gate exits `EVAL_ERROR_EXIT_CODE`. A criterion without the setting has no per-call limit, so add it to any judge criterion you add. The agent's own model calls carry the timeout in `agent.py` (see [Development](../development.md)).
+
+ADK adds retries to eval-lane model calls, for both the judge and the agent's inference, when a request does not set its own retry options: on HTTP 408, 429 and 5xx responses, with exponential backoff. A slow 5xx is retried, so one call can hold a run for several minutes. A request that times out is not retried. Retry settings live in `google-genai`'s [`HttpRetryOptions`](https://googleapis.github.io/python-genai/genai.html#genai.types.HttpRetryOptions); the defaults are in ADK's `google/adk/evaluation/_retry_options_utils.py`.
+
+The Gen AI evaluation service metrics (`safety_v1`, `multi_turn_*`) expose no timeout through ADK, so only the CI job's `timeout-minutes` bounds them. The user simulator's own model calls carry no timeout either: its `model_configuration` replaces ADK's default simulator config (a thinking budget) rather than merging with it, so a timeout there would also have to restate that default.
 
 ## The CI gates
 

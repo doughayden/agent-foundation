@@ -5,6 +5,7 @@ from google.adk.apps import App
 from google.adk.plugins.global_instruction_plugin import GlobalInstructionPlugin
 from google.adk.plugins.logging_plugin import LoggingPlugin
 from google.adk.tools import FunctionTool, load_memory
+from google.genai import types
 
 from .callbacks import LoggingCallbacks, add_session_to_memory
 from .prompt import (
@@ -17,6 +18,7 @@ from .tools import get_current_time
 APP_NAME = "agent_foundation"
 ROOT_AGENT_NAME = "agent_foundation"
 ROOT_AGENT_MODEL = "gemini-3.5-flash"
+ROOT_AGENT_MODEL_TIMEOUT_MS = 120_000
 
 logging_callbacks = LoggingCallbacks()
 
@@ -26,6 +28,9 @@ root_agent = LlmAgent(
     before_agent_callback=logging_callbacks.before_agent,
     after_agent_callback=[logging_callbacks.after_agent, add_session_to_memory],
     model=ROOT_AGENT_MODEL,
+    generate_content_config=types.GenerateContentConfig(
+        http_options=types.HttpOptions(timeout=ROOT_AGENT_MODEL_TIMEOUT_MS)
+    ),
     instruction=ROOT_AGENT_INSTRUCTION,
     tools=[FunctionTool(get_current_time), load_memory],
     before_model_callback=logging_callbacks.before_model,
