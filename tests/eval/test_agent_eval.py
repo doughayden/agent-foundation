@@ -299,8 +299,11 @@ def _unscored_runs(eval_case_results: list[EvalCaseResult]) -> list[str]:
     if not eval_case_results:
         return ["no eval results were captured"]
     unscored = []
-    for run, case in enumerate(eval_case_results):
-        label = f"{case.eval_id} (result {run})"
+    runs_seen: dict[str, int] = {}
+    for case in eval_case_results:
+        run = runs_seen.get(case.eval_id, 0)
+        runs_seen[case.eval_id] = run + 1
+        label = f"{case.eval_id} run {run}"
         if not case.overall_eval_metric_results:
             unscored.append(f"{label}: produced no metric results")
             continue
