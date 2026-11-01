@@ -7,12 +7,15 @@ server run.
 
 Two gates share the eval set:
 
-- Deterministic (``test_config.json``, auto-discovered from the eval set's
-  directory): exact tool-trajectory matching and ROUGE-1 response overlap, no
-  LLM judge. This is the CI PR gate.
-- Judge (``full_eval_config.json``, loaded explicitly): adds LLM-judge and
-  safety metrics whose ``app_details`` context is populated in-process from the
-  ``App``. This is the CI merge gate, run by ``judge-eval.yml``.
+- Deterministic (``test_config.json``): exact tool-trajectory matching and
+  ROUGE-1 response overlap, no LLM judge. This is the CI PR gate. The file sits
+  beside the eval set, where ``adk eval`` and the adk web eval tab also find it.
+- Judge (``full_eval_config.json``): adds LLM-judge and safety metrics whose
+  ``app_details`` context is populated in-process from the ``App``. This is the
+  CI merge gate, run by ``judge-eval.yml``.
+
+Both configs are loaded explicitly and both gates call
+``AgentEvaluator.evaluate_eval_set`` the same way, through ``_gate``.
 
 Both gates run the agent with live model inference, so both need real
 credentials; the judge gate additionally calls the Gen AI evaluation service.
@@ -22,9 +25,23 @@ metrics, so a pytest failure IS the gate. The ``adk eval`` CLI renders the same
 eval set for interactive authoring but exits 0 even when cases fail, so it
 cannot gate CI.
 
+ADK's verdict alone does not prove every run was scored. It isolates a failed
+metric evaluation by recording no score for that run and then averages only the
+scores that exist, so a threshold can be decided by the surviving runs; inside a
+rubric metric, a rubric the judge never scored drops out the same way. It also
+reports a run whose inference failed through the same ``AssertionError`` as a
+low score. Both gates therefore capture every run's results and leave through
+``EVAL_ERROR_EXIT_CODE`` when any run went unscored, keeping exit 1 for a
+sub-threshold verdict over fully scored runs (issue #240). The gate fails its test
+normally with the cause chained, so pytest's report carries the traceback and the
+captured logs that hold the reason a run went unscored, and the lane's
+``conftest.py`` sets the session's exit code. Run with ``-s`` to stream ADK's
+output (the logging plugin, progress bars, results tables) as it happens.
+
 Preflight liveness tests make one minimal live call per model role before the gates run.
-ADK silently drops inference-failed cases from scoring, so without them a totally
-unreachable endpoint passes vacuously over an empty metric set (issue #229).
+An unreachable model would otherwise fail every run of every case before
+reporting; the probes fail in seconds instead, and outside the scored step, so
+``judge-eval.yml``'s ``gating`` input never sees that failure.
 ``test_liveness_agent_model`` probes the agent's inference model (both gates run
 the agent); ``test_liveness_judge_model`` probes each autorater in the judge
 config (``judge`` gate only). Each probe reads its role's own source of truth, so
@@ -32,10 +49,9 @@ changing a model re-points the matching probe automatically.
 
 A failed probe arms ``session.shouldfail`` (the knob ``-x`` sets), so the lane
 aborts before the paid ``AgentEvaluator`` tests run instead of grinding every
-case against a dead endpoint. This keeps fail-fast in the module: ``maxfail`` via
-``pytest_configure`` would need a ``conftest.py``, which this lane deliberately
-omits. The liveness tests are defined before the eval tests so the abort lands
-before any inference.
+case against a dead endpoint. The abort stays next to the probes rather than in
+the lane conftest, which holds only the exit-code hook. The liveness tests are
+defined before the eval tests so the abort lands before any inference.
 
 What a run scores is fixed in this module, not passed in: the file paths and run
 counts below are plain constants. A consumer changing what is evaluated is already
@@ -49,6 +65,8 @@ under ``tests/eval/`` and exercises the live model.
 import importlib
 import json
 import logging
+import math
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -56,7 +74,10 @@ import pytest
 from dotenv import load_dotenv
 from google.adk.evaluation.agent_evaluator import AgentEvaluator
 from google.adk.evaluation.eval_config import EvalConfig
+from google.adk.evaluation.eval_metrics import EvalMetricResult, EvalStatus
+from google.adk.evaluation.eval_result import EvalCaseResult, EvalSetResult
 from google.adk.evaluation.eval_set import EvalSet
+from google.adk.evaluation.eval_set_results_manager import EvalSetResultsManager
 from google.adk.models import LLMRegistry, LlmRequest
 from google.genai import types
 
@@ -74,6 +95,7 @@ SRC_DIR = Path(__file__).parents[2] / "src"
 AGENT_MODULE = next(SRC_DIR.glob("*/__init__.py")).parent.name
 
 EVAL_SET_FILE = DATA_DIR / "template_agent.evalset.json"
+DETERMINISTIC_CONFIG_FILE = DATA_DIR / "test_config.json"
 JUDGE_CONFIG_FILE = DATA_DIR / "full_eval_config.json"
 
 # Times each case is run and averaged, per gate. ADK means the per-invocation scores of
@@ -81,21 +103,21 @@ JUDGE_CONFIG_FILE = DATA_DIR / "full_eval_config.json"
 # invocations) and a threshold between two of them silently rounds up to the next
 # achievable score. The gate case is single-turn (one invocation), so what is left to
 # tune here is the run count: 5 puts the shipped thresholds on achievable scores, where
-# 2 would make a single-rubric metric demand unanimity. Read the denominator as "the
-# runs that produced a score": ADK drops a run whose metric evaluation errored rather
-# than counting it as a miss. The deterministic gate keeps 2 because exact trajectory
-# matching wants unanimity anyway and ROUGE-1 is finely spaced (not continuous: its
-# denominator counts the response's tokens, so it shifts per run at token scale). ADK
-# runs these serially, so the judge gate costs proportionally more wall clock.
+# 2 would make a single-rubric metric demand unanimity. A run with a missing score never
+# shrinks that denominator: `_gate` rejects the eval instead. The deterministic gate
+# keeps 2 because exact trajectory matching wants unanimity anyway and ROUGE-1 is
+# finely spaced (not continuous: its denominator counts the response's tokens, so it
+# shifts per run at token scale). ADK runs these serially, so the judge gate costs
+# proportionally more wall clock.
 # Threshold arithmetic: docs/references/agent-evals.md, "How a judge score is built".
 DETERMINISTIC_NUM_RUNS = 2
 JUDGE_NUM_RUNS = 5
 
-# Exit code for "the judge eval could not run", as opposed to pytest's 1 for "a test
-# failed". `judge-eval.yml` treats 1 as a sub-threshold score its `gating` input may
-# absorb, so a lane error has to leave through a different door or a broken gate would
-# report as a behavioral regression and pass in dev-only mode. Any value outside
-# pytest's own 0-5 works; the workflow only tests for 0 and 1.
+# Exit code for "the eval could not run or left runs unscored", as opposed to pytest's 1
+# for "a test failed". Both gates use it. `judge-eval.yml` treats 1 as a sub-threshold
+# score its `gating` input may absorb, so a broken eval has to leave through a different
+# door or it would report as a behavioral regression and pass in dev-only mode. Any
+# value outside pytest's own 0-5 works; the workflow only tests for 0 and 1.
 EVAL_ERROR_EXIT_CODE = 6
 
 LIVENESS_PROMPT = "pls respond with a single 'ready' to confirm you're able to respond"
@@ -133,11 +155,16 @@ def _judge_models(config_data: dict[str, Any]) -> list[str]:
 
 JUDGE_CONFIG_DATA = json.loads(JUDGE_CONFIG_FILE.read_text())
 JUDGE_MODELS = _judge_models(JUDGE_CONFIG_DATA)
-# Validated at import so a malformed config fails at collection rather than part-way
-# through a paid judge run. Structural only: ADK validates dict criteria to base
-# `BaseCriterion`, which allows extras, so a misspelled metric name or a bad
+# Configs and the eval set are validated at import, so malformed eval data fails at
+# collection (in CI, the always-blocking preflight step) instead of reading as a score
+# verdict part-way through a paid run. Structural only: ADK validates dict criteria to
+# base `BaseCriterion`, which allows extras, so a misspelled metric name or a bad
 # `judge_model_options` still surfaces from the metric registry mid-run.
 JUDGE_EVAL_CONFIG = EvalConfig.model_validate(JUDGE_CONFIG_DATA)
+DETERMINISTIC_EVAL_CONFIG = EvalConfig.model_validate(
+    json.loads(DETERMINISTIC_CONFIG_FILE.read_text())
+)
+EVAL_SET = EvalSet.model_validate_json(EVAL_SET_FILE.read_text())
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -154,8 +181,7 @@ async def _assert_model_live(session: pytest.Session, model: str) -> None:
     a call exceeding ``LIVENESS_TIMEOUT_MS``) arms ``session.shouldfail`` (the
     knob ``-x`` sets) so the lane aborts before the paid ``AgentEvaluator`` tests
     run — the eval is meaningless against a dead endpoint, and this keeps
-    fail-fast in the module rather than in a command flag or a ``conftest.py``
-    this lane omits.
+    fail-fast next to the probes rather than in a command flag.
 
     One minimal live call resolved the same way ADK resolves a model string
     (``LLMRegistry``). Thinking is set to ``LOW`` so the output cap yields a text
@@ -215,10 +241,10 @@ async def _assert_model_live(session: pytest.Session, model: str) -> None:
 async def test_liveness_agent_model(request: pytest.FixtureRequest) -> None:
     """Preflight: the agent's inference model answers (both gates run the agent).
 
-    ADK swallows per-case inference failures (403/quota/network/model-rename),
-    sets ``inferences=None``, and drops the case from scoring, so a dead endpoint
-    lets ``AgentEvaluator`` pass over an empty metric set (issue #229). ADK's
-    per-case partial tolerance is preserved: only an unreachable model fails here.
+    A dead endpoint would fail every run of every case, but only after paying for
+    each attempt; this fails in seconds instead, and in CI outside the scored step,
+    so ``judge-eval.yml``'s ``gating`` input never sees it. Runs that fail for other
+    reasons are the unscored-run check's job (``_gate``).
 
     The model is read from the agent (``ROOT_AGENT_MODEL``) rather than restated,
     so an LLM swap can't leave this probing a model the eval no longer runs.
@@ -240,42 +266,170 @@ async def test_liveness_judge_model(request: pytest.FixtureRequest, model: str) 
     await _assert_model_live(request.session, model)
 
 
-@pytest.mark.deterministic
-async def test_template_agent_deterministic_eval() -> None:
-    """PR-gate deterministic eval criteria.
+class _CapturingEvalSetResultsManager(EvalSetResultsManager):
+    """Keeps every run's ``EvalCaseResult`` in memory so a gate can inspect it.
 
-    Criteria come from the ``test_config.json`` ADK auto-discovers beside the eval
-    set, not from this module.
+    ADK saves results before raising its threshold ``AssertionError``, so the capture
+    holds on passing and failing evals alike. In memory rather than ADK's local file
+    manager, which writes into the workspace and double-encodes its JSON
+    (google/adk-python#3993). The eval path calls only ``save_eval_set_result``; the
+    read methods serve ``adk web``'s eval history, which never sees this manager.
     """
-    await AgentEvaluator.evaluate(
-        agent_module=AGENT_MODULE,
-        eval_dataset_file_path_or_dir=str(EVAL_SET_FILE),
-        num_runs=DETERMINISTIC_NUM_RUNS,
+
+    def __init__(self) -> None:
+        self.eval_case_results: list[EvalCaseResult] = []
+
+    def save_eval_set_result(
+        self,
+        app_name: str,
+        eval_set_id: str,
+        eval_case_results: list[EvalCaseResult],
+    ) -> None:
+        self.eval_case_results.extend(eval_case_results)
+
+    def get_eval_set_result(
+        self, app_name: str, eval_set_result_id: str
+    ) -> EvalSetResult:
+        raise NotImplementedError
+
+    def list_eval_set_results(self, app_name: str) -> list[str]:
+        raise NotImplementedError
+
+
+def _is_gating(metric: EvalMetricResult) -> bool:
+    """Whether ADK counts ``metric`` toward its verdict.
+
+    Mirrors ``AgentEvaluator``'s own rule: a metric gates unless it is
+    ``INFORMATIONAL`` or carries neither a threshold nor a criterion. The second
+    half matters when an auto-added efficiency metric crashes, since ADK then
+    reports it as not evaluated rather than informational. A unit test checks this
+    rule against the metrics ADK actually builds for both gate configs, so a change
+    to how ADK builds them fails the unit lane.
+    """
+    return metric.eval_status != EvalStatus.INFORMATIONAL and not (
+        metric.threshold is None and metric.criterion is None
     )
 
 
-@pytest.mark.judge
-async def test_template_agent_judge_eval() -> None:
-    """LLM-judged eval criteria.
+def _is_scored(score: float | None) -> bool:
+    """A score exists and is a number (NaN is how some evaluators say "no score")."""
+    return score is not None and not math.isnan(score)
 
-    ``AgentEvaluator`` signals a sub-threshold score with ``AssertionError``, which is
-    the gate's verdict and propagates normally. Anything else it raises means the eval
-    did not run (a missing eval extra, an empty dataset, an eval-service error), so it
-    leaves through ``EVAL_ERROR_EXIT_CODE`` instead. Both are pytest exit 1 otherwise,
-    and ``judge-eval.yml`` lets its ``gating`` input absorb exit 1.
+
+def _unjudged_rubrics(metric: EvalMetricResult) -> list[str]:
+    """Rubric ids configured on ``metric`` that its run result has no score for.
+
+    A rubric metric's run score is the mean of every rubric verdict from every judge
+    sample, skipping verdicts that never arrived. A rubric missing from every sample
+    therefore drops out, and the score rests on the remaining rubrics while looking
+    complete. A rubric missing from only some samples still has a score from the
+    rest; that is fewer votes, not an unjudged rubric.
     """
-    eval_set = EvalSet.model_validate_json(EVAL_SET_FILE.read_text())
+    rubrics = getattr(metric.criterion, "rubrics", None) or []
+    configured = [
+        rubric["rubric_id"] if isinstance(rubric, dict) else rubric.rubric_id
+        for rubric in rubrics
+    ]
+    judged = {
+        rubric_score.rubric_id
+        for rubric_score in metric.details.rubric_scores or []
+        if _is_scored(rubric_score.score)
+    }
+    return [rubric_id for rubric_id in configured if rubric_id not in judged]
+
+
+def _unscored_runs(eval_case_results: list[EvalCaseResult]) -> list[str]:
+    """Describe each run that did not score every gating metric.
+
+    Each ``EvalCaseResult`` is one run of one case. A run is unscored when it
+    produced no metric results at all (its inference failed), when a gating
+    metric's overall score for that run is missing or NaN, or when a rubric metric
+    has no score for one of its configured rubrics. A missing score means the
+    metric's evaluation raised or it found nothing to score in that run (like a
+    groundedness metric on a reply with no text); the captured result cannot tell
+    those apart, and both leave the threshold resting on the other runs, so both
+    fail. The check reads each run's overall score per metric rather than its
+    per-invocation scores. Capturing nothing at all counts as unscored too, since
+    there is then no evidence behind a verdict.
+
+    A run is named by its eval session: ADK saves results in completion order and
+    gives them no run number, while each run has its own session unless the case
+    pins ``session_input.session_id``, which every run of that case then shares.
+    """
+    if not eval_case_results:
+        return ["no eval results were captured"]
+    unscored = []
+    for case in eval_case_results:
+        label = f"{case.eval_id} (session {case.session_id})"
+        if not case.overall_eval_metric_results:
+            unscored.append(f"{label}: produced no metric results")
+            continue
+        for metric in filter(_is_gating, case.overall_eval_metric_results):
+            if not _is_scored(metric.score):
+                unscored.append(f"{label}: {metric.metric_name} was not scored")
+                continue
+            unscored.extend(
+                f"{label}: {metric.metric_name} rubric {rubric_id} was not judged"
+                for rubric_id in _unjudged_rubrics(metric)
+            )
+    return unscored
+
+
+async def _gate(
+    eval_config: EvalConfig,
+    num_runs: int,
+    set_exit_status: Callable[[int], None],
+) -> None:
+    """Run the eval set and keep ADK's verdict only over fully scored runs.
+
+    ``AssertionError`` is ADK's verdict on the scores. It propagates only when every
+    run was scored. An unscored run means the verdict rests on partial evidence, and
+    any other exception means the eval did not run; both fail the test with the
+    cause chained, so pytest's report carries the traceback, captured logs (ADK logs
+    each failed metric evaluation there), and stdout, and both set the session's
+    exit code to ``EVAL_ERROR_EXIT_CODE`` through the lane conftest. pytest reports
+    every plain failure as exit 1, which ``judge-eval.yml`` lets its ``gating``
+    input absorb. Whether an unscored run should warn instead is a policy choice;
+    the template fails.
+    """
+    results_manager = _CapturingEvalSetResultsManager()
+    verdict: AssertionError | None = None
     try:
         await AgentEvaluator.evaluate_eval_set(
             agent_module=AGENT_MODULE,
-            eval_set=eval_set,
-            eval_config=JUDGE_EVAL_CONFIG,
-            num_runs=JUDGE_NUM_RUNS,
+            eval_set=EVAL_SET,
+            eval_config=eval_config,
+            num_runs=num_runs,
+            app_name=AGENT_MODULE,
+            eval_set_results_manager=results_manager,
         )
-    except AssertionError:
-        raise
+    except AssertionError as exc:
+        verdict = exc
     except Exception as exc:
-        pytest.exit(
-            reason=f"Judge eval could not run: {exc!r}",
-            returncode=EVAL_ERROR_EXIT_CODE,
-        )
+        set_exit_status(EVAL_ERROR_EXIT_CODE)
+        raise pytest.fail.Exception("Eval could not run.") from exc
+
+    unscored = _unscored_runs(results_manager.eval_case_results)
+    if unscored:
+        set_exit_status(EVAL_ERROR_EXIT_CODE)
+        raise pytest.fail.Exception(
+            f"Eval verdict rests on unscored runs: {unscored}"
+        ) from verdict
+    if verdict is not None:
+        raise verdict
+
+
+@pytest.mark.deterministic
+async def test_template_agent_deterministic_eval(
+    set_exit_status: Callable[[int], None],
+) -> None:
+    """PR-gate deterministic eval criteria from ``test_config.json``."""
+    await _gate(DETERMINISTIC_EVAL_CONFIG, DETERMINISTIC_NUM_RUNS, set_exit_status)
+
+
+@pytest.mark.judge
+async def test_template_agent_judge_eval(
+    set_exit_status: Callable[[int], None],
+) -> None:
+    """LLM-judged eval criteria, run by ``judge-eval.yml`` as the merge gate."""
+    await _gate(JUDGE_EVAL_CONFIG, JUDGE_NUM_RUNS, set_exit_status)
