@@ -5,7 +5,12 @@
       "evaluate_intermediate_nl_responses": false,
       "judge_model_options": {
         "judge_model": "gemini-3.5-flash",
-        "num_samples": 3
+        "num_samples": 3,
+        "judge_model_config": {
+          "http_options": {
+            "timeout": 60000
+          }
+        }
       }
     },
     "safety_v1": {
@@ -24,7 +29,12 @@
       "threshold": 1.0,
       "judge_model_options": {
         "judge_model": "gemini-3.5-flash",
-        "num_samples": 3
+        "num_samples": 3,
+        "judge_model_config": {
+          "http_options": {
+            "timeout": 60000
+          }
+        }
       }
     }
   },

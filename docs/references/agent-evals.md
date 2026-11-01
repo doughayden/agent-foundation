@@ -290,11 +290,11 @@ The coherent low-cost posture is the other one: `judge_model_config: {"temperatu
 
 ### Timeouts and retries
 
-Each judge criterion sets `judge_model_config: {"http_options": {"timeout": <ms>}}`. ADK copies `judge_model_config` into every judge request and sets no temperature or thinking of its own, so a timeout-only config leaves sampling unchanged. A judge call that exceeds it raises `TimeoutError`, ADK logs the traceback and leaves the metric unscored, and the gate exits `EVAL_ERROR_EXIT_CODE`. A criterion without the setting has no per-call limit, so add it to any judge criterion you add. The agent's own model calls carry the timeout in `agent.py` (see [Development](../development.md)).
+Each judge criterion in `full_eval_config.json` and `user_sim_config.json` sets `judge_model_config: {"http_options": {"timeout": <ms>}}`. ADK copies `judge_model_config` into every judge request and sets no temperature or thinking of its own, so a timeout-only config leaves sampling unchanged. A judge call that exceeds it raises `TimeoutError`, ADK logs the traceback and leaves the metric unscored, and the gate exits `EVAL_ERROR_EXIT_CODE`. A criterion without the setting has no per-call limit, so add it to any judge criterion you add. The agent's own model calls carry the timeout in `agent.py` (see [Development](../development.md)).
 
-ADK adds retries to eval-lane model calls, for both the judge and the agent's inference, when a request does not set its own: on HTTP 408, 429 and 5xx responses, with exponential backoff. A slow 5xx is retried, so one call can hold a run for several minutes. A request that times out is not retried. Retry settings live in `google-genai`'s [`HttpRetryOptions`](https://googleapis.github.io/python-genai/genai.html#genai.types.HttpRetryOptions); the defaults are in ADK's `google/adk/evaluation/_retry_options_utils.py`.
+ADK adds retries to eval-lane model calls, for both the judge and the agent's inference, when a request does not set its own retry options: on HTTP 408, 429 and 5xx responses, with exponential backoff. A slow 5xx is retried, so one call can hold a run for several minutes. A request that times out is not retried. Retry settings live in `google-genai`'s [`HttpRetryOptions`](https://googleapis.github.io/python-genai/genai.html#genai.types.HttpRetryOptions); the defaults are in ADK's `google/adk/evaluation/_retry_options_utils.py`.
 
-The Gen AI evaluation service metrics (`safety_v1`, `multi_turn_*`) expose no timeout through ADK, so only the CI job's `timeout-minutes` bounds them.
+The Gen AI evaluation service metrics (`safety_v1`, `multi_turn_*`) expose no timeout through ADK, so only the CI job's `timeout-minutes` bounds them. The user simulator's own model calls carry no timeout either: its `model_configuration` replaces ADK's default simulator config (a thinking budget) rather than merging with it, so a timeout there would also have to restate that default.
 
 ## The CI gates
 
