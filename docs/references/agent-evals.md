@@ -161,7 +161,7 @@ adk eval_set generate_eval_cases src/$AGENT_PACKAGE user_sim_generated \
   --user_simulation_config_file generation_config.json
 ```
 
-where `generation_config.json` looks like `{"count": 5, "model_name": "gemini-3.8-flash", "generation_instruction": "...", "environment_context": "..."}`. Generation uses the paid GCP Gen AI evaluation service. See ADK's [User Simulation](https://adk.dev/evaluate/user-sim/) guide for the persona model, the conversation-plan format, and the full simulator config.
+where `generation_config.json` looks like `{"count": 5, "model_name": "<model>", "generation_instruction": "...", "environment_context": "..."}`, with `<model>` set to the simulator `model` in `tests/eval/data/user_sim_config.json`. Generation uses the paid GCP Gen AI evaluation service. See ADK's [User Simulation](https://adk.dev/evaluate/user-sim/) guide for the persona model, the conversation-plan format, and the full simulator config.
 
 ### Optimizing prompts: `adk optimize`
 
