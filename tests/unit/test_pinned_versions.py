@@ -32,7 +32,7 @@ DOCKER_PYTHON_BASE = re.compile(r"\bpython:(?P<version>\d+\.\d+)(?:\.\d+)?(?![\d
 PYTHON_VERSION_FORMAT = re.compile(r"\d+\.\d+")
 # Each of these would override .python-version in a workflow
 WORKFLOW_PYTHON_OVERRIDES = re.compile(
-    r"uv python install[ \t]+[^\s#]|\bpython-version:|\bUV_PYTHON\b|--python\b"
+    r"uv python install[ \t]+[^\s#]|\bpython-version:|\bUV_PYTHON\b|--python(?=[\s=]|$)"
 )
 
 # The eval pipeline's scoring model, accepted in one place. Change it here and in
