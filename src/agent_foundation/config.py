@@ -171,12 +171,12 @@ class ServerEnv(BaseSettings):
         print(f"HOST:                  {self.host}")
         print(f"PORT:                  {self.port}")
         print(f"ALLOW_ORIGINS:         {self.allow_origins}")
+        print(f"TELEMETRY_NAMESPACE:   {self.telemetry_namespace}")
+        print(f"K_REVISION:            {self.k_revision}")
         print(
             "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "
-            f"{self.otel_instrumentation_genai_capture_message_content}"
+            f"{self.otel_instrumentation_genai_capture_message_content}\n\n"
         )
-        print(f"TELEMETRY_NAMESPACE:   {self.telemetry_namespace}")
-        print(f"K_REVISION:            {self.k_revision}\n\n")
 
     @property
     def allow_origins_list(self) -> list[str]:
