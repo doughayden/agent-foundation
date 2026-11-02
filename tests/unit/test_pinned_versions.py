@@ -17,19 +17,19 @@ from typing import Any
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PRE_COMMIT_CONFIG = REPO_ROOT / ".pre-commit-config.yaml"
-CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 EVAL_DATA_DIR = REPO_ROOT / "tests" / "eval" / "data"
 PYTHON_VERSION_FILE = REPO_ROOT / ".python-version"
+TERRAFORM_VERSION_FILE = REPO_ROOT / ".terraform-version"
 PYPROJECT = REPO_ROOT / "pyproject.toml"
 DOCKERFILE = REPO_ROOT / "Dockerfile"
 WORKFLOWS_DIR = REPO_ROOT / ".github" / "workflows"
 
-ACTIONLINT_REPO = "https://github.com/rhysd/actionlint"
-ACTIONLINT_IMAGE = re.compile(r"docker://rhysd/actionlint:(?P<version>[\w.\-]+)")
 DOCKER_FROM = re.compile(r"^FROM\s.*$", re.MULTILINE)
 DOCKER_PYTHON_BASE = re.compile(r"\bpython:(?P<version>\d+\.\d+)(?:\.\d+)?(?![\d.])")
 PYTHON_VERSION_FORMAT = re.compile(r"\d+\.\d+")
+TERRAFORM_VERSION_FORMAT = re.compile(r"\d+\.\d+\.\d+")
+TERRAFORM_VERSION_READ = re.compile(r"\bcat \.terraform-version\b")
+STEP_OUTPUT_REF = re.compile(r"\$\{\{\s*steps\.(?P<id>[\w-]+)\.outputs\.[\w-]+\s*\}\}")
 # Each of these would override .python-version in a workflow
 WORKFLOW_PYTHON_OVERRIDES = re.compile(
     r"uv python install[ \t]+[^\s#]|\bpython-version:|\bUV_PYTHON\b|--python(?=[\s=]|$)"
@@ -38,29 +38,6 @@ WORKFLOW_PYTHON_OVERRIDES = re.compile(
 # The eval pipeline's scoring model, accepted in one place. Change it here and in
 # every eval config together; the agent's ROOT_AGENT_MODEL is a separate choice.
 JUDGE_MODEL = "gemini-3.5-flash"
-
-
-def _hook_rev(repo_url: str) -> str:
-    """Return the pinned ``rev`` for a pre-commit repo, without a leading ``v``."""
-    config = yaml.safe_load(PRE_COMMIT_CONFIG.read_text())
-    revs = [repo["rev"] for repo in config["repos"] if repo.get("repo") == repo_url]
-    assert revs, f"no pre-commit repo entry for {repo_url}"
-    rev = revs[0]
-    assert isinstance(rev, str), f"pre-commit rev for {repo_url} is not a string"
-    return rev.lstrip("v")
-
-
-class TestActionlintVersionParity:
-    """The pre-commit hook and the CI gate run the same actionlint."""
-
-    def test_hook_and_ci_image_pin_the_same_version(self):
-        match = ACTIONLINT_IMAGE.search(CI_WORKFLOW.read_text())
-        assert match, "no docker://rhysd/actionlint image reference in ci.yml"
-
-        assert _hook_rev(ACTIONLINT_REPO) == match.group("version").lstrip("v"), (
-            "actionlint version drift: bump the hook rev in .pre-commit-config.yaml "
-            "and the image tag in ci.yml together"
-        )
 
 
 def _eval_model_pins(node: Any, path: str) -> Iterator[tuple[str, str]]:
@@ -152,4 +129,42 @@ class TestPythonVersionParity:
         assert not overrides, (
             f"workflow Python version override at {overrides}: drop it so CI "
             "reads .python-version"
+        )
+
+
+class TestTerraformVersionPin:
+    """Every Terraform install in CI reads ``.terraform-version``."""
+
+    def test_terraform_version_file_pins_an_exact_version(self):
+        pinned = TERRAFORM_VERSION_FILE.read_text().strip()
+        assert TERRAFORM_VERSION_FORMAT.fullmatch(pinned), (
+            f".terraform-version holds {pinned!r}: pin an exact version (X.Y.Z)"
+        )
+
+    def test_setup_terraform_steps_read_terraform_version_file(self):
+        setups = [
+            (workflow.name, steps, step)
+            for workflow in sorted(WORKFLOWS_DIR.glob("*.y*ml"))
+            for job in yaml.safe_load(workflow.read_text())["jobs"].values()
+            if (steps := job.get("steps"))
+            for step in steps
+            if step.get("uses", "").startswith("hashicorp/setup-terraform@")
+        ]
+        assert setups, f"no hashicorp/setup-terraform step under {WORKFLOWS_DIR}"
+
+        drifted = []
+        for name, steps, step in setups:
+            version = str(step.get("with", {}).get("terraform_version", ""))
+            ref = STEP_OUTPUT_REF.fullmatch(version)
+            earlier = steps[: steps.index(step)]
+            reads = [
+                TERRAFORM_VERSION_READ.search(s.get("run", ""))
+                for s in earlier
+                if ref and s.get("id") == ref.group("id")
+            ]
+            if not any(reads):
+                drifted.append(f"{name}: {step.get('name', step['uses'])}")
+        assert not drifted, (
+            f"setup-terraform steps not reading .terraform-version: {drifted}. "
+            "Pass terraform_version from an earlier step that reads the file"
         )

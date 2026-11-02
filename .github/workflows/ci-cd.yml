@@ -68,6 +68,7 @@ jobs:
               - 'Dockerfile'
               - '.dockerignore'
               - 'terraform/main/**'
+              - '.terraform-version'
               - '.github/workflows/ci-cd.yml'
               - '.github/workflows/config-summary.yml'
               - '.github/workflows/docker-build.yml'

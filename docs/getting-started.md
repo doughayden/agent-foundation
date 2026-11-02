@@ -8,12 +8,15 @@ First-time setup: from zero to deployed.
 ## Prerequisites
 
 **Required:**
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.14.0
+- [tenv](https://github.com/tofuutils/tenv) to install Terraform at the version pinned in `.terraform-version` (run `tenv terraform install` from the repo root)
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) (gcloud CLI)
 - [GitHub CLI](https://cli.github.com/) (gh)
 - Python (`uv` installs the version pinned in `.python-version`)
 - `uv` package manager
 - `jq` command-line JSON processor (for parsing Terraform output)
+
+> [!WARNING]
+> Install Terraform through tenv, not on its own. CI installs exactly the version in `.terraform-version`, and a standalone `terraform` ignores that file, so your local version drifts from CI's and `terraform fmt` and plans can differ from what CI produces.
 
 **GCP Project:**
 - Create a new GCP project (or use existing)
@@ -113,6 +116,9 @@ GitHub Actions deploy the agent resources:
 ### 1. Create Pull Request
 
 ```bash
+# Install the git hooks (one time; runs the CI quality checks on each commit)
+uv run pre-commit install
+
 # Create feature branch
 git checkout -b feat/initial-setup
 

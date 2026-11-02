@@ -76,13 +76,12 @@ git checkout -b feat/your-feature-name
 docker compose up --build --watch  # Standard (cloud resources, mirrors production)
 # Or: uv run server                # Local-only with cloud resource URIs commented out in .env
 
-# Quality checks before commit (100% coverage required)
-# Pre-commit automates format/lint/typecheck if installed
-uv run ruff format && uv run ruff check && uv run mypy
-uv run pytest --cov --cov-report=term-missing
-
-# Commit (Conventional Commits: 50 char title, list body)
+# Commit (Conventional Commits: 50 char title, list body); the hooks run lint/format/typecheck
 git add . && git commit -m "feat: add new tool"
+
+# Before pushing: unit tests (100% coverage) and the Postgres integration lane (needs Docker)
+uv run pytest --cov
+uv run pytest tests/integration
 
 # Push and create PR
 git push origin feat/your-feature-name
@@ -97,7 +96,7 @@ GitHub Actions automatically builds, tests, and deploys to Cloud Run. Check job 
 
 ## Code Quality & Testing
 
-Run format, lint, type check, and unit tests (100% coverage required) **before every commit**
+The pre-commit hooks lint, format, and type-check every commit. Run the unit tests (100% coverage required) and the integration lane before pushing, and the agent evals when agent behavior changes. The smoke lane needs a deployed service: CI runs it after each deploy, and you can run it against a deployed URL yourself ([Smoke Tests](references/smoke-tests.md)).
 
 **Standards:**
 - **Type Hints:** Strict mypy, modern Python syntax (`|` unions, lowercase generics)
@@ -107,15 +106,17 @@ Run format, lint, type check, and unit tests (100% coverage required) **before e
 
 ### Pre-commit Hooks
 
-Pre-commit runs format, lint, and type checks as a fix-in-place git hook on every `git commit`. It does not run pytest, so coverage validation still requires `uv run pytest --cov`.
+Pre-commit runs lint, format, and type checks as a fix-in-place git hook on every `git commit`. It does not run pytest. To run the Python tools by hand, the equivalent chain is `uv run ruff check --fix && uv run ruff format && uv run mypy`, in that order.
+
+CI runs the same hooks with `uv run pre-commit run --all-files --show-diff-on-failure`. Run `uv run pre-commit run --all-files` to check the whole tree the way CI does, like after changing a hook or pulling in upstream changes. In CI, any hook that would modify a file fails the job and prints the diff it would have applied.
 
 Coverage spans Python (ruff, mypy), Terraform (`terraform fmt`), GitHub Actions workflows (actionlint), and the YAML/TOML/JSON config files.
 
-Workflow linting runs in two places on purpose. The hook catches problems before you push; the `actionlint` job in `ci.yml` is the gate that actually blocks a merge, since a hook only fires for contributors who ran `pre-commit install` and `--no-verify` skips it. Both pin the same version and pass the same flags, so a clean commit means a clean gate. Bump them together.
+Ruff's linter runs before its formatter. `ruff check --fix` can change layout (removing an `else` de-indents a block), and the formatter has to see that result. The fix runs only where `--fix` is passed explicitly; `pyproject.toml` deliberately does not set `fix = true`, so a bare `ruff check` reports instead of rewriting.
 
-`terraform validate` is deliberately not a hook: it needs `terraform init` per root, which is too slow for a commit. CI validates instead. And note that CI's `terraform fmt -check` runs against `terraform/main` only, so the hook is the sole formatting gate for `terraform/bootstrap/**`.
+`terraform validate` is deliberately not a hook: it needs `terraform init` per root, which is too slow for a commit. CI validates instead.
 
-**Local tooling:** the Terraform hook calls the `terraform` binary, already required for infrastructure work. actionlint needs nothing installed — pre-commit builds it, using the Go toolchain on `PATH` if there is one and otherwise downloading one into its own cache.
+**Local tooling:** the Terraform hook calls the `terraform` binary that tenv provides (a [prerequisite](getting-started.md#prerequisites)). tenv reads `.terraform-version`, the same pin CI installs, so the hook formats exactly as CI does. After the pin changes, run `tenv terraform install` to fetch the new version. actionlint needs nothing installed — pre-commit builds it, using the Go toolchain on `PATH` if there is one and otherwise downloading one into its own cache.
 
 **One-time setup** (writes `.git/hooks/pre-commit`):
 
@@ -128,7 +129,7 @@ uv run pre-commit install
 ```bash
 uv run pre-commit run --all-files              # All hooks on all tracked files
 uv run pre-commit run --files path/to/file     # Scope to specific files
-uv run pre-commit run ruff-format              # Run a single hook
+uv run pre-commit run ruff-check               # Run a single hook
 ```
 
 Hooks are configured in `.pre-commit-config.yaml`. `pre-commit autoupdate` is a no-op for the `language: system` hooks, so update those at their own source:
@@ -136,8 +137,7 @@ Hooks are configured in `.pre-commit-config.yaml`. `pre-commit autoupdate` is a 
 | Hook | Version comes from | Update with |
 |---|---|---|
 | ruff, mypy | `uv.lock` | `uv lock --upgrade` |
-| terraform fmt | the `terraform` binary on `PATH` | your system package manager |
-| actionlint | the pinned `rev` here **and** the `docker://rhysd/actionlint:<ver>` tag in `ci.yml` | bump both together; `tests/unit/test_pinned_versions.py` fails if they drift |
+| terraform fmt | `.terraform-version`, installed by setup-terraform in CI and by tenv locally (tenv provides the `terraform` on `PATH`) | edit `.terraform-version`, then `tenv terraform install` |
 | everything else | the pinned `rev` in `.pre-commit-config.yaml` | `pre-commit autoupdate` |
 
 ### Agent Evals
