@@ -302,6 +302,12 @@ value = result  # mypy knows this is str now, AND we validated at runtime
 
 Type narrowing keeps you honest about what the code actually does - it satisfies both mypy and provides runtime safety.
 
+## Workflow Lint and Version Pins
+
+**actionlint** runs only as a pre-commit hook, so its `rev` in `.pre-commit-config.yaml` is the single version pin and CI enforces it through the `code-quality` pre-commit step, with no separate job or Docker image. The hook passes `-shellcheck=`, which disables actionlint's shellcheck pass over inline `run:` blocks. That pass runs only when `shellcheck` is on `PATH`, which varies by machine locally and is always true on the CI runner, and the existing workflows carry shellcheck findings (SC2086, SC2129) tracked in #255. Remove the flag when those are fixed. `zizmor` (template injection, unpinned actions, excessive permissions) is a separate audit with its own findings and is not part of the actionlint hook.
+
+**Terraform** is pinned once, in `.terraform-version` (exact `X.Y.Z`). tenv reads it locally. `hashicorp/setup-terraform` has no version-file input, so each workflow step that installs Terraform is preceded by a step that reads the file into an output. `TestTerraformVersionPin` in `tests/unit/test_pinned_versions.py` fails if a workflow hard-codes `terraform_version`. Each root's `required_version` stays a range.
+
 ## Coverage Configuration
 
 ### What We Enforce
@@ -354,7 +360,7 @@ omit = [
 
 **Real example from our codebase:**
 ```python
-# src/{your_agent}/config.py:234
+# src/{your_agent}/config.py (ServerEnv.allow_origins_list)
 if not isinstance(result, list):  # pragma: no cover
     # Pydantic validation makes this unreachable
     msg = "Invalid allow_origins format"

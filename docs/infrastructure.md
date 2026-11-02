@@ -116,7 +116,7 @@ Monitor: Actions tab → CI/CD Pipeline
 - Requires team coordination for concurrent PRs
 - Useful for complex integrations requiring live environment testing
 
-**Enable:** Change `.github/workflows/ci-cd.yml` line 98:
+**Enable:** Change the `dev-apply` job's condition in `.github/workflows/ci-cd.yml`:
 ```yaml
 # From:
 if: github.ref_type == 'branch' && github.event_name == 'push'
@@ -230,8 +230,8 @@ See [Observability](observability.md) for query examples and trace analysis.
 ## Terraform Structure
 
 **Bootstrap Module** (`terraform/bootstrap/{dev,stage,prod}/`):
-- One-time CI/CD infrastructure per environment (WIF, Artifact Registry, state bucket, GitHub environments/variables)
-- Local state, runs manually by infrastructure owners
+- One-time CI/CD infrastructure per environment (WIF, Artifact Registry, GitHub environments/variables)
+- Remote state in GCS (buckets created by pre-bootstrap, which keeps local state), runs manually by infrastructure owners
 
 **Main Module** (`terraform/main/`):
 - VPC networking: VPC + subnet + Private Services Access, Cloud NAT, IAP firewall rules

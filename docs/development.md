@@ -307,10 +307,12 @@ your-agent-name/
   pyproject.toml          # Project configuration
   docker-compose.yml      # Local development
   Dockerfile              # Container image
-  AGENTS.md               # AI Coding Agent instructions
-  CLAUDE.md               # Imports AGENTS.md for Claude Code
+  AGENTS.md               # AI coding agent instructions (plus tests/, terraform/, .github/workflows/)
   README.md               # Main documentation
 ```
+
+> [!NOTE]
+> Claude Code skips `AGENTS.md` when a `CLAUDE.md`, `.claude/CLAUDE.md`, or `CLAUDE.local.md` sits in your working directory or above it, and on older versions. See [When AGENTS.md support is unavailable](https://code.claude.com/docs/en/memory#when-agents-md-support-is-unavailable) for the version floor and the setting that keeps a personal `CLAUDE.local.md` alongside it.
 
 ---
 

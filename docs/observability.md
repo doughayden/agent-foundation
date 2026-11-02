@@ -29,7 +29,7 @@ This project includes production-ready OpenTelemetry observability that provides
 **Optional variables:**
 - `GOOGLE_CLOUD_LOCATION`: Vertex AI model endpoint location, not the deployment region
 - `LOG_LEVEL`: Logging verbosity - `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` (default: `INFO`)
-- `TELEMETRY_NAMESPACE`: Service namespace for trace grouping (default: `local`, auto-set to workspace in deployed environments)
+- `TELEMETRY_NAMESPACE`: Service namespace for trace grouping (default: `local`, auto-set to the environment name, like `dev`, in deployed environments)
 
 See `.env.example` for complete configuration reference.
 

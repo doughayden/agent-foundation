@@ -189,6 +189,8 @@ Production mode uses **image promotion** (pull from source, push to target) inst
 
 GitHub Environment Variables pass overrides to Terraform as `TF_VAR_*` inputs. Default values managed in Terraform.
 
+Terraform applies each override through `coalesce()`, so an empty or unset variable falls back to the default. `docker_image` is nullable: a run with no new image (an infrastructure-only apply) reuses the image from the previous deployment's state.
+
 **Infrastructure config** (managed exclusively in Terraform files):
 - `SESSION_SERVICE_URI` - Session persistence URI (auto-created, `postgresql+asyncpg://` protocol via Cloud SQL)
 - `MEMORY_SERVICE_URI` - Memory persistence URI (auto-created, `agentengine://` protocol)
@@ -236,13 +238,12 @@ gh pr create
 **Resources created:**
 - Workload Identity Federation (keyless GitHub Actions auth)
 - Artifact Registry (Docker image storage with cleanup policies)
-- Terraform State Bucket (remote state for main module)
 - GitHub Environments (dev/stage/prod/prod-apply in production mode)
 - GitHub Environment Variables (auto-configured per environment)
 - Tag Protection (production tag ruleset, prod bootstrap only)
 - Cross-Project IAM (Artifact Registry reader for promotion, stage/prod)
 
-**State management:** Local state (per environment)
+**State management:** Remote state in GCS (per environment, `bootstrap/` prefix). Pre-bootstrap (`terraform/bootstrap/pre/`, local state) creates the state buckets used by bootstrap and the main module.
 
 **Runs:** Manually by infrastructure owners (one-time setup)
 
@@ -263,11 +264,17 @@ gh pr create
 - Vertex AI Agent Engine (memory persistence)
 - GCS Bucket (artifact storage)
 
-**State management:** Remote state in GCS (bucket created by bootstrap)
+**State management:** Remote state in GCS (bucket created by pre-bootstrap; bootstrap publishes its name as the `TERRAFORM_STATE_BUCKET` GitHub Variable)
 
 **Runs:** Automatically in GitHub Actions on merge/tag
 
 **Inputs:** All via `TF_VAR_*` environment variables from GitHub
+
+**Auth Proxy flags:** `local.cloud_sql_proxy_args` holds the flags shared by the Cloud Run sidecar and the bastion. The bastion-only flags (`--address=0.0.0.0`, `--impersonate-service-account`) and the iptables rule live in `templates/bastion-cloud-init.yaml`.
+
+**IAM layering:** each environment has its own GCP project. Project-level WIF roles are same-project only and live in `terraform/bootstrap/module/gcp/`. Cross-project Artifact Registry reader grants for promotion live in the stage and prod bootstrap roots. App service account roles live in `terraform/main/main.tf`, and consumer-added WIF roles in `terraform/main/iam.tf`.
+
+**Startup probes:** the app container's startup probe polls `/health` for up to ~120s (24 failures x 5s) to cover credential initialization. The Auth Proxy sidecar has no startup probe; Cloud Run restarts it on crash, which is more reliable than probing it. When the app works locally but fails on Cloud Run, suspect credentials or VPC egress first.
 
 ### Resource Naming
 

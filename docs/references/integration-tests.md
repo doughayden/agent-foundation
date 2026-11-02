@@ -24,7 +24,7 @@ uv run pytest tests/integration
 
 Any Docker daemon the `docker` CLI reaches through its active context works without extra setup, including one whose socket is not at `/var/run/docker.sock`. The lane's `conftest.py` runs `docker info` first, so an unreachable daemon fails the run immediately, then points testcontainers at the active context's socket and disables its Ryuk cleanup container, which cannot mount a socket that exists only on the host. A `DOCKER_HOST` you set yourself takes precedence, and the hook leaves Ryuk enabled in that case. Without Ryuk, a run killed before teardown can leave its Postgres container behind; list leftovers with `docker ps -a --filter label=org.testcontainers=true`.
 
-The `database_uri` fixture starts a throwaway Postgres container via [testcontainers](https://testcontainers.com/) (image pinned by `POSTGRES_IMAGE` in the test module) and tears it down at session end. To point the lane at an already-running Postgres instead (and skip the container), set `INTEGRATION_DATABASE_URI`:
+The `database_uri` fixture starts a throwaway Postgres container via [testcontainers](https://testcontainers.com/) (image pinned by `POSTGRES_IMAGE` in the test module) and tears it down at session end. To point the lane at an already-running Postgres instead (and skip the container), set `INTEGRATION_DATABASE_URI`. The conftest's Docker setup is skipped too, so no Docker daemon is needed:
 
 ```bash
 INTEGRATION_DATABASE_URI=postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/sessions \
