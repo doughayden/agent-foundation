@@ -14,8 +14,10 @@ This document explains our multi-stage Docker build strategy and why we chose th
 
 Our Dockerfile uses a **multi-stage build** with the following architecture:
 
-1. **Builder Stage**: `python:3.13-slim` + uv binary (copied from Astral's distroless image)
-2. **Runtime Stage**: Clean `python:3.13-slim` + only the virtual environment
+1. **Builder Stage**: `python:X.Y-slim` + uv binary (copied from Astral's distroless image)
+2. **Runtime Stage**: Clean `python:X.Y-slim` + only the virtual environment
+
+`X.Y` is the Python version pinned in `.python-version`.
 
 This approach gives us:
 - ✅ Official uv binary (pinned for reproducible builds)
@@ -39,9 +41,9 @@ This approach gives us:
 
 ### Builder Stage Base Image
 ```dockerfile
-FROM python:3.13-slim AS builder
+FROM python:X.Y-slim AS builder
 ```
-**What:** Start builder stage with official Python 3.13 slim image (Debian-based)
+**What:** Start builder stage with official Python slim image (Debian-based), tagged with the version in `.python-version`
 **Why:** We need:
 - Python runtime for `uv sync` to work
 - Shell and basic utilities (cp, mkdir, etc.) for build commands
@@ -217,7 +219,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 ### Runtime Stage Base
 ```dockerfile
-FROM python:3.13-slim AS runtime
+FROM python:X.Y-slim AS runtime
 ```
 **What:** Start fresh with clean Python image for runtime
 **Why:** Multi-stage build benefits:
@@ -309,11 +311,11 @@ ENV VIRTUAL_ENV=/app/.venv \
 
 When the package is installed in **non-editable mode** (Docker), the source code is copied to the virtual environment's site-packages:
 - Local (editable): `Path(__file__)` → `/path/to/project/src/your_agent_name/server.py`
-- Docker (non-editable): `Path(__file__)` → `/app/.venv/lib/python3.13/site-packages/your_agent_name/server.py`
+- Docker (non-editable): `Path(__file__)` → `/app/.venv/lib/pythonX.Y/site-packages/your_agent_name/server.py`
 
 Using `Path(__file__).parent.parent` for `AGENT_DIR`:
 - Local: Resolves to `/path/to/project/src/` ✅ Correct (contains only your_agent_name/)
-- Docker: Resolves to `/app/.venv/lib/python3.13/site-packages/` ❌ Wrong (contains all packages)
+- Docker: Resolves to `/app/.venv/lib/pythonX.Y/site-packages/` ❌ Wrong (contains all packages)
 
 This causes the ADK web UI to show all installed packages (.dist-info directories) instead of just our agent.
 
@@ -401,13 +403,13 @@ COPY src ./src  # Works, but then what?
 
 ### ✅ Our Approach (Multi-Stage)
 ```dockerfile
-# Builder: Use python:3.13-slim + uv binary
-FROM python:3.13-slim AS builder
+# Builder: Use python:X.Y-slim + uv binary
+FROM python:X.Y-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:X.Y.Z /uv /bin/
 # ... build with full shell/utilities ...
 
-# Runtime: Clean python:3.13-slim + only .venv
-FROM python:3.13-slim AS runtime
+# Runtime: Clean python:X.Y-slim + only .venv
+FROM python:X.Y-slim AS runtime
 COPY --from=builder /app/.venv /app/.venv
 ```
 
@@ -502,7 +504,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 | Component | Approach | Why |
 |-----------|----------|-----|
 | `uv` binary | Copy from distroless (pinned) | Reproducible builds, bump manually |
-| Base image | `python:3.13-slim` | Need shell + Python for build, minimal for runtime |
+| Base image | `python:X.Y-slim` | Need shell + Python for build, minimal for runtime |
 | Build pattern | Multi-stage | 50% size reduction (discard build tools) |
 | Dependency caching | Cache mount | Persist packages across builds (~80% speedup) |
 | Dependency files | **COPY both** | Explicit cache invalidation, predictable, simple |

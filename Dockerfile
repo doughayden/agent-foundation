@@ -3,7 +3,7 @@
 # ============================================================================
 # Builder Stage: Install dependencies with optimal caching
 # ============================================================================
-FROM python:3.13-slim AS builder
+FROM python:3.14-slim AS builder
 
 # Install uv from official distroless image (pinned for reproducible builds)
 COPY --from=ghcr.io/astral-sh/uv:0.10.11 /uv /uvx /bin/
@@ -41,7 +41,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ============================================================================
 # Runtime Stage: Minimal production image
 # ============================================================================
-FROM python:3.13-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 # Create non-root user for security
 RUN groupadd -r app && useradd -r -g app app

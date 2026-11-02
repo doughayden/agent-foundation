@@ -11,7 +11,7 @@ First-time setup: from zero to deployed.
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.14.0
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) (gcloud CLI)
 - [GitHub CLI](https://cli.github.com/) (gh)
-- Python 3.13+
+- Python (`uv` installs the version pinned in `.python-version`)
 - `uv` package manager
 - `jq` command-line JSON processor (for parsing Terraform output)
 
