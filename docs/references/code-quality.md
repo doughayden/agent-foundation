@@ -32,7 +32,7 @@ uv run mypy
 uv run pytest --cov
 ```
 
-**On every commit:** once installed (`uv run pre-commit install`), the hooks in `.pre-commit-config.yaml` run the Python tools above in this order on the staged files, plus any other checks the config defines. CI runs the same hooks over the whole tree, which you can reproduce on demand:
+**On every commit:** once installed (`uv run pre-commit install`), the hooks in `.pre-commit-config.yaml` run the lint, format, and type-check tools above in this order on the staged files, plus any other checks the config defines. CI runs the same hooks over the whole tree, which you can reproduce on demand:
 ```bash
 uv run pre-commit run --all-files
 ```
