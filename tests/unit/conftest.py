@@ -1,12 +1,13 @@
 """Shared pytest fixtures for unit tests.
 
-``pytest_configure()`` mocks auth/dotenv so unit collection never touches real
-credentials.
+``pytest_configure()`` mocks Google auth so unit collection never touches real
+credentials. ``ServerEnv`` tests stay off the real ``.env`` via ``isolated_environ``.
 """
 
 from __future__ import annotations
 
 import importlib.util
+import os
 from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
@@ -64,10 +65,6 @@ def pytest_configure(config: pytest.Config) -> None:
     """
     from unittest.mock import Mock, patch
 
-    # Patch load_dotenv to prevent loading real .env file during module imports
-    load_dotenv_patcher = patch("dotenv.load_dotenv")
-    load_dotenv_patcher.start()
-
     # Patch google.auth.default to prevent Application Default Credentials lookup
     mock_credentials = Mock()
     mock_credentials.token = "test-mock-token-totally-not-real"  # noqa: S105
@@ -88,7 +85,7 @@ def pytest_configure(config: pytest.Config) -> None:
     auth_private_patcher.start()
 
     # Environment variables: No module in the test import graph reads env vars at
-    # module level. server.py does (initialize_environment(ServerEnv)), but it's
+    # module level. server.py does (initialize_environment()), but it's
     # never imported during collection (PEP 562 lazy loading, coverage-excluded).
     # If a future import chain triggers env var reads at collection time, set
     # defaults here using direct assignment:
@@ -583,13 +580,24 @@ def valid_server_env() -> dict[str, str]:
 
 
 @pytest.fixture
-def mock_load_dotenv(mocker: MockerFixture) -> MockType:
-    """Mock load_dotenv function for testing.
+def isolated_environ(mocker: MockerFixture) -> Callable[[dict[str, str]], None]:
+    """Factory that sets ``os.environ`` to exactly the given variables.
+
+    Also turns off ``ServerEnv``'s ``.env`` loading, so neither the developer's shell
+    nor a local ``.env`` reaches the result. A test exercising ``.env`` passes
+    ``_env_file`` at construction, which takes precedence over the model config.
 
     Returns:
-        Mock object for load_dotenv function.
+        Function that replaces the environment with its argument.
     """
-    return mocker.patch(f"{PACKAGE_NAME}.config.load_dotenv")
+    mocker.patch.dict(
+        f"{PACKAGE_NAME}.config.ServerEnv.model_config", {"env_file": None}
+    )
+
+    def _factory(variables: dict[str, str]) -> None:
+        mocker.patch.dict(os.environ, variables, clear=True)
+
+    return _factory
 
 
 @pytest.fixture

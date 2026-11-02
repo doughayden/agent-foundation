@@ -10,7 +10,7 @@ This project includes production-ready OpenTelemetry observability that provides
 
 ## Key Features
 
-- **Consistent Setup**: Single `setup_opentelemetry()` function used across all environments (local and deployed)
+- **Consistent Setup**: The same two-phase setup in every environment, local and deployed: `configure_otel_resource()` before `get_fast_api_app()`, then `configure_telemetry()`
 - **Instance-Level Tracking**: Unique `SERVICE_INSTANCE_ID` per process (PID + UUID) for collision-free identification
 - **Environment Grouping**: `SERVICE_NAMESPACE` automatically set to environment name in deployed environments (`dev`, `stage`, `prod`)
 - **Version Tracking**: `SERVICE_VERSION` set to Cloud Run revision ID for deployment correlation
@@ -70,7 +70,7 @@ Install the [Google Cloud Code extension](https://cloud.google.com/code/docs/vsc
 The observability module uses a two-phase initialization strategy to coexist with ADK's internal telemetry:
 
 1. **Phase 1** (`configure_otel_resource()`): Set resource attributes via `OTEL_RESOURCE_ATTRIBUTES` env var *before* ADK starts. ADK reads these when constructing its internal `TracerProvider`.
-2. **Phase 2** (`setup_opentelemetry()`): Run *after* `get_fast_api_app()` returns. Augment ADK's existing `TracerProvider` with a Cloud Trace span processor rather than replacing it. Configure logging exporters independently.
+2. **Phase 2** (`configure_telemetry()`): Run *after* `get_fast_api_app()` returns. Augment ADK's existing `TracerProvider` with a Cloud Trace span processor rather than replacing it. Configure logging exporters independently.
 
 This approach preserves ADK's web UI traces (in-memory spans for local development) while adding Google Cloud export for all environments.
 
@@ -78,12 +78,12 @@ For the full explanation of why this design exists, including ADK's auto-instrum
 
 ## Implementation Details
 
-**Functions:** `configure_otel_resource()` sets resource attributes, `setup_opentelemetry()` configures exporters
+**Functions:** `configure_otel_resource()` sets resource attributes, `configure_telemetry()` configures exporters
 
 **Components:** `GoogleGenAiSdkInstrumentor` (LLM ops), `LoggingInstrumentor` (trace context), `CloudLoggingExporter` (logs), `OTLPSpanExporter` (traces)
 
 > [!NOTE]
-> ADK auto-detects and calls `GoogleGenAiSdkInstrumentor().instrument()` when the package is installed. The explicit call in `observability.py` is redundant but idempotent — it serves as a defensive measure if the project ever stops using ADK's `get_fast_api_app()`.
+> ADK auto-detects and calls `GoogleGenAiSdkInstrumentor().instrument()` when the package is installed. The explicit call in `telemetry.py` is redundant but idempotent — it serves as a defensive measure if the project ever stops using ADK's `get_fast_api_app()`.
 
 ### Resource Attributes
 

@@ -4,7 +4,7 @@ ADK coexistence strategy, instrumentation decisions, and dependency management f
 
 ## ADK Coexistence Strategy
 
-The custom OpenTelemetry setup in `observability.py` must coexist with ADK's internal telemetry infrastructure. ADK creates its own `TracerProvider` (with in-memory exporters for the web UI) during `get_fast_api_app()`. The project augments this provider rather than replacing it.
+The custom OpenTelemetry setup in `telemetry.py` must coexist with ADK's internal telemetry infrastructure. ADK creates its own `TracerProvider` (with in-memory exporters for the web UI) during `get_fast_api_app()`. The project augments this provider rather than replacing it.
 
 ### Two-Phase Initialization
 
@@ -14,17 +14,25 @@ The initialization is split across two functions called at specific points in `s
 
 ```python
 # server.py — module-level (runs at import time)
-configure_otel_resource(agent_name=env.agent_name, project_id=env.google_cloud_project)
+configure_otel_resource(
+    agent_name=env.agent_name,
+    project_id=env.google_cloud_project,
+    telemetry_namespace=env.telemetry_namespace,
+    service_version=env.k_revision,
+)
 app = get_fast_api_app(...)  # ADK creates TracerProvider, reads OTEL_RESOURCE_ATTRIBUTES
 ```
 
 This function builds and sets the `OTEL_RESOURCE_ATTRIBUTES` environment variable with service identity attributes (`service.name`, `service.namespace`, `service.version`, `service.instance.id`, `gcp.project_id`). It must run *before* `get_fast_api_app()` because ADK's `TracerProvider` constructor reads `OTEL_RESOURCE_ATTRIBUTES` to build its `Resource` object. Setting attributes after construction has no effect.
 
-**Phase 2 — `setup_opentelemetry()` (after ADK starts):**
+**Phase 2 — `configure_telemetry()` (after ADK starts):**
 
 ```python
 # server.py — main() function (runs at server start)
-setup_opentelemetry(project_id=..., agent_name=..., log_level=...)
+configure_telemetry(
+    project_id=..., agent_name=..., log_level=...,
+    telemetry_namespace=..., service_version=...,
+)
 ```
 
 This function adds Cloud Trace and Cloud Logging exporters. For tracing, it detects ADK's existing `TracerProvider` via an `isinstance` check and adds a `BatchSpanProcessor` with an `OTLPSpanExporter` to it — preserving ADK's in-memory spans for the web UI while adding Google Cloud export. If no `TracerProvider` exists (theoretical deployment-only case), it creates one.
@@ -41,7 +49,7 @@ OpenTelemetry's Python SDK allows creating `Resource` objects programmatically a
 
 ADK's `_setup_instrumentation_lib_if_installed()` (in `adk_web_server.py`) auto-detects `opentelemetry-instrumentation-google-genai` at startup. When the package is importable, ADK calls `GoogleGenAiSdkInstrumentor().instrument()` to monkey-patch `google.genai.Models.generate_content` and related methods.
 
-The explicit `GoogleGenAiSdkInstrumentor().instrument()` call in `observability.py` is therefore redundant. It is kept as a defensive measure — if the project ever stops using `get_fast_api_app()`, the instrumentor would still be applied. The call is idempotent: OTel's `BaseInstrumentor` tracks instrumentation state and skips re-instrumentation.
+The explicit `GoogleGenAiSdkInstrumentor().instrument()` call in `telemetry.py` is therefore redundant. It is kept as a defensive measure — if the project ever stops using `get_fast_api_app()`, the instrumentor would still be applied. The call is idempotent: OTel's `BaseInstrumentor` tracks instrumentation state and skips re-instrumentation.
 
 ### ADK Span Hierarchy
 
@@ -93,7 +101,7 @@ ADK does **not** instrument HTTP routes. There are no `GET /health`, `POST /run`
 | `opentelemetry-exporter-gcp-logging` | Cloud Logging export via `CloudLoggingExporter` |
 | `opentelemetry-instrumentation-logging` | Bridges Python `logging` module to OTel (injects trace context into `LogRecord` attributes) |
 | `opentelemetry-instrumentation-google-genai` | Genai SDK instrumentation. ADK's `[otel-gcp]` extra includes this, but the project maintains explicit version control |
-| `opentelemetry-instrumentation-fastapi` | Opt-in HTTP-layer instrumentation. Imported unconditionally; activation gated on `setup_opentelemetry(..., app=app)`. Pulls in `opentelemetry-instrumentation-asgi` + `opentelemetry-util-http` + `asgiref` transitively |
+| `opentelemetry-instrumentation-fastapi` | Opt-in HTTP-layer instrumentation. Imported unconditionally; activation gated on `configure_telemetry(..., app=app)`. Pulls in `opentelemetry-instrumentation-asgi` + `opentelemetry-util-http` + `asgiref` transitively |
 
 ### Transitive Dependencies (via ADK)
 
@@ -140,7 +148,7 @@ Both `attach()` and `detach()` execute inside the background task's own async `c
 
 ## HTTP Layer Instrumentation (FastAPI)
 
-`opentelemetry-instrumentation-fastapi` is an optional, opt-in instrumentor that adds HTTP-layer spans as parents to ADK's `invoke_workflow` spans. Enable it by passing the FastAPI instance to `setup_opentelemetry(..., app=app)`; leave `app` as `None` to skip.
+`opentelemetry-instrumentation-fastapi` is an optional, opt-in instrumentor that adds HTTP-layer spans as parents to ADK's `invoke_workflow` spans. Enable it by passing the FastAPI instance to `configure_telemetry(..., app=app)`; leave `app` as `None` to skip.
 
 A typical enabled trace tree looks like:
 
@@ -164,7 +172,7 @@ POST /some-route                     (FastAPI server span)
 | `FastAPIInstrumentor().instrument()` | Patches `FastAPI.__init__` so any FastAPI app **constructed after this call** gets auto-instrumented |
 | `FastAPIInstrumentor().instrument_app(app)` | Wraps middleware on the **existing** `app` instance |
 
-In `server.py`, the FastAPI app is created at module import time via `get_fast_api_app()`, well before `setup_opentelemetry()` is called inside `main()`. The global `.instrument()` form only patches future constructors, so it would miss the already-constructed app entirely. `instrument_app(app)` wraps the live instance and works regardless of construction order.
+In `server.py`, the FastAPI app is created at module import time via `get_fast_api_app()`, well before `configure_telemetry()` is called inside `main()`. The global `.instrument()` form only patches future constructors, so it would miss the already-constructed app entirely. `instrument_app(app)` wraps the live instance and works regardless of construction order.
 
 **Two `http send` spans per request:**
 

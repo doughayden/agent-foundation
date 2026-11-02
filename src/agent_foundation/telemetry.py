@@ -45,7 +45,12 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 
-def configure_otel_resource(agent_name: str, project_id: str) -> None:
+def configure_otel_resource(
+    agent_name: str,
+    project_id: str,
+    telemetry_namespace: str,
+    service_version: str,
+) -> None:
     """Configure OpenTelemetry resource via environment variables.
 
     Builds and sets OTEL_RESOURCE_ATTRIBUTES with process-level tracking.
@@ -55,6 +60,8 @@ def configure_otel_resource(agent_name: str, project_id: str) -> None:
     Args:
         agent_name: Unique service identifier
         project_id: GCP Project ID
+        telemetry_namespace: service.namespace that groups traces by environment
+        service_version: service.version, the Cloud Run revision when deployed
 
     Environment Variables Set:
         OTEL_RESOURCE_ATTRIBUTES: Complete resource attributes including process ID
@@ -67,18 +74,20 @@ def configure_otel_resource(agent_name: str, project_id: str) -> None:
     os.environ["OTEL_RESOURCE_ATTRIBUTES"] = (
         f"{SERVICE_INSTANCE_ID}={instance_id},"
         f"{SERVICE_NAME}={agent_name},"
-        f"{SERVICE_NAMESPACE}={os.getenv('TELEMETRY_NAMESPACE', 'local')},"
-        f"{SERVICE_VERSION}={os.getenv('K_REVISION', 'local')},"
+        f"{SERVICE_NAMESPACE}={telemetry_namespace},"
+        f"{SERVICE_VERSION}={service_version},"
         f"gcp.project_id={project_id}"
     )
 
     return
 
 
-def setup_opentelemetry(
+def configure_telemetry(
     project_id: str,
     agent_name: str,
     log_level: str,
+    telemetry_namespace: str,
+    service_version: str,
     app: FastAPI | None = None,
 ) -> None:
     """Set up complete OpenTelemetry observability with tracing and logging.
@@ -98,6 +107,8 @@ def setup_opentelemetry(
         project_id: GCP Project ID for trace and log export
         agent_name: Unique service identifier
         log_level: Logging verbosity level as string
+        telemetry_namespace: service.namespace, used when the resource is unset
+        service_version: service.version, used when the resource is unset
         app: Optional FastAPI instance. When provided, enables HTTP-layer
             instrumentation (request/response spans as parents to ADK's
             invocation spans). Leave as None to skip.
@@ -111,7 +122,9 @@ def setup_opentelemetry(
         print("\n🔭 OpenTelemetry Resource configured in environment:\n")
         print("\n".join(resource.split(",")), end="\n\n\n")
     else:
-        configure_otel_resource(agent_name, project_id)
+        configure_otel_resource(
+            agent_name, project_id, telemetry_namespace, service_version
+        )
 
     # Defensive strategy for portability to projects without Pydantic pre-validation
     if log_level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
@@ -122,11 +135,11 @@ def setup_opentelemetry(
     try:
         credentials, _ = google.auth.default()
     except DefaultCredentialsError as e:
-        print(f"❌ [observability] Error getting Application Default Credentials: {e}")
+        print(f"❌ [telemetry] Error getting Application Default Credentials: {e}")
         print("💻 Try authenticating with 'gcloud auth application-default login'")
         raise e
     except Exception as e:
-        print(f"❌ [observability] Unexpected error during authentication: {e}")
+        print(f"❌ [telemetry] Unexpected error during authentication: {e}")
         raise e
 
     # Type narrowing: Validate quota project support (required for Cloud Logging client)

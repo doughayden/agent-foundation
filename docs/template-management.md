@@ -204,11 +204,11 @@ git commit -m "docs: sync deployment.md from $VERSION"
 
 ```bash
 # Review the diff across different paths
-git diff foundation-tags/$VERSION:src/agent_foundation/observability.py -- src/your_agent/observability.py
+git diff foundation-tags/$VERSION:src/agent_foundation/telemetry.py -- src/your_agent/telemetry.py
 
 # Write the foundation version to your local path
-git show foundation-tags/$VERSION:src/agent_foundation/observability.py > src/your_agent/observability.py
-git commit -m "chore: sync observability.py from foundation $VERSION"
+git show foundation-tags/$VERSION:src/agent_foundation/telemetry.py > src/your_agent/telemetry.py
+git commit -m "chore: sync telemetry.py from foundation $VERSION"
 ```
 
 ### Pull Multiple Related Files

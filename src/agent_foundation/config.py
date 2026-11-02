@@ -1,72 +1,19 @@
-"""Environment configuration models for application settings.
+"""Environment configuration for the server.
 
-This module provides Pydantic models for type-safe environment variable validation
-and configuration management.
+``ServerEnv`` reads the process environment, then a ``.env`` file in the working
+directory. The environment wins over ``.env``, so a value set in the shell or by the
+platform is never replaced by a stale local file.
 """
 
 import json
-import os
 import sys
 from typing import Literal
 
-from dotenv import load_dotenv
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    ValidationError,
-    field_validator,
-)
+from pydantic import Field, ValidationError, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-def initialize_environment[T: BaseModel](
-    model_class: type[T],
-    override_dotenv: bool = True,
-    print_config: bool = True,
-) -> T:
-    """Initialize and validate environment configuration.
-
-    Factory function that handles the common initialization pattern: load environment
-    variables, validate with Pydantic model, handle errors, and optionally print
-    configuration.
-
-    Args:
-        model_class: Pydantic model class to validate environment with
-        override_dotenv: Whether to override existing environment variables
-            (default True)
-        print_config: Whether to call print_config() method if it exists (default True)
-
-    Returns:
-        Validated environment configuration instance
-
-    Raises:
-        SystemExit: Exits with code 1 if Pydantic validation fails.
-
-    Examples:
-        >>> # Simple case (most common)
-        >>> env = initialize_environment(ServerEnv)
-        >>>
-        >>> # Skip printing configuration
-        >>> env = initialize_environment(ServerEnv, print_config=False)
-    """
-    load_dotenv(override=override_dotenv)
-
-    # Load and validate environment configuration
-    try:
-        env = model_class.model_validate(os.environ)
-    except ValidationError as e:
-        print("\n❌ Environment validation failed:\n")
-        print(e)
-        sys.exit(1)
-
-    # Print configuration for user verification if method exists
-    if print_config and hasattr(env, "print_config"):
-        env.print_config()
-
-    return env
-
-
-class ServerEnv(BaseModel):
+class ServerEnv(BaseSettings):
     """Environment configuration for local server development and deployment.
 
     Provides configuration for both local development and Cloud Run deployment,
@@ -85,66 +32,59 @@ class ServerEnv(BaseModel):
         allow_origins: JSON array string of allowed CORS origins
         host: Server host (127.0.0.1 for local, 0.0.0.0 for containers)
         port: Server port
-        otel_capture_content: OpenTelemetry message content capture setting
+        otel_instrumentation_genai_capture_message_content: Capture LLM content in
+            OpenTelemetry spans
+        telemetry_namespace: OpenTelemetry service.namespace (environment grouping)
+        k_revision: Cloud Run revision, the OpenTelemetry service.version
     """
 
     google_cloud_project: str = Field(
         ...,
-        alias="GOOGLE_CLOUD_PROJECT",
         description="GCP project ID for authentication and observability",
     )
 
     google_cloud_location: str = Field(
         default="us-central1",
-        alias="GOOGLE_CLOUD_LOCATION",
         description="Vertex AI region (e.g., us-central1)",
     )
 
     agent_name: str = Field(
         ...,
-        alias="AGENT_NAME",
         description="Unique agent identifier for resources and logs",
     )
 
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
         default="INFO",
-        alias="LOG_LEVEL",
         description="Logging verbosity level",
     )
 
     serve_web_interface: bool = Field(
         default=False,
-        alias="SERVE_WEB_INTERFACE",
         description="Whether to serve the ADK web interface",
     )
 
     reload_agents: bool = Field(
         default=False,
-        alias="RELOAD_AGENTS",
         description="Whether to reload agents on file changes (local dev only)",
     )
 
     session_service_uri: str | None = Field(
         default=None,
-        alias="SESSION_SERVICE_URI",
         description="Session service URI (e.g., postgresql+asyncpg://user@host:5432/db)",
     )
 
     memory_service_uri: str | None = Field(
         default=None,
-        alias="MEMORY_SERVICE_URI",
         description="Memory service URI (e.g., agentengine://...)",
     )
 
     artifact_service_uri: str | None = Field(
         default=None,
-        alias="ARTIFACT_SERVICE_URI",
         description="GCS bucket URI for artifact storage",
     )
 
     allow_origins: str = Field(
         default='["http://127.0.0.1:8000", "http://localhost:8000"]',
-        alias="ALLOW_ORIGINS",
         description=(
             "JSON array string of allowed CORS origins. "
             "Include both because developers may access the server via localhost "
@@ -155,7 +95,6 @@ class ServerEnv(BaseModel):
 
     host: str = Field(
         default="127.0.0.1",
-        alias="HOST",
         description=(
             "Network interface for uvicorn to bind. "
             "Use 127.0.0.1 (loopback) for local dev, 0.0.0.0 for containers. "
@@ -165,19 +104,28 @@ class ServerEnv(BaseModel):
 
     port: int = Field(
         default=8000,
-        alias="PORT",
         description="Server port",
     )
 
-    otel_capture_content: bool = Field(
+    otel_instrumentation_genai_capture_message_content: bool = Field(
         ...,
-        alias="OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT",
         description="OpenTelemetry message content capture setting",
     )
 
-    model_config = ConfigDict(
-        populate_by_name=True,  # Allow both field names and aliases
-        extra="ignore",  # Ignore extra env vars (system vars, etc.)
+    telemetry_namespace: str = Field(
+        default="local",
+        description="OpenTelemetry service.namespace that groups traces by environment",
+    )
+
+    k_revision: str = Field(
+        default="local",
+        description="Cloud Run revision name, set by Cloud Run; unset means local",
+    )
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        # .env also carries variables other readers own (ADK, compose, the genai SDK)
+        extra="ignore",
     )
 
     @field_validator("allow_origins")
@@ -223,7 +171,12 @@ class ServerEnv(BaseModel):
         print(f"HOST:                  {self.host}")
         print(f"PORT:                  {self.port}")
         print(f"ALLOW_ORIGINS:         {self.allow_origins}")
-        print(f"OTEL_CAPTURE_CONTENT:  {self.otel_capture_content}\n\n")
+        print(f"TELEMETRY_NAMESPACE:   {self.telemetry_namespace}")
+        print(f"K_REVISION:            {self.k_revision}")
+        print(
+            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "
+            f"{self.otel_instrumentation_genai_capture_message_content}\n\n"
+        )
 
     @property
     def allow_origins_list(self) -> list[str]:
@@ -238,3 +191,23 @@ class ServerEnv(BaseModel):
             msg = "Invalid allow_origins format"
             raise TypeError(msg)
         return result
+
+
+def initialize_environment() -> ServerEnv:
+    """Validate ``ServerEnv`` and print it, exiting on invalid configuration.
+
+    Returns:
+        Validated environment configuration.
+
+    Raises:
+        SystemExit: Exits with code 1 if validation fails.
+    """
+    try:
+        env = ServerEnv()
+    except ValidationError as e:
+        print("\n❌ Environment validation failed:\n")
+        print(e)
+        sys.exit(1)
+
+    env.print_config()
+    return env

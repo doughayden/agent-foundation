@@ -18,7 +18,7 @@ dependencies = [
     "opentelemetry-instrumentation-google-genai>=0.7b1,<1",
     "opentelemetry-instrumentation-logging>=0.63b1,<0.64",
     "pydantic>=2.11.0,<3.0.0",
-    "python-dotenv>=1.0.0,<2.0.0",
+    "pydantic-settings>=2.15.0,<3.0.0",
     "sqlalchemy[postgresql-asyncpg]>=2.0.45,<3.0.0",
 ]
 
@@ -36,6 +36,7 @@ dev = [
     "pytest-cov>=7.0.0,<8.0.0",
     "pytest-mock>=3.15.1,<4.0.0",
     "pytest>=8.3.4,<9.0.0",
+    "python-dotenv>=1.2.1,<2.0.0",
     "pyyaml>=6.0.3,<7.0.0",
     "ruff>=0.12.7,<1.0.0",
     "testcontainers[postgres]>=4.15.0,<5.0.0",
@@ -120,8 +121,8 @@ omit = [
     "src/**/agent.py",
     # prompt.py: Prompt text and formatting (integration tested via agent runs)
     "src/**/prompt.py",
-    # observability.py: OpenTelemetry setup (infrastructure initialization)
-    "src/**/observability.py",
+    # telemetry.py: OpenTelemetry setup (infrastructure initialization)
+    "src/**/telemetry.py",
 ]
 
 [tool.coverage.report]
