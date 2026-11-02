@@ -162,7 +162,10 @@ def setup_opentelemetry(
 
     # Set up OTLP auth
     request = google.auth.transport.requests.Request()
-    auth_metadata_plugin = AuthMetadataPlugin(credentials=credentials, request=request)
+    # google-auth leaves AuthMetadataPlugin.__init__ unannotated
+    auth_metadata_plugin = AuthMetadataPlugin(  # type: ignore[no-untyped-call]
+        credentials=credentials, request=request
+    )
     channel_creds = grpc.composite_channel_credentials(
         grpc.ssl_channel_credentials(),
         grpc.metadata_call_credentials(metadata_plugin=auth_metadata_plugin),

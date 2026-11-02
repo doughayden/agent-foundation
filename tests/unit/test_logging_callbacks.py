@@ -1,6 +1,7 @@
 """Unit tests for the LoggingCallbacks class in the agent.logging_callbacks module."""
 
 import logging
+from typing import Any
 
 import pytest
 from pytest_mock import MockerFixture
@@ -74,10 +75,7 @@ class TestAgentCallbacks:
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
 
-        result = callbacks.before_agent(mock_logging_callback_context)
-
-        # Verify return value
-        assert result is None
+        callbacks.before_agent(mock_logging_callback_context)
 
         # Verify INFO level logging
         assert (
@@ -97,9 +95,8 @@ class TestAgentCallbacks:
         callbacks = LoggingCallbacks()
         context = create_mock_logging_context(user_content=None)
 
-        result = callbacks.before_agent(context)
+        callbacks.before_agent(context)
 
-        assert result is None
         assert "*** Starting agent 'test_agent'" in caplog.text
         assert "User Content:" not in caplog.text
 
@@ -112,10 +109,7 @@ class TestAgentCallbacks:
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
 
-        result = callbacks.after_agent(mock_logging_callback_context)
-
-        # Verify return value
-        assert result is None
+        callbacks.after_agent(mock_logging_callback_context)
 
         # Verify INFO level logging
         assert (
@@ -135,9 +129,8 @@ class TestAgentCallbacks:
         callbacks = LoggingCallbacks()
         context = create_mock_logging_context(user_content=None)
 
-        result = callbacks.after_agent(context)
+        callbacks.after_agent(context)
 
-        assert result is None
         assert "*** Leaving agent 'test_agent'" in caplog.text
         assert "User Content:" not in caplog.text
 
@@ -166,9 +159,8 @@ class TestModelCallbacks:
             ]
         )
 
-        result = callbacks.before_model(mock_logging_callback_context, llm_request)
+        callbacks.before_model(mock_logging_callback_context, llm_request)
 
-        assert result is None
         assert "*** Before LLM call for agent 'my_agent'" in caplog.text
         assert "LLM request contains 3 messages:" in caplog.text
         assert "Content 1: {'role': 'system'" in caplog.text
@@ -187,9 +179,8 @@ class TestModelCallbacks:
         context = create_mock_logging_context(user_content=None)
         llm_request = create_mock_llm_request()
 
-        result = callbacks.before_model(context, llm_request)
+        callbacks.before_model(context, llm_request)
 
-        assert result is None
         assert "*** Before LLM call" in caplog.text
         assert "User Content:" not in caplog.text
         assert "LLM request contains 2 messages:" in caplog.text
@@ -204,9 +195,8 @@ class TestModelCallbacks:
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()
 
-        result = callbacks.after_model(mock_logging_callback_context, mock_llm_response)
+        callbacks.after_model(mock_logging_callback_context, mock_llm_response)
 
-        assert result is None
         assert "*** After LLM call for agent 'my_agent'" in caplog.text
         assert (
             "LLM response: {'text': 'The answer is 42', 'confidence': 0.95}"
@@ -458,9 +448,8 @@ class TestModelCallbacks:
 
         llm_response = create_mock_llm_response(content=None)
 
-        result = callbacks.after_model(mock_logging_callback_context, llm_response)
+        callbacks.after_model(mock_logging_callback_context, llm_response)
 
-        assert result is None
         assert "*** After LLM call" in caplog.text
         assert "LLM response:" not in caplog.text
 
@@ -481,9 +470,8 @@ class TestToolCallbacks:
         tool = create_mock_base_tool(name="calculator")
         args = {"operation": "add", "x": 5, "y": 3}
 
-        result = callbacks.before_tool(tool, args, mock_tool_context)
+        callbacks.before_tool(tool, args, mock_tool_context)
 
-        assert result is None
         assert (
             "*** Before invoking tool 'calculator' in agent 'tool_agent'" in caplog.text
         )
@@ -506,9 +494,8 @@ class TestToolCallbacks:
         args = {"param": "value"}
         context = create_mock_tool_context(user_content=None)
 
-        result = callbacks.before_tool(tool, args, context)
+        callbacks.before_tool(tool, args, context)
 
-        assert result is None
         assert "*** Before invoking tool 'test_tool'" in caplog.text
         assert "User Content:" not in caplog.text
 
@@ -526,9 +513,8 @@ class TestToolCallbacks:
         args = {"query": "SELECT * FROM users"}
         tool_response = {"rows": [{"id": 1, "name": "Alice"}], "count": 1}
 
-        result = callbacks.after_tool(tool, args, mock_tool_context, tool_response)
+        callbacks.after_tool(tool, args, mock_tool_context, tool_response)
 
-        assert result is None
         assert "*** After invoking tool 'database_query'" in caplog.text
         assert "args: {'query': 'SELECT * FROM users'}" in caplog.text
         assert (
@@ -547,13 +533,12 @@ class TestToolCallbacks:
         callbacks = LoggingCallbacks()
 
         tool = create_mock_base_tool()
-        args = {}
+        args: dict[str, Any] = {}
         context = create_mock_tool_context(user_content=None)
         tool_response = {"status": "success"}
 
-        result = callbacks.after_tool(tool, args, context, tool_response)
+        callbacks.after_tool(tool, args, context, tool_response)
 
-        assert result is None
         assert "*** After invoking tool 'test_tool'" in caplog.text
         assert "User Content:" not in caplog.text
         assert "Tool response: {'status': 'success'}" in caplog.text
@@ -575,8 +560,7 @@ class TestEdgeCases:
         context = create_mock_logging_context(state=create_mock_state({}))
 
         # Test before_agent with empty state
-        result = callbacks.before_agent(context)
-        assert result is None
+        callbacks.before_agent(context)
         assert "Active state keys: []" in caplog.text
 
     def test_callbacks_with_complex_nested_state(
@@ -610,8 +594,7 @@ class TestEdgeCases:
 
         context = create_mock_logging_context(state=complex_state)
 
-        result = callbacks.before_agent(context)
-        assert result is None
+        callbacks.before_agent(context)
         # Now we only log state keys, not the actual values
         assert "Active state keys: ['user', 'session']" in caplog.text
 
@@ -690,34 +673,6 @@ class TestEdgeCases:
         # Verify model_dump was called with correct parameters
         mock_content.model_dump.assert_called_once_with(exclude_none=True, mode="json")
         assert "User Content: {'mocked': 'data'}" in caplog.text
-
-    def test_all_callbacks_return_none(
-        self,
-        mock_llm_request,
-        mock_llm_response,
-        mock_base_tool,
-        create_mock_logging_context,
-        create_mock_tool_context,
-    ) -> None:
-        """Verify all callback methods return None to allow normal agent flow."""
-        callbacks = LoggingCallbacks()
-
-        # Create test objects
-        callback_context = create_mock_logging_context()
-        tool_context = create_mock_tool_context()
-        args = {"test": "arg"}
-        tool_response = {"result": "success"}
-
-        # Test all callbacks return None
-        assert callbacks.before_agent(callback_context) is None
-        assert callbacks.after_agent(callback_context) is None
-        assert callbacks.before_model(callback_context, mock_llm_request) is None
-        assert callbacks.after_model(callback_context, mock_llm_response) is None
-        assert callbacks.before_tool(mock_base_tool, args, tool_context) is None
-        assert (
-            callbacks.after_tool(mock_base_tool, args, tool_context, tool_response)
-            is None
-        )
 
 
 class TestWalrusOperators:

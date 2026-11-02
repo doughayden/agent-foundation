@@ -12,8 +12,8 @@ from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.context import Context
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
-from google.adk.tools import ToolContext
 from google.adk.tools.base_tool import BaseTool
+from google.adk.tools.tool_context import ToolContext
 from opentelemetry import trace
 
 logger = logging.getLogger(__name__)

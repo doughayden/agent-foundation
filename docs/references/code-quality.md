@@ -158,45 +158,31 @@ uv run ruff check --diff
 From `pyproject.toml`:
 ```toml
 [tool.mypy]
+plugins = ["pydantic.mypy"]
 python_version = "X.Y"  # follows .python-version
+# Tests are namespace packages (no __init__.py), so module names come from paths
+explicit_package_bases = true
 mypy_path = "src"
-packages = ["{your_agent}"]
-
-# Completeness checks
-disallow_untyped_defs = true         # All functions must have type hints
-disallow_incomplete_defs = true      # Complete type hints (all args and return)
-disallow_untyped_decorators = true   # Decorators must preserve types
-
-# Type system strictness
-no_implicit_optional = true          # Explicit Optional[] for None values
-strict_equality = true               # Proper type checking in == comparisons
-
-# Warnings and errors
-warn_return_any = true               # Flag functions returning Any
-warn_unused_configs = true           # Flag unused config options
-warn_redundant_casts = true          # No unnecessary casts
-warn_unused_ignores = true           # Remove unused # type: ignore
-warn_no_return = true                # Functions must return or raise
-warn_unreachable = true              # Detect unreachable code
-
-# Additional strictness
-check_untyped_defs = true            # Check function bodies even without annotations
-show_error_codes = true              # Show error codes for easier suppression
+files = ["src", "tests"]
+strict = true
+warn_unused_configs = true
+warn_unreachable = true
 ```
 
-**This is stricter than mypy's default** - every function, every parameter, every return value must be typed.
+`strict = true` turns on mypy's maintained strict flag set, and picks up new checks as mypy adds them to it. See [`--strict`](https://mypy.readthedocs.io/en/stable/command_line.html#cmdoption-mypy-strict) for the current list. `warn_unreachable` sits outside that set, so it is enabled on its own. The [pydantic plugin](https://docs.pydantic.dev/latest/integrations/mypy/) checks model construction, like `ServerEnv(...)`, against the declared field types.
 
 **Key enforcements:**
-- **disallow_untyped_defs**: Every function needs type hints (args + return)
-- **disallow_incomplete_defs**: Can't mix typed and untyped parameters
-- **no_implicit_optional**: `def foo(x: str = None)` is an error (must use `str | None`)
-- **warn_return_any**: Flag when functions return `Any` (type safety leak)
-- **strict_equality**: `if my_str == 5:` is an error (comparing incompatible types)
-- **warn_unreachable**: Detect dead code after returns/raises
+- Every function needs complete annotations (args + return)
+- `def foo(x: str = None)` is an error (must use `str | None`)
+- Returning `Any` from a typed function is flagged (type safety leak)
+- `if my_str == 5:` is an error (comparing incompatible types)
+- Unused `# type: ignore` comments and redundant casts are errors
+- Names imported from a package that does not explicitly re-export them are errors (`no_implicit_reexport`). Import from the defining submodule instead, like `google.adk.tools.function_tool` rather than `google.adk.tools`
+- Dead code after returns/raises is flagged (`warn_unreachable`)
 
 ### Example Errors and Fixes
 
-**Error: disallow_untyped_defs**
+**Error: missing return annotation (`no-untyped-def`)**
 ```python
 # mypy error: Function is missing a return type annotation
 def process_data(items: list[str]):
@@ -207,7 +193,7 @@ def process_data(items: list[str]) -> int:
     return len(items)
 ```
 
-**Error: disallow_incomplete_defs**
+**Error: partially annotated function (`no-untyped-def`)**
 ```python
 # mypy error: Function is missing a type annotation for one or more arguments
 def fetch_user(id: int, cache):
@@ -218,7 +204,7 @@ def fetch_user(id: int, cache: dict[int, User]) -> User | None:
     return cache.get(id)
 ```
 
-**Error: no_implicit_optional**
+**Error: implicit `None` default (`assignment`)**
 ```python
 # mypy error: Incompatible default for argument (expected str, got None)
 def greet(name: str = None) -> str:
@@ -231,43 +217,42 @@ def greet(name: str | None = None) -> str:
 
 ### Test Suite Typing Strategy
 
-mypy is scoped to the source package. Test modules are not type-checked. Conftest typing is a team convention enforced by reviewers, not by tooling.
+mypy checks `tests/` alongside `src/`, with two overrides:
 
 ```toml
-[tool.mypy]
-mypy_path = "src"
-packages = ["{your_agent}"]
+[[tool.mypy.overrides]]
+# Test functions take fixtures by name without annotations
+module = "tests.*"
+disable_error_code = ["arg-type", "no-untyped-def", "no-untyped-call"]
+
+[[tool.mypy.overrides]]
+# Fixture definitions stay fully typed
+module = "tests.*.conftest"
+enable_error_code = ["no-untyped-def", "no-untyped-call"]
 ```
 
-**Why we skip tests:**
-- Drift from `src/` refactors is caught by tests failing at runtime. Running mypy on tests catches the same drift only seconds earlier, but at meaningful config and maintenance cost.
-- Most strict-mypy errors on test code are noise: untyped pytest fixture parameters, duck-typed mocks intentionally standing in for real types, explicit `result = ...; assert result is None` patterns documenting None-return callback variants.
-- Simpler config is more maintainable, especially in a template that downstream projects fork. This matches the common pattern in modern Python projects (Pydantic, FastAPI, and others).
+| Disabled code | Why |
+|---|---|
+| `no-untyped-def` | pytest injects fixture parameters by name, not by type. Annotating test function parameters adds ceremony without signal. |
+| `no-untyped-call` | Follows from the above: calling an unannotated test helper from a typed function. |
+| `arg-type` | Duck-typed mocks (like `MockMemoryCallbackContext`) intentionally stand in for real types in tests. |
 
-**Conftest convention:**
-
-We strictly type fixture definitions in `conftest.py` files as a team practice. mypy doesn't enforce this, but reviewers do.
+Every other strict check applies to tests. The second override re-enables the annotation checks for `conftest.py` files, so fixture definitions carry full annotations (`MockerFixture` in, `MockType` out) and an unannotated fixture fails mypy. It must use `enable_error_code`: a narrower section's `disable_error_code` does not undo codes a broader matching section disabled.
 
 ```python
-# conftest.py — strict typing by convention, not by tooling
 @pytest.fixture
 def mock_state(mocker: MockerFixture) -> MockType:
     """Mock state with test data."""
-    return mocker.Mock(spec=State)
+    state: MockType = mocker.Mock(spec=State)
+    return state
 ```
 
-**Expected errors if you run `uv run mypy src tests`:**
-
-Running mypy on test modules will surface several categories of expected errors:
-
-| Error code | Why it's expected |
-|---|---|
-| `no-untyped-def` | pytest injects fixture parameters by name, not by type. Annotating test function parameters adds ceremony without signal. |
-| `func-returns-value` | Pattern `result = callbacks.before_agent(...); assert result is None` documents which ADK callback variants return None. The assertion catches drift if the source signature ever changes. |
-| `attr-defined` | ADK's `App.root_agent` is typed `BaseAgent`, but the runtime instance is a concrete subclass like `LlmAgent`. Tests deliberately access subclass attributes through the parent-typed reference. |
-| `arg-type` | Duck-typed mocks (like `MockMemoryCallbackContext`) intentionally stand in for real types in tests. |
-| `var-annotated` | Bare local-variable assignments in tests where the inferred type is obvious. |
-| `no-any-return` | pytest-mock interactions where the union type returned by `mocker.Mock()` is treated as Any when narrowed through `mocker.patch`. |
+**Patterns the strict checks shape in tests:**
+- **Annotate a `mocker.Mock(...)` result before returning it.** mypy infers it as `Any`, so a direct `return mocker.Mock(...)` from a `-> MockType` fixture fails `no-any-return`.
+- **Call a `-> None` function without capturing its result.** `result = callback(...); assert result is None` fails `func-returns-value`, and mypy already proves the `None` return from the signature.
+- **Patch a module attribute with `mocker.patch.object(module, "name", ...)`**, not `module.name = value`. Assignment to a name the module does not re-export fails `attr-defined`; the string form also restores the original on teardown. Session-scoped fixtures use pytest-mock's `session_mocker`.
+- **Narrow parsed data with `isinstance()`** before returning it as a concrete type. `yaml.safe_load` and `json.loads` return `Any`.
+- **Third-party packages without type information** get a narrow `ignore_missing_imports` override in `pyproject.toml`, with a comment naming why. Check first whether a newer release or a stub package (`types-*`) supplies types.
 
 ### Inline Exclusions
 

@@ -45,7 +45,9 @@ def _hook_rev(repo_url: str) -> str:
     config = yaml.safe_load(PRE_COMMIT_CONFIG.read_text())
     revs = [repo["rev"] for repo in config["repos"] if repo.get("repo") == repo_url]
     assert revs, f"no pre-commit repo entry for {repo_url}"
-    return revs[0].lstrip("v")
+    rev = revs[0]
+    assert isinstance(rev, str), f"pre-commit rev for {repo_url} is not a string"
+    return rev.lstrip("v")
 
 
 class TestActionlintVersionParity:

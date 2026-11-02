@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from google.adk.tools import ToolContext
+from google.adk.tools.tool_context import ToolContext
 
 DEFAULT_TIMEZONE_NAME = "UTC"
 SUCCESS_STATUS = "success"

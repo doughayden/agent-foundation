@@ -4,7 +4,8 @@ from google.adk.agents import LlmAgent
 from google.adk.apps import App
 from google.adk.plugins.global_instruction_plugin import GlobalInstructionPlugin
 from google.adk.plugins.logging_plugin import LoggingPlugin
-from google.adk.tools import FunctionTool, load_memory
+from google.adk.tools.function_tool import FunctionTool
+from google.adk.tools.load_memory_tool import load_memory_tool
 from google.genai import types
 
 from .callbacks import LoggingCallbacks, add_session_to_memory
@@ -32,7 +33,7 @@ root_agent = LlmAgent(
         http_options=types.HttpOptions(timeout=ROOT_AGENT_MODEL_TIMEOUT_MS)
     ),
     instruction=ROOT_AGENT_INSTRUCTION,
-    tools=[FunctionTool(get_current_time), load_memory],
+    tools=[FunctionTool(get_current_time), load_memory_tool],
     before_model_callback=logging_callbacks.before_model,
     after_model_callback=logging_callbacks.after_model,
     before_tool_callback=logging_callbacks.before_tool,

@@ -19,10 +19,7 @@ class TestAddSessionToMemory:
         caplog.set_level(logging.INFO)
 
         # Execute callback
-        result = await add_session_to_memory(mock_memory_callback_context)
-
-        # Verify callback returns None
-        assert result is None
+        await add_session_to_memory(mock_memory_callback_context)
 
         # Verify add_session_to_memory was called on the context
         assert mock_memory_callback_context.add_session_to_memory_called
@@ -45,10 +42,7 @@ class TestAddSessionToMemory:
         )
 
         # Execute callback - should not raise
-        result = await add_session_to_memory(ctx)
-
-        # Verify callback returns None (doesn't propagate exception)
-        assert result is None
+        await add_session_to_memory(ctx)
 
         # Verify the method was attempted
         assert ctx.add_session_to_memory_called
@@ -72,10 +66,7 @@ class TestAddSessionToMemory:
         )
 
         # Execute callback - should not raise
-        result = await add_session_to_memory(ctx)
-
-        # Verify callback returns None
-        assert result is None
+        await add_session_to_memory(ctx)
 
         # Verify the method was attempted
         assert ctx.add_session_to_memory_called
@@ -97,10 +88,7 @@ class TestAddSessionToMemory:
         )
 
         # Execute callback - should not raise
-        result = await add_session_to_memory(ctx)
-
-        # Verify callback returns None (doesn't propagate exception)
-        assert result is None
+        await add_session_to_memory(ctx)
 
         # Verify the method was attempted
         assert ctx.add_session_to_memory_called
@@ -148,17 +136,6 @@ class TestAddSessionToMemory:
             in warning_records[0].message
         )
 
-    async def test_add_session_to_memory_returns_none(
-        self,
-        mock_memory_callback_context,
-    ) -> None:
-        """Test that callback always returns None."""
-        # Execute callback
-        result = await add_session_to_memory(mock_memory_callback_context)
-
-        # Verify callback returns None (doesn't short-circuit)
-        assert result is None
-
     async def test_add_session_to_memory_multiple_calls(
         self,
         create_mock_memory_callback_context,
@@ -172,12 +149,10 @@ class TestAddSessionToMemory:
         ctx2 = create_mock_memory_callback_context()
 
         # Execute callbacks
-        result1 = await add_session_to_memory(ctx1)
-        result2 = await add_session_to_memory(ctx2)
+        await add_session_to_memory(ctx1)
+        await add_session_to_memory(ctx2)
 
         # Verify both completed successfully
-        assert result1 is None
-        assert result2 is None
         assert ctx1.add_session_to_memory_called
         assert ctx2.add_session_to_memory_called
 
