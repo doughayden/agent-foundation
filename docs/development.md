@@ -100,7 +100,7 @@ GitHub Actions automatically builds, tests, and deploys to Cloud Run. Check job 
 Run format, lint, type check, and unit tests (100% coverage required) **before every commit**
 
 **Standards:**
-- **Type Hints:** Strict mypy, modern Python 3.13+ syntax (`|` unions, lowercase generics)
+- **Type Hints:** Strict mypy, modern Python syntax (`|` unions, lowercase generics)
 - **Code Style:** Ruff enforced (88-char lines, `Path` objects, security checks)
 - **Docstrings:** Google-style format (args, returns, exceptions)
 - **Testing:** 100% coverage on production code, exclusions for configuration modules, fixtures in `conftest.py`, test behaviors and errors
@@ -229,6 +229,10 @@ git commit -m "chore: bump version to X.Y.Z"
 ```
 
 **Why:** CI uses `uv sync --locked` which will fail if lockfile is out of sync.
+
+### Python Version
+
+`.python-version` names the interpreter. uv reads it locally, and every CI `uv python install` step runs without a version argument so CI reads it too. Four pins can't read the file and must match it: `requires-python`, ruff `target-version` and mypy `python_version` in `pyproject.toml`, and both `FROM python:<version>-slim` stages in the `Dockerfile`. To move versions, update those pins first (`uv python pin` rejects a version outside `requires-python`), run `uv python pin X.Y`, then `uv lock` and commit everything together. `tests/unit/test_pinned_versions.py` fails if any pin drifts, or if a workflow sets its own Python version.
 
 ### Custom GCP Services or IAM Roles
 

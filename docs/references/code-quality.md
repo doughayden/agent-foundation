@@ -158,7 +158,7 @@ uv run ruff check --diff
 From `pyproject.toml`:
 ```toml
 [tool.mypy]
-python_version = "3.13"
+python_version = "X.Y"  # follows .python-version
 mypy_path = "src"
 packages = ["{your_agent}"]
 

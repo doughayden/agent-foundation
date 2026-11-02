@@ -9,6 +9,7 @@ Add a case whenever a new pin gains a second home.
 
 import json
 import re
+import tomllib
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -19,9 +20,20 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 PRE_COMMIT_CONFIG = REPO_ROOT / ".pre-commit-config.yaml"
 CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 EVAL_DATA_DIR = REPO_ROOT / "tests" / "eval" / "data"
+PYTHON_VERSION_FILE = REPO_ROOT / ".python-version"
+PYPROJECT = REPO_ROOT / "pyproject.toml"
+DOCKERFILE = REPO_ROOT / "Dockerfile"
+WORKFLOWS_DIR = REPO_ROOT / ".github" / "workflows"
 
 ACTIONLINT_REPO = "https://github.com/rhysd/actionlint"
 ACTIONLINT_IMAGE = re.compile(r"docker://rhysd/actionlint:(?P<version>[\w.\-]+)")
+DOCKER_FROM = re.compile(r"^FROM\s.*$", re.MULTILINE)
+DOCKER_PYTHON_BASE = re.compile(r"\bpython:(?P<version>\d+\.\d+)(?:\.\d+)?(?![\d.])")
+PYTHON_VERSION_FORMAT = re.compile(r"\d+\.\d+")
+# Each of these would override .python-version in a workflow
+WORKFLOW_PYTHON_OVERRIDES = re.compile(
+    r"uv python install[ \t]+[^\s#]|\bpython-version:|\bUV_PYTHON\b|--python\b"
+)
 
 # The eval pipeline's scoring model, accepted in one place. Change it here and in
 # every eval config together; the agent's ROOT_AGENT_MODEL is a separate choice.
@@ -80,4 +92,62 @@ class TestJudgeModelPin:
         assert not drifted, (
             f"judge model drift from JUDGE_MODEL = {JUDGE_MODEL!r}: {drifted}. "
             "Bump JUDGE_MODEL and every eval config entry together"
+        )
+
+
+class TestPythonVersionParity:
+    """Every interpreter pin follows ``.python-version``."""
+
+    def _pinned(self) -> tuple[int, int]:
+        pinned = PYTHON_VERSION_FILE.read_text().strip()
+        assert PYTHON_VERSION_FORMAT.fullmatch(pinned), (
+            f".python-version holds {pinned!r}: pin major.minor only (X.Y)"
+        )
+        major, minor = pinned.split(".")
+        return int(major), int(minor)
+
+    def test_pyproject_pins_follow_python_version_file(self):
+        major, minor = self._pinned()
+        pyproject = tomllib.loads(PYPROJECT.read_text())
+
+        assert pyproject["project"]["requires-python"] == (
+            f">={major}.{minor},<{major}.{minor + 1}"
+        ), "requires-python drifted from .python-version"
+        assert pyproject["tool"]["ruff"]["target-version"] == f"py{major}{minor}", (
+            "ruff target-version drifted from .python-version"
+        )
+        assert pyproject["tool"]["mypy"]["python_version"] == f"{major}.{minor}", (
+            "mypy python_version drifted from .python-version"
+        )
+
+    def test_dockerfile_base_images_follow_python_version_file(self):
+        major, minor = self._pinned()
+        stages = DOCKER_FROM.findall(DOCKERFILE.read_text())
+        assert stages, "no FROM stage in Dockerfile"
+
+        drifted = [
+            stage
+            for stage in stages
+            if not (match := DOCKER_PYTHON_BASE.search(stage))
+            or match.group("version") != f"{major}.{minor}"
+        ]
+        assert not drifted, (
+            f"Dockerfile stages {drifted} do not use python:{major}.{minor} "
+            "from .python-version"
+        )
+
+    def test_workflows_take_python_from_python_version_file(self):
+        workflows = sorted(WORKFLOWS_DIR.glob("*.y*ml"))
+        assert workflows, f"no workflows found under {WORKFLOWS_DIR}"
+
+        overrides = [
+            f"{workflow.name}:{lineno}"
+            for workflow in workflows
+            for lineno, line in enumerate(workflow.read_text().splitlines(), 1)
+            if not line.lstrip().startswith("#")
+            and WORKFLOW_PYTHON_OVERRIDES.search(line.split(" #", 1)[0])
+        ]
+        assert not overrides, (
+            f"workflow Python version override at {overrides}: drop it so CI "
+            "reads .python-version"
         )

@@ -121,7 +121,7 @@ uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --
 
 **Workflow lint (Template Internals):** TWO layers running the same tool, deliberately. Hook (`.pre-commit-config.yaml`, `rev: v1.7.12`) for pre-push feedback; `actionlint` job in `ci.yml` for the merge gate, since a hook only fires after `pre-commit install` and `--no-verify` skips it. #215 originally specified CI-only to avoid a fork install cost — that premise is wrong (pre-commit's `get_default_version()` returns `system` only when `go` is on PATH, else `install_environment` DOWNLOADS a toolchain, so there is no manual prereq), and the two-layer shape was chosen over it. **Version is pinned in TWO places — bump the hook's `rev` and the `docker://rhysd/actionlint:<ver>` tag in `ci.yml` together.** `tests/unit/test_pinned_versions.py` asserts the parity (that is why `.pre-commit-config.yaml` is in `ci.yml`'s `code` paths-filter — without it a rev-only bump would never run the check). **Add a case there whenever a pin gains a second home**; uv is the known unenforced instance (#257). CI runs upstream's published image (there is NO first-party actionlint action; `rhysd/actionlint` ships no `action.yml`). `reviewdog/action-actionlint` is the alternative if inline PR annotations are ever wanted — it needs `fail_level: error` (defaults to `none`, so it would NOT gate), `filter_mode: nofilter`, a token, and wider `permissions` than this workflow grants. **Both run `-shellcheck=`**, disabling the shellcheck pass over inline `run:` blocks: locally that pass fires only when shellcheck happens to be on PATH (machine-dependent), and in CI it would be deterministic but reds on 59 pre-existing SC2086/SC2129 findings (#255). Keeping the flag on both is what makes a clean commit imply a clean gate; remove it from both with those findings. A related but separate surface: `zizmor` (security audits — template injection, unpinned actions, excessive permissions) is pip-installable and would pin in `uv.lock`, but reports ~200 findings repo-wide; tracked separately, do NOT bolt it onto the actionlint job.
 
-- **mypy:** Strict, complete type annotations, modern Python 3.13 (`|` unions, lowercase generics), no untyped definitions. Enforces: `no_implicit_optional`, `strict_equality`, `warn_return_any`, `warn_unreachable`.
+- **mypy:** Strict, complete type annotations, modern Python (`|` unions, lowercase generics), no untyped definitions. Enforces: `no_implicit_optional`, `strict_equality`, `warn_return_any`, `warn_unreachable`.
 - **ruff:** 88 char line length, enforces bandit/simplify/use-pathlib. **Always use `Path` objects** (never `os.path`).
 - **pytest:** 100% coverage on production code. Coverage exclusions in `pyproject.toml`. Fixtures in `conftest.py`, async via pytest-asyncio.
 
@@ -192,6 +192,8 @@ uv lock --upgrade               # Update all
 **Key runtime:** `asyncpg` (async PostgreSQL for Cloud SQL sessions), ADK (core), google-cloud libraries (auth, observability). Full set in `pyproject.toml`.
 
 **When updating versions:** Both `pyproject.toml` and `uv.lock` must be committed together for CI `--locked` to pass.
+
+**Python version:** `.python-version` (major.minor) is the source; every other pin follows it, asserted by `TestPythonVersionParity` in `tests/unit/test_pinned_versions.py`. **NEVER set a Python version in a workflow** (`uv python install X`, setup-uv `python-version:`, `UV_PYTHON`, `--python`) — each overrides the file, and the test fails on them. One supported interpreter, so no CI matrix. Bump procedure: `docs/development.md` Python Version.
 
 ## CI/CD & Deployment
 
@@ -267,6 +269,7 @@ uv lock --upgrade               # Update all
 - Inline cross-links only when critically contextual (hybrid approach)
 - No "See Also" sections - rely on index navigation instead
 - Single source of truth: env vars only in `docs/environment-variables.md`
+- Never name the Python version in docs (prose or examples); point to `.python-version`, use `X.Y` in snippets. Literals drift on every bump
 - Update `docs/README.md` when adding docs
 - Keep guides digestible (<300 lines). Move details to `references/`.
 
