@@ -230,7 +230,7 @@ App and agent wiring (callbacks registered, tools attached, configuration flow) 
 
 ## Mypy Scope
 
-mypy is scoped to the source package. Test modules are not type-checked; conftest typing is a team convention enforced by reviewers. Full rationale and the expected-error categories that surface if you run `uv run mypy src tests` are in [Code Quality → Test Suite Typing Strategy](code-quality.md#test-suite-typing-strategy).
+mypy checks `tests/` alongside `src/` in strict mode. A `tests.*` override relaxes only fixture-parameter annotations and duck-typed mock arguments, and a `tests.*.conftest` override re-enables the annotation checks so fixture definitions stay fully typed. The override and the test patterns it shapes are in [Code Quality → Test Suite Typing Strategy](code-quality.md#test-suite-typing-strategy).
 
 ## Running Tests
 

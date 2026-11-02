@@ -476,7 +476,7 @@ def create_mock_usage_metadata() -> Callable[..., MockUsageMetadata]:
 @pytest.fixture
 def mock_span(mocker: MockerFixture) -> MockType:
     """Mock span returned by ``trace.get_current_span()`` in callbacks."""
-    span = mocker.Mock()
+    span: MockType = mocker.Mock()
     mocker.patch(f"{PACKAGE_NAME}.callbacks.trace.get_current_span", return_value=span)
     return span
 
@@ -778,7 +778,8 @@ def create_mock_evaluate_eval_set(
 @pytest.fixture
 def mock_set_exit_status(mocker: MockerFixture) -> MockType:
     """Stand-in for the eval lane's ``set_exit_status`` fixture."""
-    return mocker.Mock(spec=lambda code: None)
+    set_exit_status: MockType = mocker.Mock(spec=lambda code: None)
+    return set_exit_status
 
 
 @pytest.fixture
@@ -793,7 +794,7 @@ def create_mock_session(mocker: MockerFixture) -> Callable[..., MockType]:
     def _factory(
         exitstatus: int = 1, stash_entries: dict[Any, Any] | None = None
     ) -> MockType:
-        session = mocker.Mock(spec=pytest.Session, exitstatus=exitstatus)
+        session: MockType = mocker.Mock(spec=pytest.Session, exitstatus=exitstatus)
         session.config.stash = pytest.Stash()
         for key, value in (stash_entries or {}).items():
             session.config.stash[key] = value

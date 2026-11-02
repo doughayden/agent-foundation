@@ -40,7 +40,9 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
-from google.adk.models import BaseLlm, LlmRequest, LlmResponse
+from google.adk.models import BaseLlm
+from google.adk.models.llm_request import LlmRequest
+from google.adk.models.llm_response import LlmResponse
 from google.adk.sessions import DatabaseSessionService
 from google.genai import types
 from httpx import ASGITransport, AsyncClient
@@ -48,7 +50,7 @@ from pytest_mock import MockerFixture
 from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.types import DateTime
-from testcontainers.postgres import PostgresContainer
+from testcontainers.community.postgres import PostgresContainer
 
 # Postgres major tracks the deployed Cloud SQL instance (POSTGRES_18 in
 # terraform/main/database.tf) so the lane exercises the dialect production runs.
@@ -143,7 +145,9 @@ def database_uri() -> Iterator[str]:
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
-async def integration_app(database_uri: str) -> AsyncIterator[FastAPI]:
+async def integration_app(
+    database_uri: str, session_mocker: MockerFixture
+) -> AsyncIterator[FastAPI]:
     """Build the production FastAPI app against real Postgres with a stubbed model.
 
     Reuses production wiring (``get_fast_api_app`` with a real ``postgresql+asyncpg://``
@@ -173,9 +177,10 @@ async def integration_app(database_uri: str) -> AsyncIterator[FastAPI]:
     session_service = DatabaseSessionService(db_url=database_uri)
     original_model = agent_mod.root_agent.model
     agent_mod.root_agent.model = MockLlm()
-    original_factory = fast_api_mod.create_session_service_from_options
-    fast_api_mod.create_session_service_from_options = (
-        lambda *args, **kwargs: session_service
+    session_mocker.patch.object(
+        fast_api_mod,
+        "create_session_service_from_options",
+        return_value=session_service,
     )
     try:
         # The factory patch above supplies the session service; no URI is passed
@@ -186,7 +191,6 @@ async def integration_app(database_uri: str) -> AsyncIterator[FastAPI]:
         )
         yield app
     finally:
-        fast_api_mod.create_session_service_from_options = original_factory
         agent_mod.root_agent.model = original_model
         await session_service.db_engine.dispose()
 

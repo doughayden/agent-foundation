@@ -78,7 +78,8 @@ from google.adk.evaluation.eval_metrics import EvalMetricResult, EvalStatus
 from google.adk.evaluation.eval_result import EvalCaseResult, EvalSetResult
 from google.adk.evaluation.eval_set import EvalSet
 from google.adk.evaluation.eval_set_results_manager import EvalSetResultsManager
-from google.adk.models import LLMRegistry, LlmRequest
+from google.adk.models import LLMRegistry
+from google.adk.models.llm_request import LlmRequest
 from google.genai import types
 
 logger = logging.getLogger(__name__)
