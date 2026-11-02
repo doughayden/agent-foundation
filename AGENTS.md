@@ -111,7 +111,7 @@ Source package lives under `src/` (single package — file references below use 
 
 **CRITICAL:** Any new env var introduced to the codebase MUST be documented in `docs/environment-variables.md`. No exceptions. Include purpose, default, where to set, and required/optional. `ServerEnv` in `config.py` is the typed source of truth; `docs/environment-variables.md` is the canonical reference.
 
-**Settings shape:** `ServerEnv(BaseSettings)`, field name = env var name uppercased (no alias; `validation_alias` only when the names differ). **Precedence: environment wins over `.env`** everywhere (`ServerEnv`'s `env_file`, ADK's agent loader, the eval lane's `load_dotenv()`); stated in `docs/environment-variables.md` Precedence. `env_file` never writes `os.environ`, so code outside `ServerEnv` takes settings as arguments, never `os.getenv`. Unit tests build `ServerEnv()` through the `isolated_environ` fixture (clears `os.environ`, disables `env_file`); `.env` tests pass `_env_file=tmp_path / ".env"`.
+**Settings shape:** `ServerEnv(BaseSettings)`, field name = env var name lowercased (no aliases). **Precedence: environment wins over `.env`** everywhere (`ServerEnv`'s `env_file`, ADK's agent loader, the eval lane's `load_dotenv()`); stated in `docs/environment-variables.md` Precedence. `env_file` never writes `os.environ`, so code outside `ServerEnv` takes settings as arguments, never `os.getenv`. Unit tests build `ServerEnv()` through the `isolated_environ` fixture (clears `os.environ`, disables `env_file`); `.env` tests pass `_env_file=tmp_path / ".env"`.
 
 ## Code Quality
 

@@ -199,7 +199,7 @@ terraform -chdir=terraform/main apply
 
 **Check precedence:**
 1. Environment variables (highest priority)
-2. `.env` file (loaded via python-dotenv)
+2. `.env` file (read by `ServerEnv` and ADK's agent loader)
 3. Default values in code (lowest priority)
 
 **Debug:**

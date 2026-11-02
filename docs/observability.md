@@ -10,7 +10,7 @@ This project includes production-ready OpenTelemetry observability that provides
 
 ## Key Features
 
-- **Consistent Setup**: Single `configure_telemetry()` function used across all environments (local and deployed)
+- **Consistent Setup**: The same two-phase setup in every environment, local and deployed: `configure_otel_resource()` before `get_fast_api_app()`, then `configure_telemetry()`
 - **Instance-Level Tracking**: Unique `SERVICE_INSTANCE_ID` per process (PID + UUID) for collision-free identification
 - **Environment Grouping**: `SERVICE_NAMESPACE` automatically set to environment name in deployed environments (`dev`, `stage`, `prod`)
 - **Version Tracking**: `SERVICE_VERSION` set to Cloud Run revision ID for deployment correlation

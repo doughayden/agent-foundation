@@ -38,7 +38,7 @@ class TestServerEnv:
         assert any(error["loc"] == ("google_cloud_project",) for error in errors)
         assert any(error["loc"] == ("agent_name",) for error in errors)
         assert any(
-            error["loc"] == ("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT",)
+            error["loc"] == ("otel_instrumentation_genai_capture_message_content",)
             for error in errors
         )
 
@@ -98,7 +98,7 @@ class TestServerEnv:
         assert env.allow_origins == '["http://localhost:3000"]'
         assert env.host == "0.0.0.0"  # noqa: S104
         assert env.port == 9000
-        assert env.otel_capture_content is False
+        assert env.otel_instrumentation_genai_capture_message_content is False
 
     def test_allow_origins_list_property(
         self, valid_server_env: dict[str, str], isolated_environ
@@ -282,7 +282,7 @@ class TestDotEnv:
 
         assert env.google_cloud_project == "dotenv-project"
         assert env.agent_name == "dotenv-agent"
-        assert env.otel_capture_content is True
+        assert env.otel_instrumentation_genai_capture_message_content is True
 
     def test_environment_wins_over_env_file(
         self, valid_server_env: dict[str, str], isolated_environ, tmp_path: Path

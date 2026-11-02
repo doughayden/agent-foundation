@@ -32,7 +32,8 @@ class ServerEnv(BaseSettings):
         allow_origins: JSON array string of allowed CORS origins
         host: Server host (127.0.0.1 for local, 0.0.0.0 for containers)
         port: Server port
-        otel_capture_content: OpenTelemetry message content capture setting
+        otel_instrumentation_genai_capture_message_content: Capture LLM content in
+            OpenTelemetry spans
         telemetry_namespace: OpenTelemetry service.namespace (environment grouping)
         k_revision: Cloud Run revision, the OpenTelemetry service.version
     """
@@ -106,9 +107,8 @@ class ServerEnv(BaseSettings):
         description="Server port",
     )
 
-    otel_capture_content: bool = Field(
+    otel_instrumentation_genai_capture_message_content: bool = Field(
         ...,
-        validation_alias="OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT",
         description="OpenTelemetry message content capture setting",
     )
 
@@ -171,7 +171,10 @@ class ServerEnv(BaseSettings):
         print(f"HOST:                  {self.host}")
         print(f"PORT:                  {self.port}")
         print(f"ALLOW_ORIGINS:         {self.allow_origins}")
-        print(f"OTEL_CAPTURE_CONTENT:  {self.otel_capture_content}")
+        print(
+            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "
+            f"{self.otel_instrumentation_genai_capture_message_content}"
+        )
         print(f"TELEMETRY_NAMESPACE:   {self.telemetry_namespace}")
         print(f"K_REVISION:            {self.k_revision}\n\n")
 
