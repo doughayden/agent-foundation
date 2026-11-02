@@ -159,16 +159,13 @@ def pytest_configure() -> None:
     """Configure test environment before test collection."""
     from unittest.mock import Mock, patch
 
-    # Patch load_dotenv to prevent loading real .env
-    patch("dotenv.load_dotenv").start()
-
     # Patch google.auth.default to prevent ADC lookup
     mock_creds = Mock(token="fake", valid=True, expired=False)
     patch("google.auth.default", return_value=(mock_creds, "test-project")).start()
     patch("google.auth._default.default", return_value=(mock_creds, "test-project")).start()
 
     # Environment variables: No module in the test import graph reads env vars at
-    # module level. server.py does (initialize_environment(ServerEnv)), but it's
+    # module level. server.py does (initialize_environment()), but it's
     # never imported during collection (PEP 562 lazy loading, coverage-excluded).
     # If a future import chain triggers env var reads at collection time, set
     # defaults here using direct assignment:

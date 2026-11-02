@@ -293,7 +293,7 @@ your-agent-name/
     callbacks.py          # Agent lifecycle callbacks (logging, safety, tool augmentation)
     prompt.py             # Agent instructions (InstructionProvider pattern)
     config.py             # Typed env-var validation (Pydantic ServerEnv)
-    observability.py      # OpenTelemetry initialization
+    telemetry.py          # OpenTelemetry initialization
     server.py             # FastAPI composition root (services, DI, routing)
     tools.py              # Custom FunctionTools for agent use
   tests/                  # Test suite (unit/integration/smoke/eval lanes)

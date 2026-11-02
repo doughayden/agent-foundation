@@ -1,51 +1,53 @@
 """Comprehensive unit tests for config module."""
 
-import os
-from typing import Any
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
-from pytest_mock import MockerFixture
 
-from agent_foundation.config import (
-    ServerEnv,
-    initialize_environment,
-)
+from agent_foundation.config import ServerEnv, initialize_environment
 
 
 class TestServerEnv:
     """Tests for ServerEnv model."""
 
-    def test_valid_server_env_creation(self, valid_server_env: dict[str, str]) -> None:
+    def test_valid_server_env_creation(
+        self, valid_server_env: dict[str, str], isolated_environ
+    ) -> None:
         """Test creating ServerEnv with valid required fields."""
-        env = ServerEnv.model_validate(valid_server_env)
+        isolated_environ(valid_server_env)
+        env = ServerEnv()
 
         assert env.google_cloud_project == "test-project"
         assert env.agent_name == "test-agent"
 
-    def test_server_env_missing_required_field_raises_validation_error(self) -> None:
+    def test_server_env_missing_required_field_raises_validation_error(
+        self, isolated_environ
+    ) -> None:
         """Test that missing required fields raise ValidationError."""
         data: dict[str, str] = {
             # Missing GOOGLE_CLOUD_PROJECT, AGENT_NAME,
             # and OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT
         }
 
+        isolated_environ(data)
         with pytest.raises(ValidationError) as exc_info:
-            ServerEnv.model_validate(data)
+            ServerEnv()
 
         errors = exc_info.value.errors()
-        assert any(error["loc"] == ("GOOGLE_CLOUD_PROJECT",) for error in errors)
-        assert any(error["loc"] == ("AGENT_NAME",) for error in errors)
+        assert any(error["loc"] == ("google_cloud_project",) for error in errors)
+        assert any(error["loc"] == ("agent_name",) for error in errors)
         assert any(
             error["loc"] == ("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT",)
             for error in errors
         )
 
     def test_server_env_optional_fields_use_defaults(
-        self, valid_server_env: dict[str, str]
+        self, valid_server_env: dict[str, str], isolated_environ
     ) -> None:
         """Test that optional fields use default values when not provided."""
-        env = ServerEnv.model_validate(valid_server_env)
+        isolated_environ(valid_server_env)
+        env = ServerEnv()
 
         # Check defaults
         assert env.google_cloud_location == "us-central1"
@@ -60,7 +62,7 @@ class TestServerEnv:
         assert env.port == 8000
 
     def test_server_env_optional_fields_with_values(
-        self, valid_server_env: dict[str, str]
+        self, valid_server_env: dict[str, str], isolated_environ
     ) -> None:
         """Test setting optional fields with actual values."""
         data = {
@@ -79,7 +81,8 @@ class TestServerEnv:
             "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "false",
         }
 
-        env = ServerEnv.model_validate(data)
+        isolated_environ(data)
+        env = ServerEnv()
 
         assert env.google_cloud_location == "us-west1"
         assert env.agent_name == "custom-agent"
@@ -98,96 +101,108 @@ class TestServerEnv:
         assert env.otel_capture_content is False
 
     def test_allow_origins_list_property(
-        self, valid_server_env: dict[str, str]
+        self, valid_server_env: dict[str, str], isolated_environ
     ) -> None:
         """Test that allow_origins_list property parses JSON correctly."""
         data = {
             **valid_server_env,
             "ALLOW_ORIGINS": '["http://localhost:3000", "http://localhost:8080"]',
         }
-        env = ServerEnv.model_validate(data)
+        isolated_environ(data)
+        env = ServerEnv()
 
         origins = env.allow_origins_list
         assert origins == ["http://localhost:3000", "http://localhost:8080"]
 
     def test_allow_origins_list_invalid_json_raises_error(
-        self, valid_server_env: dict[str, str]
+        self, valid_server_env: dict[str, str], isolated_environ
     ) -> None:
         """Test that invalid JSON raises ValidationError at model creation."""
         data = {**valid_server_env, "ALLOW_ORIGINS": "not valid json"}
 
+        isolated_environ(data)
         with pytest.raises(ValidationError, match="ALLOW_ORIGINS must be valid JSON"):
-            ServerEnv.model_validate(data)
+            ServerEnv()
 
     def test_allow_origins_list_not_array_raises_error(
-        self, valid_server_env: dict[str, str]
+        self, valid_server_env: dict[str, str], isolated_environ
     ) -> None:
         """Test that non-array JSON raises ValidationError at model creation."""
         data = {**valid_server_env, "ALLOW_ORIGINS": '{"key": "value"}'}
 
+        isolated_environ(data)
         with pytest.raises(ValidationError, match="ALLOW_ORIGINS must be a JSON array"):
-            ServerEnv.model_validate(data)
+            ServerEnv()
 
     def test_allow_origins_list_non_string_array_raises_error(
-        self, valid_server_env: dict[str, str]
+        self, valid_server_env: dict[str, str], isolated_environ
     ) -> None:
         """Test that array with non-strings raises ValidationError at model creation."""
         data = {**valid_server_env, "ALLOW_ORIGINS": "[123, 456]"}
 
+        isolated_environ(data)
         with pytest.raises(
             ValidationError, match="ALLOW_ORIGINS must be an array of strings"
         ):
-            ServerEnv.model_validate(data)
+            ServerEnv()
 
     def test_allow_origins_list_empty_array_raises_error(
-        self, valid_server_env: dict[str, str]
+        self, valid_server_env: dict[str, str], isolated_environ
     ) -> None:
         """Test that empty array raises ValidationError at model creation."""
         data = {**valid_server_env, "ALLOW_ORIGINS": "[]"}
 
+        isolated_environ(data)
         with pytest.raises(
             ValidationError, match="ALLOW_ORIGINS must contain at least one origin"
         ):
-            ServerEnv.model_validate(data)
+            ServerEnv()
 
     def test_allow_origins_array_with_empty_strings_raises_error(
-        self, valid_server_env: dict[str, str]
+        self, valid_server_env: dict[str, str], isolated_environ
     ) -> None:
         """Test that array containing empty strings raises ValidationError."""
         data = {**valid_server_env, "ALLOW_ORIGINS": '["", "http://localhost"]'}
 
+        isolated_environ(data)
         with pytest.raises(
             ValidationError, match="ALLOW_ORIGINS must be an array of non-empty strings"
         ):
-            ServerEnv.model_validate(data)
+            ServerEnv()
 
     def test_allow_origins_array_with_mixed_types_raises_error(
-        self, valid_server_env: dict[str, str]
+        self, valid_server_env: dict[str, str], isolated_environ
     ) -> None:
         """Test that array with mixed types raises ValidationError."""
         data = {**valid_server_env, "ALLOW_ORIGINS": '["http://localhost", 123, null]'}
 
+        isolated_environ(data)
         with pytest.raises(
             ValidationError, match="ALLOW_ORIGINS must be an array of strings"
         ):
-            ServerEnv.model_validate(data)
+            ServerEnv()
 
     def test_allow_origins_nested_arrays_raises_error(
-        self, valid_server_env: dict[str, str]
+        self, valid_server_env: dict[str, str], isolated_environ
     ) -> None:
         """Test that nested arrays raise ValidationError."""
         data = {**valid_server_env, "ALLOW_ORIGINS": '[["http://localhost"]]'}
 
+        isolated_environ(data)
         with pytest.raises(
             ValidationError, match="ALLOW_ORIGINS must be an array of strings"
         ):
-            ServerEnv.model_validate(data)
+            ServerEnv()
 
     def test_server_env_print_config(
-        self, valid_server_env: dict[str, str], capsys: pytest.CaptureFixture[str]
+        self,
+        valid_server_env: dict[str, str],
+        isolated_environ,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test that print_config outputs expected information."""
-        env = ServerEnv.model_validate(valid_server_env)
+        isolated_environ(valid_server_env)
+        env = ServerEnv()
         env.print_config()
 
         captured = capsys.readouterr()
@@ -201,12 +216,13 @@ class TestServerEnv:
         assert "LOG_LEVEL" in output
 
     def test_server_env_ignores_extra_fields(
-        self, valid_server_env: dict[str, str]
+        self, valid_server_env: dict[str, str], isolated_environ
     ) -> None:
         """Test that extra environment variables are ignored."""
         data = {**valid_server_env, "EXTRA_VAR": "extra-value", "PATH": "/usr/bin"}
 
-        env = ServerEnv.model_validate(data)
+        isolated_environ(data)
+        env = ServerEnv()
         assert env.google_cloud_project == "test-project"
         # Extra fields should not be included
         assert not hasattr(env, "EXTRA_VAR")
@@ -214,111 +230,92 @@ class TestServerEnv:
 
 
 class TestInitializeEnvironment:
-    """Tests for initialize_environment factory function."""
+    """Tests for the initialize_environment startup wrapper."""
 
     def test_initialize_environment_success(
-        self,
-        valid_server_env: dict[str, str],
-        mock_load_dotenv,
-        mocker: MockerFixture,
+        self, valid_server_env: dict[str, str], isolated_environ, mock_print_config
     ) -> None:
-        """Test successful environment initialization."""
-        mocker.patch.dict(os.environ, valid_server_env)
-        env = initialize_environment(ServerEnv, print_config=False)
+        """Test that a valid environment is returned and printed."""
+        isolated_environ(valid_server_env)
+        mock_print = mock_print_config(ServerEnv)
 
-        mock_load_dotenv.assert_called_once_with(override=True)
+        env = initialize_environment()
+
         assert env.google_cloud_project == "test-project"
         assert env.agent_name == "test-agent"
-
-    def test_initialize_environment_validation_failure(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        mock_load_dotenv,
-        mock_sys_exit,
-    ) -> None:
-        """Test that validation failure causes sys.exit."""
-        # Clear all environment to test validation failure
-        monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
-        monkeypatch.delenv("AGENT_NAME", raising=False)
-        monkeypatch.delenv(
-            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", raising=False
-        )
-        # Set incomplete environment (missing required field)
-        # Don't set GOOGLE_CLOUD_PROJECT
-        monkeypatch.setenv("AGENT_NAME", "test-agent")
-
-        with pytest.raises(SystemExit):
-            initialize_environment(ServerEnv, print_config=False)
-
-        mock_sys_exit.assert_called_once_with(1)
-
-    def test_initialize_environment_prints_config_by_default(
-        self,
-        valid_server_env: dict[str, str],
-        mock_load_dotenv,
-        mock_print_config: Any,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test that print_config is called by default."""
-        mocker.patch.dict(os.environ, valid_server_env)
-        mock_print = mock_print_config(ServerEnv)
-        initialize_environment(ServerEnv)
         mock_print.assert_called_once()
 
-    def test_initialize_environment_skip_print_config(
+    def test_initialize_environment_validation_failure_exits(
         self,
-        valid_server_env: dict[str, str],
-        mock_load_dotenv,
-        mock_print_config: Any,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test that print_config can be skipped."""
-        mocker.patch.dict(os.environ, valid_server_env)
-        mock_print = mock_print_config(ServerEnv)
-        initialize_environment(ServerEnv, print_config=False)
-        mock_print.assert_not_called()
-
-    def test_initialize_environment_override_dotenv_false(
-        self,
-        valid_server_env: dict[str, str],
-        mock_load_dotenv,
-        mocker: MockerFixture,
-    ) -> None:
-        """Test that override_dotenv can be set to False."""
-        mocker.patch.dict(os.environ, valid_server_env)
-        initialize_environment(ServerEnv, override_dotenv=False, print_config=False)
-
-        mock_load_dotenv.assert_called_once_with(override=False)
-
-    def test_initialize_environment_prints_validation_errors(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-        mock_load_dotenv,
+        isolated_environ,
         mock_sys_exit,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test that validation errors are printed before exit."""
-        # Clear all environment to test validation failure
-        monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
-        monkeypatch.delenv("AGENT_NAME", raising=False)
-        monkeypatch.delenv(
-            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", raising=False
-        )
-        # Set incomplete environment
-        monkeypatch.setenv("AGENT_NAME", "test-agent")
-        # Missing GOOGLE_CLOUD_PROJECT
+        """Test that invalid configuration prints the errors and exits 1."""
+        isolated_environ({"AGENT_NAME": "test-agent"})
 
         with pytest.raises(SystemExit):
-            initialize_environment(ServerEnv, print_config=False)
+            initialize_environment()
 
-        captured = capsys.readouterr()
-        assert "Environment validation failed" in captured.out
+        mock_sys_exit.assert_called_once_with(1)
+        output = capsys.readouterr().out
+        assert "Environment validation failed" in output
+        assert "google_cloud_project" in output
+
+
+class TestDotEnv:
+    """Tests for .env loading and its precedence below the environment."""
+
+    def test_env_file_supplies_values_absent_from_environment(
+        self, isolated_environ, tmp_path: Path
+    ) -> None:
+        """Test that .env fills in variables the environment does not set."""
+        isolated_environ({})
+        env_file = tmp_path / ".env"
+        env_file.write_text(
+            "GOOGLE_CLOUD_PROJECT=dotenv-project\n"
+            "AGENT_NAME=dotenv-agent\n"
+            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true\n"
+        )
+
+        env = ServerEnv(_env_file=env_file)
+
+        assert env.google_cloud_project == "dotenv-project"
+        assert env.agent_name == "dotenv-agent"
+        assert env.otel_capture_content is True
+
+    def test_environment_wins_over_env_file(
+        self, valid_server_env: dict[str, str], isolated_environ, tmp_path: Path
+    ) -> None:
+        """Test that a variable set in the environment beats the same key in .env."""
+        isolated_environ({**valid_server_env, "LOG_LEVEL": "DEBUG"})
+        env_file = tmp_path / ".env"
+        env_file.write_text("LOG_LEVEL=WARNING\nGOOGLE_CLOUD_PROJECT=dotenv-project\n")
+
+        env = ServerEnv(_env_file=env_file)
+
+        assert env.log_level == "DEBUG"
+        assert env.google_cloud_project == "test-project"
+
+    def test_env_file_keys_the_model_does_not_define_are_ignored(
+        self, valid_server_env: dict[str, str], isolated_environ, tmp_path: Path
+    ) -> None:
+        """Test that .env keys owned by other readers do not fail validation."""
+        isolated_environ(valid_server_env)
+        env_file = tmp_path / ".env"
+        env_file.write_text("GOOGLE_GENAI_USE_ENTERPRISE=TRUE\nBASTION_ZONE=z\n")
+
+        env = ServerEnv(_env_file=env_file)
+
+        assert env.google_cloud_project == "test-project"
 
 
 class TestEdgeCases:
     """Tests for edge cases and field parsing."""
 
-    def test_boolean_field_parsing(self, valid_server_env: dict[str, str]) -> None:
+    def test_boolean_field_parsing(
+        self, valid_server_env: dict[str, str], isolated_environ
+    ) -> None:
         """Test that boolean fields parse correctly from strings.
 
         Pydantic accepts multiple truthy/falsy string representations for bool fields.
@@ -327,29 +324,33 @@ class TestEdgeCases:
         # Test truthy values
         for truthy in ["true", "True", "TRUE"]:
             data = {**valid_server_env, "SERVE_WEB_INTERFACE": truthy}
-            env = ServerEnv.model_validate(data)
+            isolated_environ(data)
+            env = ServerEnv()
             assert env.serve_web_interface is True, f"Failed for: {truthy}"
 
         # Test more truthy values
         for truthy in ["1", "yes", "Yes", "on", "On", "t", "y", "Y"]:
             data = {**valid_server_env, "RELOAD_AGENTS": truthy}
-            env = ServerEnv.model_validate(data)
+            isolated_environ(data)
+            env = ServerEnv()
             assert env.reload_agents is True, f"Failed for: {truthy}"
 
         # Test falsy values
         for falsy in ["false", "False", "FALSE"]:
             data = {**valid_server_env, "SERVE_WEB_INTERFACE": falsy}
-            env = ServerEnv.model_validate(data)
+            isolated_environ(data)
+            env = ServerEnv()
             assert env.serve_web_interface is False, f"Failed for: {falsy}"
 
         # Test more falsy values
         for falsy in ["0", "no", "No", "off", "Off", "f", "n", "N"]:
             data = {**valid_server_env, "RELOAD_AGENTS": falsy}
-            env = ServerEnv.model_validate(data)
+            isolated_environ(data)
+            env = ServerEnv()
             assert env.reload_agents is False, f"Failed for: {falsy}"
 
     def test_boolean_field_invalid_values_raise_errors(
-        self, valid_server_env: dict[str, str]
+        self, valid_server_env: dict[str, str], isolated_environ
     ) -> None:
         """Test that invalid boolean values raise ValidationError.
 
@@ -371,8 +372,9 @@ class TestEdgeCases:
 
         for invalid in invalid_values:
             data = {**valid_server_env, "SERVE_WEB_INTERFACE": invalid}
+            isolated_environ(data)
             with pytest.raises(ValidationError) as exc_info:
-                ServerEnv.model_validate(data)
+                ServerEnv()
 
             # Verify the error is about bool parsing
             errors = exc_info.value.errors()
@@ -380,10 +382,13 @@ class TestEdgeCases:
                 f"Expected bool_parsing error for: {invalid}"
             )
 
-    def test_port_field_parsing(self, valid_server_env: dict[str, str]) -> None:
+    def test_port_field_parsing(
+        self, valid_server_env: dict[str, str], isolated_environ
+    ) -> None:
         """Test that port field parses integers from strings."""
         data = {**valid_server_env, "PORT": "9000"}
 
-        env = ServerEnv.model_validate(data)
+        isolated_environ(data)
+        env = ServerEnv()
         assert env.port == 9000
         assert isinstance(env.port, int)

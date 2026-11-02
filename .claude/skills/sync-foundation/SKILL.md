@@ -186,8 +186,8 @@ For every file diff shown, use this consistent interaction pattern:
 Review each module individually. For each module, review the code diff, adapt the code, then adapt its tests in the same step. Open IDE diff and **STOP** for user decision.
 
 **Review order** (most impactful first):
-1. `config.py` + `test_config.py` — Pydantic config patterns
-2. `observability.py` — OpenTelemetry patterns (no test module: coverage-excluded in pyproject.toml)
+1. `config.py` + `test_config.py` — pydantic-settings config patterns
+2. `telemetry.py` (formerly `observability.py`) — OpenTelemetry patterns (no test module: coverage-excluded in pyproject.toml)
 3. `server.py` — FastAPI/ADK server setup (no test module: coverage-excluded in pyproject.toml)
 4. `agent.py` — Agent configuration
 5. `callbacks.py` + `test_logging_callbacks.py` + `test_callbacks.py` — Lifecycle callbacks

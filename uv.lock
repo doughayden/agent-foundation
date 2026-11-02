@@ -29,7 +29,7 @@ dependencies = [
     { name = "opentelemetry-instrumentation-google-genai" },
     { name = "opentelemetry-instrumentation-logging" },
     { name = "pydantic" },
-    { name = "python-dotenv" },
+    { name = "pydantic-settings" },
     { name = "sqlalchemy", extra = ["postgresql-asyncpg"] },
 ]
 
@@ -44,6 +44,7 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
+    { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "ruff" },
     { name = "testcontainers" },
@@ -66,7 +67,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-google-genai", specifier = ">=0.7b1,<1" },
     { name = "opentelemetry-instrumentation-logging", specifier = ">=0.63b1,<0.64" },
     { name = "pydantic", specifier = ">=2.11.0,<3.0.0" },
-    { name = "python-dotenv", specifier = ">=1.0.0,<2.0.0" },
+    { name = "pydantic-settings", specifier = ">=2.15.0,<3.0.0" },
     { name = "sqlalchemy", extras = ["postgresql-asyncpg"], specifier = ">=2.0.45,<3.0.0" },
 ]
 
@@ -81,6 +82,7 @@ dev = [
     { name = "pytest-asyncio", specifier = ">=1.2.0,<2.0.0" },
     { name = "pytest-cov", specifier = ">=7.0.0,<8.0.0" },
     { name = "pytest-mock", specifier = ">=3.15.1,<4.0.0" },
+    { name = "python-dotenv", specifier = ">=1.2.1,<2.0.0" },
     { name = "pyyaml", specifier = ">=6.0.3,<7.0.0" },
     { name = "ruff", specifier = ">=0.12.7,<1.0.0" },
     { name = "testcontainers", extras = ["postgres"], specifier = ">=4.15.0,<5.0.0" },

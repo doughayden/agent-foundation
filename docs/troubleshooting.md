@@ -210,8 +210,8 @@ cat .env
 # Check environment
 env | grep GOOGLE_
 
-# Verify loaded in Python
-uv run python -c "import os; from dotenv import load_dotenv; load_dotenv(); print(os.getenv('GOOGLE_CLOUD_PROJECT'))"
+# Verify what the server resolves (the environment wins over .env)
+uv run python -c "from agent_foundation.config import ServerEnv; print(ServerEnv().google_cloud_project)"
 ```
 
 ### Version Conflicts

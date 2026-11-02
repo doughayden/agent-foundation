@@ -4,6 +4,9 @@ Complete configuration reference. Single source of truth.
 
 See `.env.example` in the repository root for template configuration with inline comments.
 
+> [!NOTE]
+> A variable set in the environment (your shell, a command prefix like `LOG_LEVEL=DEBUG uv run server`, or the platform) always wins over the same key in `.env`. `.env` only fills in variables that are unset. See [Precedence](#precedence).
+
 ## Quick Reference
 
 | Variable | Required | Default | Purpose |
@@ -198,6 +201,7 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
 These variables are automatically set by Cloud Run. Do not set manually.
 
 **K_REVISION**
+- **Default:** `local` when unset (local development)
 - **Purpose:** Cloud Run revision identifier
 - **Where:** Auto-set by Cloud Run (used for `service.version` in traces)
 - **Example:** `your-agent-dev-00042-abc`
@@ -301,7 +305,7 @@ Set in GitHub Actions > Secrets and variables > Actions. Both select the model a
 ### Where Variables Are Set
 
 **Local Development:**
-- `.env` file (loaded via `python-dotenv`)
+- `.env` file in the directory where you run the server
 - Command line (e.g., `LOG_LEVEL=DEBUG uv run server`)
 - `docker-compose.yml` (Docker Compose)
 
@@ -312,6 +316,21 @@ Set in GitHub Actions > Secrets and variables > Actions. Both select the model a
 **CI/CD:**
 - GitHub Environment Variables (auto-created by bootstrap)
 - Workflow inputs and outputs
+
+### Precedence
+
+The environment wins over `.env`, everywhere `.env` is read:
+
+1. `ServerEnv` (`config.py`) reads the process environment first, then `.env` in the working directory for anything still unset. `.env` keys that `ServerEnv` does not define are ignored.
+2. ADK's agent loader loads `.env` into `os.environ` before it imports the agent module, keeping any variable already set. This covers variables `ServerEnv` does not own, like `GOOGLE_GENAI_USE_ENTERPRISE`, and anything `agent.py` reads at import. ADK finds `.env` by searching upward from the agent package.
+3. The eval lane loads `.env` with `python-dotenv` without overriding set variables.
+
+`.env` reaches `os.environ` only when ADK loads the agent, so anything that reads `os.environ` earlier in startup, like Application Default Credentials discovery, sees the shell and not `.env`. Set `GOOGLE_APPLICATION_CREDENTIALS` in your shell, not in `.env`. With `ADK_DISABLE_LOAD_DOTENV=true`, ADK skips step 2 while `ServerEnv` still reads `.env`.
+
+Cloud Run never reads `.env` (`.dockerignore` keeps it out of the image), and Docker Compose passes it to the container through `env_file:`, so the platform's values always apply there.
+
+> [!NOTE]
+> A variable exported in your shell profile, like a global `GOOGLE_CLOUD_PROJECT`, overrides this project's `.env`. Unset it or run the server from a shell without it when the two differ.
 
 ### Security
 

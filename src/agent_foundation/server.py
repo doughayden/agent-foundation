@@ -15,17 +15,19 @@ import uvicorn
 from fastapi import FastAPI
 from google.adk.cli.fast_api import get_fast_api_app
 
-from .config import ServerEnv, initialize_environment
-from .observability import configure_otel_resource, setup_opentelemetry
+from .config import initialize_environment
+from .telemetry import configure_otel_resource, configure_telemetry
 
 # Load and validate environment configuration
-env = initialize_environment(ServerEnv)
+env = initialize_environment()
 
 # Configure OpenTelemetry resource attributes environment variable
 # This must happen before ADK creates its TracerProvider
 configure_otel_resource(
     agent_name=env.agent_name,
     project_id=env.google_cloud_project,
+    telemetry_namespace=env.telemetry_namespace,
+    service_version=env.k_revision,
 )
 
 # Use .resolve() to handle symlinks and ensure absolute path across environments
@@ -88,12 +90,16 @@ def main() -> None:
         HOST: Server host (default: 127.0.0.1, set to 0.0.0.0 for containers)
         PORT: Server port (default: 8000)
         OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: OpenTelemetry capture
+        TELEMETRY_NAMESPACE: OpenTelemetry service.namespace (default: local)
+        K_REVISION: Cloud Run revision, set by Cloud Run (default: local)
     """
     # Add our Cloud exporters and logging to ADK's TracerProvider
-    setup_opentelemetry(
+    configure_telemetry(
         project_id=env.google_cloud_project,
         agent_name=env.agent_name,
         log_level=env.log_level,
+        telemetry_namespace=env.telemetry_namespace,
+        service_version=env.k_revision,
     )
 
     uvicorn.run(
