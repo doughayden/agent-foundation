@@ -15,7 +15,6 @@ jobs:
     timeout-minutes: 5  # Typical run: <1 min (path filtering). 5 min is generous buffer
     outputs:
       code: ${{ steps.filter.outputs.code }}
-      workflows: ${{ steps.filter.outputs.workflows }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v4
@@ -30,22 +29,18 @@ jobs:
               - 'pyproject.toml'
               - 'uv.lock'
               - '.github/workflows/ci.yml'
-              # Holds a pin that tests/unit/test_pinned_versions.py asserts against
-              - '.pre-commit-config.yaml'
-            workflows:
-              - '.github/workflows/**'
 
+  # Unfiltered: the hooks check every file type, not only the code paths
   code-quality:
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
     name: Code Quality and Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 10  # Typical run: 2-3 min (format, lint, type check, tests). 10 min prevents hanging
+    timeout-minutes: 10  # Typical run: 2-3 min (hooks + tests). 10 min prevents hanging
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 1
+          persist-credentials: false  # Keep the repo token out of .git/config; pre-commit runs third-party hook code
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -56,24 +51,34 @@ jobs:
       - name: Set up Python
         run: uv python install
 
+      - name: Read Terraform version
+        id: terraform-version
+        run: echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
+
+      # The terraform-fmt hook needs the binary on PATH
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ steps.terraform-version.outputs.version }}
+          terraform_wrapper: false
+
       - name: Install dependencies
+        id: install
         run: uv sync --all-extras --locked
 
-      - name: Run Ruff formatting check
-        run: uv run ruff format --check
-        if: success() || failure()
+      - name: Cache pre-commit hook environments
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
 
-      - name: Run Ruff linting
-        run: uv run ruff check --output-format=github
-        if: success() || failure()
+      - name: Run pre-commit hooks
+        run: uv run pre-commit run --all-files --show-diff-on-failure
 
-      - name: Run MyPy type checking
-        run: uv run mypy
-        if: success() || failure()
-
+      # Runs even when the hooks fail
       - name: Run pytest with coverage
+        if: always() && steps.install.outcome == 'success'
         run: uv run pytest --cov
-        if: success() || failure()
 
   integration:
     needs: changes
@@ -148,40 +153,13 @@ jobs:
       - name: Run deterministic agent evals
         run: uv run pytest tests/eval -m "deterministic" -s  # -s streams ADK output into the job log
 
-  # Static analysis of GHA workflow files
-  actionlint:
-    needs: changes
-    if: needs.changes.outputs.workflows == 'true'
-    name: Workflow Lint (actionlint)
-    runs-on: ubuntu-latest
-    timeout-minutes: 5  # Typical run: <1 min (image pull + lint). 5 min is generous buffer
-    steps:
-      # actionlint reads the repo's git metadata to find the project root
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-
-      # Upstream's published image. Keep the tag in sync with `rev` in
-      # .pre-commit-config.yaml so the hook and this gate agree.
-      # TODO: `-shellcheck=` disables the shellcheck pass over inline `run:` blocks.
-      # The runner ships shellcheck, so the pass is deterministic here; it is off
-      # only because the 59 pre-existing SC2086/SC2129 findings are not yet fixed.
-      # Remove the flag with those findings (#255).
-      - name: Run actionlint
-        uses: docker://rhysd/actionlint:1.7.12
-        with:
-          args: -color -shellcheck=
-
   # Always-runs sentinel for branch protection
   status:
     runs-on: ubuntu-latest
     timeout-minutes: 5  # Typical run: <1 min (status check). 5 min is generous buffer
-    needs: [changes, code-quality, integration, agent-eval, actionlint]
+    needs: [changes, code-quality, integration, agent-eval]
     if: always()
     steps:
-      # The code and workflows filters are independent, so each lane reports on
-      # its own and a failure in either fails the sentinel
       - name: Check required status
         run: |
           if [[ "${{ needs.changes.result }}" != "success" ]]; then
@@ -189,34 +167,20 @@ jobs:
             exit 1
           fi
 
-          failed=0
-
-          if [[ "${{ needs.changes.outputs.code }}" == "true" ]]; then
-            if [[ "${{ needs.code-quality.result }}" != "success" ]]; then
-              echo "❌ Code quality and tests failed"
-              failed=1
-            elif [[ "${{ needs.integration.result }}" != "success" ]]; then
-              echo "❌ Integration tests failed"
-              failed=1
-            elif [[ "${{ needs.agent-eval.result }}" != "success" ]]; then
-              echo "❌ Agent eval gate failed"
-              failed=1
-            else
-              echo "✅ Code quality, tests, integration, and agent evals passed"
-            fi
-          else
-            echo "⏭️ Code quality, tests, integration, and agent evals skipped - no relevant files changed"
+          if [[ "${{ needs.code-quality.result }}" != "success" ]]; then
+            echo "❌ Code quality and tests failed"
+            exit 1
           fi
+          echo "✅ Code quality and tests passed"
 
-          if [[ "${{ needs.changes.outputs.workflows }}" == "true" ]]; then
-            if [[ "${{ needs.actionlint.result }}" != "success" ]]; then
-              echo "❌ Workflow lint failed"
-              failed=1
-            else
-              echo "✅ Workflow lint passed"
-            fi
+          if [[ "${{ needs.changes.outputs.code }}" != "true" ]]; then
+            echo "⏭️ Integration and agent evals skipped - no relevant files changed"
+          elif [[ "${{ needs.integration.result }}" != "success" ]]; then
+            echo "❌ Integration tests failed"
+            exit 1
+          elif [[ "${{ needs.agent-eval.result }}" != "success" ]]; then
+            echo "❌ Agent eval gate failed"
+            exit 1
           else
-            echo "⏭️ Workflow lint skipped - no workflow files changed"
+            echo "✅ Integration and agent evals passed"
           fi
-
-          exit "${failed}"

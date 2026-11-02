@@ -310,7 +310,7 @@ config ──┬────────┘                        │
 - Plan artifacts saved between jobs (ensures plan matches apply)
 - PR comment with plan output (plan-only runs)
 - Job summary with deployment details
-- Terraform format, init, validate, plan, apply steps
+- Terraform init, validate, plan, apply steps (formatting is checked by the pre-commit suite in `ci.yml`)
 
 **When it runs:** After build (or promote) for each environment
 
@@ -389,20 +389,20 @@ Practically, a release tag belongs on a commit whose merge deployed and smoked s
 
 ### ci.yml
 
-**Purpose:** Run code quality checks (ruff, mypy, pytest with coverage), the Postgres integration lane, and the deterministic agent eval gate.
+**Purpose:** Run the pre-commit hook suite and pytest with coverage, the Postgres integration lane, and the deterministic agent eval gate.
 
 **Pipeline (five jobs):**
 1. `changes` - dorny/paths-filter detects whether relevant files changed
-2. `code-quality` - runs ruff format check, ruff linting, mypy, pytest with coverage. Gated on `changes.outputs.code == 'true'`.
+2. `code-quality` - runs every pre-commit hook on all files (`uv run pre-commit run --all-files --show-diff-on-failure`: ruff, mypy, actionlint, `terraform fmt`, config-file checks), then pytest with coverage even when a hook fails. Installs Terraform from `.terraform-version` for the fmt hook and caches hook environments. Runs on every push and pull request, since the hooks cover every file type.
 3. `integration` - runs `pytest tests/integration`, which starts a throwaway `postgres:18` via `testcontainers` on the runner's Docker daemon (no coverage gate; the 100% gate is unit-lane-only). Gated on `changes.outputs.code == 'true'`.
 4. `agent-eval` - runs the deterministic agent eval (`uv run pytest tests/eval -m "deterministic"`) against Vertex AI, authenticating with the dev environment's WIF principal (no coverage gate). Gated on `changes.outputs.code == 'true'`.
 5. `status` - always-runs sentinel that aggregates results for branch protection
 
 **Timeout:** 10 minutes each for the `code-quality`, `integration`, and `agent-eval` jobs (typical: 2-3 minutes)
 
-**When it runs:** Every push to main and every pull request. The inner `code-quality`, `integration`, and `agent-eval` jobs are skipped when no relevant paths changed; the `status` sentinel always reports.
+**When it runs:** Every push to main and every pull request. `code-quality` always runs; `integration` and `agent-eval` are skipped when no code paths changed; the `status` sentinel always reports.
 
-**Branch protection:** Require `CI / status` (the `status` job). The sentinel passes either with "skipped — no relevant files changed" or with the actual quality-check result.
+**Branch protection:** Require `CI / status` (the `status` job). The sentinel requires `code-quality` to pass, and `integration` and `agent-eval` to pass or be skipped because no code paths changed.
 
 ## Workflow Behavior
 
@@ -435,7 +435,7 @@ Workflows generate formatted summaries in GitHub Actions UI:
 **Terraform deployment:**
 - Environment and action (plan/apply)
 - Docker image being deployed
-- Step outcomes (format, init, validate, plan, apply)
+- Step outcomes (init, validate, plan, apply)
 - Deployed resources (Cloud Run URL, Cloud SQL, Agent Engine, GCS bucket, bastion instance/zone)
 - Collapsible plan output
 
@@ -448,7 +448,7 @@ Terraform plan workflow posts formatted comments on PRs:
 **Comment includes:**
 - Plan summary (resources to add/change/destroy)
 - Collapsible sections for detailed output
-- Format, init, validation results
+- Init and validation results
 - Full plan output
 
 **Permissions:** Requires `pull-requests: write` in ci-cd.yml (configured).

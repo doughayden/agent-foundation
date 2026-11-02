@@ -327,9 +327,10 @@ git restore --staged docs/
 
 1. **Run full quality suite and fix any failures:**
    ```bash
-   uv run ruff format && uv run ruff check --fix && uv run mypy && uv run pytest --cov --cov-report=term-missing
+   uv run pre-commit run --all-files && uv run pytest --cov
    ```
    Common failures after a sync:
+   - A fix-in-place hook rewrote files (ruff, `terraform fmt`, whitespace) — review the diff and rerun; the second pass passes
    - Test assertions referencing renamed fields/env vars — update test expectations
    - Missing test coverage for new code — add tests (check foundation's test files for reference)
    - Import errors from renamed constants — update imports

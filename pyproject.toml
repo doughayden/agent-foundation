@@ -59,7 +59,6 @@ exclude-newer = "5 days"
 src = ["src"]
 target-version = "py314"
 line-length = 88
-fix = true
 extend-exclude = ["notebooks"]
 
 [tool.ruff.format]

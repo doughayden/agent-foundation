@@ -2,11 +2,8 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
-      # The Claude Code sandbox write-denies .claude/, so fix-in-place hooks error there
       - id: trailing-whitespace
-        exclude: ^\.claude/
       - id: end-of-file-fixer
-        exclude: ^\.claude/
       - id: check-yaml
         args: [--unsafe]
       - id: check-toml
@@ -20,20 +17,21 @@ repos:
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.12
     hooks:
-      # Mirrors the ci.yml gate; keep the version and the flag in sync with it
+      # TODO: drop -shellcheck= once the run-script findings are fixed (#255)
       - id: actionlint
         args: [-shellcheck=]
   - repo: local
     hooks:
-      - id: ruff-format
-        name: ruff format
-        entry: uv run ruff format --force-exclude
-        language: system
-        types: [python]
-        require_serial: true
+      # check --fix can change layout, so the formatter runs after it
       - id: ruff-check
         name: ruff check
         entry: uv run ruff check --fix --force-exclude
+        language: system
+        types: [python]
+        require_serial: true
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format --force-exclude
         language: system
         types: [python]
         require_serial: true

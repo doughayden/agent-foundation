@@ -17,25 +17,33 @@ All configured in `pyproject.toml`.
 
 ## Running Quality Checks
 
-**Run before every commit:**
+**Each tool, in suite order:**
 ```bash
-# Use ruff to format code first (line length, quotes, whitespace)
-uv run ruff format
-
-# Then lint with ruff auto-fix (security, bugs, style violations)
+# Lint with ruff auto-fix first (security, bugs, style violations)
 uv run ruff check --fix
+
+# Then format, so the formatter sees the auto-fixed code
+uv run ruff format
 
 # Type check
 uv run mypy
 
 # Tests with coverage
-uv run pytest --cov --cov-report=term-missing
+uv run pytest --cov
 ```
 
-**One-liner for commit:**
+**On every commit:** once installed (`uv run pre-commit install`), the hooks in `.pre-commit-config.yaml` run the lint, format, and type-check tools above in this order on the staged files, plus any other checks the config defines. CI runs the same hooks over the whole tree, which you can reproduce on demand:
 ```bash
-uv run ruff format && uv run ruff check && uv run mypy && uv run pytest --cov
+uv run pre-commit run --all-files
 ```
+
+**Before pushing:** run the tests, which the hooks do not:
+```bash
+uv run pytest --cov
+```
+Plus any other test lanes the project defines, like integration tests.
+
+Order matters: everything that rewrites files finishes before anything that only reads them. `ruff check --fix` can change layout the formatter must then normalize, and mypy should check the final source. `pyproject.toml` does not set ruff's `fix = true`, so a bare `ruff check` (no `--fix`) only reports.
 
 ## Ruff Configuration
 
@@ -147,8 +155,8 @@ uv run ruff check --diff
 - Code simplification requiring logic changes (rule SIM)
 
 **Best practice:**
-1. Run `uv run ruff format` first (formats code)
-2. Run `uv run ruff check --fix` second (auto-fixes linting issues)
+1. Run `uv run ruff check --fix` first (auto-fixes linting issues)
+2. Run `uv run ruff format` second (formats the fixed code)
 3. Review remaining issues and fix manually
 
 ## Mypy Configuration
@@ -369,13 +377,12 @@ if not isinstance(result, list):  # pragma: no cover
 
 ### When to Run Checks
 
-**Before every commit:**
-```bash
-uv run ruff format && uv run ruff check && uv run mypy && uv run pytest --cov
-```
+**On every commit:** the pre-commit hooks run lint, format, and type checks automatically.
+
+**Before pushing:** `uv run pytest --cov`, plus any other test lanes the project defines.
 
 **During development:**
-- Run `ruff format` and `ruff check --fix` frequently as you code
+- Run `ruff check --fix` and `ruff format` frequently as you code
 - Run mypy after adding new functions or changing signatures
 - Run tests after behavior changes
 

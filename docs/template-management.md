@@ -92,8 +92,7 @@ Work through each phase in order. See [Quick Reference](#quick-reference) for co
 
 ```bash
 # Test thoroughly
-uv run ruff format && uv run ruff check --fix && uv run mypy
-uv run pytest --cov
+uv run pre-commit run --all-files && uv run pytest --cov
 docker compose up --build
 terraform -chdir=terraform/bootstrap/dev plan
 

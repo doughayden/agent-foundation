@@ -112,18 +112,15 @@ jobs:
           project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
 
+      - name: Read Terraform version
+        id: terraform-version
+        run: echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
         with:
-          terraform_version: "~> 1.14.0"
+          terraform_version: ${{ steps.terraform-version.outputs.version }}
           terraform_wrapper: false  # Better output handling
-
-      - name: Terraform Format Check
-        id: fmt
-        # Skip on saved plan apply - already checked during plan phase
-        if: inputs.use_saved_plan == false
-        working-directory: terraform/main
-        run: terraform fmt -check -recursive
 
       - name: Terraform Init
         id: init
@@ -266,7 +263,6 @@ jobs:
 
             | Step | Status |
             |------|:------:|
-            | 🖌 Format & Style | ${statusIcon('${{ steps.fmt.outcome }}')} \`${{ steps.fmt.outcome }}\` |
             | ⚙️ Initialization | ${statusIcon('${{ steps.init.outcome }}')} \`${{ steps.init.outcome }}\` |
             | 🤖 Validation | ${statusIcon('${{ steps.validate.outcome }}')} \`${{ steps.validate.outcome }}\` |
             | 📖 Plan | ${statusIcon('${{ steps.plan.outcome }}')} \`${{ steps.plan.outcome }}\` |
