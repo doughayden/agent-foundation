@@ -362,6 +362,28 @@ for i in 1 2 3 4 5; do uv run pytest tests/eval -m "judge" -q || echo "RUN $i FA
 
 If you want the harshest signal, temporarily drop `JUDGE_NUM_RUNS` to 2 and loop: at 2 a single bad draw scores 0.5 and fails, so repeated green proves every individual run was unanimous. Put it back before committing.
 
+### Plugging in your own eval strategy
+
+The orchestration reads only a job's conclusion, never how the job scored, so you can replace what the gates evaluate without touching the pipeline. Each gate has a fixed interface:
+
+| Gate | Interface the pipeline relies on |
+|---|---|
+| Deterministic (PR) | The `agent-eval` job in `ci.yml` succeeds or fails; the `status` sentinel reads `needs.agent-eval.result` |
+| Judge (merge) | A `ci-cd.yml` job named `Judge Eval` that calls a reusable workflow with `environment` and `gating` inputs. `require-stage-success` matches that job name (and its `Judge Eval / <inner job>` children) for the tagged commit and requires success |
+
+The judge workflow also owes the pipeline its failure semantics: with `gating: false` only a sub-threshold score may pass, and a run that could not score (dead endpoint, broken data, unscored runs) fails in both modes. Keep that contract, or dev-only mode reports a broken run as green.
+
+**Change the cases and metrics (same harness).** Edit `tests/eval/data/`: the eval sets, `test_config.json` for the PR gate, and `full_eval_config.json` for the merge gate. Any ADK criterion works; the gate code and workflows stay untouched. Follow [Authoring and maintaining cases](#authoring-and-maintaining-cases).
+
+**Change the framework (your own workflow).** To score with deepeval, ragas, or another harness:
+
+1. Add the framework with `uv add --group dev <package>` and put its tests in the eval lane (`tests/eval/`), so the local command and CI stay the same.
+2. Write a reusable workflow, starting from a copy of `judge-eval.yml`. Keep `on: workflow_call` with the `environment` and `gating` inputs, the `id-token: write` permission and WIF auth step if your evaluator calls Vertex AI, and the gating logic: only a sub-threshold result may exit 0 when `gating` is false.
+3. Point the `judge-eval` job in `ci-cd.yml` at it with `uses: ./.github/workflows/<your-workflow>.yml`. Leave the job's `name: Judge Eval`, its `if:` and its `with:` inputs unchanged.
+4. Add the new workflow path to the `eval` filter in the `changes` job, so a change to it triggers a judge run.
+
+For the PR gate, change the run step in the `agent-eval` job; the sentinel needs no edit.
+
 ## Authoring and maintaining cases
 
 1. Capture or write a case: `SERVE_WEB_INTERFACE=TRUE uv run server` (Eval tab), or hand-edit a file in `tests/eval/data/`.
