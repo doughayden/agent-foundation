@@ -32,11 +32,19 @@ Bootstrap creates the one-time CI/CD infrastructure for the dev environment: key
 
 ### 1. Authenticate
 
+Choose your dev project ID now. Use the same ID for `projects.dev` in pre-bootstrap and `project` in the dev bootstrap configuration below. Billing must be enabled on this project.
+
+Sign in to the gcloud CLI for terminal commands, then configure Application Default Credentials (ADC) for Terraform and application libraries. Use an account with access to your dev project for both sign-ins. Setting the ADC quota project requires `serviceusage.services.use` on that project, included in `roles/serviceusage.serviceUsageConsumer`.
+
 ```bash
+gcloud auth login
+gcloud config set project YOUR_DEV_PROJECT_ID
 gcloud auth application-default login
-gcloud config set project YOUR_PROJECT_ID  # Optional
+gcloud auth application-default set-quota-project YOUR_DEV_PROJECT_ID
 gh auth login
 ```
+
+The CLI and ADC use separate credentials. Changing the selected CLI project does not update an existing ADC quota project. The explicit quota-project command sets quota and billing attribution for applicable client API requests; it does not change the projects where Terraform creates resources or enable billing. See [Google Cloud authentication](https://cloud.google.com/docs/authentication/application-default-credentials#personal) and the [ADC quota-project command](https://cloud.google.com/sdk/gcloud/reference/auth/application-default/set-quota-project).
 
 ### 2. Create State Buckets (Pre-Bootstrap)
 
