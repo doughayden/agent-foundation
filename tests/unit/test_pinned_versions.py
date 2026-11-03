@@ -22,12 +22,16 @@ PYTHON_VERSION_FILE = REPO_ROOT / ".python-version"
 TERRAFORM_VERSION_FILE = REPO_ROOT / ".terraform-version"
 PYPROJECT = REPO_ROOT / "pyproject.toml"
 DOCKERFILE = REPO_ROOT / "Dockerfile"
+PRE_COMMIT_CONFIG = REPO_ROOT / ".pre-commit-config.yaml"
 WORKFLOWS_DIR = REPO_ROOT / ".github" / "workflows"
 
 DOCKER_FROM = re.compile(r"^FROM\s.*$", re.MULTILINE)
 DOCKER_PYTHON_BASE = re.compile(r"\bpython:(?P<version>\d+\.\d+)(?:\.\d+)?(?![\d.])")
 PYTHON_VERSION_FORMAT = re.compile(r"\d+\.\d+")
 TERRAFORM_VERSION_FORMAT = re.compile(r"\d+\.\d+\.\d+")
+UV_VERSION_FORMAT = re.compile(r"(?P<major>\d+)\.(?P<minor>\d+)\.\d+")
+DOCKER_UV_IMAGE = re.compile(r"\bghcr\.io/astral-sh/uv:(?P<version>[^\s/]+)")
+UV_PRE_COMMIT_REPO = "https://github.com/astral-sh/uv-pre-commit"
 TERRAFORM_VERSION_READ = re.compile(r"\bcat \.terraform-version\b")
 STEP_OUTPUT_REF = re.compile(r"\$\{\{\s*steps\.(?P<id>[\w-]+)\.outputs\.[\w-]+\s*\}\}")
 # Each of these would override .python-version in a workflow
@@ -129,6 +133,64 @@ class TestPythonVersionParity:
         assert not overrides, (
             f"workflow Python version override at {overrides}: drop it so CI "
             "reads .python-version"
+        )
+
+
+class TestUvVersionPins:
+    """Exact uv pins agree, and ``required-version`` is their minor-series range."""
+
+    def _exact_pins(self) -> dict[str, str]:
+        pins = {
+            f"Dockerfile uv image #{index}": match.group("version")
+            for index, match in enumerate(
+                DOCKER_UV_IMAGE.finditer(DOCKERFILE.read_text()), 1
+            )
+        }
+        assert pins, "no ghcr.io/astral-sh/uv image in Dockerfile"
+
+        hooks = yaml.safe_load(PRE_COMMIT_CONFIG.read_text())["repos"]
+        revs = [repo["rev"] for repo in hooks if repo["repo"] == UV_PRE_COMMIT_REPO]
+        assert revs, f"no {UV_PRE_COMMIT_REPO} repo in .pre-commit-config.yaml"
+        pins |= {f"uv-pre-commit rev #{i}": rev for i, rev in enumerate(revs, 1)}
+
+        setups = {
+            f"{workflow.name} {job_id} step {index}": str(
+                (step.get("with") or {}).get("version", "<unpinned>")
+            )
+            for workflow in sorted(WORKFLOWS_DIR.glob("*.y*ml"))
+            for job_id, job in yaml.safe_load(workflow.read_text())["jobs"].items()
+            for index, step in enumerate(job.get("steps", []), 1)
+            if step.get("uses", "").startswith("astral-sh/setup-uv@")
+        }
+        assert setups, f"no astral-sh/setup-uv step under {WORKFLOWS_DIR}"
+        return pins | setups
+
+    def test_exact_uv_pins_agree(self):
+        pins = self._exact_pins()
+        values = set(pins.values())
+
+        assert len(values) == 1, (
+            f"uv pins disagree: {pins}. Set the Dockerfile image, the uv-pre-commit "
+            "rev and every setup-uv version input to one exact version"
+        )
+        assert UV_VERSION_FORMAT.fullmatch(values.pop()), (
+            f"uv pins must be exact versions (X.Y.Z): {pins}"
+        )
+
+    def test_required_version_is_the_pinned_minor_series(self):
+        pinned = next(iter(self._exact_pins().values()))
+        match = UV_VERSION_FORMAT.fullmatch(pinned)
+        assert match, f"uv pin {pinned!r} is not an exact version (X.Y.Z)"
+        major, minor = match.group("major"), int(match.group("minor"))
+        expected = f">={major}.{minor},<{major}.{minor + 1}"
+
+        required = tomllib.loads(PYPROJECT.read_text())["tool"]["uv"].get(
+            "required-version"
+        )
+        assert required == expected, (
+            f"[tool.uv] required-version is {required!r}, expected {expected!r}: "
+            f"the range must be the minor series of the exact pin {pinned}. An "
+            "exact == pin blocks every uv command for anyone whose uv moved"
         )
 
 

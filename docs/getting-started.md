@@ -12,7 +12,7 @@ First-time setup: from zero to deployed.
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) (gcloud CLI)
 - [GitHub CLI](https://cli.github.com/) (gh)
 - Python (`uv` installs the version pinned in `.python-version`)
-- `uv` package manager
+- [uv](https://docs.astral.sh/uv/), within the `required-version` range in `pyproject.toml`
 - `jq` command-line JSON processor (for parsing Terraform output)
 
 > [!WARNING]

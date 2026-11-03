@@ -55,6 +55,9 @@ build-backend = "uv_build"
 [tool.uv]
 # https://docs.astral.sh/uv/concepts/resolution/#dependency-cooldowns
 exclude-newer = "5 days"
+# https://docs.astral.sh/uv/reference/settings/#required-version
+# Developer range; the exact pins (Dockerfile, uv-pre-commit, setup-uv) must fall inside it
+required-version = ">=0.13,<0.14"
 
 [tool.ruff]
 src = ["src"]

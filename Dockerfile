@@ -5,8 +5,8 @@
 # ============================================================================
 FROM python:3.14-slim AS builder
 
-# Install uv from official distroless image (pinned for reproducible builds)
-COPY --from=ghcr.io/astral-sh/uv:0.10.11 /uv /uvx /bin/
+# Exact uv: equal to every setup-uv version and the uv-pre-commit rev, inside [tool.uv] required-version
+COPY --from=ghcr.io/astral-sh/uv:0.13.6 /uv /uvx /bin/
 
 # Set working directory
 WORKDIR /app
