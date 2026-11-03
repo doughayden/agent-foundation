@@ -188,7 +188,8 @@ The [environments REST API](https://docs.github.com/en/rest/deployments/environm
 # Look up the reviewer's numeric ID (a team: gh api orgs/<org>/teams/<team-slug> --jq .id)
 REVIEWER_ID=$(gh api users/<github-login> --jq .id)
 
-# Reviewers, self-review, wait timer, and a custom branch/tag policy
+# Reviewers, self-review, wait timer, and a custom branch/tag policy.
+# prevent_self_review is false for a solo maintainer; set it to true for a team
 gh api --method PUT repos/:owner/:repo/environments/prod-apply --input - <<EOF
 {
   "reviewers": [{"type": "User", "id": ${REVIEWER_ID}}],
