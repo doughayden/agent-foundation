@@ -263,6 +263,7 @@ Override runtime config via GitHub Environment Variables (mapped to `TF_VAR_*`):
 **TF_VAR_serve_web_interface**
 - **Source:** `${{ vars.SERVE_WEB_INTERFACE }}` (optional GitHub Environment Variable)
 - **Purpose:** Override SERVE_WEB_INTERFACE for Cloud Run deployment
+- **Set:** `gh variable set SERVE_WEB_INTERFACE --env dev --body "TRUE"` (or Settings → Environments), then re-run the latest CI/CD workflow to redeploy. The web interface is then at `http://localhost:8000` through `gcloud run services proxy`
 
 **TF_VAR_otel_instrumentation_genai_capture_message_content**
 - **Source:** `${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}` (optional GitHub Environment Variable)
