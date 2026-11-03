@@ -45,6 +45,12 @@ repos:
         types: [python]
         pass_filenames: false
         require_serial: true
+      - id: codespell
+        name: codespell
+        entry: uv run codespell
+        language: system
+        types: [text]
+        require_serial: true
       - id: terraform-fmt
         name: terraform fmt
         entry: terraform fmt

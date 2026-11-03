@@ -27,6 +27,7 @@ server = "agent_foundation.server:main"
 
 [dependency-groups]
 dev = [
+    "codespell>=2.4.3,<3.0.0",
     "google-adk[eval]==2.13.0",
     "httpx>=0.28.1,<1.0.0",
     "ipykernel>=7.0.0,<8.0.0",
@@ -58,6 +59,11 @@ exclude-newer = "5 days"
 # https://docs.astral.sh/uv/reference/settings/#required-version
 # Developer range; the exact pins (Dockerfile, setup-uv) must fall inside it
 required-version = ">=0.13,<0.14"
+
+[tool.codespell]
+skip = "uv.lock"
+# ROUGE is the eval metric (ADK response_match_score), not a misspelling of rogue
+ignore-words-list = "rouge"
 
 [tool.ruff]
 src = ["src"]
