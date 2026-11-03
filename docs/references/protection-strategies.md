@@ -148,55 +148,104 @@ The `prod-apply` GitHub Environment requires manual approval before production d
 - GitHub Environment: `prod-apply`
 - Environment variables scoped to `prod-apply`
 
-**Bootstrap does NOT configure:**
-- Required reviewers (manual setup required)
+**Bootstrap does NOT configure** (the module lists these in `lifecycle.ignore_changes`, so a later bootstrap apply never overwrites them):
+- Required reviewers
+- Prevent self-review
 - Wait timer
-- Deployment branch policy
+- Deployment branch and tag policy
 
-### What You Must Configure Manually
+Admin bypass is on by default for a new environment.
 
-**Required reviewers** - Users or teams who can approve production deployments.
+### What to Configure
 
-**How to configure:**
+| Setting | Recommended | Why |
+|---|---|---|
+| Required reviewers | The users or teams who own production releases (up to six; one approval releases the job) | The approval gate itself |
+| Prevent self-review | On for a team; off for a solo maintainer | Stops the person who pushed the tag from approving their own deployment. A solo maintainer who turns it on can never approve |
+| Wait timer | Off, unless you want a cooling-off window | Delays the job after approval is requested |
+| Allow administrators to bypass | Off for strict release control; on to keep a break-glass path | An admin can deploy without an approval |
+| Deployment branches and tags | **Selected branches and tags**, with tag rule `v*.*.*` | The `prod-apply` job only runs on tag pushes, so GitHub checks the rule against a `refs/tags/...` ref. Leave out a `main` branch rule: it never matches a prod run, and it would let any future job that targets `prod-apply` on a main push deploy |
+
+The tag rule matches the release tag format the [tag ruleset](#tag-protection-automated) protects, so only a protected version tag can reach the approval.
+
+### Configure in the GitHub UI
 
 1. Go to **Settings** → **Environments** → **prod-apply**
 2. Under **Deployment protection rules**:
-   - ✅ Check **Required reviewers**
-   - Click **Add reviewers** search box
-   - Add individual users (e.g., tech leads, SREs) or teams (e.g., @org/platform-team)
-   - **Optional:** Check **Prevent self-review** (requires different approver than workflow trigger)
-   - **Optional:** Check **Wait timer** and set delay (e.g., 5 minutes before allowing approval)
-   - **Optional:** Check **Allow administrators to bypass** (admin override for emergencies)
+   - Check **Required reviewers** and add users or teams
+   - Set **Prevent self-review** per the table above
+   - Optionally set **Wait timer**
+   - Set **Allow administrators to bypass** per the table above
 3. Click **Save protection rules**
-4. Under **Deployment branches and tags**:
-   - Click dropdown → Select **Selected branches and tags**
-   - Add branch rule: `main` (only main branch can trigger prod deployments)
-   - Add tag rule: `v*.*.*` or `v*` (version tags can trigger prod deployments)
+4. Under **Deployment branches and tags**, select **Selected branches and tags** and add a tag rule `v*.*.*`
 5. Click **Save protection rules**
+
+### Configure with `gh api`
+
+The [environments REST API](https://docs.github.com/en/rest/deployments/environments) sets the protection rules in one `PUT`, and the [deployment branch policies API](https://docs.github.com/en/rest/deployments/branch-policies) adds the tag rule.
+
+```bash
+# Look up the reviewer's numeric ID (a team: gh api orgs/<org>/teams/<team-slug> --jq .id)
+REVIEWER_ID=$(gh api users/<github-login> --jq .id)
+
+# Reviewers, self-review, wait timer, and a custom branch/tag policy.
+# prevent_self_review is false for a solo maintainer; set it to true for a team
+gh api --method PUT repos/:owner/:repo/environments/prod-apply --input - <<EOF
+{
+  "reviewers": [{"type": "User", "id": ${REVIEWER_ID}}],
+  "prevent_self_review": false,
+  "wait_timer": 0,
+  "deployment_branch_policy": {"protected_branches": false, "custom_branch_policies": true}
+}
+EOF
+
+# Allow only version tags to deploy
+gh api --method POST repos/:owner/:repo/environments/prod-apply/deployment-branch-policies \
+  -f name='v*.*.*' -f type=tag
+```
+
+The `PUT` body has no admin-bypass field: set **Allow administrators to bypass** in the UI.
 
 ### Verify
 
-**GitHub UI:**
-1. Settings → Environments
-2. Confirm `prod-apply` environment exists
-3. Click on `prod-apply` to view details
-4. Check **Deployment protection rules** shows:
-   - Required reviewers configured
-   - Wait timer (if enabled)
-   - Self-review prevention (if enabled)
-5. Check **Deployment branches and tags** shows:
-   - Branch rule: `main`
-   - Tag rule: `v*.*.*` or `v*`
+**GitHub UI:** Settings → Environments → **prod-apply** shows the reviewers, the self-review and bypass settings, and the `v*.*.*` tag rule under **Deployment branches and tags**.
 
 **CLI:**
 ```bash
-gh api repos/:owner/:repo/environments/prod-apply | jq '{
-  name: .name,
-  protection_rules: .protection_rules
+gh api repos/:owner/:repo/environments/prod-apply --jq '{
+  reviewers: [.protection_rules[] | select(.type == "required_reviewers") | .reviewers[] | {type, login: (.reviewer.login // .reviewer.slug)}],
+  prevent_self_review: (.protection_rules[] | select(.type == "required_reviewers") | .prevent_self_review),
+  wait_timer: ([.protection_rules[] | select(.type == "wait_timer") | .wait_timer][0] // 0),
+  can_admins_bypass,
+  deployment_branch_policy
 }'
+gh api repos/:owner/:repo/environments/prod-apply/deployment-branch-policies \
+  --jq '[.branch_policies[] | {name, type}]'
 ```
 
-Expected output shows non-empty `reviewers` array.
+Expected: a non-empty `reviewers` list, `custom_branch_policies: true`, and a `{"name": "v*.*.*", "type": "tag"}` policy.
+
+### Private Repositories
+
+GitHub gates environment protection by plan for private repositories ([deployments and environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)):
+
+| Repository | Required reviewers, wait timer, admin bypass | Deployment branch and tag policy |
+|---|---|---|
+| Public, any plan | Available | Available |
+| Private, GitHub Free | Not available | Not available |
+| Private, GitHub Pro or Team | Not available | Available |
+| Private, GitHub Enterprise | Available | Available |
+
+> [!WARNING]
+> On a private repository without GitHub Enterprise there is no approval gate: `prod-apply` deploys to production as soon as `prod-plan` finishes, with no reviewer prompt.
+
+What still guards production on those plans:
+
+- **`require-stage-success`.** `prod-promote` needs it, so a tag deploys only a commit whose merge run passed `Apply Stage`, `Smoke Stage`, and `Judge Eval`. This holds on every plan because it is a job dependency, not an environment rule.
+- **The deployment tag policy** (Pro and Team only). Only `v*.*.*` tags reach `prod-apply`.
+- **Who can push a `v*` tag.** The tag ruleset limits this to admins where your plan enforces rulesets on private repositories; confirm it shows **Active** under Settings → Rules → Rulesets. Without it, anyone with write access can push a release tag.
+
+To keep a human approval on a private fork, use GitHub Enterprise or make the repository public.
 
 ### Why Manual?
 
@@ -213,7 +262,7 @@ Bootstrap creates the environment, but your team decides who can approve product
 ### Production Deployment Flow
 
 1. Repository Admin (allowed to bypass tag protection ruleset) pushes tag matching allowed pattern: `git tag -a v1.0.0 -m "Release v1.0.0" && git push origin v1.0.0`
-2. GitHub Actions workflow starts (tag must match `v*.*.*` or `v*` pattern configured in environment)
+2. GitHub Actions workflow starts (the tag must match the environment's `v*.*.*` tag rule to reach `prod-apply`)
 3. Jobs run sequentially:
    - Resolve image digest from stage
    - Promote image to prod registry
@@ -228,7 +277,7 @@ Bootstrap creates the environment, but your team decides who can approve product
 8. If approved: Terraform apply runs, deploys to production
 9. If rejected: Workflow fails, no deployment
 
-**Note:** If tag doesn't match allowed pattern or workflow triggered from non-main branch, deployment to `prod-apply` environment will be blocked by environment rules.
+**Note:** A tag that doesn't match the `v*.*.*` tag rule is blocked by the environment before the approval prompt.
 
 ### Approving a Deployment
 
@@ -240,15 +289,21 @@ Bootstrap creates the environment, but your team decides who can approve product
 5. Add comment (optional but recommended): "LGTM - staging validation passed"
 6. Click **Approve and deploy** or **Reject**
 
-**CLI:**
+**CLI:** `gh` has no approval subcommand, but the [pending deployments API](https://docs.github.com/en/rest/actions/workflow-runs#review-pending-deployments-for-a-workflow-run) approves as any required reviewer:
+
 ```bash
-# View pending deployments
-gh run list --workflow=ci-cd.yml | grep "waiting"
+# Find the waiting run
+gh run list --workflow=ci-cd.yml --status waiting
 
-# Approve deployment (requires GitHub UI, no CLI support for approval)
+# Show what it is waiting on
+gh api repos/:owner/:repo/actions/runs/<run-id>/pending_deployments \
+  --jq '.[] | {environment: .environment.name, id: .environment.id}'
+
+# Approve (or "rejected")
+ENV_ID=$(gh api repos/:owner/:repo/environments/prod-apply --jq .id)
+gh api --method POST repos/:owner/:repo/actions/runs/<run-id>/pending_deployments \
+  -F "environment_ids[]=${ENV_ID}" -f state=approved -f comment="Stage validation passed"
 ```
-
-**Note:** GitHub CLI doesn't support approving deployments. Use the GitHub UI.
 
 ## Protection Strategy Summary
 
