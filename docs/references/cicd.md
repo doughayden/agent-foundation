@@ -182,20 +182,56 @@ config ──┬────────┘                        │
 
 ## Image Tagging Strategy
 
-**Pull Request builds:**
-- Format: `pr-{number}-{sha}` (e.g., `pr-123-abc1234`)
-- Isolated from main builds
-- Tagged for dev registry only
+Tags name images for people and for the tag-time digest lookup. Every deploy consumes an immutable digest, never a tag.
 
-**Main branch builds:**
-- Tags: `{sha}` (primary), `latest`
-- Example: `abc1234`, `latest`
+### Tags by Event
 
-**Version tag builds:**
-- Tags: `{sha}`, `latest`, `{version}`
-- Example: `abc1234`, `latest`, `v1.0.0`
+`metadata-extract.yml` derives the tag list. `{sha7}` is the commit's `git rev-parse --short` SHA and always comes first, because `resolve-image-digest.yml` and the promotion digest check read the first tag.
 
-**Deployment uses image digest** (not tags) to ensure every rebuild triggers a new Cloud Run revision. The deployed digest is the OCI index; Cloud Run revisions record the resolved platform image digest — see [Image Digest Resolution](image-digest-resolution.md) for the taxonomy and verification commands.
+| Event | Registry | Tags | Written by |
+|---|---|---|---|
+| Pull request | dev | `pr-{number}-{sha7}` (PR head commit, not the merge commit) | `build` |
+| Merge to main | dev | `{sha7}`, `latest` | `build` |
+| Merge to main (production mode) | stage | `{sha7}`, `latest` (same digest, copied) | `stage-promote` |
+| Release tag (production mode) | prod | `{sha7}`, `latest`, `{version}` (the git tag, like `v1.0.0`) | `prod-promote` |
+| Every build | dev | `buildcache` (BuildKit layer cache, never deployed) | `build` |
+
+`latest` is a convenience pointer that moves on every merge (and on every release in prod). No workflow reads it. `buildcache` is overwritten on every build; [Image Digest Resolution](image-digest-resolution.md#the-registry-cache-artifact) describes the artifact.
+
+### Build Once, Promote by Digest
+
+1. **Build (merge):** `build` builds the image once, in dev, and pushes it with its tags. `{sha7}` is applied at push time, before any smoke test has run against that digest.
+2. **Promote to stage (merge, production mode):** `stage-promote` copies the dev digest into the stage registry under the same tags with `crane cp`, then fails unless the target digest equals the source digest.
+3. **Deploy:** Terraform receives a digest URI (`registry/image@sha256:...`), so every Cloud Run revision pins a digest and every new digest creates a new revision. The deployed digest is the OCI index; revisions record the platform image digest inside it ([Image Digest Resolution](image-digest-resolution.md)).
+4. **Release (tag, production mode):** nothing rebuilds. `resolve-digest` reads the digest behind stage `{sha7}`, `require-stage-success` confirms the tagged commit's merge run passed `Apply Stage`, `Smoke Stage`, and `Judge Eval`, and `prod-promote` copies that digest into prod with the `{version}` tag added. Prod then deploys the digest after the `prod-apply` approval.
+
+Prod therefore runs a digest that stage deployed and smoked: the tag run promotes only what stage `{sha7}` resolves to, `require-stage-success` ties that digest to a green stage smoke ([Require Stage Success](#require-stage-successyml)), and the copy and deploy steps preserve it byte for byte.
+
+### Registry Tags Stay Mutable
+
+The Artifact Registry repositories do not enable [immutable tags](https://docs.cloud.google.com/artifact-registry/docs/docker/immutable-image-tags). Deployment already consumes only immutable digests, `{sha7}` is unique per commit, and `require-stage-success` proves the promoted digest is the one stage smoked, so registry-level immutability would guarantee nothing the pipeline does not already guarantee.
+
+The setting is repository-wide, so enabling it would also reject the re-push of `latest` and `buildcache` on every build. Keeping it off preserves the registry build cache and the `latest` pointer at no correctness cost. The remaining way to repoint `{sha7}` is a manual push to the registry, which Artifact Registry IAM governs.
+
+### Re-running a Merge Run
+
+`require-stage-success` reads the conclusions of the merge run's latest attempt, and stage `{sha7}` is written only by that commit's own merge-run attempts. Any re-run is therefore safe for prod: a re-run that leaves stage on an unsmoked digest also leaves `Smoke Stage` not green, and the tag fails closed.
+
+- **To re-validate the same image:** use "Re-run failed jobs" on the merge run. Jobs that succeeded keep their results, and the re-run jobs work on the digest already built.
+- **To rebuild:** "Re-run all jobs" rebuilds from the same commit. With a warm `buildcache` every layer is cached and the digest is byte-identical; a cache miss produces a new digest, which moves `{sha7}` in dev and stage, and that attempt's own stage smoke must pass before the commit can be released.
+- **To ship a different image:** land a new commit. A new image belongs to a new `{sha7}`; never retag a digest by hand.
+
+Tag a release only on a commit whose merge run's latest attempt is green.
+
+### Registry Cleanup
+
+The cleanup policies in `terraform/bootstrap/module/gcp/main.tf` decide how long a tagged image stays available. Retention values are set per environment in each bootstrap root's `terraform.tfvars`.
+
+- **Untagged images are deleted.** A digest that loses its last tag, like the previous image when a rebuild moves `{sha7}`, is removed.
+- **Tagged images age out too.** The general retention policy deletes images older than `registry_cleanup_general_retention_days`, tagged or not, unless a KEEP policy (`registry_cleanup_keep_count`, or the `buildcache` keep) protects them. Artifact Registry applies a KEEP policy over a DELETE policy when both match ([cleanup policies](https://docs.cloud.google.com/artifact-registry/docs/repositories/cleanup-policy)).
+- **PR images expire separately** when `registry_cleanup_pr_retention_days` is set (dev only).
+
+Two consequences follow. Stage `{sha7}` must still exist when you tag, or `resolve-digest` fails and the release stops before promotion. And re-deploying an older prod digest from the registry works only while that digest is retained, so size prod retention to your rollback window.
 
 ## Reusable Workflows
 

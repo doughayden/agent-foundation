@@ -47,7 +47,7 @@ Deep dives for optional follow-up:
 - [Bootstrap](references/bootstrap.md) - Complete bootstrap setup for both deployment modes
 - [Protection Strategies](references/protection-strategies.md) - Branch, tag, environment protection
 - [Deployment Modes](references/deployment.md) - Multi-environment strategy and infrastructure
-- [CI/CD Workflows](references/cicd.md) - Workflow architecture and mechanics
+- [CI/CD Workflows](references/cicd.md) - Workflow architecture, mechanics, and image tagging strategy
 - [Claude PR Review](references/claude-pr-review.md) - Automated PR review setup: GitHub App, model auth paths, and workflow behavior
 - [Cloud SQL Scaling and Reliability](references/cloud-sql.md) - Instance tiers, backups, HA, connection pooling, monitoring
 - [Cloud Run Concurrency Tuning](references/cloud-run-concurrency-tuning.md) - Async runtime model and concurrency sizing
