@@ -139,7 +139,7 @@ Hooks are configured in `.pre-commit-config.yaml`. `pre-commit autoupdate` is a 
 |---|---|---|
 | ruff, mypy | `uv.lock` | `uv lock --upgrade` |
 | terraform fmt | `.terraform-version`, installed by setup-terraform in CI and by tenv locally (tenv provides the `terraform` on `PATH`) | edit `.terraform-version`, then `tenv terraform install` |
-| uv-lock | the `uv-pre-commit` `rev`, held equal to the other uv pins | [uv Version](#uv-version) (`pre-commit autoupdate` moves it alone and fails the parity test) |
+| uv-lock | your installed uv, held inside `required-version` (CI uses its pinned `setup-uv` uv) | [uv Version](#uv-version) |
 | everything else | the pinned `rev` in `.pre-commit-config.yaml` | `pre-commit autoupdate` |
 
 ### Agent Evals
@@ -240,15 +240,15 @@ git commit -m "chore: bump version to X.Y.Z"
 
 uv is pinned in two tiers:
 
-- **Your uv:** `[tool.uv] required-version` in `pyproject.toml` is a range covering one minor series (`>=X.Y,<X.(Y+1)`). uv refuses every project command, `uv run` included, when the running uv falls outside it, so any patch of that minor works locally.
-- **CI and the image:** the `Dockerfile` uv image tag, the `uv-pre-commit` `rev` in `.pre-commit-config.yaml`, and the `version:` input on every `setup-uv` step hold one exact version inside that range.
+- **Your uv:** `[tool.uv] required-version` in `pyproject.toml` is a range covering one minor series (`>=X.Y,<X.(Y+1)`). uv refuses every project command, `uv run` included, when the running uv falls outside it, so any patch of that minor works locally. The `uv-lock` pre-commit hook runs this uv.
+- **CI and the image:** the `Dockerfile` uv image tag and the `version:` input on every `setup-uv` step hold one exact version inside that range.
 
 `tests/unit/test_pinned_versions.py` fails if the exact pins disagree, if a `setup-uv` step has no `version:`, or if `required-version` stops being the exact pin's minor series.
 
 To move uv:
 
 1. Check the `setup-uv` release pinned in the workflows: its checksum table (`src/download/checksum/known-checksums.json` in the action's repo, at that tag) must list the new uv. If it doesn't, move `setup-uv` to a release that does. Don't pass the action's `checksum:` input instead: it replaces the per-platform table with one string.
-2. Set the new version in the `Dockerfile`, the `uv-pre-commit` `rev`, and every `setup-uv` `version:` input.
+2. Set the new version in the `Dockerfile` and every `setup-uv` `version:` input.
 3. On a minor bump, move `required-version` to the new minor series.
 4. Run `uv run pytest tests/unit/test_pinned_versions.py`, then the full suite.
 

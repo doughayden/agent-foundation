@@ -22,7 +22,6 @@ PYTHON_VERSION_FILE = REPO_ROOT / ".python-version"
 TERRAFORM_VERSION_FILE = REPO_ROOT / ".terraform-version"
 PYPROJECT = REPO_ROOT / "pyproject.toml"
 DOCKERFILE = REPO_ROOT / "Dockerfile"
-PRE_COMMIT_CONFIG = REPO_ROOT / ".pre-commit-config.yaml"
 WORKFLOWS_DIR = REPO_ROOT / ".github" / "workflows"
 
 DOCKER_FROM = re.compile(r"^FROM\s.*$", re.MULTILINE)
@@ -31,7 +30,6 @@ PYTHON_VERSION_FORMAT = re.compile(r"\d+\.\d+")
 TERRAFORM_VERSION_FORMAT = re.compile(r"\d+\.\d+\.\d+")
 UV_VERSION_FORMAT = re.compile(r"(?P<major>\d+)\.(?P<minor>\d+)\.\d+")
 DOCKER_UV_IMAGE = re.compile(r"\bghcr\.io/astral-sh/uv:(?P<version>[^\s/]+)")
-UV_PRE_COMMIT_REPO = "https://github.com/astral-sh/uv-pre-commit"
 TERRAFORM_VERSION_READ = re.compile(r"\bcat \.terraform-version\b")
 STEP_OUTPUT_REF = re.compile(r"\$\{\{\s*steps\.(?P<id>[\w-]+)\.outputs\.[\w-]+\s*\}\}")
 # Each of these would override .python-version in a workflow
@@ -148,11 +146,6 @@ class TestUvVersionPins:
         }
         assert pins, "no ghcr.io/astral-sh/uv image in Dockerfile"
 
-        hooks = yaml.safe_load(PRE_COMMIT_CONFIG.read_text())["repos"]
-        revs = [repo["rev"] for repo in hooks if repo["repo"] == UV_PRE_COMMIT_REPO]
-        assert revs, f"no {UV_PRE_COMMIT_REPO} repo in .pre-commit-config.yaml"
-        pins |= {f"uv-pre-commit rev #{i}": rev for i, rev in enumerate(revs, 1)}
-
         setups = {
             f"{workflow.name} {job_id} step {index}": str(
                 (step.get("with") or {}).get("version", "<unpinned>")
@@ -170,8 +163,8 @@ class TestUvVersionPins:
         values = set(pins.values())
 
         assert len(values) == 1, (
-            f"uv pins disagree: {pins}. Set the Dockerfile image, the uv-pre-commit "
-            "rev and every setup-uv version input to one exact version"
+            f"uv pins disagree: {pins}. Set the Dockerfile image and every "
+            "setup-uv version input to one exact version"
         )
         assert UV_VERSION_FORMAT.fullmatch(values.pop()), (
             f"uv pins must be exact versions (X.Y.Z): {pins}"

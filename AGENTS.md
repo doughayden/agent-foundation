@@ -164,7 +164,7 @@ uv lock --upgrade               # Update all
 
 **Python version:** `.python-version` is the source; `TestPythonVersionParity` asserts every other pin. **NEVER set a Python version in a workflow** (`uv python install X`, setup-uv `python-version:`, `UV_PYTHON`, `--python`). One interpreter, no CI matrix. Pins and bump procedure: `docs/development.md` Python Version.
 
-**uv version:** `[tool.uv] required-version` is a RANGE (the exact pin's minor series; `==` blocks every uv command for anyone whose uv moved). Dockerfile uv image, `uv-pre-commit` `rev` and every `setup-uv` `version:` hold one exact version; `TestUvVersionPins` asserts both. **Pick a uv the pinned `setup-uv` lists in its checksum table**, never pass `checksum:`. Bump procedure: `docs/development.md` uv Version.
+**uv version:** `[tool.uv] required-version` is a RANGE (the exact pin's minor series; `==` blocks every uv command for anyone whose uv moved). Dockerfile uv image and every `setup-uv` `version:` hold one exact version; `TestUvVersionPins` asserts both. The `uv-lock` hook is `language: system` (the developer's uv, CI's setup-uv uv), so it carries no pin. **Pick a uv the pinned `setup-uv` lists in its checksum table**, never pass `checksum:`. Bump procedure: `docs/development.md` uv Version.
 
 ## CI/CD & Deployment
 
