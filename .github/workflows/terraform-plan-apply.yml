@@ -104,10 +104,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
 
       - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093  # v3.0.0
         with:
           project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
@@ -117,7 +117,7 @@ jobs:
         run: echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e  # v4.0.1
         with:
           terraform_version: ${{ steps.terraform-version.outputs.version }}
           terraform_wrapper: false  # Better output handling
@@ -166,7 +166,7 @@ jobs:
 
       - name: Download Saved Plan
         if: inputs.use_saved_plan
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
           name: ${{ env.PLAN_FILE }}
           path: terraform/main
@@ -207,7 +207,7 @@ jobs:
 
       - name: Upload Plan Artifact
         if: inputs.save_plan && steps.plan.outcome == 'success'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: ${{ env.PLAN_FILE }}
           path: terraform/main/${{ env.PLAN_FILE }}
@@ -215,7 +215,7 @@ jobs:
 
       - name: Generate Plan Summary
         if: always() && inputs.use_saved_plan == false
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd  # v8.0.0
         env:
           VALIDATE_OUTPUT: ${{ steps.validate.outputs.stdout || 'No output' }}
           PLAN_OUTPUT: ${{ steps.plan.outputs.stdout || 'No plan available' }}
@@ -335,7 +335,7 @@ jobs:
 
       - name: Generate Apply Summary
         if: always() && steps.apply.outcome != 'skipped'
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd  # v8.0.0
         env:
           APPLY_OUTPUT: ${{ steps.apply.outputs.stdout || 'No output' }}
         with:

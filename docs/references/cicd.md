@@ -475,6 +475,28 @@ Terraform plan workflow posts formatted comments on PRs:
 - Environment isolation (production mode, separate projects)
 - Cross-project IAM is registry-scoped (not project-level)
 
+## Action Pinning
+
+Every external action in `.github/workflows/` is pinned to a full 40-character commit SHA, with the release it resolves to in a trailing comment:
+
+```yaml
+- uses: actions/checkout@<40-char-sha>  # vX.Y.Z
+```
+
+**Why pin by SHA:** a tag like `@v6` is mutable. Its owner, or anyone who compromises the owner's account, can repoint it, and these workflows hold `id-token: write` and federate to GCP, so an action running in them can mint cloud credentials. A SHA pin also stops a new release from changing what CI runs with no diff in this repository. GitHub's [security hardening guide](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions) recommends SHA pinning for this reason.
+
+**Scope:** every action from another repository, `actions/*` and `google-github-actions/*` included. Local reusable-workflow calls (`uses: ./.github/workflows/*.yml`) stay unpinned because they resolve to the caller's own commit.
+
+**Updates:** Dependabot (`.github/dependabot.yml`, `github-actions` ecosystem) opens a weekly PR that bumps the SHA and its version comment together. Its cooldown is the `exclude-newer` window in `pyproject.toml` plus one day, so actions and Python packages wait out the same release age before adoption (Dependabot counts whole days, so the same number could admit a release up to a day younger).
+
+**Adding an action:** resolve the release tag to its commit and pin that, never a branch or a floating major tag. For an annotated tag, dereference the tag object to its commit:
+
+```bash
+gh api repos/<owner>/<repo>/git/ref/tags/<tag> --jq '.object.type + " " + .object.sha'
+# If the type is "tag", resolve the tag object to its commit
+gh api repos/<owner>/<repo>/git/tags/<sha> --jq '.object.sha'
+```
+
 ## Customization
 
 ### Change Deployment Mode
