@@ -139,7 +139,7 @@ Hooks are configured in `.pre-commit-config.yaml`. `pre-commit autoupdate` is a 
 |---|---|---|
 | ruff, mypy | `uv.lock` | `uv lock --upgrade` |
 | terraform fmt | `.terraform-version`, installed by setup-terraform in CI and by tenv locally (tenv provides the `terraform` on `PATH`) | edit `.terraform-version`, then `tenv terraform install` |
-| everything else | the pinned `rev` in `.pre-commit-config.yaml` | `pre-commit autoupdate` |
+| everything else | the `rev` in `.pre-commit-config.yaml`, a commit SHA with a `# frozen: vX.Y.Z` comment | Dependabot's weekly PR, or `uv run pre-commit autoupdate --freeze` |
 
 ### Agent Evals
 

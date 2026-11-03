@@ -1,8 +1,14 @@
 version: 2
 # Cooldown is exclude-newer plus one day: Dependabot counts whole days, so the same number can admit a release up to a day younger
 updates:
-  # Bumps SHA pins and their version comments
+  # Bumps SHA pins and their version comments; setup-uv's uv input stays put, held to [tool.uv] required-version
   - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 6
+  - package-ecosystem: pre-commit
     directory: /
     schedule:
       interval: weekly
