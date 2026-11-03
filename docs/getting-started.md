@@ -11,7 +11,7 @@ First-time setup: from a fresh repository to a deployed agent you can run.
 - [tenv](https://github.com/tofuutils/tenv) to install Terraform at the version pinned in `.terraform-version` (run `tenv terraform install` from the repo root)
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) (gcloud CLI)
 - [GitHub CLI](https://cli.github.com/) (gh)
-- [uv](https://docs.astral.sh/uv/) (it installs the Python version in `.python-version`)
+- [uv](https://docs.astral.sh/uv/), within the `required-version` range in `pyproject.toml` (it installs the Python version in `.python-version`)
 - `jq` command-line JSON processor (for parsing Terraform output)
 
 > [!WARNING]
