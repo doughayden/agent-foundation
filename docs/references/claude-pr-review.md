@@ -9,7 +9,7 @@ The `claude.yml` workflow adds two jobs to the repository:
 - An automated code review on every pull request when it is opened.
 - A manual `@claude` trigger for on-demand review or assistance from a comment.
 
-Both jobs run in the `dev` GitHub Environment. The review model is pinned in `claude.yml` (`claude_args: --model`). The review follows the repository's `AGENTS.md`, which the Claude Code version `claude-code-action` installs reads natively on every auth path, Vertex AI included ([AGENTS.md support](https://code.claude.com/docs/en/memory#when-agents-md-support-is-unavailable)).
+Both jobs run in the `dev` GitHub Environment. The review model is pinned in `claude.yml` (`claude_args: --model`). The review follows the repository's `AGENTS.md`: the Claude Code version that `claude-code-action` installs reads it natively on every auth path, Vertex AI included ([AGENTS.md support](https://code.claude.com/docs/en/memory#when-agents-md-support-is-unavailable)).
 
 Findings tied to specific lines are posted as inline review comments on those lines, with a `suggestion` block where the fix is a drop-in replacement, so they can be committed from the Files changed tab. The tracking comment carries the summary and anything that spans the whole change. Review feedback also carries "Fix this" links that open Claude Code with the finding's context.
 
