@@ -97,6 +97,8 @@ Leave `ANTHROPIC_API_KEY` unset, or the API key takes precedence.
 
 Commenting `@claude` on that same pull request does work. Comment events (`issue_comment`, `pull_request_review_comment`, `pull_request_review`) run in the base repository's context with full secrets and the workflow's declared permissions, so `claude-manual-trigger` authenticates normally. Use it to review an outside contribution.
 
+**Dependabot pull requests get no automatic review.** GitHub runs workflows on Dependabot pull requests with the same limits as a fork: a read-only token and no Actions secrets. The `claude-auto-review` job therefore skips any pull request opened by `dependabot[bot]` instead of failing. It matches the pull request's author, so the skip still applies after a person pushes to the branch. Comment `@claude` to review a dependency bump.
+
 ## Editing the review workflow
 
 `claude-code-action` obtains its GitHub token by exchanging an OIDC token, and that exchange only succeeds when `claude.yml` matches the version on the repository's default branch. This is a security guard in the action, not standard GitHub Actions behavior. A pull request that changes `claude.yml` therefore skips its own review, logging:

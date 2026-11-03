@@ -35,9 +35,13 @@ jobs:
     # updates that don't require code review. Excluded patterns:
     #   - PRs from release/* branches (e.g., release/v0.7.0)
     #   - PRs titled "chore: release v*" (release-please convention)
+    # Skip Dependabot PRs: Dependabot-triggered runs get no repository secrets
+    # and a read-only token, so the review cannot run. Matching the PR author
+    # keeps them excluded after a person pushes to the branch.
     if: |
       github.event_name == 'pull_request' &&
       github.event.action == 'opened' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
       !startsWith(github.event.pull_request.title, 'chore: release v') &&
       !startsWith(github.head_ref, 'release/')
     runs-on: ubuntu-latest
