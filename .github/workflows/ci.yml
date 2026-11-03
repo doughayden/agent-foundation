@@ -16,8 +16,8 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d  # v4.0.3
         id: filter
         with:
           filters: |
@@ -37,7 +37,7 @@ jobs:
     timeout-minutes: 10  # Typical run: 2-3 min (hooks + tests). 10 min prevents hanging
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
         with:
           fetch-depth: 1
           persist-credentials: false  # Keep the repo token out of .git/config; pre-commit runs third-party hook code
@@ -58,7 +58,7 @@ jobs:
 
       # The terraform-fmt hook needs the binary on PATH
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e  # v4.0.1
         with:
           terraform_version: ${{ steps.terraform-version.outputs.version }}
           terraform_wrapper: false
@@ -68,7 +68,7 @@ jobs:
         run: uv sync --all-extras --locked
 
       - name: Cache pre-commit hook environments
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -76,7 +76,7 @@ jobs:
       # mypy revalidates cached entries, so a fallback restore costs a re-check, not a wrong result
       - name: Restore mypy cache
         id: mypy-cache
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: .mypy_cache
           key: mypy-${{ runner.os }}-${{ hashFiles('uv.lock', 'pyproject.toml', '.python-version') }}-${{ github.sha }}
@@ -90,7 +90,7 @@ jobs:
       # Only main saves: PR runs read main's cache, and a ~400 MB entry per PR run would evict the uv cache
       - name: Save mypy cache
         if: always() && github.event_name == 'push' && steps.mypy-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: .mypy_cache
           key: ${{ steps.mypy-cache.outputs.cache-primary-key }}
@@ -108,7 +108,7 @@ jobs:
     timeout-minutes: 10  # Typical run: 2-3 min (deps + Postgres lane, incl. image pull). 10 min prevents hanging
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
         with:
           fetch-depth: 1
 
@@ -147,7 +147,7 @@ jobs:
       GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
         with:
           fetch-depth: 1
 
@@ -167,7 +167,7 @@ jobs:
         run: uv sync --all-extras --locked
 
       - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093  # v3.0.0
         with:
           project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}

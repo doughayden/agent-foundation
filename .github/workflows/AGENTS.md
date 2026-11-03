@@ -25,6 +25,7 @@ Standalone `ci.yml` (not called by the orchestrator). Branch protection requires
 - Summary steps stream and capture via `tee` + `PIPESTATUS` (`docs/references/cicd.md` Job Summaries)
 - **No `registry` input override** (it breaks per-env isolation and promotion; `docs/references/cicd.md` Subproject Builds)
 - **Auth:** WIF, no SA keys. Bootstrap creates the GitHub Variables (`docs/references/cicd.md` GitHub Variables)
+- **Pin every external action to a full commit SHA** with a `  # vX.Y.Z` comment (`actions/*` and `google-github-actions/*` included; local `./.github/workflows/` calls stay unpinned). **Never a floating tag**; remote pre-commit hook revs likewise (`# frozen: vX.Y.Z`). Dependabot bumps both (`docs/references/cicd.md` Action and Hook Pinning)
 
 ## Workflow Lint
 
