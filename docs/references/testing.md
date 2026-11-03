@@ -17,6 +17,17 @@ The unit, integration, and smoke lanes never call the live model; the eval lane 
 
 Only the unit lane runs `--cov` with the 100% gate.
 
+**Live output:** pytest captures output and shows it only for failing tests. Two flags stream it as the run happens, and they cover different streams:
+
+- `-s` turns off capture, so anything printed to stdout appears live. In the eval lane that is ADK's own output: the logging plugin's per-event lines, progress bars, and results tables. Both CI eval steps pass it.
+- `--log-cli-level=INFO` (lifecycle) or `--log-cli-level=DEBUG` (full detail) streams Python log records from the `logging` module, like the template's callbacks and library internals, in the timestamped format `pyproject.toml` sets. The flag is the switch; nothing streams by default. `DEBUG` includes model request and response content, so keep it out of CI logs for a fork with real user data.
+
+Eval-lane detail: [Agent Evals](agent-evals.md) "Watching eval logs live".
+
+```bash
+uv run pytest tests/integration --log-cli-level=INFO
+```
+
 ## Specialized Lanes
 
 The rest of this guide covers the unit lane. The non-unit lanes each carry their own reference doc:
