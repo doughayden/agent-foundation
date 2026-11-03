@@ -43,8 +43,9 @@ jobs:
           persist-credentials: false  # Keep the repo token out of .git/config; pre-commit runs third-party hook code
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
+          version: "0.13.6"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
@@ -72,8 +73,27 @@ jobs:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
 
+      # mypy revalidates cached entries, so a fallback restore costs a re-check, not a wrong result
+      - name: Restore mypy cache
+        id: mypy-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: .mypy_cache
+          key: mypy-${{ runner.os }}-${{ hashFiles('uv.lock', 'pyproject.toml', '.python-version') }}-${{ github.sha }}
+          restore-keys: |
+            mypy-${{ runner.os }}-${{ hashFiles('uv.lock', 'pyproject.toml', '.python-version') }}-
+            mypy-${{ runner.os }}-
+
       - name: Run pre-commit hooks
         run: uv run pre-commit run --all-files --show-diff-on-failure
+
+      # Only main saves: PR runs read main's cache, and a ~400 MB entry per PR run would evict the uv cache
+      - name: Save mypy cache
+        if: always() && github.event_name == 'push' && steps.mypy-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .mypy_cache
+          key: ${{ steps.mypy-cache.outputs.cache-primary-key }}
 
       # Runs even when the hooks fail
       - name: Run pytest with coverage
@@ -93,8 +113,9 @@ jobs:
           fetch-depth: 1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
+          version: "0.13.6"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
           # Restore-only: same key as code-quality, which is the sole saver (avoids reserve race)
@@ -131,8 +152,9 @@ jobs:
           fetch-depth: 1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
+          version: "0.13.6"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
           # Restore-only: same key as code-quality, which is the sole saver (avoids reserve race)
