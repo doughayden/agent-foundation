@@ -86,7 +86,7 @@ To also stream Python log records (callbacks, ADK internals), raise the live-log
 uv run pytest tests/eval -m "deterministic" --log-cli-level=DEBUG
 ```
 
-`DEBUG` is the level that surfaces ADK's LLM request and response detail, the most useful eval output; `INFO` shows only higher-level lifecycle. It is verbose. To stream logs on every run instead of per-invocation, uncomment the `log_cli` block in `[tool.pytest.ini_options]` in `pyproject.toml`. CI does not set a live-log level; append the flag to an eval step's command to add one.
+`DEBUG` is the level that surfaces ADK's LLM request and response detail, the most useful eval output; `INFO` shows only higher-level lifecycle. It is verbose, and it writes the model's request and response content into the log. The flag alone turns live logs on; `pyproject.toml` sets only their timestamped format. CI sets no live-log level, since `-s` already streams each run's progress.
 
 ### Confirming what a run actually did
 

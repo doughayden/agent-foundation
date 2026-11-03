@@ -80,6 +80,7 @@ docker compose up --build --watch  # Standard (cloud resources, mirrors producti
 git add . && git commit -m "feat: add new tool"
 
 # Before pushing: unit tests (100% coverage) and the Postgres integration lane (needs Docker)
+# Add --log-cli-level=DEBUG to any run for live logs
 uv run pytest --cov
 uv run pytest tests/integration
 
