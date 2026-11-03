@@ -199,6 +199,10 @@ config ──┬────────┘                        │
 
 ## Reusable Workflows
 
+**Caller constraints:** a job that calls a reusable workflow may not set `continue-on-error`, `env`, `steps`, or `timeout-minutes`. Non-blocking behavior therefore has to be an input the called workflow honors by exiting 0 itself; `judge-eval.yml`'s `gating` input is the instance.
+
+**Optional overrides:** a workflow that takes an optional override resolves `inputs.X || vars.X` once in the job-level `env:` block and references `${{ env.X }}` in its steps, like `IMAGE_NAME: ${{ inputs.image_name || vars.IMAGE_NAME }}` in `docker-build.yml`. The fallback is stated once and the steps never repeat it.
+
 ### config-summary.yml
 
 **Purpose:** Determine deployment mode and create configuration summary.
@@ -393,8 +397,8 @@ Practically, a release tag belongs on a commit whose merge deployed and smoked s
 
 **Pipeline (five jobs):**
 1. `changes` - dorny/paths-filter detects whether relevant files changed
-2. `code-quality` - runs every pre-commit hook on all files (`uv run pre-commit run --all-files --show-diff-on-failure`: ruff, mypy, actionlint, `terraform fmt`, config-file checks), then pytest with coverage even when a hook fails. Installs Terraform from `.terraform-version` for the fmt hook and caches hook environments. Runs on every push and pull request, since the hooks cover every file type.
-3. `integration` - runs `pytest tests/integration`, which starts a throwaway `postgres:18` via `testcontainers` on the runner's Docker daemon (no coverage gate; the 100% gate is unit-lane-only). Gated on `changes.outputs.code == 'true'`.
+2. `code-quality` - runs every pre-commit hook on all files (`uv run pre-commit run --all-files --show-diff-on-failure`: ruff, mypy, actionlint, `terraform fmt`, config-file checks), then pytest with coverage even when a hook fails. Installs Terraform from `.terraform-version` for the fmt hook and caches hook environments. Runs on every push and pull request, since the hooks cover every file type. Checks out with `persist-credentials: false`, since the hooks run third-party code.
+3. `integration` - runs `pytest tests/integration`, which starts a throwaway `postgres:18` via `testcontainers` on the runner's Docker daemon (no coverage gate; the 100% gate is unit-lane-only). The `postgres:18` image matches the deployed Cloud SQL `POSTGRES_18` major. Gated on `changes.outputs.code == 'true'`.
 4. `agent-eval` - runs the deterministic agent eval (`uv run pytest tests/eval -m "deterministic"`) against Vertex AI, authenticating with the dev environment's WIF principal (no coverage gate). Gated on `changes.outputs.code == 'true'`.
 5. `status` - always-runs sentinel that aggregates results for branch protection
 
@@ -440,6 +444,8 @@ Workflows generate formatted summaries in GitHub Actions UI:
 - Collapsible plan output
 
 Job summaries provide quick insight without log analysis.
+
+**Writing a summary step:** stream command output to the log and capture it in one pass with `FILE=$(mktemp)`, `cmd | tee "$FILE"`, and `${PIPESTATUS[0]}` for the command's own exit code (`tee`'s would always be 0). Export GitHub context to shell variables first, capture each value once, and check for empty outputs before rendering. `smoke.yml` and `judge-eval.yml` follow this pattern.
 
 ## PR Comments
 
@@ -516,7 +522,7 @@ The reusable workflows (`docker-build.yml`, `pull-and-promote.yml`, `resolve-ima
 
 **Sub-context `.dockerignore` gotcha:** Docker reads `.dockerignore` from the *context root*, not the repo root. When `context: relay`, the build sees `relay/.dockerignore` (if it exists) and ignores the project-root `.dockerignore`. Add a `<context>/.dockerignore` per subproject if you need exclusions.
 
-**CI lane per subproject:** for code-quality coverage of a subproject, copy `ci.yml` to `ci-<name>.yml`, scope its `paths-filter` and step `working-directory` to the subdir, give the workflow a unique `name:` so its `status` check is uniquely addressable, and add the new `<Name> / status` to branch protection.
+**CI lane per subproject:** for code-quality coverage of a subproject, copy `ci.yml` to `ci-<name>.yml`, scope its `paths-filter` and step `working-directory` to the subdir, give the workflow a unique `name:` so its `status` check is uniquely addressable, and add the new `<Name> / status` to branch protection (bootstrap path: [Protection Strategies](protection-strategies.md#prerequisites) Prerequisites).
 
 **No `registry` override:** the parameterization deliberately stops at `image_name` (and `context` for builds). `vars.ARTIFACT_REGISTRY_URI` embeds the per-env GCP project, and GitHub Environment vars resolve in the callee's env context (not the caller's), so a static input override would defeat per-env isolation and break cross-project promotion. Subprojects therefore land in the same per-env Artifact Registry as the main app, distinguished only by `image_name`. If a subproject genuinely needs a different per-env registry, define a new env-scoped GitHub var in bootstrap and consume it directly in a per-subproject reusable workflow rather than threading it through the existing inputs.
 

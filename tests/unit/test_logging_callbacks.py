@@ -694,13 +694,13 @@ class TestWalrusOperators:
         and evaluates the value, preventing regressions if refactored.
 
         Tests all 7 walrus operator usages in LoggingCallbacks:
-        1. before_agent (line 80): user_content assignment
-        2. after_agent (line 103): user_content assignment
-        3. before_model (line 132): user_content assignment
-        4. after_model (line 166): user_content assignment
-        5. after_model (line 170): llm_content assignment
-        6. before_tool (line 201): user_content assignment (as 'content')
-        7. after_tool (line 239): user_content assignment (as 'content')
+        1. before_agent: user_content assignment
+        2. after_agent: user_content assignment
+        3. before_model: user_content assignment
+        4. after_model: user_content assignment
+        5. after_model: llm_content assignment
+        6. before_tool: user_content assignment (as 'content')
+        7. after_tool: user_content assignment (as 'content')
         """
         caplog.set_level(logging.DEBUG)
         callbacks = LoggingCallbacks()

@@ -44,7 +44,7 @@ AFTER RUNNING:
     1. Review: git status
     2. Delete this script: rm init_template.py
     3. Optional: Delete log directory: rm -rf .log/
-    4. Update README.md and CLAUDE.md to remove template initialization section
+    4. Update README.md and AGENTS.md to remove template initialization section
     5. Configure .env: cp .env.example .env (add your GCP details)
     6. Commit: git add -A && git commit -m "chore: initialize from template"
 
@@ -547,7 +547,6 @@ def main() -> NoReturn:
 
         # Files to update (paths relative to repo root)
         files_to_update = [
-            "CLAUDE.md",
             "Dockerfile",
             "pyproject.toml",
             "README.md",

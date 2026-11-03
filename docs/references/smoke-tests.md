@@ -10,6 +10,8 @@ The lane runs only by explicit path (`uv run pytest tests/smoke`).
 
 ## What each layer catches
 
+Before any check runs, the `client` fixture polls `/health` until the revision serves, so cold-start latency on a freshly deployed revision is absorbed once and the checks run with their normal timeout. The lane is a single test module with no conftest.
+
 Checks run cheapest-first, each a distinct failure class so a failure localizes the broken subsystem:
 
 - **L0 liveness**: `GET /health` -> 200. The revision serves HTTP at all.

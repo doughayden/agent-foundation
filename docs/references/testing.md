@@ -74,6 +74,12 @@ All reusable unit-lane fixtures go in `tests/unit/conftest.py`:
 - Use pytest-mock type aliases for returns: `MockType`, `AsyncMockType`
 - Factory pattern (not context managers)
 
+### Package-Name Discovery
+
+Lanes that reference the source package resolve its name at runtime from `src/` instead of hard-coding it: `next(SRC_DIR.glob("*/__init__.py")).parent.name`. The unit `conftest.py` uses it for mock patch targets, the integration lane for `APP_NAME`, and the eval lane for `AGENT_MODULE` (resolving `SRC_DIR` as `Path(__file__).parents[2]`). A renamed fork reuses every lane with no edits, and `init_template.py` skips the unit conftest because it carries no literal package name.
+
+The bare `next()` is intentional. The template has exactly one package under `src/`, so a violation raises `StopIteration` at import with a traceback on the exact line. A guard would trade one crash for another and would not catch the multiple-package case, where `next()` takes the first match. Discovery is duplicated per lane because there is no shared `tests/conftest.py` to hold it.
+
 ## Fixture Patterns
 
 ### Test Double Naming
@@ -116,7 +122,7 @@ def mock_session(mocker: MockerFixture) -> MockType:
 
 ### Environment Mocking
 
-**No base env vars in `pytest_configure()`:** No module in the test import graph reads env vars at module level. `server.py` does (`initialize_environment` at line 26), but it's never imported during collection (PEP 562 lazy loading, coverage-excluded). Environment variables are set in test fixtures using `mocker.patch.dict`:
+**No base env vars in `pytest_configure()`:** No module in the test import graph reads env vars at module level. `server.py` does (module-level `initialize_environment()`), but it's never imported during collection (PEP 562 lazy loading, coverage-excluded). Environment variables are set in test fixtures using `mocker.patch.dict`:
 
 ```python
 def test_config_with_custom_region(mocker: MockerFixture) -> None:
@@ -124,6 +130,8 @@ def test_config_with_custom_region(mocker: MockerFixture) -> None:
     mocker.patch.dict(os.environ, {"GOOGLE_CLOUD_LOCATION": "us-west1"})
     # Test config loading with custom region
 ```
+
+`ServerEnv` tests build settings through the `isolated_environ` factory fixture, which sets `os.environ` to exactly the given variables and disables `env_file`, so neither the developer's shell nor a local `.env` leaks in. Tests that exercise `.env` loading pass `_env_file=tmp_path / ".env"`.
 
 If a future import chain triggers env var reads at collection time, add direct `os.environ` assignments in `pytest_configure()` (see section below).
 

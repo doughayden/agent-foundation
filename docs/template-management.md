@@ -84,7 +84,7 @@ Work through each phase in order. See [Quick Reference](#quick-reference) for co
 | 4 | Dependencies & build | Manual review (`pyproject.toml`, `Dockerfile`, `docker-compose.yml`) |
 | 5 | Infrastructure (`terraform/`) | Bulk checkout, verify downstream files preserved |
 | 6 | CI/CD (`.github/workflows/`) | Bulk checkout, remove foundation-only workflows |
-| 7 | Config & project files | Per-file review (`.gitignore`, `AGENTS.md`, `README.md`) |
+| 7 | Config & project files | Per-file review (`.gitignore`, `AGENTS.md`, `tests/AGENTS.md`, `README.md`); `terraform/AGENTS.md` and `.github/workflows/AGENTS.md` arrive with phases 5-6 |
 | 8 | Documentation (`docs/`) | Bulk checkout, verify downstream docs preserved |
 | 9 | Wrap-up | Quality suite, summary, PR |
 
@@ -155,7 +155,7 @@ git restore --staged .github/workflows/
 **Phases 7-8 — Config files & documentation:**
 ```bash
 # Per-file review for config
-git diff foundation-tags/$VERSION -- .gitignore .dockerignore README.md AGENTS.md
+git diff foundation-tags/$VERSION -- .gitignore .dockerignore README.md AGENTS.md tests/AGENTS.md
 # Bulk checkout for docs
 git checkout foundation-tags/$VERSION -- docs/
 git restore --staged docs/
