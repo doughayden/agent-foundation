@@ -124,7 +124,7 @@ uv run pre-commit run --all-files                         # whole tree, as CI ru
 
 **Pre-commit:** fix-in-place hooks in `.pre-commit-config.yaml`; CI's `code-quality` job runs the same suite (`--all-files --show-diff-on-failure`), so the merge gate cannot drift from local hooks. **Never add a separate CI step for a tool a hook already runs** — change the hook. **`terraform validate` is deliberately NOT a hook** (per-root init; CI validates). Version sources per hook (`autoupdate` is a no-op for `language: system`) and tenv: `docs/development.md` Pre-commit Hooks.
 
-**Terraform version:** `.terraform-version` (exact `X.Y.Z`) is the single pin for tenv and every CI `setup-terraform` step; `TestTerraformVersionPin` (`tests/unit/test_pinned_versions.py`) fails on a hard-coded `terraform_version`. **NEVER set a Terraform version literal in a workflow.** `required_version` in each root stays a range. **Add a pin-parity case there whenever a pin gains a second home**; uv is the known unenforced instance (#257).
+**Terraform version:** `.terraform-version` (exact `X.Y.Z`) is the single pin for tenv and every CI `setup-terraform` step; `TestTerraformVersionPin` (`tests/unit/test_pinned_versions.py`) fails on a hard-coded `terraform_version`. **NEVER set a Terraform version literal in a workflow.** `required_version` in each root stays a range. **Add a pin-parity case there whenever a pin gains a second home.**
 
 - **mypy:** `strict = true` (plus `warn_unreachable`, outside the strict set) and the `pydantic.mypy` plugin, over `src/` and `tests/`. Never re-enumerate flags `--strict` already implies. `no_implicit_reexport` rejects names a package does not re-export (ADK's lazy `google.adk.tools`, `google.adk.models`): import from the defining submodule. `# type: ignore[code]` only where the fix sits upstream, with the reason on the line above.
 - **ruff:** 88 char line length, enforces bandit/simplify/use-pathlib. **Always use `Path` objects** (never `os.path`).
@@ -163,6 +163,8 @@ uv lock --upgrade               # Update all
 ```
 
 **Python version:** `.python-version` is the source; `TestPythonVersionParity` asserts every other pin. **NEVER set a Python version in a workflow** (`uv python install X`, setup-uv `python-version:`, `UV_PYTHON`, `--python`). One interpreter, no CI matrix. Pins and bump procedure: `docs/development.md` Python Version.
+
+**uv version:** `[tool.uv] required-version` is a RANGE (the exact pin's minor series; `==` blocks every uv command for anyone whose uv moved). Dockerfile uv image and every `setup-uv` `version:` hold one exact version; `TestUvVersionPins` asserts both. The `uv-lock` hook is `language: system` (the developer's uv, CI's setup-uv uv), so it carries no pin. **Pick a uv the pinned `setup-uv` lists in its checksum table**, never pass `checksum:`. Bump procedure: `docs/development.md` uv Version.
 
 ## CI/CD & Deployment
 

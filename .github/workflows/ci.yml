@@ -43,8 +43,9 @@ jobs:
           persist-credentials: false  # Keep the repo token out of .git/config; pre-commit runs third-party hook code
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
+          version: "0.13.6"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
@@ -112,8 +113,9 @@ jobs:
           fetch-depth: 1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
+          version: "0.13.6"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
           # Restore-only: same key as code-quality, which is the sole saver (avoids reserve race)
@@ -150,8 +152,9 @@ jobs:
           fetch-depth: 1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
+          version: "0.13.6"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
           # Restore-only: same key as code-quality, which is the sole saver (avoids reserve race)
