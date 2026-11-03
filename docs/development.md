@@ -107,11 +107,11 @@ The pre-commit hooks lint, format, and type-check every commit. Run the unit tes
 
 ### Pre-commit Hooks
 
-Pre-commit runs lint, format, and type checks as a fix-in-place git hook on every `git commit`. It does not run pytest. To run the Python tools by hand, the equivalent chain is `uv run ruff check --fix && uv run ruff format && uv run mypy`, in that order.
+Pre-commit runs lint, format, type, and spelling checks as a fix-in-place git hook on every `git commit`. It does not run pytest. To run the Python tools by hand, the equivalent chain is `uv run ruff check --fix && uv run ruff format && uv run mypy`, in that order.
 
 CI runs the same hooks with `uv run pre-commit run --all-files --show-diff-on-failure`. Run `uv run pre-commit run --all-files` to check the whole tree the way CI does, like after changing a hook or pulling in upstream changes. In CI, any hook that would modify a file fails the job and prints the diff it would have applied.
 
-Coverage spans Python (ruff, mypy), Terraform (`terraform fmt`), GitHub Actions workflows (actionlint), and the YAML/TOML/JSON config files.
+Coverage spans Python (ruff, mypy), Terraform (`terraform fmt`), GitHub Actions workflows (actionlint), the YAML/TOML/JSON config files, and spelling in every text file (codespell). codespell reads `[tool.codespell]` in `pyproject.toml`; add a word to `ignore-words-list` only for a confirmed false positive, with a comment saying why.
 
 Ruff's linter runs before its formatter. `ruff check --fix` can change layout (removing an `else` de-indents a block), and the formatter has to see that result. The fix runs only where `--fix` is passed explicitly; `pyproject.toml` deliberately does not set `fix = true`, so a bare `ruff check` reports instead of rewriting.
 
@@ -137,7 +137,7 @@ Hooks are configured in `.pre-commit-config.yaml`. `pre-commit autoupdate` is a 
 
 | Hook | Version comes from | Update with |
 |---|---|---|
-| ruff, mypy | `uv.lock` | `uv lock --upgrade` |
+| ruff, mypy, codespell | `uv.lock` | `uv lock --upgrade` |
 | terraform fmt | `.terraform-version`, installed by setup-terraform in CI and by tenv locally (tenv provides the `terraform` on `PATH`) | edit `.terraform-version`, then `tenv terraform install` |
 | uv-lock | your installed uv, held inside `required-version` (CI uses its pinned `setup-uv` uv) | [uv Version](#uv-version) |
 | everything else | the `rev` in `.pre-commit-config.yaml`, a commit SHA with a `# frozen: vX.Y.Z` comment | Dependabot's weekly PR, or `uv run pre-commit autoupdate --freeze` |
