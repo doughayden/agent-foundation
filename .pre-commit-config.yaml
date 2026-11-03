@@ -10,10 +10,6 @@ repos:
       - id: check-json
       - id: check-merge-conflict
       - id: check-added-large-files
-  - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.11.14
-    hooks:
-      - id: uv-lock
   - repo: https://github.com/rhysd/actionlint
     rev: 914e7df21a07ef503a81201c76d2b11c789d3fca  # frozen: v1.7.12
     hooks:
@@ -22,6 +18,13 @@ repos:
         args: [-shellcheck=]
   - repo: local
     hooks:
+      # Your own uv, held inside [tool.uv] required-version; CI runs the pinned setup-uv version
+      - id: uv-lock
+        name: uv lock
+        entry: uv lock
+        language: system
+        files: ^(uv\.(lock|toml)|pyproject\.toml)$
+        pass_filenames: false
       # check --fix can change layout, so the formatter runs after it
       - id: ruff-check
         name: ruff check

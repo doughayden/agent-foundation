@@ -311,6 +311,8 @@ gh api repos/:owner/:repo/rulesets | jq '.[] | {name, enforcement, target}'
 
 ### 8. Configure prod-apply Reviewers (REQUIRED)
 
+Bootstrap creates `prod-apply` with no protection rules. Add required reviewers and a `v*.*.*` deployment tag rule:
+
 1. Settings → Environments → prod-apply
 2. Under **Deployment protection rules**, check **Required reviewers**
   - Click **Add reviewers** search box
@@ -318,11 +320,13 @@ gh api repos/:owner/:repo/rulesets | jq '.[] | {name, enforcement, target}'
 3. Click **Save protection rules**
 4. Under **Deployment branches and tags**:
   - Click dropdown → Select **Selected branches and tags**
-  - Add branch rule: `main` (only main branch can trigger prod deployments)
-  - Add tag rule: `v*.*.*` or `v*` (version tags can trigger prod deployments)
+  - Add tag rule: `v*.*.*` (version tags can trigger prod deployments)
 5. Click **Save protection rules**
 
-See [Protection Strategies](protection-strategies.md) for detailed setup instructions.
+Refer to [Protection Strategies](protection-strategies.md#environment-protection-manual-approval-setup-required) for detailed setup instructions including `gh api` commands.
+
+> [!IMPORTANT]
+> Required reviewers are not available on private repositories outside GitHub Enterprise, so `prod-apply` deploys without approval there. Check the plan table in [Protection Strategies](protection-strategies.md#private-repositories) before relying on the gate.
 
 ## Claude PR Review
 
