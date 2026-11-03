@@ -19,7 +19,7 @@ Guidance for AI agents. **CRITICAL: Update this file when establishing project p
 
 ## Directory Instructions
 
-Read the matching file before working in its directory. Claude Code also loads it on demand when a session Reads a file there.
+Read the matching file before working in its directory. Claude Code also loads it on demand when a session reads a file there with the `Read` tool.
 
 | File | Covers | Ownership |
 |---|---|---|
