@@ -67,6 +67,8 @@ Install the [Google Cloud Code extension](https://cloud.google.com/code/docs/vsc
 
 ## Architecture
 
+The deployed ADK server runs on Cloud Run and exports traces directly to Cloud Trace through the Telemetry OTLP API.
+
 The observability module uses a two-phase initialization strategy to coexist with ADK's internal telemetry:
 
 1. **Phase 1** (`configure_otel_resource()`): Set resource attributes via `OTEL_RESOURCE_ATTRIBUTES` env var *before* ADK starts. ADK reads these when constructing its internal `TracerProvider`.
@@ -158,7 +160,6 @@ String literals are used at the emission site rather than imported constants bec
 
 ## Resources
 
-- [Vertex AI | Agent Engine | Trace an Agent](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/manage/tracing)
 - [Google Cloud Observability | Instrument ADK Applications with OpenTelemetry](https://cloud.google.com/stackdriver/docs/instrumentation/ai-agent-adk)
 - [Google Cloud Trace | View Generative AI Events](https://cloud.google.com/trace/docs/finding-traces#view_generative_ai_events)
 - [OpenTelemetry | Generative AI Instrumentation](https://opentelemetry.io/blog/2024/otel-generative-ai/)

@@ -158,6 +158,21 @@ gcloud run services describe <service-name> --region <region> --format="value(sp
 
 ## Terraform
 
+### ADC quota project and billing errors
+
+**Symptom:** Terraform fails to read its GCS state with a 403 `UserProjectAccountProblem` or a billing account error.
+
+The gcloud CLI and Application Default Credentials (ADC) use separate credentials. ADC login can set a quota project from the current gcloud configuration, but changing the CLI project later does not update an existing ADC quota project. A quota project without active billing can cause API requests to fail.
+
+Check that billing is enabled on the intended project and set it as the ADC quota project:
+
+```bash
+gcloud billing projects describe YOUR_DEV_PROJECT_ID
+gcloud auth application-default set-quota-project YOUR_DEV_PROJECT_ID
+```
+
+Setting the quota project requires `serviceusage.services.use`, included in `roles/serviceusage.serviceUsageConsumer`. The quota project determines quota and billing attribution for applicable client API requests. It does not enable billing or change where Terraform creates resources. If the error persists, check the state bucket's project and billing status too. See [Google Cloud authentication](https://cloud.google.com/docs/authentication/application-default-credentials#personal) and the [ADC quota-project command](https://cloud.google.com/sdk/gcloud/reference/auth/application-default/set-quota-project).
+
 ### State Lock Timeout
 
 ```bash

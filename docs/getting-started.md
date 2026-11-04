@@ -32,11 +32,17 @@ Bootstrap creates the one-time CI/CD infrastructure for the dev environment: key
 
 ### 1. Authenticate
 
+Choose your dev project ID now. Use the same ID for `projects.dev` in pre-bootstrap and `project` in the dev bootstrap configuration below.
+
 ```bash
+gcloud auth login
+gcloud config set project YOUR_DEV_PROJECT_ID
 gcloud auth application-default login
-gcloud config set project YOUR_PROJECT_ID  # Optional
+gcloud auth application-default set-quota-project YOUR_DEV_PROJECT_ID
 gh auth login
 ```
+
+ADC login can set the quota project automatically; the explicit command confirms the intended project. For quota and billing errors, see [Troubleshooting](troubleshooting.md#adc-quota-project-and-billing-errors).
 
 ### 2. Create State Buckets (Pre-Bootstrap)
 
