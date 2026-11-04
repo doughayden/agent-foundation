@@ -569,7 +569,7 @@ def main() -> NoReturn:
         test_files = Path("tests").rglob("test_*.py")
         files_to_update.extend(str(path) for path in test_files)
 
-        # Eval data embeds the package name as ``app_name``.
+        # Eval data embeds the package name as `app_name`
         eval_data_files = Path("tests/eval/data").glob("*.json")
         files_to_update.extend(str(path) for path in eval_data_files)
 
@@ -587,8 +587,7 @@ def main() -> NoReturn:
         else:
             print(f"\n⚠️  Directory {old_dir} not found - already renamed?")
 
-        # Package sources hold APP_NAME / ROOT_AGENT_NAME. Glob after the rename;
-        # a dry run has not renamed yet, so fall back to the original directory.
+        # Glob after the rename; a dry run falls back to the original directory
         src_dir = new_dir if new_dir.exists() else old_dir
         files_to_update.extend(str(path) for path in src_dir.rglob("*.py"))
 
