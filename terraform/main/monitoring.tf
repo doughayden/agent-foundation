@@ -1,4 +1,4 @@
-# Golden-signal alert policies on native Cloud Run metrics; each condition mirrors a service Metrics tab chart.
+# Alert policies on native Cloud Run metrics; each condition mirrors a service Metrics tab chart.
 # Dry-run by default: policies evaluate and open incidents in Cloud Monitoring but notify nobody until
 # a notification channel ID is added for the environment below. Thresholds are starting points; tune them
 # to your SLOs. Guide: docs/observability.md Alerting.
@@ -53,7 +53,7 @@ resource "google_monitoring_alert_policy" "latency" {
 
   documentation {
     mime_type = "text/markdown"
-    content   = "Golden signal: latency. Chart: Cloud Run service Metrics tab, Request latencies. Check Cloud Trace for slow model or tool spans."
+    content   = "Chart: Cloud Run service Metrics tab, Request latencies. Check Cloud Trace for slow model or tool spans."
   }
 
   depends_on = [
@@ -88,7 +88,7 @@ resource "google_monitoring_alert_policy" "traffic" {
 
   documentation {
     mime_type = "text/markdown"
-    content   = "Golden signal: traffic. Chart: Cloud Run service Metrics tab, Request count. A sustained spike multiplies model spend; confirm the callers are expected."
+    content   = "Chart: Cloud Run service Metrics tab, Request count. A sustained spike multiplies model spend; confirm the callers are expected."
   }
 
   depends_on = [
@@ -130,7 +130,7 @@ resource "google_monitoring_alert_policy" "errors" {
 
   documentation {
     mime_type = "text/markdown"
-    content   = "Golden signal: errors. Chart: Cloud Run service Metrics tab, Request count grouped by response code class. Check Cloud Logging for ERROR entries on the failing revision."
+    content   = "Chart: Cloud Run service Metrics tab, Request count grouped by response code class. Check Cloud Logging for ERROR entries on the failing revision."
   }
 
   depends_on = [
@@ -213,7 +213,7 @@ resource "google_monitoring_alert_policy" "saturation" {
 
   documentation {
     mime_type = "text/markdown"
-    content   = "Golden signal: saturation. Charts: Cloud Run service Metrics tab, Container CPU utilization, Container memory utilization, Container instance count and Max concurrent requests. Raise CPU, memory, max instances or concurrency, or find the request driving the load."
+    content   = "Charts: Cloud Run service Metrics tab, Container CPU utilization, Container memory utilization, Container instance count and Max concurrent requests. Raise CPU, memory, max instances or concurrency, or find the request driving the load."
   }
 
   depends_on = [
@@ -222,8 +222,8 @@ resource "google_monitoring_alert_policy" "saturation" {
   ]
 }
 
-# Unhealthy instances, mirroring the Container health checks chart; targets a rollout whose new revision
-# never becomes ready while the previous revision keeps serving traffic
+# Unhealthy instances: readiness failures (Container health checks chart) and failed probes, which cover a startup
+# probe that never passes, so a rollout whose new revision never becomes ready still alerts
 resource "google_monitoring_alert_policy" "unhealthy_instances" {
   for_each              = local.locations
   display_name          = "${local.resource_name} unhealthy instances (${each.key})"
@@ -248,9 +248,25 @@ resource "google_monitoring_alert_policy" "unhealthy_instances" {
     }
   }
 
+  conditions {
+    display_name = "Health check probe failed"
+    condition_threshold {
+      filter          = "${local.run_revision_filter[each.key]} AND metric.type = \"run.googleapis.com/container/completed_probe_count\" AND metric.labels.is_healthy = false"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"
+      aggregations {
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_DELTA"
+        cross_series_reducer = "REDUCE_SUM"
+        group_by_fields      = ["resource.label.revision_name"]
+      }
+    }
+  }
+
   documentation {
     mime_type = "text/markdown"
-    content   = "Instances are reporting UNHEALTHY. Chart: Cloud Run service Metrics tab, Container health checks. During a deploy a revision that never becomes ready takes no traffic while the previous revision keeps serving. Check the revision's system logs, then rerun the deploy if the same image deployed cleanly before (a transient infrastructure failure). Unverified: whether a startup probe failure reports UNHEALTHY here; a deliberately failing probe in dev proves it."
+    content   = "An instance failed its readiness probe (Cloud Run stops routing requests to it) or a health check probe ended unhealthy. Chart: Cloud Run service Metrics tab, Container health checks; the failed-probe condition has no chart, use Metrics Explorer on completed_probe_count. A startup probe that never passes means the new revision takes no traffic while the previous revision keeps serving. Check the revision's system logs, then rerun the deploy if the same image deployed cleanly before (a transient infrastructure failure)."
   }
 
   depends_on = [
