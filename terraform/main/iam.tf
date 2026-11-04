@@ -3,6 +3,7 @@ locals {
   # by CI/CD — no bootstrap re-run required.
   wif_additional_roles = toset([
     # WIF principal IAM roles not granted in bootstrap (consumers fill this in).
+    "roles/monitoring.alertPolicyEditor", # Alert policies (monitoring.tf)
   ])
 }
 
