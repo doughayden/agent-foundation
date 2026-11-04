@@ -55,11 +55,6 @@ resource "google_monitoring_alert_policy" "latency" {
     mime_type = "text/markdown"
     content   = "Chart: Cloud Run service Metrics tab, Request latencies. Check Cloud Trace for slow model or tool spans."
   }
-
-  depends_on = [
-    time_sleep.service_enablement_propagation["monitoring.googleapis.com"],
-    time_sleep.wif_iam_propagation["roles/monitoring.alertPolicyEditor"],
-  ]
 }
 
 resource "google_monitoring_alert_policy" "traffic" {
@@ -90,11 +85,6 @@ resource "google_monitoring_alert_policy" "traffic" {
     mime_type = "text/markdown"
     content   = "Chart: Cloud Run service Metrics tab, Request count. A sustained spike multiplies model spend; confirm the callers are expected."
   }
-
-  depends_on = [
-    time_sleep.service_enablement_propagation["monitoring.googleapis.com"],
-    time_sleep.wif_iam_propagation["roles/monitoring.alertPolicyEditor"],
-  ]
 }
 
 resource "google_monitoring_alert_policy" "errors" {
@@ -132,11 +122,6 @@ resource "google_monitoring_alert_policy" "errors" {
     mime_type = "text/markdown"
     content   = "Chart: Cloud Run service Metrics tab, Request count grouped by response code class. Check Cloud Logging for ERROR entries on the failing revision."
   }
-
-  depends_on = [
-    time_sleep.service_enablement_propagation["monitoring.googleapis.com"],
-    time_sleep.wif_iam_propagation["roles/monitoring.alertPolicyEditor"],
-  ]
 }
 
 resource "google_monitoring_alert_policy" "saturation" {
@@ -215,11 +200,6 @@ resource "google_monitoring_alert_policy" "saturation" {
     mime_type = "text/markdown"
     content   = "Charts: Cloud Run service Metrics tab, Container CPU utilization, Container memory utilization, Container instance count and Max concurrent requests. Raise CPU, memory, max instances or concurrency, or find the request driving the load."
   }
-
-  depends_on = [
-    time_sleep.service_enablement_propagation["monitoring.googleapis.com"],
-    time_sleep.wif_iam_propagation["roles/monitoring.alertPolicyEditor"],
-  ]
 }
 
 # Unhealthy instances: readiness failures (Container health checks chart) and failed probes, which cover a startup
@@ -268,9 +248,4 @@ resource "google_monitoring_alert_policy" "unhealthy_instances" {
     mime_type = "text/markdown"
     content   = "An instance failed its readiness probe (Cloud Run stops routing requests to it) or a health check probe ended unhealthy. Chart: Cloud Run service Metrics tab, Container health checks; the failed-probe condition has no chart, use Metrics Explorer on completed_probe_count. A startup probe that never passes means the new revision takes no traffic while the previous revision keeps serving. Check the revision's system logs, then rerun the deploy if the same image deployed cleanly before (a transient infrastructure failure)."
   }
-
-  depends_on = [
-    time_sleep.service_enablement_propagation["monitoring.googleapis.com"],
-    time_sleep.wif_iam_propagation["roles/monitoring.alertPolicyEditor"],
-  ]
 }

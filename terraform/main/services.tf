@@ -1,7 +1,6 @@
 locals {
   services = toset([
     # APIs needed by the main module not configured in bootstrap (consumers fill this in)
-    "monitoring.googleapis.com", # Alert policies (monitoring.tf)
   ])
 }
 
