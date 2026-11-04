@@ -539,8 +539,8 @@ def main() -> NoReturn:
 
         # Define replacements
         replacements = {
-            f"https://github.com/{ORIGINAL_GITHUB_OWNER}/{ORIGINAL_REPO_NAME}/": f"https://github.com/{config.github_owner}/{config.repo_name}/",
-            f"https://{ORIGINAL_GITHUB_OWNER}.github.io/{ORIGINAL_REPO_NAME}/": f"https://{config.github_owner}.github.io/{config.repo_name}/",
+            f"https://github.com/{ORIGINAL_GITHUB_OWNER}/{ORIGINAL_REPO_NAME}": f"https://github.com/{config.github_owner}/{config.repo_name}",
+            f"https://{ORIGINAL_GITHUB_OWNER}.github.io/{ORIGINAL_REPO_NAME}": f"https://{config.github_owner}.github.io/{config.repo_name}",
             ORIGINAL_PACKAGE_NAME: config.package_name,
             ORIGINAL_REPO_NAME: config.repo_name,
         }
@@ -551,6 +551,7 @@ def main() -> NoReturn:
             "pyproject.toml",
             "README.md",
             "mkdocs.yml",
+            ".env.example",
         ]
 
         # Glob docker-compose files
@@ -568,6 +569,10 @@ def main() -> NoReturn:
         test_files = Path("tests").rglob("test_*.py")
         files_to_update.extend(str(path) for path in test_files)
 
+        # Eval data embeds the package name as `app_name`
+        eval_data_files = Path("tests/eval/data").glob("*.json")
+        files_to_update.extend(str(path) for path in eval_data_files)
+
         # Rename directory
         old_dir = Path(f"src/{ORIGINAL_PACKAGE_NAME}")
         new_dir = Path(f"src/{config.package_name}")
@@ -581,6 +586,10 @@ def main() -> NoReturn:
                 print(f"  ✅ Renamed {old_dir} → {new_dir}")
         else:
             print(f"\n⚠️  Directory {old_dir} not found - already renamed?")
+
+        # Glob after the rename; a dry run falls back to the original directory
+        src_dir = new_dir if new_dir.exists() else old_dir
+        files_to_update.extend(str(path) for path in src_dir.rglob("*.py"))
 
         # Update files
         print("\n📝 Updating files:")
