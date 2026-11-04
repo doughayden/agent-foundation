@@ -50,10 +50,6 @@ permissions:
   id-token: write
   pull-requests: write  # For PR comments
 
-concurrency:
-  group: terraform-apply-${{ inputs.terraform_environment || inputs.environment }}
-  cancel-in-progress: false
-
 jobs:
   resolve-env:
     name: Resolve Environment
@@ -67,9 +63,9 @@ jobs:
           GH_ENV: ${{ inputs.environment }}
         run: |
           if [ -n "$TF_ENV" ]; then
-            echo "terraform_environment=$TF_ENV" >> $GITHUB_OUTPUT
+            echo "terraform_environment=$TF_ENV" >> "$GITHUB_OUTPUT"
           else
-            echo "terraform_environment=$GH_ENV" >> $GITHUB_OUTPUT
+            echo "terraform_environment=$GH_ENV" >> "$GITHUB_OUTPUT"
           fi
 
   terraform:
@@ -77,6 +73,10 @@ jobs:
     needs: resolve-env
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    # Applies queue per environment; each plan gets its own group and waits on the state lock instead
+    concurrency:
+      group: ${{ inputs.terraform_action == 'apply' && format('terraform-apply-{0}', needs.resolve-env.outputs.terraform_environment) || format('terraform-plan-{0}-{1}', github.run_id, needs.resolve-env.outputs.terraform_environment) }}
+      cancel-in-progress: false
     outputs:
       smoke_target_url: ${{ steps.tf_outputs.outputs.smoke_target_url }}
       smoke_invoker_service_account_email: ${{ steps.tf_outputs.outputs.smoke_invoker_service_account_email }}
@@ -147,15 +147,17 @@ jobs:
           OUTPUT=$(cat "$VALIDATE_OUTPUT_FILE")
 
           # Save for summary
-          echo "stdout<<EOF" >> $GITHUB_OUTPUT
-          echo "$OUTPUT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
+          {
+            echo "stdout<<EOF"
+            echo "$OUTPUT"
+            echo "EOF"
+            echo "exitcode=$EXIT_CODE"
+          } >> "$GITHUB_OUTPUT"
 
           # Clean up temp file
           rm -f "$VALIDATE_OUTPUT_FILE"
 
-          exit $EXIT_CODE
+          exit "$EXIT_CODE"
         continue-on-error: true
 
       - name: Terraform Validate Status
@@ -181,22 +183,24 @@ jobs:
           PLAN_OUTPUT_FILE=$(mktemp)
 
           # Stream output to both logs (real-time) and file (for summary)
-          terraform plan -no-color -input=false -out="$PLAN_FILE" 2>&1 | tee "$PLAN_OUTPUT_FILE"
+          terraform plan -no-color -input=false -lock-timeout=30m -out="$PLAN_FILE" 2>&1 | tee "$PLAN_OUTPUT_FILE"
           EXIT_CODE=${PIPESTATUS[0]}  # Get exit code from terraform, not tee
 
           # Read captured output for summary
           OUTPUT=$(cat "$PLAN_OUTPUT_FILE")
 
           # Save for summary
-          echo "stdout<<EOF" >> $GITHUB_OUTPUT
-          echo "$OUTPUT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
+          {
+            echo "stdout<<EOF"
+            echo "$OUTPUT"
+            echo "EOF"
+            echo "exitcode=$EXIT_CODE"
+          } >> "$GITHUB_OUTPUT"
 
           # Clean up temp file
           rm -f "$PLAN_OUTPUT_FILE"
 
-          exit $EXIT_CODE
+          exit "$EXIT_CODE"
         continue-on-error: true
 
       - name: Terraform Plan Status
@@ -301,22 +305,24 @@ jobs:
           APPLY_OUTPUT_FILE=$(mktemp)
 
           # Stream output to both logs (real-time) and file (for summary)
-          terraform apply -auto-approve -input=false -no-color "$PLAN_FILE" 2>&1 | tee "$APPLY_OUTPUT_FILE"
+          terraform apply -auto-approve -input=false -no-color -lock-timeout=30m "$PLAN_FILE" 2>&1 | tee "$APPLY_OUTPUT_FILE"
           EXIT_CODE=${PIPESTATUS[0]}  # Get exit code from terraform, not tee
 
           # Read captured output for summary
           OUTPUT=$(cat "$APPLY_OUTPUT_FILE")
 
           # Save for summary
-          echo "stdout<<EOF" >> $GITHUB_OUTPUT
-          echo "$OUTPUT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "exitcode=$EXIT_CODE" >> $GITHUB_OUTPUT
+          {
+            echo "stdout<<EOF"
+            echo "$OUTPUT"
+            echo "EOF"
+            echo "exitcode=$EXIT_CODE"
+          } >> "$GITHUB_OUTPUT"
 
           # Clean up temp file
           rm -f "$APPLY_OUTPUT_FILE"
 
-          exit $EXIT_CODE
+          exit "$EXIT_CODE"
         continue-on-error: true
 
       - name: Terraform Apply Status
@@ -330,8 +336,8 @@ jobs:
         if: inputs.terraform_action == 'apply' && steps.apply.outputs.exitcode == '0'
         working-directory: terraform/main
         run: |
-          echo "smoke_target_url=$(terraform output -raw smoke_target_url)" >> $GITHUB_OUTPUT
-          echo "smoke_invoker_service_account_email=$(terraform output -raw smoke_invoker_service_account_email)" >> $GITHUB_OUTPUT
+          echo "smoke_target_url=$(terraform output -raw smoke_target_url)" >> "$GITHUB_OUTPUT"
+          echo "smoke_invoker_service_account_email=$(terraform output -raw smoke_invoker_service_account_email)" >> "$GITHUB_OUTPUT"
 
       - name: Generate Apply Summary
         if: always() && steps.apply.outcome != 'skipped'
