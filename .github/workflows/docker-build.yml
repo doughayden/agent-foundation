@@ -95,7 +95,7 @@ jobs:
             fi
           done <<< "${{ inputs.tags }}"
 
-          echo "full_tags=${FULL_TAGS}" >> $GITHUB_OUTPUT
+          echo "full_tags=${FULL_TAGS}" >> "$GITHUB_OUTPUT"
           echo "Constructed tags: ${FULL_TAGS}"
 
       - name: Build and push Docker image
@@ -118,7 +118,7 @@ jobs:
         run: |
           # Get first tag (SHA) from inputs
           FIRST_TAG=$(echo "${{ inputs.tags }}" | head -1)
-          echo "sha=${FIRST_TAG}" >> $GITHUB_OUTPUT
+          echo "sha=${FIRST_TAG}" >> "$GITHUB_OUTPUT"
           echo "Image SHA: ${FIRST_TAG}"
 
       - name: Construct Digest URI
@@ -130,7 +130,7 @@ jobs:
           DIGEST="${{ steps.build.outputs.digest }}"
 
           URI="${REGISTRY}/${IMAGE_NAME}@${DIGEST}"
-          echo "uri=${URI}" >> $GITHUB_OUTPUT
+          echo "uri=${URI}" >> "$GITHUB_OUTPUT"
           echo "Digest URI: ${URI}"
 
       - name: Log image details
@@ -151,7 +151,7 @@ jobs:
 
       - name: Generate Build Summary
         run: |
-          cat >> $GITHUB_STEP_SUMMARY << EOF
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
           ## 🐳 Build Outputs
 
           | Output | Value |

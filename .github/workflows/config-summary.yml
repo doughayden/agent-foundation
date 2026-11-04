@@ -32,7 +32,7 @@ jobs:
           fi
 
           # Build summary
-          cat >> $GITHUB_STEP_SUMMARY << EOF
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
           ## ⚙️ Workflow Configuration
 
           | Setting | Value |
@@ -50,18 +50,18 @@ jobs:
           # Show what will deploy based on mode and event
           if [ "${{ github.ref_type }}" == "tag" ]; then
             if [ "${{ inputs.production_mode }}" == "true" ]; then
-              echo "- ✅ **Production** deployment (tag-based release)" >> $GITHUB_STEP_SUMMARY
+              echo "- ✅ **Production** deployment (tag-based release)" >> "$GITHUB_STEP_SUMMARY"
             else
-              echo "- ⛔ Tag events are skipped in dev-only mode" >> $GITHUB_STEP_SUMMARY
+              echo "- ⛔ Tag events are skipped in dev-only mode" >> "$GITHUB_STEP_SUMMARY"
             fi
           elif [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "- ✅ **Dev** plan only (PR validation)" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ **Dev** plan only (PR validation)" >> "$GITHUB_STEP_SUMMARY"
           elif [ "${{ github.event_name }}" == "push" ]; then
-            echo "- ✅ **Dev** deployment" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ **Dev** deployment" >> "$GITHUB_STEP_SUMMARY"
             if [ "${{ inputs.production_mode }}" == "true" ]; then
-              echo "- ✅ **Stage** deployment" >> $GITHUB_STEP_SUMMARY
+              echo "- ✅ **Stage** deployment" >> "$GITHUB_STEP_SUMMARY"
             fi
           fi
 
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "---" >> "$GITHUB_STEP_SUMMARY"

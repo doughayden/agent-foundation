@@ -13,9 +13,7 @@ repos:
   - repo: https://github.com/rhysd/actionlint
     rev: 914e7df21a07ef503a81201c76d2b11c789d3fca  # frozen: v1.7.12
     hooks:
-      # TODO: drop -shellcheck= once the run-script findings are fixed (#255)
       - id: actionlint
-        args: [-shellcheck=]
   - repo: local
     hooks:
       # Your own uv, held inside [tool.uv] required-version; CI runs the pinned setup-uv version
