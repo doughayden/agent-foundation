@@ -1,6 +1,6 @@
 # AGENTS.md: Terraform
 
-Rules for editing `terraform/`. **Template Internals:** everything here except `terraform/main/services.tf` and `terraform/main/iam.tf` (the consumer extension points, see root `AGENTS.md` Consumer Extension Points). Cross-cutting rules live in the root `AGENTS.md`.
+Rules for editing `terraform/`. **Template Internals:** everything here except `terraform/main/services.tf`, `terraform/main/iam.tf` and the `terraform/main/monitoring.tf` locals (the consumer extension points, see root `AGENTS.md` Consumer Extension Points). Cross-cutting rules live in the root `AGENTS.md`.
 
 ## Pre-Bootstrap
 
