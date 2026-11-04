@@ -24,7 +24,7 @@ Read the matching file before working in its directory. Claude Code also loads i
 | File | Covers | Ownership |
 |---|---|---|
 | `.github/workflows/AGENTS.md` | Orchestration, path filters, stage-success gate, required checks, workflow patterns, actionlint | Template Internals |
-| `terraform/AGENTS.md` | Pre-bootstrap, bootstrap roots, main module, Cloud Run probes | Template Internals (except `services.tf`/`iam.tf`) |
+| `terraform/AGENTS.md` | Pre-bootstrap, bootstrap roots, main module, Cloud Run probes | Template Internals (except `services.tf`/`iam.tf`/`monitoring.tf` locals) |
 | `tests/AGENTS.md` | Lanes, eval gate, smoke lane, conftests, fixtures, mocks, organization | Consumer-owned; eval-gate internals marked |
 
 ## Critical
@@ -75,6 +75,7 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 | Add an env var | field on `ServerEnv` in `config.py` (name = env var lowercased) + `docs/environment-variables.md` | Documentation is mandatory: see Environment Variables below |
 | Enable a GCP API | `terraform/main/services.tf` | `google_project_service`; downstream resources `depends_on = [time_sleep.service_enablement_propagation["api.googleapis.com"]]` |
 | Grant a WIF role | `terraform/main/iam.tf` | `google_project_iam_member`; downstream resources `depends_on = [time_sleep.wif_iam_propagation["roles/example"]]` |
+| Tune or activate alerts | `alert_thresholds` / `alert_notification_channels` in `terraform/main/monitoring.tf` | Dry-run by default (no channel). Conditions read native Cloud Run metrics only, each mirroring a Metrics-tab chart: `docs/observability.md` Alerting |
 | Override runtime config | GitHub Environment Variables → `TF_VAR_*` | See `coalesce()` call sites in `terraform/main/` for current overridable surface |
 | Change the model call timeout | `ROOT_AGENT_MODEL_TIMEOUT_MS` in `agent.py`; judge criteria's `judge_model_config.http_options.timeout` in `full_eval_config.json` and `user_sim_config.json` | Per-call cap (ms) in evals AND the deployed service, never retried. Size it per `docs/development.md` Model Call Timeout, not a template default; eval retries: `docs/references/agent-evals.md` Timeouts and retries |
 | Swap the LLM | `ROOT_AGENT_MODEL` in `agent.py` | A model string covers Gemini/Claude/Vertex-hosted; other connectors need the matching ADK extra and a connector instance ([ADK models](https://adk.dev/agents/models/)) |
@@ -84,7 +85,7 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 **Template internals** (higher upstream-sync cost if customized — consumers may still modify, but expect merge complexity on future upstream syncs):
 - `terraform/bootstrap/` — bootstrap roots and shared modules
 - `.github/workflows/` — CI/CD orchestration
-- `terraform/main/` files other than `services.tf` and `iam.tf`
+- `terraform/main/` files other than `services.tf`, `iam.tf` and the `monitoring.tf` locals
 
 ## Architecture Overview
 

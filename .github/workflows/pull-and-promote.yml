@@ -51,9 +51,11 @@ jobs:
         id: extract
         run: |
           # Get source environment's registry details from GitHub Variables, with optional image_name override
-          echo "registry_uri=${{ vars.ARTIFACT_REGISTRY_URI }}" >> $GITHUB_OUTPUT
-          echo "image_name=${{ env.SOURCE_IMAGE_NAME }}" >> $GITHUB_OUTPUT
-          echo "registry_location=${{ vars.ARTIFACT_REGISTRY_LOCATION }}" >> $GITHUB_OUTPUT
+          {
+            echo "registry_uri=${{ vars.ARTIFACT_REGISTRY_URI }}"
+            echo "image_name=${{ env.SOURCE_IMAGE_NAME }}"
+            echo "registry_location=${{ vars.ARTIFACT_REGISTRY_LOCATION }}"
+          } >> "$GITHUB_OUTPUT"
 
   # Job 2: Promote using crane (digest-preserving)
   promote:
@@ -135,7 +137,7 @@ jobs:
           # Query target registry for actual digest using crane
           ACTUAL_DIGEST=$(crane digest "${TARGET_REGISTRY}/${TARGET_IMAGE_NAME}:${FIRST_TAG}")
 
-          echo "digest=${ACTUAL_DIGEST}" >> $GITHUB_OUTPUT
+          echo "digest=${ACTUAL_DIGEST}" >> "$GITHUB_OUTPUT"
           echo "Target digest: ${ACTUAL_DIGEST}"
 
           # Verify digest matches source (immutability check)
@@ -157,7 +159,7 @@ jobs:
           DIGEST="${{ steps.verify-digest.outputs.digest }}"
 
           URI="${TARGET_REGISTRY}/${TARGET_IMAGE_NAME}@${DIGEST}"
-          echo "uri=${URI}" >> $GITHUB_OUTPUT
+          echo "uri=${URI}" >> "$GITHUB_OUTPUT"
           echo "Target digest URI: ${URI}"
 
       - name: Generate Promotion Summary
@@ -176,7 +178,7 @@ jobs:
           SOURCE_EMOJI=$(get_env_emoji "${{ inputs.source_environment }}")
           TARGET_EMOJI=$(get_env_emoji "${{ inputs.target_environment }}")
 
-          cat >> $GITHUB_STEP_SUMMARY << EOF
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
           ## 🚀 Image Promoted
 
           | Detail | Value |
@@ -190,8 +192,8 @@ jobs:
 
           # Format tags as bulleted list
           echo "${{ inputs.target_tags }}" | grep -v '^$' | while read -r tag; do
-            echo "- \`${tag}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`${tag}\`" >> "$GITHUB_STEP_SUMMARY"
           done
 
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "---" >> "$GITHUB_STEP_SUMMARY"

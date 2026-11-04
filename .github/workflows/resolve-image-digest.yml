@@ -49,7 +49,7 @@ jobs:
         run: |
           # First line of tags is always the SHA
           SHA=$(echo "${{ inputs.tags }}" | head -1)
-          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
           echo "Extracted SHA: ${SHA}"
 
       - name: Authenticate to GCP
@@ -86,5 +86,5 @@ jobs:
           # Use crane to get digest (avoids Container Analysis API dependency)
           DIGEST=$(crane digest "${REGISTRY}/${IMAGE_NAME}:${SHA_TAG}")
 
-          echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
           echo "✅ Resolved ${SHA_TAG} → ${DIGEST}"

@@ -7,6 +7,7 @@ locals {
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "iap.googleapis.com",
+    "monitoring.googleapis.com",
     "run.googleapis.com",
     "servicenetworking.googleapis.com",
     "sqladmin.googleapis.com",
@@ -21,6 +22,7 @@ locals {
     "roles/compute.admin",
     "roles/iam.serviceAccountAdmin",
     "roles/iam.serviceAccountUser", # Required for Cloud Run to attach service accounts during deployment
+    "roles/monitoring.alertPolicyEditor",
     "roles/resourcemanager.projectIamAdmin",
     "roles/run.admin",
     "roles/servicenetworking.networksAdmin",

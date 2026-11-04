@@ -22,6 +22,7 @@ Standalone `ci.yml` (not called by the orchestrator). Branch protection requires
 ## Workflow Patterns
 
 - Optional overrides resolve `inputs.X || vars.X` once in job-level `env:` (`docs/references/cicd.md` Reusable Workflows)
+- **Terraform concurrency lives on the `terraform` job, never the workflow:** applies share `terraform-apply-<env>` (`cancel-in-progress: false`), plans get a per-run group, and `-lock-timeout` on plan and apply makes the state lock serialize them. A shared plan group lets a new job cancel the pending one, merge applies included (`docs/references/cicd.md` terraform-plan-apply.yml)
 - Summary steps stream and capture via `tee` + `PIPESTATUS` (`docs/references/cicd.md` Job Summaries)
 - **No `registry` input override** (it breaks per-env isolation and promotion; `docs/references/cicd.md` Subproject Builds)
 - **Auth:** WIF, no SA keys. Bootstrap creates the GitHub Variables (`docs/references/cicd.md` GitHub Variables)
@@ -29,6 +30,6 @@ Standalone `ci.yml` (not called by the orchestrator). Branch protection requires
 
 ## Workflow Lint
 
-actionlint runs ONLY as a pre-commit hook (its `rev` is the single pin), no separate CI job. The hook passes `-shellcheck=` until #255 fixes the inline-`run:` findings; remove the flag then. `zizmor` is a separate surface — do NOT bolt it onto the actionlint hook. Rationale: `docs/references/code-quality.md` Workflow Lint and Version Pins.
+actionlint runs ONLY as a pre-commit hook (its `rev` is the single pin), no separate CI job. The hook includes the shellcheck pass over inline `run:` blocks (only where shellcheck is on `PATH`; the CI runner has it). **Every `run:` edit MUST stay actionlint-clean with shellcheck installed**: quote expansions, group consecutive appends; a `# shellcheck disable=` goes on one command with its reason, never file-wide. `zizmor` is a separate surface — do NOT bolt it onto the actionlint hook. Rationale: `docs/references/code-quality.md` Workflow Lint and Version Pins.
 
 **NEVER set a Terraform or Python version literal in a workflow** (pins and parity tests: root `AGENTS.md` Code Quality and Dependencies).
