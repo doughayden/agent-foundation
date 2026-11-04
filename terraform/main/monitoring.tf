@@ -106,7 +106,7 @@ resource "google_monitoring_alert_policy" "errors" {
   user_labels           = local.labels
 
   conditions {
-    display_name = "5xx ratio above ${local.alert_thresholds.error_ratio_5xx}"
+    display_name = "5xx ratio above ${local.alert_thresholds.error_ratio_5xx * 100}%"
     condition_threshold {
       filter             = "${local.run_revision_filter[each.key]} AND metric.type = \"run.googleapis.com/request_count\" AND metric.labels.response_code_class = \"5xx\""
       denominator_filter = "${local.run_revision_filter[each.key]} AND metric.type = \"run.googleapis.com/request_count\""
@@ -148,7 +148,7 @@ resource "google_monitoring_alert_policy" "saturation" {
   user_labels           = local.labels
 
   conditions {
-    display_name = "p99 container CPU utilization above ${local.alert_thresholds.cpu_utilization}"
+    display_name = "p99 container CPU utilization above ${local.alert_thresholds.cpu_utilization * 100}%"
     condition_threshold {
       filter          = "${local.run_revision_filter[each.key]} AND metric.type = \"run.googleapis.com/container/cpu/utilizations\""
       comparison      = "COMPARISON_GT"
@@ -164,7 +164,7 @@ resource "google_monitoring_alert_policy" "saturation" {
   }
 
   conditions {
-    display_name = "p99 container memory utilization above ${local.alert_thresholds.memory_utilization}"
+    display_name = "p99 container memory utilization above ${local.alert_thresholds.memory_utilization * 100}%"
     condition_threshold {
       filter          = "${local.run_revision_filter[each.key]} AND metric.type = \"run.googleapis.com/container/memory/utilizations\""
       comparison      = "COMPARISON_GT"
