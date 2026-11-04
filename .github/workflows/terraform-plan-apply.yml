@@ -50,10 +50,6 @@ permissions:
   id-token: write
   pull-requests: write  # For PR comments
 
-concurrency:
-  group: terraform-apply-${{ inputs.terraform_environment || inputs.environment }}
-  cancel-in-progress: false
-
 jobs:
   resolve-env:
     name: Resolve Environment
@@ -77,6 +73,10 @@ jobs:
     needs: resolve-env
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    # Applies queue per environment; each plan gets its own group and waits on the state lock instead
+    concurrency:
+      group: ${{ inputs.terraform_action == 'apply' && format('terraform-apply-{0}', inputs.terraform_environment || inputs.environment) || format('terraform-plan-{0}-{1}', github.run_id, inputs.terraform_environment || inputs.environment) }}
+      cancel-in-progress: false
     outputs:
       smoke_target_url: ${{ steps.tf_outputs.outputs.smoke_target_url }}
       smoke_invoker_service_account_email: ${{ steps.tf_outputs.outputs.smoke_invoker_service_account_email }}
@@ -183,7 +183,7 @@ jobs:
           PLAN_OUTPUT_FILE=$(mktemp)
 
           # Stream output to both logs (real-time) and file (for summary)
-          terraform plan -no-color -input=false -out="$PLAN_FILE" 2>&1 | tee "$PLAN_OUTPUT_FILE"
+          terraform plan -no-color -input=false -lock-timeout=30m -out="$PLAN_FILE" 2>&1 | tee "$PLAN_OUTPUT_FILE"
           EXIT_CODE=${PIPESTATUS[0]}  # Get exit code from terraform, not tee
 
           # Read captured output for summary
@@ -305,7 +305,7 @@ jobs:
           APPLY_OUTPUT_FILE=$(mktemp)
 
           # Stream output to both logs (real-time) and file (for summary)
-          terraform apply -auto-approve -input=false -no-color "$PLAN_FILE" 2>&1 | tee "$APPLY_OUTPUT_FILE"
+          terraform apply -auto-approve -input=false -no-color -lock-timeout=30m "$PLAN_FILE" 2>&1 | tee "$APPLY_OUTPUT_FILE"
           EXIT_CODE=${PIPESTATUS[0]}  # Get exit code from terraform, not tee
 
           # Read captured output for summary

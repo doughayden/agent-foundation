@@ -22,6 +22,7 @@ Standalone `ci.yml` (not called by the orchestrator). Branch protection requires
 ## Workflow Patterns
 
 - Optional overrides resolve `inputs.X || vars.X` once in job-level `env:` (`docs/references/cicd.md` Reusable Workflows)
+- **Terraform concurrency lives on the `terraform` job, never the workflow:** applies share `terraform-apply-<env>` (`cancel-in-progress: false`), plans get a per-run group, and `-lock-timeout` on plan and apply makes the state lock serialize them. A shared plan group lets a new job cancel the pending one, merge applies included (`docs/references/cicd.md` terraform-plan-apply.yml)
 - Summary steps stream and capture via `tee` + `PIPESTATUS` (`docs/references/cicd.md` Job Summaries)
 - **No `registry` input override** (it breaks per-env isolation and promotion; `docs/references/cicd.md` Subproject Builds)
 - **Auth:** WIF, no SA keys. Bootstrap creates the GitHub Variables (`docs/references/cicd.md` GitHub Variables)

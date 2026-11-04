@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The pytest `filterwarnings` entry for the `BaseAgentConfig` deprecation warning, which ADK 2.13.0 no longer emits at import (#262)
 
 ### Fixed
+- Stop concurrent pull requests cancelling each other's Terraform plans, and a PR plan displacing a merge's pending apply. The concurrency group moves from `terraform-plan-apply.yml`'s workflow level to its `terraform` job: applies still queue per environment without cancellation, each plan gets its own group, and plan and apply pass `-lock-timeout=30m` so the GCS state lock serializes them instead of failing (#303)
 - Skip the Claude auto-review (`claude.yml`) on pull requests opened by Dependabot, which GitHub runs like fork PRs with a read-only token and no Actions secrets, so the review could not authenticate. The condition matches the PR author, so a later human push keeps the skip; comment `@claude` to review a dependency bump (#302)
 - Correct stale infrastructure docs: bootstrap roots use GCS remote state and pre-bootstrap creates the state buckets (`docs/infrastructure.md`, `docs/references/deployment.md`), and deployed `TELEMETRY_NAMESPACE` is the environment name (`docs/observability.md`) (#271)
 - Drop `[tool.ruff] fix = true`. The setting made CI's bare `ruff check` rewrite files inside the runner and exit 0, so the lint gate could never fail on an auto-fixable rule (I, F401, UP, SIM, C4, RET, most RUF). Every call site that should fix now passes `--fix`; a bare `ruff check` only reports (#259)
