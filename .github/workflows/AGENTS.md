@@ -29,6 +29,6 @@ Standalone `ci.yml` (not called by the orchestrator). Branch protection requires
 
 ## Workflow Lint
 
-actionlint runs ONLY as a pre-commit hook (its `rev` is the single pin), no separate CI job. The hook passes `-shellcheck=` until #255 fixes the inline-`run:` findings; remove the flag then. `zizmor` is a separate surface — do NOT bolt it onto the actionlint hook. Rationale: `docs/references/code-quality.md` Workflow Lint and Version Pins.
+actionlint runs ONLY as a pre-commit hook (its `rev` is the single pin), no separate CI job. The hook includes the shellcheck pass over inline `run:` blocks (only where shellcheck is on `PATH`; the CI runner has it). **Every `run:` edit MUST stay actionlint-clean with shellcheck installed**: quote expansions, group consecutive appends; a `# shellcheck disable=` goes on one command with its reason, never file-wide. `zizmor` is a separate surface — do NOT bolt it onto the actionlint hook. Rationale: `docs/references/code-quality.md` Workflow Lint and Version Pins.
 
 **NEVER set a Terraform or Python version literal in a workflow** (pins and parity tests: root `AGENTS.md` Code Quality and Dependencies).
