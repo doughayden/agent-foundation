@@ -67,7 +67,7 @@ Install the [Google Cloud Code extension](https://cloud.google.com/code/docs/vsc
 
 ## Architecture
 
-The deployed ADK server runs on Cloud Run and exports traces directly to Cloud Trace through the Telemetry OTLP API. Agent Engine provides the memory service, and Cloud SQL stores sessions.
+The deployed ADK server runs on Cloud Run and exports traces directly to Cloud Trace through the Telemetry OTLP API.
 
 The observability module uses a two-phase initialization strategy to coexist with ADK's internal telemetry:
 
