@@ -75,7 +75,7 @@ jobs:
     environment: ${{ inputs.environment }}
     # Applies queue per environment; each plan gets its own group and waits on the state lock instead
     concurrency:
-      group: ${{ inputs.terraform_action == 'apply' && format('terraform-apply-{0}', inputs.terraform_environment || inputs.environment) || format('terraform-plan-{0}-{1}', github.run_id, inputs.terraform_environment || inputs.environment) }}
+      group: ${{ inputs.terraform_action == 'apply' && format('terraform-apply-{0}', needs.resolve-env.outputs.terraform_environment) || format('terraform-plan-{0}-{1}', github.run_id, needs.resolve-env.outputs.terraform_environment) }}
       cancel-in-progress: false
     outputs:
       smoke_target_url: ${{ steps.tf_outputs.outputs.smoke_target_url }}
