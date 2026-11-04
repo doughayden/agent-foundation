@@ -54,6 +54,7 @@ jobs:
   resolve-env:
     name: Resolve Environment
     runs-on: ubuntu-latest
+    timeout-minutes: 5  # Typical run: <1 min (string mapping)
     outputs:
       terraform_environment: ${{ steps.resolve.outputs.terraform_environment }}
     steps:
@@ -73,6 +74,7 @@ jobs:
     needs: resolve-env
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    timeout-minutes: 60  # Worst case: a 30 min -lock-timeout wait, then a first apply that creates Cloud SQL
     # Applies queue per environment; each plan gets its own group and waits on the state lock instead
     concurrency:
       group: ${{ inputs.terraform_action == 'apply' && format('terraform-apply-{0}', needs.resolve-env.outputs.terraform_environment) || format('terraform-plan-{0}-{1}', github.run_id, needs.resolve-env.outputs.terraform_environment) }}
