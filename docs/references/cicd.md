@@ -71,7 +71,7 @@ GitHub Actions workflow architecture, mechanics, and customization.
 **Concurrency:**
 - PR builds: Cancel in-progress on new push (`cancel-in-progress: true`)
 - Main builds: Run sequentially (no cancellation, `cancel-in-progress: false`)
-- Per-environment Terraform locking prevents state corruption
+- Terraform applies queue per environment and plans never queue; the Terraform state lock serializes their state access (see [terraform-plan-apply.yml](#terraform-plan-applyyml))
 
 **Path filtering:** the trigger `paths-ignore` exclusions prevent the workflow from running on docs or local development changes; the `changes` job selects which jobs run when the change set passes the trigger exclusions.
 
@@ -359,6 +359,12 @@ Two consequences follow. Stage `{sha7}` must still exist when you tag, or `resol
 - `plan` job on merge: Save plan artifact (no comment)
 - `apply` job: Use saved plan artifact
 
+**Concurrency and state locking:** the `terraform` job sets its own concurrency group. An apply joins `terraform-apply-<environment>` with `cancel-in-progress: false`, so applies to one environment run one at a time and a running apply is never cancelled. Each plan gets a group unique to its run, so plans never queue behind each other or behind an apply.
+
+GitHub keeps one running and one pending job per concurrency group, and a newly queued job cancels the pending one. A shared group for plans would let three PRs pushing together (a Dependabot batch, for example) cancel the middle plan, and would let a PR plan displace a merge's pending apply.
+
+The GCS backend's state lock serializes the state access instead. Plan and apply both pass `-lock-timeout=30m`, so a run that finds the lock held waits for it rather than failing. Thirty minutes covers a plan waiting behind a full apply, including a first apply that creates the Cloud SQL instance, one of the slowest resources the main module creates. An apply waiting behind a few PR plans needs far less. A wait that runs past it fails with the lock holder's details in the log, which points at a stuck lock rather than ordinary contention. The job's 60-minute `timeout-minutes` sits above that worst case: the full lock wait followed by a first apply. An apply queued in its concurrency group has not started, so queue time does not count toward it. Keep the limit generous: a timeout that stops an apply partway can leave the state lock held and the apply half-done.
+
 ### smoke.yml
 
 **Purpose:** Run the post-deploy smoke lane against the live deployed Cloud Run revision.
@@ -451,12 +457,7 @@ Practically, a release tag belongs on a commit whose merge deployed and smoked s
 - Significant speedup on cache hits
 - Never expires (protected by cleanup policy in bootstrap)
 
-**Timeouts:**
-- Build: 30 minutes
-- Deploy: 20 minutes per environment
-- Code quality: 10 minutes
-
-See workflow files for specific timeout values.
+**Timeouts:** see each workflow's `timeout-minutes`; a job without one gets GitHub's 360-minute default. The Terraform job's limit is sized against the state-lock wait (see Concurrency and state locking above).
 
 ## Job Summaries
 

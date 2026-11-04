@@ -85,8 +85,9 @@ jobs:
           fi
           ENV_EMOJI=$(get_env_emoji "${{ inputs.environment }}")
 
-          # Build job summary
-          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # Build job summary (grouping would force the heredocs out of the block indent)
+          # shellcheck disable=SC2129
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
           ## 💨 Smoke Test Summary
 
           **Environment:** ${ENV_EMOJI} \`${{ inputs.environment }}\`
@@ -98,9 +99,9 @@ jobs:
           \`\`\`
           EOF
 
-          cat "$OUTPUT_FILE" >> $GITHUB_STEP_SUMMARY
+          cat "$OUTPUT_FILE" >> "$GITHUB_STEP_SUMMARY"
 
-          cat >> $GITHUB_STEP_SUMMARY << EOF
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
           \`\`\`
 
           </details>
@@ -111,4 +112,4 @@ jobs:
           # Clean up temp file
           rm -f "$OUTPUT_FILE"
 
-          exit $EXIT_CODE
+          exit "$EXIT_CODE"

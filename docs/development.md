@@ -117,7 +117,7 @@ Ruff's linter runs before its formatter. `ruff check --fix` can change layout (r
 
 `terraform validate` is deliberately not a hook: it needs `terraform init` per root, which is too slow for a commit. CI validates instead.
 
-**Local tooling:** the Terraform hook calls the `terraform` binary that tenv provides (a [prerequisite](getting-started.md#prerequisites)). tenv reads `.terraform-version`, the same pin CI installs, so the hook formats exactly as CI does. After the pin changes, run `tenv terraform install` to fetch the new version. actionlint needs nothing installed — pre-commit builds it, using the Go toolchain on `PATH` if there is one and otherwise downloading one into its own cache.
+**Local tooling:** the Terraform hook calls the `terraform` binary that tenv provides (a [prerequisite](getting-started.md#prerequisites)). tenv reads `.terraform-version`, the same pin CI installs, so the hook formats exactly as CI does. After the pin changes, run `tenv terraform install` to fetch the new version. pre-commit builds actionlint itself, using the Go toolchain on `PATH` if there is one and otherwise downloading one into its own cache. Install [shellcheck](https://github.com/koalaman/shellcheck#installing) too: actionlint runs it over workflow `run:` scripts only when it is on `PATH`, so without it the hook skips that pass and its findings surface only in CI's `code-quality` job.
 
 **One-time setup** (writes `.git/hooks/pre-commit`):
 

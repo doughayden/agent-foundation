@@ -109,6 +109,28 @@ OpenTelemetry resource attributes uniquely identify your service instances in tr
 - `service.version`: Automatically set to Cloud Run revision ID
 - `service.instance.id`: Unique per container instance
 
+## Alerting
+
+The main module ships dry-run Cloud Monitoring alert policies for the four [golden signals](https://sre.google/sre-book/monitoring-distributed-systems/#xref_monitoring_golden-signals) (latency, traffic, errors, saturation), plus unhealthy instances, on the deployed Cloud Run service. Each condition reads a native `run.googleapis.com` metric with the aggregation its chart uses, so every alert maps to a chart on the service's Metrics tab in the [Cloud Run console](https://cloud.google.com/run/docs/monitoring). The template adds alert policies only, no dashboard.
+
+| Policy | Metric | Default condition | Metrics tab chart |
+|---|---|---|---|
+| Latency | `request_latencies` | p95 above 60 s for 5 minutes | Request latencies |
+| Traffic | `request_count` | above 10 requests/s for 5 minutes | Request count |
+| Errors | `request_count` (`response_code_class = "5xx"` over all) | 5xx ratio above 5% for 5 minutes | Request count |
+| Saturation | `container/cpu/utilizations`, `container/memory/utilizations`, `container/instance_count`, `container/max_request_concurrencies` | p99 CPU above 80% for 10 minutes, p99 memory above 80% for 5 minutes, instances above 80% of `max_instance_count`, or p99 concurrent requests above 80% of `max_instance_request_concurrency`, each for 5 minutes | Container CPU utilization, Container memory utilization, Container instance count, Max concurrent requests |
+| Unhealthy instances | `container/instance_count_with_readiness` (`readiness_status = "UNHEALTHY"`), `container/completed_probe_count` (`is_healthy = false`) | any instance failing readiness, or any failed probe | Container health checks (failed probes: Metrics Explorer) |
+
+The traffic policy fires on a spike rather than on silence: an idle environment scaled to zero is normal, while a sustained burst multiplies model spend. The service runs a readiness probe on `/health` after the startup probe passes, and Cloud Run stops routing requests to an instance that fails it. The unhealthy-instances policy alerts on those readiness failures and on any failed probe. Readiness only starts once startup passes, so the failed-probe condition is what catches a rollout whose new revision never starts while the previous revision keeps serving traffic, which otherwise shows up only as a failed deploy job. `/health` checks no dependencies, so readiness confirms the process still answers requests.
+
+**Dry-run posture:** the policies evaluate and open incidents in [Cloud Monitoring alerting](https://console.cloud.google.com/monitoring/alerting) but notify nobody, so a fork inherits no inbox noise or paging.
+
+**Activate notifications:** create a [notification channel](https://cloud.google.com/monitoring/support/notification-options) (email, Slack, PagerDuty and others), then add its ID (`projects/PROJECT_ID/notificationChannels/CHANNEL_ID`) to the environment's list in `alert_notification_channels` in `terraform/main/monitoring.tf`. The next deploy attaches it to every policy.
+
+**Tune thresholds:** `alert_thresholds` in the same file holds every default. They are starting points for an LLM agent; set them to your own SLOs.
+
+**Build from the console:** each chart on the Metrics tab has a bell icon that opens the alert builder prefilled with that chart's metric and aggregation, and its View Code button shows the policy JSON. Use it to try a threshold or draft a new policy, then carry the filter and aggregation into `monitoring.tf`.
+
 ## Callback Logging
 
 `LoggingCallbacks` (in `callbacks.py`) logs agent lifecycle events (start/end, model calls, tool invocations) with automatic trace context correlation.

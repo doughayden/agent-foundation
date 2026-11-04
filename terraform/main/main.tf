@@ -158,6 +158,17 @@ resource "google_cloud_run_v2_service" "app" {
         }
       }
 
+      # Runs after startup passes; failing instances stop receiving new requests until they recover
+      readiness_probe {
+        failure_threshold = 3
+        timeout_seconds   = 4
+        period_seconds    = 10
+        http_get {
+          path = "/health"
+          port = 8000
+        }
+      }
+
       dynamic "env" {
         for_each = local.run_app_env
         content {

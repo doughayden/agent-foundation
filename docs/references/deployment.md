@@ -263,6 +263,7 @@ gh pr create
 - Cloud SQL instance (private IP only, session persistence via DatabaseSessionService)
 - Vertex AI Agent Engine (memory persistence)
 - GCS Bucket (artifact storage)
+- Cloud Monitoring alert policies (dry-run latency, traffic, errors, saturation and unhealthy instances, `monitoring.tf`)
 
 **State management:** Remote state in GCS (bucket created by pre-bootstrap; bootstrap publishes its name as the `TERRAFORM_STATE_BUCKET` GitHub Variable)
 
