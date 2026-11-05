@@ -33,8 +33,13 @@ variable "agent_name" {
 }
 
 variable "otel_instrumentation_genai_capture_message_content" {
-  description = "Capture LLM message content in OpenTelemetry traces (TRUE/FALSE)"
+  description = "ADK GenAI message content capture mode: NO_CONTENT, EVENT_ONLY, SPAN_ONLY or SPAN_AND_EVENT"
   type        = string
+
+  validation {
+    condition     = contains(["NO_CONTENT", "EVENT_ONLY", "SPAN_ONLY", "SPAN_AND_EVENT"], var.otel_instrumentation_genai_capture_message_content)
+    error_message = "Must be one of NO_CONTENT, EVENT_ONLY, SPAN_ONLY or SPAN_AND_EVENT."
+  }
 }
 
 variable "repository_name" {

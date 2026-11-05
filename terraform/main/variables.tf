@@ -62,10 +62,15 @@ variable "log_level" {
 }
 
 variable "otel_instrumentation_genai_capture_message_content" {
-  description = "Capture LLM message content in OpenTelemetry traces (TRUE/FALSE)"
+  description = "ADK GenAI message content capture mode: NO_CONTENT, EVENT_ONLY, SPAN_ONLY or SPAN_AND_EVENT"
   type        = string
   nullable    = true
   default     = null
+
+  validation {
+    condition     = var.otel_instrumentation_genai_capture_message_content == null || contains(["NO_CONTENT", "EVENT_ONLY", "SPAN_ONLY", "SPAN_AND_EVENT"], var.otel_instrumentation_genai_capture_message_content)
+    error_message = "Must be null or one of NO_CONTENT, EVENT_ONLY, SPAN_ONLY or SPAN_AND_EVENT."
+  }
 }
 
 variable "serve_web_interface" {

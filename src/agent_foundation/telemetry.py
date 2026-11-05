@@ -1,14 +1,13 @@
-"""OpenTelemetry setup for local development and production deployment.
+"""OpenTelemetry setup: the application owns every provider and exporter.
 
-This module provides consolidated observability configuration used consistently
-across local development and deployed environments. Uses custom resource
-configuration for service identification with process-level granularity.
-
-The custom setup coexists with ADK's internal telemetry infrastructure without
-provider collisions, enabling ADK web UI traces (local development) and
-Google Cloud observability (all environments).
+``configure_telemetry()`` builds the providers and sets them globally before ADK builds
+its FastAPI app. Each exporter gets an explicit OTLP gRPC endpoint: traces and logs go
+to a configured collector or the Google Cloud Telemetry API, and metrics to a collector
+or, when the resource has ``cloud.region``, the Telemetry API. ADK contributes only its
+web UI processors, attached to these providers by the patch below.
 """
 
+import functools
 import logging
 import os
 import uuid
@@ -17,201 +16,277 @@ import google.auth
 import google.auth.transport.requests
 import grpc
 from fastapi import FastAPI
+from google.adk.cli import api_server
+from google.adk.telemetry.setup import OTelHooks
 from google.auth.exceptions import DefaultCredentialsError
 from google.auth.transport.grpc import AuthMetadataPlugin
-from google.cloud.logging_v2.services.logging_service_v2 import (
-    LoggingServiceV2Client,
-)
-from opentelemetry import _events as events
 from opentelemetry import _logs as logs
-from opentelemetry import trace
-from opentelemetry.exporter.cloud_logging import CloudLoggingExporter
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-    OTLPSpanExporter,
+from opentelemetry import metrics, trace
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
+    OTLPMetricExporter,
 )
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.google_genai import GoogleGenAiSdkInstrumentor
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
-from opentelemetry.sdk._events import EventLoggerProvider
+from opentelemetry.resourcedetector.gcp_resource_detector import (
+    GoogleCloudResourceDetector,
+)
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import (
+    CLOUD_REGION,
     SERVICE_INSTANCE_ID,
     SERVICE_NAME,
     SERVICE_NAMESPACE,
     SERVICE_VERSION,
+    OTELResourceDetector,
+    Resource,
+    get_aggregated_resources,
 )
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
+from .config import TelemetryEnv
 
-def configure_otel_resource(
-    agent_name: str,
+GCP_PROJECT_ID = "gcp.project_id"
+GCP_RESOURCE_TYPE = "gcp.resource_type"
+# Deployed environments override it via OTEL_RESOURCE_ATTRIBUTES
+DEFAULT_SERVICE_NAMESPACE = "local"
+
+
+def build_resource(
+    service_name: str,
     project_id: str,
-    telemetry_namespace: str,
     service_version: str,
-) -> None:
-    """Configure OpenTelemetry resource via environment variables.
+    region: str | None,
+) -> Resource:
+    """Build the resource shared by every provider.
 
-    Builds and sets OTEL_RESOURCE_ATTRIBUTES with process-level tracking.
-    This ensures consistent resource configuration across both local development
-    (ADK creates TracerProvider) and deployment (we create TracerProvider).
+    Precedence, highest first: the environment's ``OTEL_SERVICE_NAME`` and
+    ``OTEL_RESOURCE_ATTRIBUTES``, the arguments here, then the GCP resource detector.
 
     Args:
-        agent_name: Unique service identifier
-        project_id: GCP Project ID
-        telemetry_namespace: service.namespace that groups traces by environment
+        service_name: service.name
+        project_id: gcp.project_id
         service_version: service.version, the Cloud Run revision when deployed
-
-    Environment Variables Set:
-        OTEL_RESOURCE_ATTRIBUTES: Complete resource attributes including process ID
+        region: cloud.region when known (``CLOUD_RUN_REGION``)
 
     Returns:
-        None
+        The merged resource.
     """
-    print("🔭 Setting OpenTelemetry Resource attributes environment variable...")
-    instance_id = f"worker-{os.getpid()}-{uuid.uuid4().hex}"
-    os.environ["OTEL_RESOURCE_ATTRIBUTES"] = (
-        f"{SERVICE_INSTANCE_ID}={instance_id},"
-        f"{SERVICE_NAME}={agent_name},"
-        f"{SERVICE_NAMESPACE}={telemetry_namespace},"
-        f"{SERVICE_VERSION}={service_version},"
-        f"gcp.project_id={project_id}"
+    detected = get_aggregated_resources(
+        [GoogleCloudResourceDetector()], initial_resource=Resource.get_empty()
+    )
+    ours = Resource(
+        {
+            SERVICE_NAME: service_name,
+            SERVICE_NAMESPACE: DEFAULT_SERVICE_NAMESPACE,
+            SERVICE_VERSION: service_version,
+            SERVICE_INSTANCE_ID: f"worker-{os.getpid()}-{uuid.uuid4().hex}",
+            GCP_PROJECT_ID: project_id,
+        }
+        | ({CLOUD_REGION: region} if region else {})
+    )
+    environment = OTELResourceDetector().detect()
+    return Resource.create().merge(detected).merge(ours).merge(environment)
+
+
+def cloud_run_resource(settings: TelemetryEnv, project_id: str) -> Resource:
+    """Return the attributes that place OTLP logs on ``cloud_run_revision``.
+
+    The Telemetry API maps OTLP logs to ``generic_task`` unless the resource carries
+    ``gcp.resource_type`` and the monitored resource's labels. Traces and logs only:
+    the Telemetry API drops metric points that carry ``gcp.resource_type``.
+
+    Args:
+        settings: Telemetry settings carrying the Cloud Run identity
+        project_id: GCP project ID
+
+    Returns:
+        The attributes on Cloud Run, an empty resource elsewhere.
+    """
+    if (
+        settings.k_service is None
+        or settings.k_configuration is None
+        or settings.cloud_run_region is None
+    ):
+        return Resource.get_empty()
+    return Resource(
+        {
+            GCP_RESOURCE_TYPE: "cloud_run_revision",
+            "project_id": project_id,
+            "service_name": settings.k_service,
+            "revision_name": settings.k_revision,
+            "configuration_name": settings.k_configuration,
+            "location": settings.cloud_run_region,
+        }
     )
 
-    return
 
+def metrics_endpoint(settings: TelemetryEnv, resource: Resource) -> str | None:
+    """Pick where metrics go: a collector, the Telemetry API, or nowhere.
 
-def configure_telemetry(
-    project_id: str,
-    agent_name: str,
-    log_level: str,
-    telemetry_namespace: str,
-    service_version: str,
-    app: FastAPI | None = None,
-) -> None:
-    """Set up complete OpenTelemetry observability with tracing and logging.
-
-    Configures comprehensive observability for both local development and deployed
-    environments with consistent behavior. Exports traces to Google Cloud Trace via
-    OTLP and logs to Google Cloud Logging with automatic trace correlation.
-
-    Uses custom resource configuration to set SERVICE_INSTANCE_ID based on process ID,
-    providing granular service instance tracking. Coexists with ADK's internal
-    telemetry providers without collision.
-
-    Automatically calls configure_otel_resource() if resource env vars not already set,
-    ensuring consistent resource configuration across all environments.
+    The Telemetry API needs a location on the resource, so it takes metrics only
+    when the resource has ``cloud.region`` (detected on Cloud Run, from
+    ``CLOUD_RUN_REGION``, or set in ``OTEL_RESOURCE_ATTRIBUTES``).
 
     Args:
-        project_id: GCP Project ID for trace and log export
-        agent_name: Unique service identifier
-        log_level: Logging verbosity level as string
-        telemetry_namespace: service.namespace, used when the resource is unset
-        service_version: service.version, used when the resource is unset
-        app: Optional FastAPI instance. When provided, enables HTTP-layer
-            instrumentation (request/response spans as parents to ADK's
-            invocation spans). Leave as None to skip.
+        settings: Telemetry settings, read for the metrics collector endpoint
+        resource: The meter provider's resource
 
     Returns:
-        None
+        The collector endpoint if set, else the Telemetry API endpoint when the
+        resource has a region, else None.
     """
-    # Configure resource via env vars if not already set
-    # (local dev calls configure_otel_resource() before ADK, deployment calls it here)
-    if resource := os.getenv("OTEL_RESOURCE_ATTRIBUTES"):
-        print("\n🔭 OpenTelemetry Resource configured in environment:\n")
-        print("\n".join(resource.split(",")), end="\n\n\n")
-    else:
-        configure_otel_resource(
-            agent_name, project_id, telemetry_namespace, service_version
-        )
+    if settings.metrics_endpoint is not None:
+        return settings.metrics_endpoint
+    if CLOUD_REGION in resource.attributes:
+        return settings.telemetry_api_endpoint
+    return None
 
-    # Defensive strategy for portability to projects without Pydantic pre-validation
-    if log_level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
-        print(f"⚠️ Received log_level: '{log_level}'. Defaulting to 'INFO'")
-        log_level = "INFO"
 
-    # Get Application Default Credentials for Cloud exporters
+def google_channel_credentials() -> grpc.ChannelCredentials:
+    """Build gRPC channel credentials from Application Default Credentials.
+
+    Returns:
+        TLS channel credentials carrying ADC call credentials.
+
+    Raises:
+        DefaultCredentialsError: When ADC is not configured.
+    """
     try:
         credentials, _ = google.auth.default()
-    except DefaultCredentialsError as e:
-        print(f"❌ [telemetry] Error getting Application Default Credentials: {e}")
-        print("💻 Try authenticating with 'gcloud auth application-default login'")
-        raise e
-    except Exception as e:
-        print(f"❌ [telemetry] Unexpected error during authentication: {e}")
-        raise e
-
-    # Type narrowing: Validate quota project support (required for Cloud Logging client)
-    if not hasattr(credentials, "with_quota_project"):
-        raise TypeError(
-            f"Credentials type {type(credentials).__name__} does not support "
-            "with_quota_project method required for Cloud Logging"
-        )
-
-    # Set up OpenTelemetry Python SDK for logs and genai events
-    # LoggerProvider auto-detects resource from OTEL_RESOURCE_ATTRIBUTES
-    log_name: str = f"{agent_name}-otel-logs"
-    logger_provider = LoggerProvider()
-    logger_provider.add_log_record_processor(
-        BatchLogRecordProcessor(
-            CloudLoggingExporter(
-                project_id=project_id,
-                default_log_name=log_name,
-                client=LoggingServiceV2Client(
-                    credentials=credentials.with_quota_project(project_id)
-                ),
-            ),
-        )
-    )
-    logs.set_logger_provider(logger_provider)
-
-    event_logger_provider = EventLoggerProvider(logger_provider)
-    events.set_event_logger_provider(event_logger_provider)
-
-    # Get the root logger and set the logging level
-    root = logging.getLogger()
-    root.setLevel(log_level)
-
-    # Set up OTLP auth
-    request = google.auth.transport.requests.Request()
+    except DefaultCredentialsError:
+        print("💻 Authenticate with 'gcloud auth application-default login'")
+        raise
     # google-auth leaves AuthMetadataPlugin.__init__ unannotated
     auth_metadata_plugin = AuthMetadataPlugin(  # type: ignore[no-untyped-call]
-        credentials=credentials, request=request
+        credentials=credentials, request=google.auth.transport.requests.Request()
     )
-    channel_creds = grpc.composite_channel_credentials(
+    return grpc.composite_channel_credentials(
         grpc.ssl_channel_credentials(),
         grpc.metadata_call_credentials(metadata_plugin=auth_metadata_plugin),
     )
 
-    # Construct the span processor
-    endpoint = "https://telemetry.googleapis.com:443/v1/traces"
-    span_processor = BatchSpanProcessor(
-        OTLPSpanExporter(
-            endpoint=endpoint,
-            credentials=channel_creds,
-        ),
+
+def configure_telemetry(
+    settings: TelemetryEnv,
+    service_name: str,
+    project_id: str,
+    log_level: str,
+) -> None:
+    """Set the global providers and instrument logging and asyncpg.
+
+    Must run before ``get_fast_api_app()``, so ADK's web UI processors attach to
+    these providers. Each exporter gets its resolved endpoint explicitly; Application
+    Default Credentials are read once, and only for an exporter aimed at the
+    Telemetry API. A meter provider is set only when ``metrics_endpoint()`` picks a
+    destination; its resource omits the ``cloud_run_revision`` attributes.
+    With ``OTEL_SDK_DISABLED`` the tracer and logger providers are still set (the SDK
+    makes them no-ops), with no exporters, no credentials and no meter provider.
+
+    Args:
+        settings: Telemetry settings (endpoints, Cloud Run identity)
+        service_name: service.name
+        project_id: GCP project ID
+        log_level: Root logger level
+    """
+    meter_resource = build_resource(
+        service_name, project_id, settings.k_revision, settings.cloud_run_region
     )
+    resource = meter_resource.merge(cloud_run_resource(settings, project_id))
+    google_credentials = functools.cache(google_channel_credentials)
 
-    # Add the span processor to the TracerProvider if it exists (not the default proxy)
-    existing_tracer_provider = trace.get_tracer_provider()
-    if isinstance(existing_tracer_provider, TracerProvider):
-        existing_tracer_provider.add_span_processor(span_processor)
-    else:
-        # No existing provider (deployment case), create one
-        # TracerProvider auto-detects resource from OTEL_RESOURCE_ATTRIBUTES
-        tracer_provider = TracerProvider()
-        tracer_provider.add_span_processor(span_processor)
-        trace.set_tracer_provider(tracer_provider)
+    def credentials_for(endpoint: str) -> grpc.ChannelCredentials | None:
+        if endpoint == settings.telemetry_api_endpoint:
+            return google_credentials()
+        return None
 
-    # Inject trace attributes in LogRecords + attach the OTel handler to root logger
+    tracer_provider = TracerProvider(resource=resource)
+    trace.set_tracer_provider(tracer_provider)
+    logger_provider = LoggerProvider(resource=resource)
+    logs.set_logger_provider(logger_provider)
+
+    if not settings.otel_sdk_disabled:
+        tracer_provider.add_span_processor(
+            BatchSpanProcessor(
+                OTLPSpanExporter(
+                    endpoint=settings.traces_endpoint,
+                    credentials=credentials_for(settings.traces_endpoint),
+                )
+            )
+        )
+        logger_provider.add_log_record_processor(
+            BatchLogRecordProcessor(
+                OTLPLogExporter(
+                    endpoint=settings.logs_endpoint,
+                    credentials=credentials_for(settings.logs_endpoint),
+                )
+            )
+        )
+
+    metrics_destination = metrics_endpoint(settings, meter_resource)
+    if not settings.otel_sdk_disabled and metrics_destination is not None:
+        metric_reader = PeriodicExportingMetricReader(
+            OTLPMetricExporter(
+                endpoint=metrics_destination,
+                credentials=credentials_for(metrics_destination),
+            )
+        )
+        metrics.set_meter_provider(
+            MeterProvider(resource=meter_resource, metric_readers=[metric_reader])
+        )
+
+    # Export failures log to the console only, never back into the log exporter
+    sdk_logger = logging.getLogger("opentelemetry")
+    sdk_logger.addHandler(logging.StreamHandler())
+    sdk_logger.propagate = False
+
+    logging.getLogger().setLevel(log_level)
+    # Inject trace context into log records and attach the OTel handler to root
     LoggingInstrumentor().instrument(log_code_attributes=True)
+    # opentelemetry-instrumentation-asyncpg leaves __init__ unannotated
+    AsyncPGInstrumentor().instrument()  # type: ignore[no-untyped-call]
 
-    # ADK uses the Google Gen AI SDK
-    GoogleGenAiSdkInstrumentor().instrument()
 
-    if app is not None:
-        # instrument_app patches existing; .instrument() only patches future ones
-        FastAPIInstrumentor().instrument_app(app)
+def instrument_app(app: FastAPI) -> None:
+    """Add HTTP server spans and metrics to the FastAPI app."""
+    FastAPIInstrumentor().instrument_app(app)
 
-    return
+
+# --- Monkey-patch: ADK's telemetry setup attaches web UI processors only ---
+# get_fast_api_app() calls api_server._setup_telemetry(), which builds its own
+# providers and OTLP/HTTP exporters when an OTEL_EXPORTER_OTLP_* endpoint is set
+# and instruments the GenAI SDK. With our providers already set, its set_*_provider
+# calls do nothing and the web UI processors riding in the same call are dropped,
+# and log processors never attach to a provider set elsewhere on any path.
+# Upstream: ADK 2.13.0 google/adk/cli/api_server.py _setup_telemetry; tracer reuse
+# on the default path only: https://github.com/google/adk-python/pull/3548
+# TODO: Remove when an ADK release attaches internal_processors to already-set
+# providers on every path and skips its own providers and exporters.
+def _attach_web_ui_processors(
+    otel_to_cloud: bool = False,
+    internal_processors: OTelHooks | None = None,
+) -> None:
+    """Attach ADK's web UI processors to the global providers, nothing else."""
+    if internal_processors is None:
+        return
+    tracer_provider = trace.get_tracer_provider()
+    logger_provider = logs.get_logger_provider()
+    if not isinstance(tracer_provider, TracerProvider) or not isinstance(
+        logger_provider, LoggerProvider
+    ):
+        msg = "configure_telemetry() must run before get_fast_api_app()"
+        raise RuntimeError(msg)
+    for span_processor in internal_processors.span_processors:
+        tracer_provider.add_span_processor(span_processor)
+    for log_record_processor in internal_processors.log_record_processors:
+        logger_provider.add_log_record_processor(log_record_processor)
+
+
+api_server._setup_telemetry = _attach_web_ui_processors
+# --- End monkey-patch ---

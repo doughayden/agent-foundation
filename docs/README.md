@@ -58,7 +58,7 @@ Deep dives for optional follow-up:
 ### Operations
 - [ADK Origin Check Middleware](references/adk-origin-check-middleware.md) - Origin validation, CORS interaction, and ALLOW_ORIGINS configuration
 - [Image Digest Resolution](references/image-digest-resolution.md) - Index vs platform digests, provenance verification, and digest-based debugging
-- [OpenTelemetry Architecture](references/opentelemetry-architecture.md) - ADK coexistence, instrumentation strategy, dependency management
+- [OpenTelemetry Architecture](references/opentelemetry-architecture.md) - Provider ownership, ADK web UI patch, exporter selection, dependency management
 
 ### Development
 - [Testing Strategy](references/testing.md) - Lane taxonomy and the unit-test guide

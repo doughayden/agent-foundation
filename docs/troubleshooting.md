@@ -252,20 +252,22 @@ uv sync --locked
 ### Trace/Log Data Not Appearing
 
 **Common causes:**
-- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` not set to `TRUE`
+- `OTEL_EXPORTER_OTLP_ENDPOINT` (or a per-signal endpoint) set in the shell, sending that signal to a collector instead of Google
 - Wrong project ID or missing authentication
+- Logs queried under the wrong log name: application logs land in `otlp`, GenAI events in `gen_ai.client.inference.operation.details`
 - Normal delay: Traces and logs take 1-2 minutes to appear in Cloud Console
 
 **Debug:**
 ```bash
-# Check required configuration
+# Check required configuration and any exporter overrides in the shell
 cat .env | grep OTEL_
+env | grep OTEL_EXPORTER_OTLP
 cat .env | grep GOOGLE_
 
 # Verify auth
 gcloud auth application-default login
 
-# Run with debug logging to see OTEL errors
+# Export errors print to the console; debug logging adds more detail
 LOG_LEVEL=DEBUG uv run server
 ```
 

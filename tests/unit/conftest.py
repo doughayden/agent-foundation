@@ -1,7 +1,7 @@
 """Shared pytest fixtures for unit tests.
 
 ``pytest_configure()`` mocks Google auth so unit collection never touches real
-credentials. ``ServerEnv`` tests stay off the real ``.env`` via ``isolated_environ``.
+credentials. Config tests stay off the real ``.env`` via ``isolated_environ``.
 """
 
 from __future__ import annotations
@@ -575,7 +575,7 @@ def valid_server_env() -> dict[str, str]:
     return {
         "GOOGLE_CLOUD_PROJECT": "test-project",
         "AGENT_NAME": "test-agent",
-        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "EVENT_ONLY",
     }
 
 
@@ -583,19 +583,42 @@ def valid_server_env() -> dict[str, str]:
 def isolated_environ(mocker: MockerFixture) -> Callable[[dict[str, str]], None]:
     """Factory that sets ``os.environ`` to exactly the given variables.
 
-    Also turns off ``ServerEnv``'s ``.env`` loading, so neither the developer's shell
-    nor a local ``.env`` reaches the result. A test exercising ``.env`` passes
-    ``_env_file`` at construction, which takes precedence over the model config.
+    Also replaces ``load_dotenv`` in the config module with a no-op, so neither the
+    developer's shell nor a local ``.env`` reaches the result. Tests exercising
+    ``.env`` use ``create_dotenv`` instead.
 
     Returns:
         Function that replaces the environment with its argument.
     """
-    mocker.patch.dict(
-        f"{PACKAGE_NAME}.config.ServerEnv.model_config", {"env_file": None}
-    )
+    mocker.patch(f"{PACKAGE_NAME}.config.load_dotenv")
 
     def _factory(variables: dict[str, str]) -> None:
         mocker.patch.dict(os.environ, variables, clear=True)
+
+    return _factory
+
+
+@pytest.fixture
+def create_dotenv(mocker: MockerFixture, tmp_path: Path) -> Callable[[str], Path]:
+    """Factory that writes a ``.env`` file and points the config module's loader at it.
+
+    The real ``load_dotenv`` runs against the temporary file, so precedence over
+    ``os.environ`` is python-dotenv's own. Use with ``isolated_environ``, called
+    first, which this patch then replaces.
+
+    Returns:
+        Function taking the file content and returning the written path.
+    """
+    import dotenv
+
+    def _factory(content: str) -> Path:
+        env_file = tmp_path / ".env"
+        env_file.write_text(content)
+        mocker.patch(
+            f"{PACKAGE_NAME}.config.load_dotenv",
+            side_effect=lambda: dotenv.load_dotenv(env_file),
+        )
+        return env_file
 
     return _factory
 
@@ -809,3 +832,72 @@ def create_mock_session(mocker: MockerFixture) -> Callable[..., MockType]:
         return session
 
     return _factory
+
+
+# Telemetry fixtures
+@pytest.fixture
+def create_telemetry_env(mocker: MockerFixture) -> Callable[[dict[str, str]], Any]:
+    """Factory for ``TelemetryEnv`` built from exactly the given variables.
+
+    Returns:
+        Function that sets ``os.environ`` to its argument and returns the settings.
+    """
+    config = importlib.import_module(f"{PACKAGE_NAME}.config")
+
+    def _factory(variables: dict[str, str]) -> Any:
+        mocker.patch.dict(os.environ, variables, clear=True)
+        return config.TelemetryEnv()
+
+    return _factory
+
+
+TELEMETRY_SDK_NAMES = (
+    "TracerProvider",
+    "LoggerProvider",
+    "MeterProvider",
+    "BatchSpanProcessor",
+    "BatchLogRecordProcessor",
+    "PeriodicExportingMetricReader",
+    "OTLPSpanExporter",
+    "OTLPLogExporter",
+    "OTLPMetricExporter",
+    "LoggingInstrumentor",
+    "AsyncPGInstrumentor",
+    "build_resource",
+    "google_channel_credentials",
+)
+
+
+@pytest.fixture
+def mock_telemetry_sdk(mocker: MockerFixture) -> dict[str, MockType]:
+    """Replace the SDK classes, globals and loggers ``configure_telemetry`` touches.
+
+    Global provider setters are patched so no test changes process-wide providers,
+    and the ``opentelemetry`` and root loggers are restored after each test.
+
+    Returns:
+        Mocks keyed by the patched name in the telemetry module, the three
+        ``set_*_provider`` setters keyed by their function names, and the root
+        logger's ``setLevel`` as ``root_set_level``.
+    """
+    telemetry = importlib.import_module(f"{PACKAGE_NAME}.telemetry")
+    mocks: dict[str, MockType] = {
+        name: mocker.patch.object(telemetry, name) for name in TELEMETRY_SDK_NAMES
+    }
+    mocks["build_resource"].return_value = telemetry.Resource.get_empty()
+    mocks["set_tracer_provider"] = mocker.patch.object(
+        telemetry.trace, "set_tracer_provider"
+    )
+    mocks["set_logger_provider"] = mocker.patch.object(
+        telemetry.logs, "set_logger_provider"
+    )
+    mocks["set_meter_provider"] = mocker.patch.object(
+        telemetry.metrics, "set_meter_provider"
+    )
+    sdk_logger = telemetry.logging.getLogger("opentelemetry")
+    mocker.patch.object(sdk_logger, "handlers", [])
+    mocker.patch.object(sdk_logger, "propagate", True)
+    mocks["root_set_level"] = mocker.patch.object(
+        telemetry.logging.getLogger(), "setLevel"
+    )
+    return mocks

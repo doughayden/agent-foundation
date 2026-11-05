@@ -1,11 +1,10 @@
 """FastAPI server module.
 
-This module provides a FastAPI server for ADK agents with comprehensive observability
-features using custom OpenTelemetry setup. Includes an optional ADK web interface for
-interactive agent testing.
+This module provides a FastAPI server for ADK agents with OpenTelemetry traces, logs
+and metrics. Includes an optional ADK web interface for interactive agent testing.
 
-The custom observability setup coexists with ADK's internal telemetry infrastructure,
-enabling simultaneous ADK web UI traces and Google Cloud observability.
+Telemetry is configured before ``get_fast_api_app()`` so the application owns every
+provider and the web UI's processors attach to them.
 """
 
 import os
@@ -16,24 +15,21 @@ from fastapi import FastAPI
 from google.adk.cli.fast_api import get_fast_api_app
 
 from .config import initialize_environment
-from .telemetry import configure_otel_resource, configure_telemetry
+from .telemetry import configure_telemetry, instrument_app
 
 # Load and validate environment configuration
-env = initialize_environment()
+env, telemetry_env = initialize_environment()
 
-# Configure OpenTelemetry resource attributes environment variable
-# This must happen before ADK creates its TracerProvider
-configure_otel_resource(
-    agent_name=env.agent_name,
+configure_telemetry(
+    telemetry_env,
+    service_name=env.agent_name,
     project_id=env.google_cloud_project,
-    telemetry_namespace=env.telemetry_namespace,
-    service_version=env.k_revision,
+    log_level=env.log_level,
 )
 
 # Use .resolve() to handle symlinks and ensure absolute path across environments
 AGENT_DIR = os.getenv("AGENT_DIR", str(Path(__file__).resolve().parent.parent))
 
-# ADK fastapi app will set up OTel using resource attributes from env vars
 app: FastAPI = get_fast_api_app(
     agents_dir=AGENT_DIR,
     session_service_uri=env.session_service_uri,
@@ -43,6 +39,7 @@ app: FastAPI = get_fast_api_app(
     web=env.serve_web_interface,
     reload_agents=env.reload_agents,
 )
+instrument_app(app)
 
 
 @app.get("/health")
@@ -58,18 +55,13 @@ async def health() -> dict[str, str]:
 def main() -> None:
     """Run the FastAPI server with comprehensive observability.
 
-    Starts the ADK agent server with full OpenTelemetry observability using
-    custom setup for trace correlation and Google Cloud export. Features include:
+    Starts the ADK agent server configured at import time. Features include:
     - Environment variable loading and validation via Pydantic
-    - Custom OpenTelemetry setup with trace correlation and Google Cloud export
+    - OpenTelemetry traces, logs and metrics over OTLP (Google Cloud by default)
     - Optional ADK web interface for interactive agent testing
     - Session persistence with Cloud SQL via DatabaseSessionService
     - Memory persistence with Agent Engine
-    - Cloud trace and log export
     - CORS configuration
-
-    The custom observability setup coexists with ADK's internal telemetry,
-    providing both ADK web UI traces and Google Cloud observability simultaneously.
 
     The server runs on the configured host and port with the ADK web interface
     (when enabled), providing interactive agent testing with full observability
@@ -79,7 +71,7 @@ def main() -> None:
         AGENT_DIR: Path to agent source directory (default: auto-detect from __file__)
         AGENT_NAME: Unique service identifier (required for observability)
         GOOGLE_CLOUD_PROJECT: GCP Project ID for trace and log export (required)
-        GOOGLE_CLOUD_LOCATION: Vertex AI region (default: us-central1)
+        GOOGLE_CLOUD_LOCATION: Vertex AI model endpoint location (default: global)
         LOG_LEVEL: Logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         SERVE_WEB_INTERFACE: Whether to serve the web interface (true/false)
         RELOAD_AGENTS: Whether to reload agents on file changes (true/false)
@@ -89,19 +81,11 @@ def main() -> None:
         ALLOW_ORIGINS: JSON array string of allowed CORS origins
         HOST: Server host (default: 127.0.0.1, set to 0.0.0.0 for containers)
         PORT: Server port (default: 8000)
-        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: OpenTelemetry capture
-        TELEMETRY_NAMESPACE: OpenTelemetry service.namespace (default: local)
-        K_REVISION: Cloud Run revision, set by Cloud Run (default: local)
+        OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: GenAI content capture mode
+        K_SERVICE, K_REVISION, K_CONFIGURATION: Set by Cloud Run
+        CLOUD_RUN_REGION: Cloud Run region, set by Terraform
+        OTEL_EXPORTER_OTLP_*_ENDPOINT, TELEMETRY_API_ENDPOINT: Export destinations
     """
-    # Add our Cloud exporters and logging to ADK's TracerProvider
-    configure_telemetry(
-        project_id=env.google_cloud_project,
-        agent_name=env.agent_name,
-        log_level=env.log_level,
-        telemetry_namespace=env.telemetry_namespace,
-        service_version=env.k_revision,
-    )
-
     uvicorn.run(
         app,
         host=env.host,

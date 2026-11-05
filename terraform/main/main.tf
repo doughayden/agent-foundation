@@ -16,6 +16,7 @@ locals {
     "roles/cloudsql.instanceUser",
     "roles/cloudtrace.agent",
     "roles/logging.logWriter",
+    "roles/monitoring.metricWriter",
     "roles/serviceusage.serviceUsageConsumer",
     "roles/storage.bucketViewer",
     "roles/storage.objectUser",
@@ -27,20 +28,22 @@ locals {
 
   # Cloud Run service environment variables
   run_app_env = {
+    ADK_EXPERIMENTAL_TELEMETRY                         = "TRUE"
     ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS         = coalesce(var.adk_suppress_experimental_feature_warnings, "TRUE")
     AGENT_NAME                                         = var.agent_name
     ALLOW_ORIGINS                                      = jsonencode(["http://127.0.0.1:8000", "http://localhost:8000"]) # Localhost-only for gcloud proxy access (add client service origins when UI is deployed)
     ARTIFACT_SERVICE_URI                               = google_storage_bucket.artifact_service.url
+    CLOUD_RUN_REGION                                   = var.region
     GOOGLE_CLOUD_LOCATION                              = var.google_cloud_location
     GOOGLE_CLOUD_PROJECT                               = var.project
     GOOGLE_GENAI_USE_ENTERPRISE                        = "TRUE"
     LOG_LEVEL                                          = coalesce(var.log_level, "INFO")
     MEMORY_SERVICE_URI                                 = "agentengine://${google_vertex_ai_reasoning_engine.session_and_memory.id}"
-    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = coalesce(var.otel_instrumentation_genai_capture_message_content, "FALSE")
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = coalesce(var.otel_instrumentation_genai_capture_message_content, "NO_CONTENT")
+    OTEL_RESOURCE_ATTRIBUTES                           = "service.namespace=${var.environment}"
     RELOAD_AGENTS                                      = "FALSE"
     SERVE_WEB_INTERFACE                                = coalesce(var.serve_web_interface, "FALSE")
     SESSION_SERVICE_URI                                = "postgresql+asyncpg://${google_sql_user.app.name}:@localhost:5432/${google_sql_database.sessions.name}"
-    TELEMETRY_NAMESPACE                                = var.environment
   }
 
   # Cloud SQL Auth Proxy args — shared between bastion and Cloud Run sidecar

@@ -105,13 +105,13 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 
 **Docker:** multi-stage, uv pinned, non-root. Layering and cache strategy: `docs/references/dockerfile-strategy.md`.
 
-**Observability:** OTLP→Cloud Trace, structured logs→Cloud Logging. Resource attributes come from `ServerEnv` values passed in as arguments (no `os.getenv` for settings-owned values) plus per-worker instance ID. See `telemetry.py`.
+**Observability:** `configure_telemetry()` (`telemetry.py`) must run **before** `get_fast_api_app()`: it owns all providers, and a monkey-patch of ADK's `api_server._setup_telemetry` only attaches the web UI processors. Endpoints resolve in `TelemetryEnv` (`config.py`), OTLP gRPC only. Never put `gcp.resource_type` on the meter resource (Telemetry API drops the metrics). Only `server.py` configures telemetry; `adk web`/`api_server`/`run` don't. Design, precedence, metrics routing: `docs/references/opentelemetry-architecture.md`.
 
 ## Environment Variables
 
 **CRITICAL:** Any new env var introduced to the codebase MUST be documented in `docs/environment-variables.md`. No exceptions. Include purpose, default, where to set, and required/optional. `ServerEnv` in `config.py` is the typed source of truth; `docs/environment-variables.md` is the canonical reference.
 
-**Settings shape:** `ServerEnv(BaseSettings)`, field name = env var lowercased (no aliases). **Environment wins over `.env`** everywhere (readers: `docs/environment-variables.md` Precedence). `env_file` never writes `os.environ`, so code outside `ServerEnv` takes settings as arguments, never `os.getenv`. Unit tests build `ServerEnv()` via the `isolated_environ` fixture; `.env` tests pass `_env_file=tmp_path / ".env"`.
+**Settings shape:** `ServerEnv` + `TelemetryEnv` (`BaseSettings`, `config.py`), field name = env var lowercased (no aliases), no `env_file`. `initialize_environment()` runs `load_dotenv()` (override off) as the single `.env` mechanism, so **the shell wins** and every `os.environ` reader sees `.env` (`docs/environment-variables.md` Precedence). Code outside the models takes settings as arguments, never `os.getenv`. Tests: `isolated_environ` (no-op `load_dotenv`), `create_dotenv` for `.env` cases.
 
 ## Code Quality
 
