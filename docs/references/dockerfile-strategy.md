@@ -108,7 +108,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 | `--no-install-project` | Skip installing the project package | `.venv` stays independent of source edits |
 | `--no-dev` | Skip dev dependencies | Smaller image |
 
-**Why `--locked`, not `--frozen`:** `--locked` fails when `uv.lock` no longer matches `pyproject.toml`; `--frozen` skips that check and installs whatever the stale lockfile says. The check is cheap (`uv lock --check` takes tens of milliseconds), and uv's own GitHub Actions example uses `--locked`. The Dockerfile and every CI `uv sync` use it.
+**Why `--locked`, not `--frozen`:** a `uv.lock` that no longer matches `pyproject.toml` is a broken config. `--locked` fails the build loudly so it gets fixed; `--frozen` trusts the lockfile blindly, stale or not, so a mismatch ships undetected. The Dockerfile and every CI `uv sync` use `--locked`, as does uv's own GitHub Actions example.
 
 ```bash
 # A dependency was added to pyproject.toml without re-running uv lock
@@ -210,7 +210,7 @@ EXPOSE 8000
 
 ### Startup Command
 ```dockerfile
-CMD ["python", "-m", "your_package.server"]
+CMD ["python", "-m", "<package>.server"]
 ```
 **What:** Default command when container starts
 **Why:**

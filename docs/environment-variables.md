@@ -192,7 +192,7 @@ The SDK reads its other standard variables too, like `OTEL_TRACES_SAMPLER` for t
 ### Advanced
 
 **AGENT_DIR**
-- **Default:** Auto-detected (parent directory of `server.py`)
+- **Default:** Auto-detected (the directory containing the agent package relative to `server.py`)
 - **Purpose:** Override agent directory path for ADK
 - **Where:** Rarely needed; the default resolves to `src/` locally and `/app/src` in the container
 - **Note:** Only override if you need non-standard directory structure
