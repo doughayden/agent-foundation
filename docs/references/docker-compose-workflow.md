@@ -175,9 +175,10 @@ gcloud auth configure-docker us-central1-docker.pkg.dev
 export REGISTRY_IMAGE="us-central1-docker.pkg.dev/project/repo/app:sha123"
 
 # Pull and run it with your local settings and credentials
-docker pull $REGISTRY_IMAGE
-docker run --rm \
-  -v ~/.config/gcloud/application_default_credentials.json:/gcloud/application_default_credentials.json:ro \
+# (CI publishes linux/amd64 only; the flag lets Apple silicon pull it)
+docker pull --platform linux/amd64 $REGISTRY_IMAGE
+docker run --rm --platform linux/amd64 \
+  --mount type=bind,source=$HOME/.config/gcloud/application_default_credentials.json,target=/gcloud/application_default_credentials.json,readonly \
   -e GOOGLE_APPLICATION_CREDENTIALS=/gcloud/application_default_credentials.json \
   -p 127.0.0.1:8000:8000 \
   --env-file .env \
@@ -195,12 +196,19 @@ docker build -t your-agent-name:latest .
 
 # Startup needs Application Default Credentials (telemetry export uses them)
 docker run --rm \
-  -v ~/.config/gcloud/application_default_credentials.json:/gcloud/application_default_credentials.json:ro \
+  --mount type=bind,source=$HOME/.config/gcloud/application_default_credentials.json,target=/gcloud/application_default_credentials.json,readonly \
   -e GOOGLE_APPLICATION_CREDENTIALS=/gcloud/application_default_credentials.json \
   -p 127.0.0.1:8000:8000 \
   --env-file .env \
   your-agent-name:latest
 ```
+
+Both `docker run` recipes on this page differ from Compose:
+
+- **No IAP tunnel:** a `SESSION_SERVICE_URI` pointing at `localhost:5432` fails on the first session request. Unset it to use in-memory sessions, or use Compose for Cloud SQL
+- **`--env-file` keeps quotes:** Docker passes `KEY='value'` with the quotes included, while Compose and `python-dotenv` strip them. Remove the quotes from values like `ALLOW_ORIGINS` or startup validation fails
+
+They mount credentials with `--mount` rather than `-v`, so a missing credentials file fails the command instead of being created as an empty directory. Run `gcloud auth application-default login` first.
 
 **Note:** Docker Compose is recommended - it handles volumes, environment, and networking automatically.
 

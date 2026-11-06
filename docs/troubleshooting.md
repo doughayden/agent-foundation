@@ -19,7 +19,7 @@ gcloud auth application-default login
 ```
 
 **Changes not appearing:**
-- Code changes: Should sync instantly via watch mode
+- Code changes: Sync and restart the app within a few seconds via watch mode
 - Dependency changes: Watch should auto-rebuild
 - If stuck: Stop and restart with `docker compose up --build --watch`
 
@@ -49,6 +49,20 @@ lsof -i :8000
   - App container ADC: Replace `${HOME}/.config/gcloud/application_default_credentials.json` with Windows equivalent
   - IAP tunnel gcloud config: Replace `${HOME}/.config/gcloud` with Windows equivalent
   - Or use `%USERPROFILE%` in PowerShell
+
+### Customized Dockerfile
+
+The shipped Dockerfile never installs the project: it runs the package from `/app/src` via `PYTHONPATH=/app/src` (`docs/references/dockerfile-strategy.md` explains why). Installing the project, like uv's stock Dockerfile does, changes that.
+
+**Build fails with `failed to open file /app/README.md`:**
+- `pyproject.toml` declares `readme = "README.md"`, so building the project package needs the file
+- Keep the project uninstalled (`uv sync --no-install-project`), or copy `README.md` into the builder before the install step
+
+**Web UI or `/list-apps` shows every installed package as an agent:**
+- Cause: the project is installed and `PYTHONPATH` no longer points at `/app/src`, so Python imports the package from `.venv/lib/pythonX.Y/site-packages/`. `server.py` derives `AGENT_DIR` from its own location, which then points ADK at site-packages
+- Check: `docker compose exec app python -c 'import agent_foundation; print(agent_foundation.__file__)'` prints a site-packages path
+- The same cause breaks watch mode: Compose syncs edits to `/app/src`, but the running code is the installed copy
+- Fix: restore `PYTHONPATH=/app/src` (with or without the install, `/app/src` then comes first on the import path), or set `AGENT_DIR=/app/src` to fix only the agent listing
 
 ### Direct Execution (uv run server)
 
