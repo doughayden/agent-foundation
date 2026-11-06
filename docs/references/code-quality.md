@@ -330,27 +330,34 @@ From `pyproject.toml`:
 ```toml
 [tool.coverage.run]
 omit = [
-    # __init__.py files: namespace marker, no logic
-    "src/{your_agent}/**/__init__.py",
-
-    # server.py: FastAPI setup and ADK initialization (integration tested via CI/CD)
-    "src/{your_agent}/server.py",
-
-    # agent.py: LlmAgent instantiation (tested through callbacks, not in isolation)
-    "src/{your_agent}/**/agent.py",
-
-    # prompt.py: Prompt text and formatting (integration tested via agent runs)
-    "src/{your_agent}/**/prompt.py",
+    # server.py: wiring run at import (settings, telemetry, ADK app); smoke lane
+    "src/**/server.py",
+    # agent.py: App and LlmAgent composition; eval lane
+    "src/**/agent.py",
 ]
 ```
 
-**Rationale for each:**
-- **`__init__.py`**: Pure namespace markers with no logic
-- **`server.py`**: FastAPI entrypoint with ADK initialization - tested via integration tests in CI/CD
-- **`agent.py`**: Pure ADK configuration (plugin registration, model selection) - tested through agent behavior
-- **`prompt.py`**: Prompt templates and formatting - tested via agent evaluations, not unit tests
+A file is omitted only when it is wiring with no logic of its own and another test lane runs it for real. Each comment names that lane:
+- **`server.py`**: builds the app at import, after settings and telemetry setup. The smoke lane exercises it on the deployed service; a unit test would only re-check the wiring with every dependency mocked.
+- **`agent.py`**: composes the `App` and `LlmAgent`. The eval lane runs it against a real model.
 
-**Pattern:** We exclude configuration and infrastructure initialization files. Business logic and utilities must have 100% coverage.
+Everything else is measured, including `__init__.py` (its PEP 562 lazy loader is real branching logic) and `prompt.py`. **Pattern:** test every new file; omit one only when it meets the same bar, and name the lane in its comment.
+
+### Line-pattern Exclusions
+
+When a measured file gains lines that never run under test, exclude those lines by pattern instead of omitting the file. Add the pattern to `[tool.coverage.report] exclude_also` in `pyproject.toml` when the code first appears. Common patterns:
+
+```toml
+[tool.coverage.report]
+exclude_also = [
+    'if __name__ == "__main__":',  # script guard
+    "if TYPE_CHECKING:",           # type-checker-only imports
+    "@overload",                   # typing overload stubs
+    "raise NotImplementedError",   # abstract method bodies
+]
+```
+
+The template sets none today: no measured file contains these lines. See [coverage.py: Excluding code](https://coverage.readthedocs.io/en/latest/excluding.html).
 
 ### Inline Exclusions
 

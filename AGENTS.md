@@ -129,7 +129,7 @@ uv run pre-commit run --all-files                         # whole tree, as CI ru
 
 - **mypy:** `strict = true` (plus `warn_unreachable`, outside the strict set) and the `pydantic.mypy` plugin, over `src/` and `tests/`. Never re-enumerate flags `--strict` already implies. `no_implicit_reexport` rejects names a package does not re-export (ADK's lazy `google.adk.tools`, `google.adk.models`): import from the defining submodule. `# type: ignore[code]` only where the fix sits upstream, with the reason on the line above.
 - **ruff:** 88 char line length, enforces bandit/simplify/use-pathlib. **Always use `Path` objects** (never `os.path`).
-- **pytest:** 100% coverage on production code. Coverage exclusions in `pyproject.toml`. Fixtures in `conftest.py`, async via pytest-asyncio.
+- **pytest:** 100% coverage on production code. Exclusions in `pyproject.toml`: `exclude_also` line patterns first; a file omit only for wiring another lane runs, named in its comment (`docs/references/code-quality.md` Coverage Configuration). Fixtures in `conftest.py`, async via pytest-asyncio.
 
 **Type narrowing:** **NEVER use `cast()`** - always use `isinstance()` checks for type narrowing (provides both mypy inference and runtime safety).
 
