@@ -118,15 +118,10 @@ enable_error_code = ["no-untyped-def", "no-untyped-call"]
 source = ["src"]
 branch = true
 omit = [
-    # __init__.py / __main__.py: namespace markers and entrypoints, no business logic
-    "src/**/__init__.py",
-    "src/**/__main__.py",
-    # server.py: FastAPI setup and ADK initialization (integration tested via CI/CD)
+    # server.py: wiring run at import (settings, telemetry, ADK app); smoke lane
     "src/**/server.py",
-    # agent.py: LlmAgent instantiation (tested through callbacks, not in isolation)
+    # agent.py: App and LlmAgent composition; eval lane
     "src/**/agent.py",
-    # prompt.py: Prompt text and formatting (integration tested via agent runs)
-    "src/**/prompt.py",
 ]
 
 [tool.coverage.report]
