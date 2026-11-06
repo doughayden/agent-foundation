@@ -8,7 +8,7 @@ Built for teams who need to move beyond prototypes and ship production AI agents
 
 ## Key Features
 
-- 🐳 **Optimized Docker builds** - Multi-stage builds with uv (~200MB images, 5-10s rebuilds)
+- 🐳 **Optimized Docker builds** - Multi-stage uv builds; code changes push only a kilobyte-sized layer
 - 🏗️ **Automated CI/CD** - GitHub Actions + Terraform with smart PR automation
 - 🌎 **Multi-environment deployments** - Production-grade dev/stage/prod isolation
 - 💾 **Database sessions** - Cloud SQL Postgres for durable conversation state

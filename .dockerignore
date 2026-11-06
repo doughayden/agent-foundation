@@ -1,8 +1,8 @@
 # Python cache and compiled files
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/*.so
 .Python
 
 # Virtual environments
@@ -12,19 +12,19 @@ env/
 ENV/
 
 # Testing and coverage
-.pytest_cache/
-.coverage
+**/.pytest_cache/
+**/.coverage
 htmlcov/
 .tox/
-.mypy_cache/
-.ruff_cache/
+**/.mypy_cache/
+**/.ruff_cache/
 
 # Development tools
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
+**/*.swp
+**/*.swo
+**/*~
 
 # Git and version control
 .git/
@@ -41,26 +41,26 @@ docs/
 !README.md
 
 # Environment files (should be provided at runtime)
-.env
-.env.*
+**/.env
+**/.env.*
 !.env.example
 
 # Logs and temporary files
 .log/
 .tmp/
-*.log
+**/*.log
 
 # ADK local storage (v1.20.0+)
-.adk/
+**/.adk/
 
 # Build artifacts
 dist/
 build/
-*.egg-info/
+**/*.egg-info/
 
 # OS files
-.DS_Store
-Thumbs.db
+**/.DS_Store
+**/Thumbs.db
 
 # Scripts not needed in production
 tests/

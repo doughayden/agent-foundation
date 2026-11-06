@@ -192,16 +192,16 @@ The SDK reads its other standard variables too, like `OTEL_TRACES_SAMPLER` for t
 ### Advanced
 
 **AGENT_DIR**
-- **Default:** Auto-detected (parent directory of `server.py`)
+- **Default:** Auto-detected (the directory containing the agent package relative to `server.py`)
 - **Purpose:** Override agent directory path for ADK
-- **Where:** Set in Dockerfile (`/app/src`), rarely needed locally
+- **Where:** Rarely needed; the default resolves to `src/` locally and `/app/src` in the container
 - **Note:** Only override if you need non-standard directory structure
 
 **HOST**
 - **Default:** `127.0.0.1`
 - **Purpose:** Server bind address
 - **Where:** Rarely needs override - defaults work for most use cases
-- **Note:** Docker Compose overrides to `0.0.0.0` in container for host access, Cloud Run manages internally
+- **Note:** The Dockerfile sets `0.0.0.0` so the container accepts connections from outside itself
 
 **PORT**
 - **Default:** `8000`
@@ -335,7 +335,7 @@ Set in GitHub Actions > Secrets and variables > Actions. Both select the model a
 **Local Development:**
 - `.env` file in the directory where you run the server
 - Command line (e.g., `LOG_LEVEL=DEBUG uv run server`)
-- `docker-compose.yml` (Docker Compose)
+- `compose.yml` (Docker Compose)
 
 **Cloud Run:**
 - Terraform `main` module (`terraform/main/main.tf`)

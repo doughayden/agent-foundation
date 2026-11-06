@@ -1,41 +1,42 @@
 # Dockerfile Strategy Explained
 
-This document explains our multi-stage Docker build strategy and why we chose this approach for containerizing the agent.
+How and why to build a multi-stage uv Dockerfile.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Dockerfile Breakdown](#dockerfile-breakdown)
-- [Why Not Use UV Image Directly](#why-not-use-uv-image-directly)
-- [Performance Comparison](#performance-comparison)
+- [Why We COPY Instead of Using Bind Mounts](#why-we-copy-instead-of-using-bind-mounts)
+- [Rebuild and Push Cost](#rebuild-and-push-cost)
 - [Summary](#summary)
+- [Local Development](#local-development)
+- [References](#references)
 
 ## Overview
 
 Our Dockerfile uses a **multi-stage build** with the following architecture:
 
 1. **Builder Stage**: `python:X.Y-slim` + uv binary (copied from Astral's distroless image)
-2. **Runtime Stage**: Clean `python:X.Y-slim` + only the virtual environment
+2. **Runtime Stage**: Clean `python:X.Y-slim` + the virtual environment and the source, as separate layers
 
 `X.Y` is the Python version pinned in `.python-version`.
 
 This approach gives us:
 - ✅ Official uv binary (pinned for reproducible builds)
-- ✅ Full build capabilities (shell, Python, package manager)
-- ✅ Minimal runtime image (~200MB vs ~500MB)
-- ✅ Fast rebuilds (5-10s for code changes)
-- ✅ Maximum security (non-root, minimal attack surface)
+- ✅ No uv, uv cache or build metadata in the runtime image
+- ✅ Small pushes: a source edit changes only the source layer (kilobytes); the dependency layer stays cached
+- ✅ Runs as a non-root user
 
 ---
 
 ## Dockerfile Breakdown
 
-### BuildKit Directive
+### Syntax Directive
 ```dockerfile
 # syntax=docker/dockerfile:1
 ```
-**What:** Tells Docker to use BuildKit parser (modern Docker build engine)
-**Why:** Enables advanced features like `--mount=type=cache` and parallel builds
+**What:** Selects the Dockerfile frontend: the latest stable 1.x syntax
+**Why:** Builds get current Dockerfile features without upgrading Docker. BuildKit itself is already Docker's default builder, so `docker build` needs no flag or `DOCKER_BUILDKIT=1` ([Dockerfile reference](https://docs.docker.com/reference/dockerfile/#syntax))
 
 ---
 
@@ -48,37 +49,29 @@ FROM python:X.Y-slim AS builder
 - Python runtime for `uv sync` to work
 - Shell and basic utilities (cp, mkdir, etc.) for build commands
 
-**Why not `ghcr.io/astral-sh/uv:latest` as base?**
-- Astral's uv image is **distroless** (no shell, no package manager)
-- You can't run `RUN` commands in distroless images
+**Why not `ghcr.io/astral-sh/uv` as base?**
+- Astral's uv image is **distroless**: it contains only the `uv` and `uvx` binaries, so there is no shell to run `RUN` commands
 - It's designed to copy the binary FROM, not build FROM
 
 ---
 
 ### Copy UV Binary
 ```dockerfile
-# Install uv from official distroless image (pinned for reproducible builds)
 COPY --from=ghcr.io/astral-sh/uv:X.Y.Z /uv /uvx /bin/
 ```
 **What:** Extract just the `uv` and `uvx` binaries from Astral's image
 **Why:**
-- Pinned to specific version X.Y.Z (i.e., `0.10.11`) for reproducible, deterministic builds
-- Copies only ~10MB of binaries (not a whole base image)
+- Pinned to an exact version for reproducible, deterministic builds (bump procedure: `docs/development.md` uv Version)
+- Copies two binaries, not a whole base image
 - Puts them in `/bin/` so they're in PATH
-
-**Key insight:** We get official uv without the distroless constraints.
 
 ---
 
-### Working Directory (Builder Stage)
+### Working Directory
 ```dockerfile
 WORKDIR /app
 ```
-**What:** Set working directory to `/app`
-**Why:**
-- All subsequent commands run from this directory
-- Creates the directory if it doesn't exist
-- Standard convention for application code
+**What:** Both stages work in `/app`. Each `FROM` starts a fresh filesystem, so the runtime stage sets it again.
 
 ---
 
@@ -93,127 +86,38 @@ ENV UV_LINK_MODE=copy \
 
 | Variable | Value | Reason |
 |----------|-------|--------|
-| `UV_LINK_MODE=copy` | Copy files instead of hardlinking | Safer for Docker layers, works across filesystems |
-| `UV_COMPILE_BYTECODE=1` | Pre-compile .py → .pyc files | Faster startup (no compilation at runtime) |
+| `UV_LINK_MODE=copy` | Copy files instead of hardlinking | The cache mount and `.venv` are on separate filesystems, so uv can't hardlink and would warn |
+| `UV_COMPILE_BYTECODE=1` | Pre-compile .py → .pyc files | Tends to improve startup time, at the cost of install time and image size ([uv Docker guide](https://docs.astral.sh/uv/guides/integration/docker/)) |
 | `UV_PYTHON_DOWNLOADS=never` | Don't download Python | Use system Python from base image |
 
 ---
 
 ### Install Dependencies
 ```dockerfile
-# Copy dependency files - explicit cache invalidation when either file changes
 COPY pyproject.toml uv.lock ./
-
-# Install dependencies (cache mount provides the performance optimization)
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project --no-dev
 ```
 **What:** Install dependencies WITHOUT installing the project itself
-**Why:** Key optimization strategy
+**Why:** This is the only install step. The project is never installed, so `.venv` holds dependencies only and changes only when `pyproject.toml` or `uv.lock` does.
 
 | Flag | Meaning | Benefit |
 |------|---------|---------|
-| `--mount=type=cache` | Persist `/root/.cache/uv` across builds | Don't re-download packages if already cached (~80% speedup) |
-| `--locked` | Validate lockfile matches pyproject.toml | Catches mistakes, prevents silent failures (our standard) |
-| `--no-install-project` | Skip installing `src/may_package` | Separates dependencies (slow) from code (fast) |
+| `--mount=type=cache` | Persist `/root/.cache/uv` across builds | Don't re-download packages already cached |
+| `--locked` | Validate lockfile matches pyproject.toml | Fails the build on a stale lockfile |
+| `--no-install-project` | Skip installing the project package | `.venv` stays independent of source edits |
 | `--no-dev` | Skip dev dependencies | Smaller image |
 
-**Why COPY both files?**
-- ✅ **Explicit cache invalidation** - When dependencies change, this layer rebuilds (as it should)
-- ✅ **Predictable** - Standard Docker caching behavior, no surprises
-- ✅ **Simple** - Easy to understand and maintain
-- ✅ **Fast anyway** - Cache mount makes rebuilds quick (~2-5s even on version bumps)
+**Why `--locked`, not `--frozen`:** a `uv.lock` that no longer matches `pyproject.toml` is a broken config. `--locked` fails the build loudly so it gets fixed; `--frozen` trusts the lockfile blindly, stale or not, so a mismatch ships undetected. The Dockerfile and every CI `uv sync` use `--locked`, as does uv's own GitHub Actions example.
 
-**Why `--locked` (not `--frozen`)?**
-
-We **standardize on `--locked`** for all builds. Here's why:
-
-| Flag | Behavior | When to Use |
-|------|----------|-------------|
-| `--locked` | **Validates lockfile matches pyproject.toml** | ✅ **Always** (our standard) |
-| `--frozen` | Skips validation, silently uses stale lockfile | ❌ **Avoid** |
-
-**Why avoid `--frozen`:**
-- ❌ Silently installs wrong dependencies if lockfile is stale
-- ❌ Even UV's official CI/CD examples use `--locked`
-- ❌ Hides developer mistakes instead of catching them
-
-**Why use `--locked` everywhere:**
-- ✅ Catches developer mistakes (forgot to run `uv lock`)
-- ✅ Ensures lockfile and pyproject.toml stay synchronized
-- ✅ Fails fast with clear error message
-- ✅ Validation is negligible cost (~milliseconds)
-- ✅ Enforces correct workflow: change deps → `uv lock` → commit both files
-
-**Example of `--locked` preventing bugs:**
 ```bash
-# Developer adds pandas to pyproject.toml but forgets to run uv lock
+# A dependency was added to pyproject.toml without re-running uv lock
 $ docker build .
-ERROR: The lockfile is out of sync with pyproject.toml
-# Developer: "Oh right, I need to run uv lock first!"
-$ uv lock
-$ docker build .  # Now succeeds with correct dependencies
+error: The lockfile at `uv.lock` needs to be updated, but `--locked` was provided.
+$ uv lock && docker build .  # succeeds
 ```
 
-**Bottom line:** We use `--locked` in development, CI/CD, and production. We'll only consider `--frozen` if we encounter a very specific use case that requires skipping validation (none identified yet).
-
-**Cache mount is the real optimization** - It persists across builds, so even "unnecessary" rebuilds are fast.
-
----
-
-### Copy Source Code
-```dockerfile
-# Copy only source code (documentation changes won't invalidate this layer)
-COPY src ./src
-```
-**What:** Copy only the application source code
-**Why:**
-- Done AFTER dependencies to maximize cache hits
-- **Optimization**: Only copies source code, not documentation (README.md)
-- Documentation updates won't invalidate this layer or trigger project reinstall
-- Code changes trigger rebuild as expected
-- This layer rebuilds only on source code changes (~5-10s)
-- More targeted than `COPY . /app` - avoids redundant pyproject.toml/uv.lock copy
-
----
-
-### Editable Install Build Argument
-```dockerfile
-# Build argument: set to "true" for editable install (local dev with file sync)
-ARG editable=false
-```
-**What:** Declares a build argument that controls whether the project is installed in editable mode
-**Why:**
-- Defaults to `false` — production builds via CI/CD pass no build arg, so behavior is unchanged
-- Docker Compose sets `editable: "true"` to enable file sync with auto-restart for local development
-- Editable install creates a `.pth` file pointing Python to `/app/src` instead of copying code into `.venv/site-packages`
-- When Docker Compose syncs changed files to `/app/src`, the restarted process picks them up immediately (~2-5s vs 20-120s full rebuild)
-- `ARG` adds nothing to the final image — it's a build-time variable that doesn't persist in image metadata (unlike `ENV`) and is completely invisible at runtime. In a multi-stage build this is even clearer: the runtime stage starts from a fresh `FROM` with no knowledge the ARG ever existed
-
----
-
-### Install Project
-```dockerfile
-# Install project (create empty README to satisfy package metadata requirements)
-RUN --mount=type=cache,target=/root/.cache/uv \
-    touch README.md && \
-    if [ "$editable" = "true" ]; then \
-        uv sync --locked --no-dev; \
-    else \
-        uv sync --locked --no-editable --no-dev; \
-    fi
-```
-**What:** Install the project itself (now that source code exists), conditionally in editable or non-editable mode
-**Why:**
-- `touch README.md`: Creates empty README to satisfy package metadata requirements
-  - **Performance optimization**: README changes won't trigger this layer rebuild
-  - Only source code changes (`src/`) invalidate this layer
-  - Intentional trade-off: runtime container won't have real README (not needed for execution)
-- `--locked`: Validates lockfile matches pyproject.toml (catches mistakes)
-- **When `editable=false` (default/production):** `--no-editable` installs as a regular package (copied into `.venv/site-packages`)
-- **When `editable=true` (local dev):** Omits `--no-editable`, creating a `.pth` file that points Python to `/app/src` — enables Docker Compose `sync+restart` to pick up file changes without a full image rebuild
-- Reuses dependencies from previous step (already in .venv)
-- Fast because dependencies already installed (~5-10s)
+**What the cache mount buys:** packages already downloaded are not fetched again. The gain is modest: most of a dependency install goes to unpacking and byte-compiling, not downloading. It also persists only on the same builder: `cache-to` exports layers, not cache mounts, so each CI run on a fresh runner starts with an empty uv cache ([Docker GitHub Actions cache](https://docs.docker.com/build/ci/github-actions/cache/)). Registry layer cache still skips the whole sync when `pyproject.toml` and `uv.lock` are unchanged.
 
 ---
 
@@ -222,63 +126,43 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM python:X.Y-slim AS runtime
 ```
 **What:** Start fresh with clean Python image for runtime
-**Why:** Multi-stage build benefits:
-- Builder stage has uv, build tools, cache → ~500MB
-- Runtime stage only has Python and your .venv → ~200MB
-- 50%+ size reduction by discarding build tools
+**Why:**
+- uv, its cache and the dependency files stay in the builder stage
+- Runtime has only Python, `.venv` (from the builder) and `src/` (from the build context)
 
 ---
 
 ### Non-Root User
 ```dockerfile
-RUN groupadd -r app && useradd -r -g app app
+RUN groupadd -g 10001 app && useradd -u 10001 -g app -M -s /usr/sbin/nologin app
 ```
-**What:** Create a non-root system user named `app`
-**Why:** Security best practice
-- Containers shouldn't run as root
-- Limits damage if container is compromised
-- Standard container orchestration pattern
+**What:** Create a non-root user named `app` with a fixed UID and GID of 10001
+**Why:** The server doesn't need root, so it doesn't run as root
 
 **Command breakdown:**
-- `groupadd -r app`: Create system group (`-r` assigns GID < 1000 automatically)
-- `useradd -r -g app app`: Create system user (`-r` assigns UID < 1000, `-g app` assigns to group)
-- No home directory created, shell defaults to `/usr/sbin/nologin` (prevents login)
+- `groupadd -g 10001 app`: Create the `app` group with GID 10001
+- `useradd -u 10001 -g app -M -s /usr/sbin/nologin app`: Create the `app` user with UID 10001 in that group
+- `-M`: Create no home directory; the server writes nothing to `~/`
+- `-s /usr/sbin/nologin`: The account has no login shell, so `su app` or any login as `app` is refused. `docker exec` and the `CMD` start their own process and never read the account's shell, so the server and debugging sessions are unaffected
 
-**Alternative approach:** Some Dockerfiles use explicit UIDs (e.g., `useradd -u 1001 -g appgroup -m -d /app`) for traditional volume sharing (NFS, Docker volumes). We use system users (`-r`) because:
-- **GCS fuse authentication** uses service account IAM, not file UIDs
-- **Simpler** - fewer flags, system assigns non-conflicting IDs
-- **No home directory needed** - app doesn't write to `~/`
-
-For traditional shared volumes with POSIX permissions, explicit UIDs are needed. For object storage (GCS), system users are sufficient.
-
-**Reference:** [Depot.dev Python UV Dockerfile](https://depot.dev/docs/container-builds/how-to-guides/optimal-dockerfiles/python-uv-dockerfile) shows explicit UID approach
+**Why a fixed ID:** volume mounts and file ownership on shared storage key on the numeric UID and GID, so a pinned value gives them a stable target that doesn't shift with the base image's user list. 10001 sits outside the range Linux hosts assign to people (the first user is usually 1000), so the container process never shares an ID with a host account. On native Linux Docker, a bind-mounted host file readable only by your host user (like a `0600` credentials file) may be unreadable to UID 10001.
 
 ---
 
-### Working Directory (Runtime Stage)
+### Copy Virtual Environment and Source
 ```dockerfile
-WORKDIR /app
+COPY --from=builder --chown=app:app /app/.venv ./.venv
+COPY --chown=app:app src ./src
 ```
-**What:** Set working directory again (new stage = new filesystem)
-**Why:** Container starts in `/app` when it runs
-
----
-
-### Copy Application from Builder
-```dockerfile
-COPY --from=builder --chown=app:app /app .
-```
-**What:** Copy entire application directory from builder stage
+**What:** Copy the dependencies from the builder and the source straight from the build context, as two layers
 **Why:**
-- `--from=builder`: Get everything from builder's `/app`
-- `--chown=app:app`: Make the `app` user own it
-- Destination `.` uses WORKDIR context (copies to `/app`)
-- Includes `.venv/` (all dependencies + installed package)
-- Includes `src/` (application code)
-- Includes metadata (pyproject.toml, uv.lock, README.md)
-- **Simple, conventional pattern** - one COPY instead of multiple
-- Metadata files are tiny (~30 KB) and harmless
-- **uv is NOT copied** (only in builder stage, not needed at runtime)
+- Each `COPY` produces one layer, and any change to its content invalidates the whole layer. The `.venv` layer is hundreds of MB; the `src` layer is tens of kB
+- A source edit rebuilds and re-pushes only the `src` layer; the `.venv` layer stays cached locally and in the registry. Copying `/app` in one layer would re-export and re-push the whole venv on every source edit
+- `--chown=app:app`: Make the `app` user own both
+- Only `src/` comes from the build context: documentation, tests and config changes never invalidate a layer
+- **uv, `pyproject.toml` and `uv.lock` are NOT copied** (needed only to build)
+
+**Running from source:** the package is imported from `/app/src` (see `PYTHONPATH` below), so code that locates files relative to `__file__` sees the same `src/<package>/` layout as a local checkout. Without a project install, the container venv has no `[project.scripts]` console scripts and no package metadata for the project (`importlib.metadata` cannot find it): start the app with `python -m`, and don't read the project's version from installed metadata at runtime.
 
 ---
 
@@ -287,7 +171,7 @@ COPY --from=builder --chown=app:app /app .
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
-    AGENT_DIR=/app/src \
+    PYTHONPATH=/app/src \
     HOST=0.0.0.0 \
     PORT=8000
 ```
@@ -299,43 +183,9 @@ ENV VIRTUAL_ENV=/app/.venv \
 | `VIRTUAL_ENV=/app/.venv` | Tell Python which venv to use |
 | `PATH="/app/.venv/bin:$PATH"` | Make venv binaries available (python, uvicorn) |
 | `PYTHONUNBUFFERED=1` | Don't buffer stdout/stderr (better logs in Docker) |
-| `HOST=0.0.0.0` | Explicitly bind all interfaces for containers (server.py defaults to 127.0.0.1) |
-| `PORT=8000` | Explicitly set default port (matches EXPOSE and server.py default) |
-| `AGENT_DIR=/app/src` | Override agent directory path (see AGENT_DIR section below) |
-
----
-
-### AGENT_DIR Configuration
-
-**The Problem:**
-
-When the package is installed in **non-editable mode** (Docker), the source code is copied to the virtual environment's site-packages:
-- Local (editable): `Path(__file__)` → `/path/to/project/src/your_agent_name/server.py`
-- Docker (non-editable): `Path(__file__)` → `/app/.venv/lib/pythonX.Y/site-packages/your_agent_name/server.py`
-
-Using `Path(__file__).parent.parent` for `AGENT_DIR`:
-- Local: Resolves to `/path/to/project/src/` ✅ Correct (contains only your_agent_name/)
-- Docker: Resolves to `/app/.venv/lib/pythonX.Y/site-packages/` ❌ Wrong (contains all packages)
-
-This causes the ADK web UI to show all installed packages (.dist-info directories) instead of just our agent.
-
-**The Solution:**
-
-```python
-# In server.py - configurable with smart default
-AGENT_DIR = os.getenv("AGENT_DIR", str(Path(__file__).parent.parent))
-```
-
-```dockerfile
-# In Dockerfile - override for Docker environment
-ENV AGENT_DIR=/app/src
-```
-
-**Why this works:**
-- Local dev: No `AGENT_DIR` env var → uses `Path(__file__).parent.parent` → `/path/to/project/src/` ✅
-- Docker: `AGENT_DIR=/app/src` env var set → overrides default → `/app/src/` ✅
-- Both point to directory containing only the agent source code
-- Configurable via environment variable for other deployment scenarios
+| `PYTHONPATH=/app/src` | Import the package from source, since the project is not installed |
+| `HOST=0.0.0.0` | Bind all interfaces so the server accepts connections from outside the container |
+| `PORT=8000` | Default port, matching `EXPOSE` |
 
 ---
 
@@ -343,11 +193,7 @@ ENV AGENT_DIR=/app/src
 ```dockerfile
 USER app
 ```
-**What:** All subsequent commands run as `app` user
-**Why:**
-- Container starts as `app` user at runtime
-- Can't escalate to root
-- Security best practice
+**What:** All subsequent commands, and the container process at runtime, run as `app`
 
 ---
 
@@ -355,94 +201,28 @@ USER app
 ```dockerfile
 EXPOSE 8000
 ```
-**What:** Document that container listens on port 8000
+**What:** Document the server's listening port (the `PORT` default above)
 **Why:**
-- Documentation only (doesn't actually publish port)
-- Tools like docker-compose read this for defaults
-- Good practice for clarity
+- Documentation only: it publishes nothing. Compose publishes through `ports:` in `compose.yml`, Cloud Run through the service's container port
+- `docker run -P` publishes exposed ports to random host ports
 
 ---
 
 ### Startup Command
 ```dockerfile
-# Run the FastAPI server via main() for unified startup logic (logging, etc.)
-CMD ["python", "-m", "your_agent_name.server"]
+CMD ["python", "-m", "<package>.server"]
 ```
 **What:** Default command when container starts
 **Why:**
-- Calls `server.main()` for unified startup logic
-  - Sets up OpenTelemetry observability (traces and logs to Google Cloud)
-  - Consistent entry point for both local dev (`uv run server`) and Docker
-- `main()` calls `uvicorn.run(app, host=os.getenv("HOST", "127.0.0.1"), port=...)`
-  - Secure default: 127.0.0.1 (only local connections)
-  - Dockerfile sets `HOST=0.0.0.0` to explicitly bind all interfaces for containers
-  - Respects HOST and PORT environment variables for flexibility
-- JSON array format (exec form, not shell form) → more efficient
-- Can be overridden at runtime
-
----
-
-## Why Not Use UV Image Directly?
-
-Let's compare the approaches:
-
-### ❌ Using UV Image Directly (Won't Work)
-```dockerfile
-FROM ghcr.io/astral-sh/uv:X.Y.Z
-
-# ERROR: No shell to run these commands!
-RUN uv sync  # FAILS - distroless has no /bin/sh
-COPY src ./src  # Works, but then what?
-```
-
-**Problems:**
-- Distroless = no shell → can't run `RUN` commands
-- No package manager → can't install system dependencies if needed
-- Image is ~100MB but you can't build anything with it
-- Designed for copying FROM, not building FROM
-
-### ✅ Our Approach (Multi-Stage)
-```dockerfile
-# Builder: Use python:X.Y-slim + uv binary
-FROM python:X.Y-slim AS builder
-COPY --from=ghcr.io/astral-sh/uv:X.Y.Z /uv /bin/
-# ... build with full shell/utilities ...
-
-# Runtime: Clean python:X.Y-slim + only .venv
-FROM python:X.Y-slim AS runtime
-COPY --from=builder /app/.venv /app/.venv
-```
-
-**Benefits:**
-- Builder has shell + Python + uv → can build anything
-- Runtime is minimal → small image size
-- Gets official uv binary → pinned for reproducibility
-- Best of both worlds
+- `python -m` runs the module directly, so no console script is needed (the project isn't installed)
+- Exec form (JSON array): Python runs as PID 1 and receives `SIGTERM` directly; the shell form would wrap it in `/bin/sh -c`, which does not pass signals ([Dockerfile reference](https://docs.docker.com/reference/dockerfile/#cmd))
 
 ---
 
 ## Why We COPY Instead of Using Bind Mounts
 
-### The Question: Should We Optimize Further?
+uv's Docker guide also shows bind-mounting `pyproject.toml` and `uv.lock` into the sync step instead of copying them:
 
-You might wonder: "Why not use bind mounts to avoid copying dependency files into layers?"
-
-UV's documentation shows bind mount examples, but we deliberately chose the simpler COPY approach. Here's why:
-
-### COPY Approach (What We Use)
-```dockerfile
-COPY pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-install-project
-```
-
-**What happens:**
-- Both files copied into builder layer
-- Docker tracks both files for cache invalidation
-- When either file changes, layer rebuilds
-- Cache mount makes rebuilds fast (~2-5s)
-
-### Bind Mount Alternative (What We Don't Use)
 ```dockerfile
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
@@ -450,87 +230,51 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project
 ```
 
-**Potential issues:**
-- Docker doesn't track bind-mounted files
-- Layer might stay cached even when dependencies change
-- Requires careful hybrid strategies (COPY some, bind others)
-- More complex to understand and debug
+Both invalidate the same way: BuildKit tracks bind-mounted files, so changing one re-runs the step. The only difference is that `COPY` leaves the two files (about 435 kB) in a builder layer. The builder stage never ships, so that costs nothing in the runtime image. We keep `COPY` because it is the plainer pattern.
 
-### Our Philosophy: Explicit Over Implicit
+---
 
-**Dependency changes SHOULD trigger rebuilds:**
-- ✅ Clear signal that something material changed
-- ✅ Validates that dependencies actually update
-- ✅ Predictable Docker caching behavior
-- ✅ Easy to understand and debug
+## Rebuild and Push Cost
 
-**The "penalty" for this explicitness is negligible:**
-- Version bump in pyproject.toml → rebuilds layer → cache mount makes it ~2-5s
-- The cache mount provides 90% of the performance benefit
-- Simplicity is worth more than saving 3 seconds
+Once images build in CI and push to a registry, the cost of a change is the bytes it re-pushes, not local build time. Each change invalidates only its own layer and those after it:
 
-### Benefits of COPY Approach
-- ✅ **Simple** - Standard Docker pattern, easy to understand
-- ✅ **Explicit** - Cache invalidation happens when it should
-- ✅ **Reliable** - Dependencies always update correctly
-- ✅ **Fast** - Cache mount handles performance optimization
-- ✅ **Maintainable** - Less explanation needed, easier debugging
+| Change | Layers rebuilt and re-pushed | Order of magnitude (compressed) |
+|--------|------------------------------|---------------------------------|
+| Source edit in `src/` | `src` only | kilobytes |
+| `pyproject.toml` or `uv.lock` | dependency sync, `.venv`, `src` | tens of MB |
+| Anything outside `pyproject.toml`, `uv.lock` and `src/` | none (never copied into the image) | none |
 
-## Performance Comparison
+Compressed sizes are the `size` of each layer in the image's platform manifest in the registry; `docker history` shows uncompressed sizes. Layer sizes move with the dependency tree.
 
-| Approach | Builder Size | Runtime Size | Rebuild Time (code change) | Simplicity | Notes |
-|----------|--------------|--------------|----------------------------|------------|-------|
-| Single-stage | 500MB | 500MB | 2-5 minutes | ✅ Simple | No separation, slow rebuilds |
-| **Multi-stage + COPY (ours)** | **~500MB** | **~200MB** | **5-10 seconds** | **✅ Simple** | **Best balance of performance and clarity** |
-| Multi-stage + bind mounts | ~480MB | ~200MB | 5-10 seconds | ❌ Complex | Marginal savings, complex caching |
-| UV distroless base | Won't work | N/A | N/A | N/A | No shell for build commands |
+**Alternatives considered:**
 
-**Key insight:** The multi-stage build and cache mount provide 95% of the optimization. Bind mounts add complexity for minimal additional benefit (~20MB, ~2-3s).
+| Approach | Why we don't use it |
+|----------|---------------------|
+| Single stage | Ships uv, its cache and build metadata in the runtime image |
+| One `COPY /app .` in the runtime stage | A source edit re-pushes the whole venv layer |
+| Installing the project into `.venv` | Writes source into `.venv`, so every source edit invalidates the venv layer |
+| Bind mounts for dependency files | Same caching; saves only builder-stage bytes that never ship |
+| uv distroless image as base | No shell for build commands |
 
 ---
 
 ## Summary
 
-**Why our multi-stage COPY approach?**
-
-1. **We can't use distroless uv image as base** → no shell to run build commands
-2. **We still want official uv binary** → copy it from distroless image into python:slim
-3. **We separate build from runtime** → smaller final image, faster rebuilds
-4. **Layer caching optimization** → dependencies cached separately from code
-5. **Simple COPY over bind mounts** → explicit, reliable, maintainable
-
-**Key architectural decisions:**
-
 | Component | Approach | Why |
 |-----------|----------|-----|
 | `uv` binary | Copy from distroless (pinned) | Reproducible builds, bump manually |
 | Base image | `python:X.Y-slim` | Need shell + Python for build, minimal for runtime |
-| Build pattern | Multi-stage | 50% size reduction (discard build tools) |
-| Dependency caching | Cache mount | Persist packages across builds (~80% speedup) |
-| Dependency files | **COPY both** | Explicit cache invalidation, predictable, simple |
-| Code separation | `--no-install-project` | Dependencies (slow) separate from code (fast) |
-| Source copy | **Copy src/ only** | Documentation changes don't trigger code layer rebuild |
-| Editable install | **ARG editable=false** | Conditional install mode — production uses `--no-editable`, local dev omits it for file sync |
-| README file | **touch in RUN** | Optimization: README updates don't invalidate install layer |
-
-This gives us:
-- ✅ Official uv binary (pinned for reproducible builds)
-- ✅ Full build capabilities (shell, Python, package manager)
-- ✅ Minimal runtime image (~200MB vs ~500MB)
-- ✅ Fast rebuilds (5-10s for code changes, ~2-5s for dependency changes with cache)
-- ✅ Documentation updates don't trigger code/install layer rebuilds
-- ✅ Reliable dependency updates (explicit cache invalidation)
-- ✅ Simple and maintainable (standard Docker patterns)
-- ✅ Maximum security (non-root, minimal attack surface)
+| Build pattern | Multi-stage | Discard uv, its cache and build metadata |
+| Dependency caching | Cache mount | Skip re-downloading cached packages |
+| Dependency files | **COPY both** | A change to either re-runs the sync |
+| Project install | **None** (`--no-install-project`, run from `src/`) | `.venv` changes only with dependencies |
+| Runtime copy | **`.venv` and `src` as separate layers** | A source edit invalidates only the `src` layer |
+| Import path | **`PYTHONPATH=/app/src`** | Package importable without an install |
+| Runtime user | **Fixed UID/GID 10001, no login shell** | Non-root, stable ownership, matches no host account |
 
 ## Local Development
 
-For local development workflow using Docker Compose (recommended), see [Docker Compose Workflow Guide](./docker-compose-workflow.md).
-
-For direct Docker builds without Compose:
-```bash
-DOCKER_BUILDKIT=1 docker build -t your-agent-name:latest .
-```
+For local development with Docker Compose (recommended), see [Docker Compose Workflow](docker-compose-workflow.md).
 
 ---
 
@@ -539,17 +283,16 @@ DOCKER_BUILDKIT=1 docker build -t your-agent-name:latest .
 ### UV Documentation
 - [UV Docker Integration Guide](https://docs.astral.sh/uv/guides/integration/docker/)
 - [UV Docker Intermediate Layers (Bind Mounts)](https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers)
-- [UV Documentation](https://docs.astral.sh/uv/)
 
 ### Docker Documentation
 - [Docker Best Practices](https://docs.docker.com/build/building/best-practices/)
 - [Docker Multi-Stage Builds](https://docs.docker.com/build/building/multi-stage/)
 - [Docker RUN Command Reference](https://docs.docker.com/reference/dockerfile/#run)
 - [BuildKit Cache Mounts](https://docs.docker.com/build/cache/optimize/)
-- [Docker Bind Mounts](https://docs.docker.com/build/building/best-practices/#use-bind-mounts)
+- [Docker Best Practices: ADD or COPY (bind mounts)](https://docs.docker.com/build/building/best-practices/#add-or-copy)
 
 ### Docker Compose
-- [Docker Compose Workflow Guide](./docker-compose-workflow.md) - Local development workflow
+- [Docker Compose Workflow](docker-compose-workflow.md) - Local development workflow
 - [Docker Compose Watch Mode](https://docs.docker.com/compose/file-watch/)
 
 ---

@@ -98,11 +98,11 @@ The bastion's sole purpose is running the Auth Proxy for developer access to Clo
 
 ## Container Layer
 
-**Non-root execution.** The Dockerfile creates a system user (`app:app`) and switches to it before CMD. A container escape from a non-root process grants no host-level privileges.
+**Non-root execution.** The Dockerfile creates a user (`app:app`, fixed UID and GID 10001) with no login shell (`/usr/sbin/nologin`) and switches to it before CMD. Running as non-root shrinks what a compromised process can do inside the container.
 
-**Multi-stage build.** The builder stage (compilers, build tools, full source) is discarded. The runtime image contains only the Python runtime, installed packages, and application code — approximately 200MB. Fewer binaries means fewer CVEs to track.
+**Multi-stage build.** The uv binary and the dependency manifests stay in the builder stage; the runtime image contains only the Python base image, installed dependencies, and application source. Vulnerability scanners report on the final image's OS packages and Python dependencies, so keeping build tooling out of it keeps it off the report.
 
-**Pinned toolchain.** `uv` is pinned to a specific version in the Dockerfile (`COPY --from=ghcr.io/astral-sh/uv:0.10.11`), and dependencies are installed with `--locked` to enforce exact versions from `uv.lock`. No floating tags or unconstrained resolution in production builds.
+**Pinned toolchain.** The Dockerfile copies `uv` from an exact-version image tag, and dependencies install with `--locked` to enforce exact versions from `uv.lock`. The Python base image (`python:X.Y-slim`) is a floating tag: Docker Hub republishes it with OS and Python patch updates, so a rebuild can pick up a new base without a commit.
 
 **Immutable deployment by digest.** CI/CD deploys Cloud Run revisions by image digest, not tag. A tag can be repointed; a digest cannot. This guarantees the exact image that was built and tested is what runs in production.
 

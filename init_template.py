@@ -554,8 +554,8 @@ def main() -> NoReturn:
             ".env.example",
         ]
 
-        # Glob docker-compose files
-        compose_files = Path().glob("docker-compose*.yml")
+        # Glob Compose files
+        compose_files = Path().glob("compose*.yml")
         files_to_update.extend(str(path) for path in compose_files)
 
         # Skip template-management.md: its foundation refs must survive forking.
