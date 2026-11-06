@@ -23,7 +23,7 @@ See `.env.example` in the repository root for template configuration with inline
 | **[ARTIFACT_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Artifact storage |
 | [LOG_LEVEL](#logging) | Optional | `INFO` | Logging verbosity |
 | [OTEL_RESOURCE_ATTRIBUTES](#opentelemetry-export) | Optional | unset | Override or add resource attributes |
-| [ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS](#opentelemetry) | Optional | `true` (deployed: `false` with `NO_CONTENT`) | ADK's own content span attributes |
+| [ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS](#opentelemetry) | Optional | `true` (deployed: `false` with `NO_CONTENT`) | ADK's live streaming content attribute |
 | [SERVE_WEB_INTERFACE](#agent-features) | Optional | `FALSE` | Enable ADK web UI |
 | [RELOAD_AGENTS](#agent-features) | Optional | `FALSE` | Hot-reload on file changes |
 | [ALLOW_ORIGINS](#cors) | Optional | `["http://127.0.0.1:8000", "http://localhost:8000"]` | CORS allowed origins |
@@ -75,18 +75,18 @@ These must be set for the agent to function.
 
 **OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT**
 - **Options** (exact, uppercase; `ServerEnv` rejects anything else, including `TRUE` and `FALSE`):
-  - `NO_CONTENT` - No standard message content (pair with `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false` to keep ADK's own span content out too)
+  - `NO_CONTENT` - No message content (pair with `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false` to keep live streaming content out too)
   - `EVENT_ONLY` - Put prompts and responses on `gen_ai.client.inference.operation.details` log records (GenAI events), shown in Cloud Trace's Input/Output view
-  - `SPAN_ONLY` - Put them on the inference span as `gen_ai.input.messages` and `gen_ai.output.messages`
+  - `SPAN_ONLY` - Put them on span attributes: `gen_ai.input.messages` and `gen_ai.output.messages` on model calls, `gen_ai.tool.call.arguments` and `gen_ai.tool.call.result` on tool calls
   - `SPAN_AND_EVENT` - Both
-- **Purpose:** Controls whether and where ADK records standard GenAI message content. ADK's own `gcp.vertex.agent.*` span attributes follow `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS` instead
+- **Purpose:** Controls whether and where ADK records GenAI message content, including tool arguments and results. Live streaming content follows `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS` instead
 - **Where:** Set locally in `.env`, set before bootstrap
 - **Reference:** [Message Content Capture](observability.md#message-content-capture) (recommended values and why) and OpenTelemetry's [GenAI utilities](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/util/opentelemetry-util-genai)
 - **Security:** For sensitive data, set `NO_CONTENT` and `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false`
 
 **ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS**
 - **Default:** `true` when unset (ADK's default, independent of the capture mode); the Cloud Run service sets `false` whenever its capture mode is `NO_CONTENT`
-- **Purpose:** Read by ADK, not `ServerEnv`. Puts the full model request and response, and tool arguments and results, on ADK's `gcp.vertex.agent.*` span attributes, which the ADK web UI trace view reads. `false` leaves them empty
+- **Purpose:** Read by ADK, not `ServerEnv`. Under ADK's default telemetry schema it only controls live streaming (`/run_live`): the content sent to the model, on the `gcp.vertex.agent.data` span attribute. It also controls content on ADK's deprecated legacy schema (`ADK_TELEMETRY_SCHEMA_VERSION_OPT_IN=otel_semconv_1_36`). `false` leaves them empty
 - **Where:** `.env` locally; derived from the capture mode in `terraform/main/main.tf` on Cloud Run
 - **Reference:** [Message Content Capture](observability.md#message-content-capture)
 
@@ -268,7 +268,7 @@ GitHub Environment Variables are mapped to Terraform inputs via `TF_VAR_*` prefi
 **TF_VAR_otel_instrumentation_genai_capture_message_content**
 - **Source:** `${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}` (GitHub Environment Variable, written by bootstrap from `otel_instrumentation_genai_capture_message_content` in each bootstrap root's `terraform.tfvars`)
 - **Purpose:** Message content capture mode on the Cloud Run service. Required: Terraform validation accepts only the four capture modes, so deleting the GitHub variable fails the plan. With `NO_CONTENT`, Terraform also sets `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false`
-- **Recommended:** `EVENT_ONLY` in dev to debug prompts and responses; `NO_CONTENT` in stage and prod (the bootstrap `terraform.tfvars.example` files)
+- **Recommended:** `SPAN_AND_EVENT` in dev to debug prompts, responses and tool calls; `NO_CONTENT` in stage and prod (the bootstrap `terraform.tfvars.example` files)
 - **Change:** set the bootstrap value and re-apply bootstrap, which rewrites the GitHub variable
 
 **TF_VAR_docker_image**

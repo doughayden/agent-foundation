@@ -43,7 +43,7 @@ locals {
     SERVE_WEB_INTERFACE                                = coalesce(var.serve_web_interface, "FALSE")
     SESSION_SERVICE_URI                                = "postgresql+asyncpg://${google_sql_user.app.name}:@localhost:5432/${google_sql_database.sessions.name}"
     },
-    # ADK puts content on its own span attributes unless told not to, so NO_CONTENT turns that off too
+    # ADK's live streaming records content unless told not to, so NO_CONTENT turns that off too
     var.otel_instrumentation_genai_capture_message_content == "NO_CONTENT" ? { ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS = "false" } : {},
   )
 
