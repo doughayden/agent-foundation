@@ -14,8 +14,8 @@ The server exports traces, logs and metrics over OTLP gRPC to Google Cloud, with
 - **Google Cloud**: Traces and logs go to the [Telemetry API](https://cloud.google.com/stackdriver/docs/reference/telemetry/overview) with Application Default Credentials, landing in Cloud Trace and Cloud Logging
 - **Metrics where a location is known**: On Cloud Run, metrics go to Google automatically. Locally they go to Google only when you add `cloud.region=<region>` to `OTEL_RESOURCE_ATTRIBUTES`; otherwise they are off. Google metrics land in Cloud Monitoring beside Cloud Run's native metrics
 - **One backend**: Telemetry targets Google Cloud only. To use another backend, replace `telemetry.py`
-- **Consistent resource**: One resource on every signal, with `service.name` from `AGENT_NAME`, `service.namespace` per environment, a unique `service.instance.id` per process, and the Cloud Run revision as `faas.version` from the resource detector
-- **Cloud Run logs in place**: On Cloud Run, the shared resource carries the `cloud_run_revision` attributes, so logs appear in the service's Logs tab beside stdout
+- **Consistent resource**: Every signal carries the same identifying attributes: `service.name` from `AGENT_NAME`, `service.namespace` per environment, a unique `service.instance.id` per process, and the Cloud Run revision as `faas.version` from the resource detector
+- **Cloud Run logs in place**: On Cloud Run, the traces and logs resource adds the `cloud_run_revision` attributes, so logs appear in the service's Logs tab beside stdout. Metrics use a separate resource without them, because the Telemetry API drops metric points that carry `gcp.resource_type`, so metric queries cannot filter on revision labels
 
 ## Configuration
 
@@ -126,7 +126,7 @@ Two settings decide where user content (prompts, responses, tool arguments and r
 
 | Setting | Controls | Default |
 |---|---|---|
-| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | Standard GenAI content: GenAI event log records and the `gen_ai.input.messages` / `gen_ai.output.messages` span attributes | Required locally; `NO_CONTENT` deployed |
+| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | Standard GenAI content: GenAI event log records and the `gen_ai.input.messages` / `gen_ai.output.messages` span attributes | Required. Deployed, bootstrap writes it from each root's `terraform.tfvars` |
 | `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS` | ADK's own `gcp.vertex.agent.*` span attributes: the full model request and response, and tool arguments and results. The ADK web UI trace view reads them | ADK default `true`, whatever the capture mode |
 
 The capture mode takes exactly one of these four values:
@@ -141,7 +141,7 @@ The capture mode takes exactly one of these four values:
 > [!IMPORTANT]
 > `NO_CONTENT` alone does not keep user content out of traces: ADK still writes it to its `gcp.vertex.agent.*` span attributes. Set `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false` as well. Deployed, Terraform sets it whenever the capture mode is `NO_CONTENT`; locally, set both in `.env`.
 
-Captured content raises logging costs and stores user data, so deployed environments default to `NO_CONTENT`.
+Captured content raises logging costs and stores user data. Use `NO_CONTENT` for sensitive workloads.
 
 ## Resources
 

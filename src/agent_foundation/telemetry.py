@@ -20,6 +20,7 @@ from google.auth.exceptions import DefaultCredentialsError
 from google.auth.transport.grpc import AuthMetadataPlugin
 from opentelemetry import _logs as logs
 from opentelemetry import metrics, trace
+from opentelemetry.attributes import BoundedAttributes
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
     OTLPMetricExporter,
@@ -56,6 +57,7 @@ GCP_CLOUD_RUN = "gcp_cloud_run"
 GCP_PROJECT_ID = "gcp.project_id"
 EVENT_NAME = "event.name"
 GCP_RESOURCE_TYPE = "gcp.resource_type"
+K_CONFIGURATION = "K_CONFIGURATION"
 GOOGLE_CLOUD_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 # Cloud Run startup and readiness probes
 HEALTH_CHECK_PATH = "/health"
@@ -94,7 +96,13 @@ def build_resources(service_name: str, project_id: str) -> tuple[Resource, Resou
         Resource.create().merge(detected).merge(defaults).merge(environment)
     )
     attributes = meter_resource.attributes
-    if attributes.get(CLOUD_PLATFORM) != GCP_CLOUD_RUN:
+    # The detector uses K_CONFIGURATION to detect Cloud Run, never exports it
+    configuration_name = os.environ.get(K_CONFIGURATION)
+    if (
+        attributes.get(CLOUD_PLATFORM) != GCP_CLOUD_RUN
+        or configuration_name is None
+        or not all(key in attributes for key in (FAAS_NAME, FAAS_VERSION, CLOUD_REGION))
+    ):
         return meter_resource, meter_resource
     cloud_run_revision = Resource(
         {
@@ -102,8 +110,7 @@ def build_resources(service_name: str, project_id: str) -> tuple[Resource, Resou
             "project_id": project_id,
             "service_name": attributes[FAAS_NAME],
             "revision_name": attributes[FAAS_VERSION],
-            # The detector uses K_CONFIGURATION to detect Cloud Run, never exports it
-            "configuration_name": os.environ["K_CONFIGURATION"],
+            "configuration_name": configuration_name,
             "location": attributes[CLOUD_REGION],
         }
     )
@@ -158,13 +165,15 @@ class EventNameProcessor(LogRecordProcessor):
     """
 
     def on_emit(self, log_record: ReadWriteLogRecord) -> None:
-        """Add ``event.name`` unless the record already sets it."""
+        """Add ``event.name`` in place, keeping the record's attribute limits."""
         record = log_record.log_record
-        if record.event_name:
-            record.attributes = {
-                EVENT_NAME: record.event_name,
-                **(record.attributes or {}),
-            }
+        attributes = record.attributes
+        if (
+            record.event_name
+            and isinstance(attributes, BoundedAttributes)
+            and EVENT_NAME not in attributes
+        ):
+            attributes[EVENT_NAME] = record.event_name
 
     def shutdown(self) -> None:
         """Nothing to release."""

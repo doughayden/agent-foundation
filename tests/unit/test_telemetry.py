@@ -14,7 +14,7 @@ from opentelemetry._logs import LogRecord
 from opentelemetry.resourcedetector.gcp_resource_detector import (
     GoogleCloudResourceDetector,
 )
-from opentelemetry.sdk._logs import LoggerProvider, ReadWriteLogRecord
+from opentelemetry.sdk._logs import LoggerProvider, LogRecordLimits, ReadWriteLogRecord
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from pytest_mock import MockerFixture, MockType
@@ -133,7 +133,7 @@ class TestBuildResources:
 
     def test_cloud_run_revision_on_traces_and_logs_only(self, detected, mocker) -> None:
         """Test that the monitored resource labels come from the detector and env."""
-        mocker.patch.dict(os.environ, {"K_CONFIGURATION": "test-agent-dev"})
+        mocker.patch.dict(os.environ, {"K_CONFIGURATION": "test-agent-dev"}, clear=True)
 
         resource, meter = telemetry.build_resources("test-agent", "test-project")
 
@@ -147,9 +147,41 @@ class TestBuildResources:
         }.items() <= dict(resource.attributes).items()
         assert "gcp.resource_type" not in meter.attributes
 
-    def test_same_resource_off_cloud_run(self, detected) -> None:
+    def test_same_resource_off_cloud_run(self, detected, mocker) -> None:
         """Test that nothing is added when the platform is not Cloud Run."""
+        mocker.patch.dict(os.environ, {}, clear=True)
         detected.return_value = Resource({"cloud.region": "us-central1"})
+
+        resource, meter = telemetry.build_resources("test-agent", "test-project")
+
+        assert resource is meter
+        assert "gcp.resource_type" not in resource.attributes
+
+    @pytest.mark.parametrize(
+        ("detected_attributes", "environment"),
+        [
+            (
+                {k: v for k, v in CLOUD_RUN_DETECTED.items() if k != "faas.name"},
+                {"K_CONFIGURATION": "test-agent-dev"},
+            ),
+            (CLOUD_RUN_DETECTED, {}),
+            (
+                {},
+                {
+                    "OTEL_RESOURCE_ATTRIBUTES": (
+                        "cloud.platform=gcp_cloud_run,cloud.region=us-central1"
+                    )
+                },
+            ),
+        ],
+        ids=["missing-faas-name", "missing-k-configuration", "platform-from-env"],
+    )
+    def test_generic_resource_when_cloud_run_values_are_partial(
+        self, detected, mocker, detected_attributes, environment
+    ) -> None:
+        """Test that a partial Cloud Run identity falls back to the generic resource."""
+        mocker.patch.dict(os.environ, environment, clear=True)
+        detected.return_value = Resource(detected_attributes)
 
         resource, meter = telemetry.build_resources("test-agent", "test-project")
 
@@ -215,6 +247,29 @@ class TestEventNameProcessor:
         telemetry.EventNameProcessor().on_emit(record)
 
         assert dict(record.log_record.attributes or {}) == expected
+
+    def test_keeps_the_record_attribute_limits(self) -> None:
+        """Test that the attribute count and length limits apply to ``event.name``."""
+        record = ReadWriteLogRecord(
+            log_record=LogRecord(event_name="gen_ai.event", attributes={"a": 1}),
+            limits=LogRecordLimits(
+                max_log_record_attributes=1, max_log_record_attribute_length=4
+            ),
+        )
+
+        telemetry.EventNameProcessor().on_emit(record)
+
+        assert dict(record.log_record.attributes or {}) == {"event.name": "gen_"}
+        assert record.dropped_attributes == 1
+
+    def test_ignores_attributes_without_limits(self) -> None:
+        """Test that a record whose attributes are not bounded is left alone."""
+        record = ReadWriteLogRecord(log_record=LogRecord(event_name="gen_ai.event"))
+        record.log_record.attributes = {"a": 1}
+
+        telemetry.EventNameProcessor().on_emit(record)
+
+        assert record.log_record.attributes == {"a": 1}
 
     def test_shutdown_and_flush_are_no_ops(self) -> None:
         """Test that the processor holds nothing to flush or release."""

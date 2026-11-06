@@ -33,6 +33,8 @@ See `.env.example` in the repository root for template configuration with inline
 | [ADK_EXPERIMENTAL_TELEMETRY](#advanced) | Optional | `FALSE` (template sets `TRUE`) | ADK's experimental metrics and span data |
 | [ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS](#advanced) | Optional | `FALSE` | Suppress ADK warnings |
 
+**Cloud Run auto-set:** [K_CONFIGURATION](#cloud-run-auto-set-read-only)
+
 **CI/CD only:** [TF_VAR_*](#terraform-inputs-tf_var_) variables and [repository secrets](#repository-secrets) (GitHub Actions)
 
 **Test lanes:** [test lane inputs](#test-lane-inputs) (set by CI, or as a prefix on a local test command)
@@ -219,6 +221,16 @@ The SDK reads its other standard variables too, like `OTEL_TRACES_SAMPLER` for t
   - `FALSE` - Show warnings
   - `TRUE` - Suppress warnings
 
+### Cloud Run Auto-Set (Read-Only)
+
+These variables are automatically set by Cloud Run. Do not set manually.
+
+**K_CONFIGURATION**
+- **Default:** unset (local development)
+- **Purpose:** Cloud Run configuration name. `telemetry.py` reads it for the `configuration_name` label that places OTLP logs on the `cloud_run_revision` resource; the GCP resource detector supplies the other labels
+- **Where:** Auto-set by Cloud Run
+- **Example:** `your-agent-dev`
+
 ---
 
 ## CI/CD Only
@@ -253,6 +265,11 @@ GitHub Environment Variables are mapped to Terraform inputs via `TF_VAR_*` prefi
 - **Source:** `${{ vars.TERRAFORM_STATE_BUCKET }}` (GitHub Environment Variable)
 - **Purpose:** GCS bucket for Terraform state
 
+**TF_VAR_otel_instrumentation_genai_capture_message_content**
+- **Source:** `${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}` (GitHub Environment Variable, written by bootstrap from `otel_instrumentation_genai_capture_message_content` in each bootstrap root's `terraform.tfvars`)
+- **Purpose:** Message content capture mode on the Cloud Run service. Required: Terraform validation accepts only the four capture modes, so deleting the GitHub variable fails the plan. With `NO_CONTENT`, Terraform also sets `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false`
+- **Change:** set the bootstrap value and re-apply bootstrap, which rewrites the GitHub variable
+
 **TF_VAR_docker_image**
 - **Source:** `${{ inputs.docker_image }}` (workflow input)
 - **Purpose:** Immutable image digest for deployment
@@ -277,10 +294,6 @@ Override runtime config via GitHub Environment Variables (mapped to `TF_VAR_*`):
 - **Source:** `${{ vars.SERVE_WEB_INTERFACE }}` (optional GitHub Environment Variable)
 - **Purpose:** Override SERVE_WEB_INTERFACE for Cloud Run deployment
 - **Set:** `gh variable set SERVE_WEB_INTERFACE --env dev --body "TRUE"` (or Settings → Environments), then re-run the latest CI/CD workflow to redeploy. The web interface is then at `http://localhost:8000` through `gcloud run services proxy`
-
-**TF_VAR_otel_instrumentation_genai_capture_message_content**
-- **Source:** `${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}` (optional GitHub Environment Variable)
-- **Purpose:** Override OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT for Cloud Run deployment (default `NO_CONTENT`; Terraform validation accepts only the four capture modes). With `NO_CONTENT`, Terraform also sets `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false`
 
 ### Test Lane Inputs
 
@@ -335,8 +348,8 @@ Set in GitHub Actions > Secrets and variables > Actions. Both select the model a
 
 The environment wins over `.env`, everywhere `.env` is read:
 
-1. `initialize_environment()` (`config.py`) runs first in `server.py`. It calls python-dotenv's `load_dotenv()`, which finds `.env` by searching upward from the package and copies it into `os.environ` without overriding any variable already set. `ServerEnv` then reads `os.environ`; `.env` keys it does not define are ignored.
-2. ADK's agent loader loads `.env` the same way before it imports the agent module, so it adds nothing new to a server started through `initialize_environment()`.
+1. `initialize_environment()` (`config.py`) runs first in `server.py`. It finds `.env` by searching upward from the working directory and copies it into `os.environ` with python-dotenv's `load_dotenv()`, without overriding any variable already set. `ServerEnv` then reads `os.environ`; `.env` keys it does not define are ignored.
+2. ADK's agent loader then finds `.env` by searching upward from the agent's package and loads it with `override=True`, but first snapshots every variable already in `os.environ` and restores those after loading. Everything `initialize_environment()` set is in that snapshot, so ADK only adds keys that neither the environment nor the working directory's `.env` set. `adk web`, `adk api_server` and `adk run` skip step 1, so there ADK's loader is the only one.
 3. The eval lane loads `.env` with `python-dotenv` without overriding set variables.
 
 Because `.env` reaches `os.environ` before anything else in startup, every reader sees it: `ServerEnv`, the OpenTelemetry SDK's `OTEL_*` variables, ADK, and the Google SDKs.

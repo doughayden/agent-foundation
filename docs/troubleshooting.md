@@ -252,7 +252,7 @@ uv sync --locked
 ### Trace/Log Data Not Appearing
 
 **Common causes:**
-- `OTEL_SDK_DISABLED=true` in the shell or `.env`, which turns all export off with no startup message
+- `OTEL_SDK_DISABLED=true` in the shell or `.env`, which turns all export off. Startup still prints the usual telemetry lines, since the SDK, not the template, reads the variable
 - Wrong project ID or missing authentication
 - Logs queried under the wrong log name: application logs land in `otlp`, GenAI events in `gen_ai.client.inference.operation.details`
 - Normal delay: Traces and logs take 1-2 minutes to appear in Cloud Console

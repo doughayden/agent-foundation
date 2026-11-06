@@ -567,11 +567,13 @@ def isolated_environ(mocker: MockerFixture) -> Callable[[dict[str, str]], None]:
 
 @pytest.fixture
 def create_dotenv(mocker: MockerFixture, tmp_path: Path) -> Callable[[str], Path]:
-    """Factory that writes a ``.env`` file and points the config module's loader at it.
+    """Factory that writes a ``.env`` file above a temporary working directory.
 
-    The real ``load_dotenv`` runs against the temporary file, so precedence over
-    ``os.environ`` is python-dotenv's own. Use with ``isolated_environ``, called
-    first, which this patch then replaces.
+    Restores the real ``load_dotenv`` in the config module and points the working
+    directory two levels below the file, so the template's own lookup (upward from
+    the working directory) and python-dotenv's precedence over ``os.environ`` both
+    run for real. Use with ``isolated_environ``, called first, which this patch then
+    replaces.
 
     Returns:
         Function taking the file content and returning the written path.
@@ -581,10 +583,10 @@ def create_dotenv(mocker: MockerFixture, tmp_path: Path) -> Callable[[str], Path
     def _factory(content: str) -> Path:
         env_file = tmp_path / ".env"
         env_file.write_text(content)
-        mocker.patch(
-            f"{PACKAGE_NAME}.config.load_dotenv",
-            side_effect=lambda: dotenv.load_dotenv(env_file),
-        )
+        working_directory = tmp_path / "app" / "src"
+        working_directory.mkdir(parents=True)
+        mocker.patch(f"{PACKAGE_NAME}.config.load_dotenv", dotenv.load_dotenv)
+        mocker.patch("os.getcwd", return_value=str(working_directory))
         return env_file
 
     return _factory

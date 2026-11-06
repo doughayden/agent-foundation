@@ -11,7 +11,7 @@ import json
 import sys
 from typing import Literal
 
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 from pydantic import Field, ValidationError, field_validator
 from pydantic_settings import BaseSettings
 
@@ -181,8 +181,8 @@ class ServerEnv(BaseSettings):
 def initialize_environment() -> ServerEnv:
     """Load ``.env``, then validate and print the server settings.
 
-    ``load_dotenv()`` searches upward from this package for ``.env`` and never
-    overrides a variable already set, so the shell and the platform win.
+    ``.env`` is found by searching upward from the working directory, and loading it
+    never overrides a variable already set, so the shell and the platform win.
 
     Returns:
         Validated server configuration.
@@ -190,7 +190,7 @@ def initialize_environment() -> ServerEnv:
     Raises:
         SystemExit: Exits with code 1 if validation fails.
     """
-    load_dotenv()
+    load_dotenv(find_dotenv(usecwd=True))
     try:
         env = ServerEnv()
     except ValidationError as e:
