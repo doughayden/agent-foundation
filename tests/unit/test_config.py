@@ -5,12 +5,7 @@ import os
 import pytest
 from pydantic import ValidationError
 
-from agent_foundation.config import (
-    TELEMETRY_API_ENDPOINT,
-    ServerEnv,
-    TelemetryEnv,
-    initialize_environment,
-)
+from agent_foundation.config import ServerEnv, initialize_environment
 
 
 class TestServerEnv:
@@ -267,178 +262,21 @@ class TestServerEnv:
         assert not hasattr(env, "PATH")
 
 
-COLLECTOR = "http://localhost:4317"
-SIGNAL_COLLECTOR = "http://collector:4317"
-
-
-class TestTelemetryEnv:
-    """Tests for telemetry endpoint resolution and Cloud Run identity."""
-
-    def test_defaults(self, isolated_environ) -> None:
-        """Test local defaults: Google for traces and logs, no metrics."""
-        isolated_environ({})
-
-        env = TelemetryEnv()
-
-        assert env.traces_endpoint == TELEMETRY_API_ENDPOINT
-        assert env.logs_endpoint == TELEMETRY_API_ENDPOINT
-        assert env.metrics_endpoint is None
-        assert env.k_revision == "local"
-        assert env.k_service is None
-
-    @pytest.mark.parametrize("signal", ["TRACES", "LOGS", "METRICS"])
-    @pytest.mark.parametrize(
-        ("generic", "specific", "expected"),
-        [
-            (None, SIGNAL_COLLECTOR, SIGNAL_COLLECTOR),
-            (COLLECTOR, None, COLLECTOR),
-            (COLLECTOR, SIGNAL_COLLECTOR, SIGNAL_COLLECTOR),
-            ("", "", None),
-            (None, None, None),
-        ],
-    )
-    def test_endpoint_resolution(
-        self,
-        signal: str,
-        generic: str | None,
-        specific: str | None,
-        expected: str | None,
-        isolated_environ,
-    ) -> None:
-        """Test signal var, then generic var, then the per-signal fallback."""
-        variables = {}
-        if generic is not None:
-            variables["OTEL_EXPORTER_OTLP_ENDPOINT"] = generic
-        if specific is not None:
-            variables[f"OTEL_EXPORTER_OTLP_{signal}_ENDPOINT"] = specific
-        isolated_environ(variables)
-
-        env = TelemetryEnv()
-
-        resolved = getattr(env, f"{signal.lower()}_endpoint")
-        fallback = None if signal == "METRICS" else TELEMETRY_API_ENDPOINT
-        assert resolved == (expected or fallback)
-
-    def test_telemetry_api_endpoint_is_configurable(self, isolated_environ) -> None:
-        """Test that TELEMETRY_API_ENDPOINT replaces the Google fallback."""
-        isolated_environ({"TELEMETRY_API_ENDPOINT": "https://telemetry.example:443"})
-
-        env = TelemetryEnv()
-
-        assert env.traces_endpoint == "https://telemetry.example:443"
-        assert env.logs_endpoint == "https://telemetry.example:443"
-
-    def test_cloud_run_identity(self, isolated_environ) -> None:
-        """Test that a complete Cloud Run environment validates."""
-        isolated_environ(
-            {
-                "K_SERVICE": "svc",
-                "K_REVISION": "svc-00001-abc",
-                "K_CONFIGURATION": "svc",
-                "CLOUD_RUN_REGION": "us-central1",
-            }
-        )
-
-        env = TelemetryEnv()
-
-        assert env.k_service == "svc"
-        assert env.cloud_run_region == "us-central1"
-
-    @pytest.mark.parametrize(
-        "variables",
-        [
-            {"K_SERVICE": "svc", "CLOUD_RUN_REGION": "us-central1"},
-            {"K_SERVICE": "svc", "K_CONFIGURATION": "svc"},
-            {"K_SERVICE": "svc", "K_CONFIGURATION": "", "CLOUD_RUN_REGION": ""},
-        ],
-    )
-    def test_partial_cloud_run_identity_fails(
-        self, variables: dict[str, str], isolated_environ
-    ) -> None:
-        """Test that K_SERVICE without its labels fails fast."""
-        isolated_environ(variables)
-
-        with pytest.raises(
-            ValidationError, match="K_CONFIGURATION and CLOUD_RUN_REGION"
-        ):
-            TelemetryEnv()
-
-    def test_print_config(
-        self, isolated_environ, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test that each signal's destination and the identity are printed."""
-        isolated_environ(
-            {
-                "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": COLLECTOR,
-                "OTEL_RESOURCE_ATTRIBUTES": "service.namespace=alice-local",
-            }
-        )
-
-        TelemetryEnv().print_config()
-
-        output = capsys.readouterr().out
-        assert "OTEL_RESOURCE_ATTRIBUTES: service.namespace=alice-local" in output
-        assert f"TRACES ENDPOINT:       {COLLECTOR}" in output
-        assert f"LOGS ENDPOINT:         {TELEMETRY_API_ENDPOINT}" in output
-        assert (
-            f"METRICS ENDPOINT:      {TELEMETRY_API_ENDPOINT} when cloud.region is set"
-            in output
-        )
-        assert "K_SERVICE:             None" in output
-
-    def test_print_config_when_disabled(
-        self, isolated_environ, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test that a disabled SDK prints no per-signal destinations."""
-        isolated_environ(
-            {"OTEL_SDK_DISABLED": "true", "OTEL_EXPORTER_OTLP_ENDPOINT": COLLECTOR}
-        )
-
-        env = TelemetryEnv()
-        env.print_config()
-
-        output = capsys.readouterr().out
-        assert env.otel_sdk_disabled is True
-        assert "OTEL_SDK_DISABLED:     true (no telemetry export)" in output
-        assert "TRACES ENDPOINT" not in output
-
-
 class TestInitializeEnvironment:
     """Tests for the initialize_environment startup wrapper."""
 
     def test_initialize_environment_success(
         self, valid_server_env: dict[str, str], isolated_environ, mock_print_config
     ) -> None:
-        """Test that both validated settings are returned and printed."""
+        """Test that the validated settings are returned and printed."""
         isolated_environ(valid_server_env)
         mock_print = mock_print_config(ServerEnv)
-        mock_telemetry_print = mock_print_config(TelemetryEnv)
 
-        env, telemetry_env = initialize_environment()
+        env = initialize_environment()
 
         assert env.google_cloud_project == "test-project"
         assert env.agent_name == "test-agent"
-        assert telemetry_env.traces_endpoint == TELEMETRY_API_ENDPOINT
         mock_print.assert_called_once()
-        mock_telemetry_print.assert_called_once()
-
-    def test_initialize_environment_invalid_telemetry_exits(
-        self,
-        valid_server_env: dict[str, str],
-        isolated_environ,
-        mock_print_config,
-        mock_sys_exit,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """Test that an invalid telemetry environment exits 1 like ServerEnv does."""
-        isolated_environ({**valid_server_env, "K_SERVICE": "svc"})
-        mock_print_config(ServerEnv)
-
-        with pytest.raises(SystemExit):
-            initialize_environment()
-
-        mock_sys_exit.assert_called_once_with(1)
-        assert "CLOUD_RUN_REGION" in capsys.readouterr().out
 
     def test_initialize_environment_validation_failure_exits(
         self,
@@ -473,7 +311,7 @@ class TestDotEnv:
         )
         mock_print_config(ServerEnv)
 
-        env, _ = initialize_environment()
+        env = initialize_environment()
 
         assert env.google_cloud_project == "dotenv-project"
         assert env.agent_name == "dotenv-agent"
@@ -491,7 +329,7 @@ class TestDotEnv:
         create_dotenv("LOG_LEVEL=WARNING\nGOOGLE_CLOUD_PROJECT=dotenv-project\n")
         mock_print_config(ServerEnv)
 
-        env, _ = initialize_environment()
+        env = initialize_environment()
 
         assert env.log_level == "DEBUG"
         assert env.google_cloud_project == "test-project"
@@ -505,31 +343,13 @@ class TestDotEnv:
     ) -> None:
         """Test that keys other readers own (ADK, the OTel SDK) land in os.environ."""
         isolated_environ(valid_server_env)
-        create_dotenv("OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317\n")
+        create_dotenv("ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS=TRUE\n")
         mock_print_config(ServerEnv)
 
-        env, _ = initialize_environment()
+        env = initialize_environment()
 
         assert env.google_cloud_project == "test-project"
-        assert os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] == "http://localhost:4317"
-
-    def test_env_file_reaches_telemetry_settings(
-        self,
-        valid_server_env: dict[str, str],
-        isolated_environ,
-        create_dotenv,
-        mock_print_config,
-    ) -> None:
-        """Test that an OTLP endpoint set only in .env routes telemetry."""
-        isolated_environ(valid_server_env)
-        create_dotenv("OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317\n")
-        mock_print_config(ServerEnv)
-        mock_print_config(TelemetryEnv)
-
-        _, telemetry_env = initialize_environment()
-
-        assert telemetry_env.traces_endpoint == "http://localhost:4317"
-        assert telemetry_env.metrics_endpoint == "http://localhost:4317"
+        assert os.environ["ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS"] == "TRUE"
 
 
 class TestEdgeCases:

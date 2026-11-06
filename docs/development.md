@@ -18,7 +18,7 @@ SERVE_WEB_INTERFACE=TRUE uv run server     # With ADK web UI
 docker compose up --build --watch          # Cloud SQL (via IAP tunnel), Agent Engine, GCS
 ```
 
-Both modes export traces and logs to Google Cloud unless `OTEL_EXPORTER_OTLP_ENDPOINT` points them at a collector; metrics go to Google locally only with `cloud.region` in `OTEL_RESOURCE_ATTRIBUTES` ([Custom OTLP Endpoint](observability.md#custom-otlp-endpoint)). Set `OTEL_RESOURCE_ATTRIBUTES=service.namespace=<your-name>` in `.env` so teammates can filter to your traces when reviewing experiments.
+Both modes export traces and logs to Google Cloud; metrics go to Google locally only with `cloud.region` in `OTEL_RESOURCE_ATTRIBUTES` ([Observability](observability.md)). Set `OTEL_RESOURCE_ATTRIBUTES=service.namespace=<your-name>` in `.env` so teammates can filter to your traces when reviewing experiments.
 
 **Prerequisites:**
 - `.env` file configured with required authentication and identification values (copy from `.env.example`)
@@ -300,7 +300,7 @@ See [Cloud Run proxy documentation](https://cloud.google.com/run/docs/authentica
 **OpenTelemetry Traces and Logs:**
 - Detailed traces → Cloud Trace
 - Application logs and GenAI events → Cloud Logging, correlated with traces
-- ADK and HTTP metrics → Cloud Monitoring on Cloud Run (locally with `cloud.region` set)
+- ADK metrics → Cloud Monitoring on Cloud Run (locally with `cloud.region` set)
 
 See [Observability](observability.md) for querying, filtering, and trace analysis.
 

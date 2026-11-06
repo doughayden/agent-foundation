@@ -105,13 +105,13 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 
 **Docker:** multi-stage, uv pinned, non-root. Layering and cache strategy: `docs/references/dockerfile-strategy.md`.
 
-**Observability:** `configure_telemetry()` (`telemetry.py`) must run **before** `get_fast_api_app()`: it owns all providers, and a monkey-patch of ADK's `api_server._setup_telemetry` only attaches the web UI processors. Endpoints resolve in `TelemetryEnv` (`config.py`), OTLP gRPC only. Never put `gcp.resource_type` on the meter resource (Telemetry API drops the metrics). Only `server.py` configures telemetry; `adk web`/`api_server`/`run` don't. Design, precedence, metrics routing: `docs/references/opentelemetry-architecture.md`.
+**Observability:** `configure_telemetry()` (`telemetry.py`) must run **before** `get_fast_api_app()`: it owns all providers, and a monkey-patch of ADK's `api_server._setup_telemetry` only attaches the web UI processors. Google Cloud only: every signal goes to the Telemetry API over OTLP gRPC with scoped ADC, endpoint passed explicitly (`OTEL_EXPORTER_OTLP_*` endpoints ignored); other backends replace `telemetry.py`. Resource from the GCP detector plus `OTEL_RESOURCE_ATTRIBUTES`; on Cloud Run the `cloud_run_revision` log labels map from detected `faas.*`/`cloud.region` (plus `K_CONFIGURATION`, which the detector does not expose). Metrics only when the resource has `cloud.region`. `OTEL_SDK_DISABLED` is left to the SDK. Never put `gcp.resource_type` on the meter resource (Telemetry API drops the metrics). Only `server.py` configures telemetry; `adk web`/`api_server`/`run` don't. Design, precedence, metrics routing: `docs/references/opentelemetry-architecture.md`.
 
 ## Environment Variables
 
 **CRITICAL:** Any new env var introduced to the codebase MUST be documented in `docs/environment-variables.md`. No exceptions. Include purpose, default, where to set, and required/optional. `ServerEnv` in `config.py` is the typed source of truth; `docs/environment-variables.md` is the canonical reference.
 
-**Settings shape:** `ServerEnv` + `TelemetryEnv` (`BaseSettings`, `config.py`), field name = env var lowercased (no aliases), no `env_file`. `initialize_environment()` runs `load_dotenv()` (override off) as the single `.env` mechanism, so **the shell wins** and every `os.environ` reader sees `.env` (`docs/environment-variables.md` Precedence). Code outside the models takes settings as arguments, never `os.getenv`. Tests: `isolated_environ` (no-op `load_dotenv`), `create_dotenv` for `.env` cases.
+**Settings shape:** `ServerEnv(BaseSettings)` (`config.py`), field name = env var lowercased (no aliases), no `env_file`. `initialize_environment()` runs `load_dotenv()` (override off) as the single `.env` mechanism, so **the shell wins** and every `os.environ` reader sees `.env` (`docs/environment-variables.md` Precedence). Code outside the models takes settings as arguments, never `os.getenv`. Tests: `isolated_environ` (no-op `load_dotenv`), `create_dotenv` for `.env` cases.
 
 ## Code Quality
 

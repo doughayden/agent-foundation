@@ -15,13 +15,12 @@ from fastapi import FastAPI
 from google.adk.cli.fast_api import get_fast_api_app
 
 from .config import initialize_environment
-from .telemetry import configure_telemetry, instrument_app
+from .telemetry import configure_telemetry
 
 # Load and validate environment configuration
-env, telemetry_env = initialize_environment()
+env = initialize_environment()
 
 configure_telemetry(
-    telemetry_env,
     service_name=env.agent_name,
     project_id=env.google_cloud_project,
     log_level=env.log_level,
@@ -39,7 +38,6 @@ app: FastAPI = get_fast_api_app(
     web=env.serve_web_interface,
     reload_agents=env.reload_agents,
 )
-instrument_app(app)
 
 
 @app.get("/health")
@@ -57,7 +55,7 @@ def main() -> None:
 
     Starts the ADK agent server configured at import time. Features include:
     - Environment variable loading and validation via Pydantic
-    - OpenTelemetry traces, logs and metrics over OTLP (Google Cloud by default)
+    - OpenTelemetry traces, logs and metrics over OTLP to Google Cloud
     - Optional ADK web interface for interactive agent testing
     - Session persistence with Cloud SQL via DatabaseSessionService
     - Memory persistence with Agent Engine
@@ -82,9 +80,6 @@ def main() -> None:
         HOST: Server host (default: 127.0.0.1, set to 0.0.0.0 for containers)
         PORT: Server port (default: 8000)
         OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: GenAI content capture mode
-        K_SERVICE, K_REVISION, K_CONFIGURATION: Set by Cloud Run
-        CLOUD_RUN_REGION: Cloud Run region, set by Terraform
-        OTEL_EXPORTER_OTLP_*_ENDPOINT, TELEMETRY_API_ENDPOINT: Export destinations
     """
     uvicorn.run(
         app,

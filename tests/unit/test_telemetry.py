@@ -10,28 +10,29 @@ from google.adk.telemetry.setup import OTelHooks
 from google.auth.exceptions import DefaultCredentialsError
 from opentelemetry import _logs as logs
 from opentelemetry import trace
+from opentelemetry._logs import LogRecord
 from opentelemetry.resourcedetector.gcp_resource_detector import (
     GoogleCloudResourceDetector,
 )
-from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs import LoggerProvider, ReadWriteLogRecord
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from pytest_mock import MockerFixture
+from pytest_mock import MockerFixture, MockType
 
 from agent_foundation import telemetry
-from agent_foundation.config import TELEMETRY_API_ENDPOINT
 
-COLLECTOR = "http://localhost:4317"
 CONFIGURE_ARGS = {
     "service_name": "test-agent",
     "project_id": "test-project",
     "log_level": "DEBUG",
 }
-CLOUD_RUN_ENV = {
-    "K_SERVICE": "test-agent-dev",
-    "K_REVISION": "test-agent-dev-00001-abc",
-    "K_CONFIGURATION": "test-agent-dev",
-    "CLOUD_RUN_REGION": "us-central1",
+# What GoogleCloudResourceDetector reports on Cloud Run
+CLOUD_RUN_DETECTED = {
+    "cloud.platform": "gcp_cloud_run",
+    "cloud.region": "us-central1",
+    "faas.name": "test-agent-dev",
+    "faas.version": "test-agent-dev-00001-abc",
+    "faas.instance": "instance-1",
 }
 
 
@@ -81,138 +82,79 @@ class TestWebUiPatch:
             telemetry._attach_web_ui_processors(internal_processors=OTelHooks())
 
 
-class TestBuildResource:
-    """Tests for resource precedence."""
+class TestBuildResources:
+    """Tests for resource precedence and the Cloud Run monitored resource."""
 
-    @pytest.fixture(autouse=True)
-    def detected(self, mocker: MockerFixture) -> None:
-        """Detector reports a region and a conflicting service name."""
-        mocker.patch.object(
+    @pytest.fixture
+    def detected(self, mocker: MockerFixture) -> MockType:
+        """Detector reports Cloud Run attributes and a conflicting service name."""
+        return mocker.patch.object(
             GoogleCloudResourceDetector,
             "detect",
-            return_value=Resource(
-                {"cloud.region": "us-central1", "service.name": "detected"}
-            ),
+            return_value=Resource({**CLOUD_RUN_DETECTED, "service.name": "detected"}),
         )
 
-    def test_our_values_override_detector(self, mocker: MockerFixture) -> None:
-        """Test that settings beat detected attributes and detected ones remain."""
-        mocker.patch.dict(os.environ, {}, clear=True)
+    def test_our_values_override_detector(self, detected, mocker) -> None:
+        """Test that our values beat detected attributes and detected ones remain."""
+        mocker.patch.dict(os.environ, {"K_CONFIGURATION": "test-agent-dev"}, clear=True)
 
-        attributes = telemetry.build_resource(
-            "test-agent", "test-project", "rev-1", None
-        ).attributes
+        _, meter = telemetry.build_resources("test-agent", "test-project")
 
+        attributes = meter.attributes
         assert attributes["service.name"] == "test-agent"
-        assert attributes["service.namespace"] == "local"
-        assert attributes["service.version"] == "rev-1"
         assert attributes["gcp.project_id"] == "test-project"
         assert attributes["cloud.region"] == "us-central1"
+        assert attributes["faas.version"] == "test-agent-dev-00001-abc"
+        assert "service.namespace" not in attributes
         assert str(attributes["service.instance.id"]).startswith(
             f"worker-{os.getpid()}-"
         )
 
-    def test_consumer_environment_overrides_ours(self, mocker: MockerFixture) -> None:
+    def test_consumer_environment_overrides_ours(self, detected, mocker) -> None:
         """Test that OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES win."""
         mocker.patch.dict(
             os.environ,
             {
+                "K_CONFIGURATION": "test-agent-dev",
                 "OTEL_SERVICE_NAME": "consumer-service",
-                "OTEL_RESOURCE_ATTRIBUTES": "service.namespace=consumer,team=core",
+                "OTEL_RESOURCE_ATTRIBUTES": (
+                    "service.namespace=consumer,team=core,cloud.region=asia-east1"
+                ),
             },
             clear=True,
         )
 
-        attributes = telemetry.build_resource(
-            "test-agent", "test-project", "rev-1", None
-        ).attributes
+        _, meter = telemetry.build_resources("test-agent", "test-project")
 
-        assert attributes["service.name"] == "consumer-service"
-        assert attributes["service.namespace"] == "consumer"
-        assert attributes["team"] == "core"
-        assert attributes["service.version"] == "rev-1"
+        assert meter.attributes["service.name"] == "consumer-service"
+        assert meter.attributes["service.namespace"] == "consumer"
+        assert meter.attributes["team"] == "core"
+        assert meter.attributes["cloud.region"] == "asia-east1"
 
-    def test_region_argument_beats_detector(self, mocker: MockerFixture) -> None:
-        """Test that CLOUD_RUN_REGION sets cloud.region over the detected one."""
-        mocker.patch.dict(os.environ, {}, clear=True)
+    def test_cloud_run_revision_on_traces_and_logs_only(self, detected, mocker) -> None:
+        """Test that the monitored resource labels come from the detector and env."""
+        mocker.patch.dict(os.environ, {"K_CONFIGURATION": "test-agent-dev"})
 
-        attributes = telemetry.build_resource(
-            "test-agent", "test-project", "rev-1", "europe-west1"
-        ).attributes
+        resource, meter = telemetry.build_resources("test-agent", "test-project")
 
-        assert attributes["cloud.region"] == "europe-west1"
-
-    def test_environment_region_beats_region_argument(
-        self, mocker: MockerFixture
-    ) -> None:
-        """Test that cloud.region in OTEL_RESOURCE_ATTRIBUTES wins."""
-        mocker.patch.dict(
-            os.environ,
-            {"OTEL_RESOURCE_ATTRIBUTES": "cloud.region=asia-east1"},
-            clear=True,
-        )
-
-        attributes = telemetry.build_resource(
-            "test-agent", "test-project", "rev-1", "europe-west1"
-        ).attributes
-
-        assert attributes["cloud.region"] == "asia-east1"
-
-
-class TestCloudRunResource:
-    """Tests for the ``cloud_run_revision`` resource attributes."""
-
-    def test_cloud_run_attributes(self, create_telemetry_env) -> None:
-        """Test that every monitored resource label comes from the settings."""
-        settings = create_telemetry_env(CLOUD_RUN_ENV)
-
-        cloud_run = telemetry.cloud_run_resource(settings, "test-project")
-
-        assert dict(cloud_run.attributes) == {
+        assert {
             "gcp.resource_type": "cloud_run_revision",
             "project_id": "test-project",
             "service_name": "test-agent-dev",
             "revision_name": "test-agent-dev-00001-abc",
             "configuration_name": "test-agent-dev",
             "location": "us-central1",
-        }
+        }.items() <= dict(resource.attributes).items()
+        assert "gcp.resource_type" not in meter.attributes
 
-    def test_empty_off_cloud_run(self, create_telemetry_env) -> None:
-        """Test that nothing is added when K_SERVICE is unset."""
-        settings = create_telemetry_env({})
+    def test_same_resource_off_cloud_run(self, detected) -> None:
+        """Test that nothing is added when the platform is not Cloud Run."""
+        detected.return_value = Resource({"cloud.region": "us-central1"})
 
-        cloud_run = telemetry.cloud_run_resource(settings, "test-project")
+        resource, meter = telemetry.build_resources("test-agent", "test-project")
 
-        assert dict(cloud_run.attributes) == {}
-
-
-class TestMetricsEndpoint:
-    """Tests for the metrics destination decision."""
-
-    @pytest.mark.parametrize(
-        ("variables", "attributes", "expected"),
-        [
-            ({"OTEL_EXPORTER_OTLP_ENDPOINT": COLLECTOR}, {}, COLLECTOR),
-            (
-                {"OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": COLLECTOR},
-                {"cloud.region": "us-central1"},
-                COLLECTOR,
-            ),
-            ({}, {"cloud.region": "us-central1"}, TELEMETRY_API_ENDPOINT),
-            ({}, {}, None),
-        ],
-    )
-    def test_destination(
-        self,
-        variables: dict[str, str],
-        attributes: dict[str, str],
-        expected: str | None,
-        create_telemetry_env,
-    ) -> None:
-        """Test collector first, then the Telemetry API with a region, else off."""
-        settings = create_telemetry_env(variables)
-
-        assert telemetry.metrics_endpoint(settings, Resource(attributes)) == expected
+        assert resource is meter
+        assert "gcp.resource_type" not in resource.attributes
 
 
 class TestGoogleChannelCredentials:
@@ -222,6 +164,19 @@ class TestGoogleChannelCredentials:
         """Test that ADC (mocked in pytest_configure) builds channel credentials."""
         assert isinstance(
             telemetry.google_channel_credentials(), grpc.ChannelCredentials
+        )
+
+    def test_requests_cloud_platform_scope(self, mocker: MockerFixture) -> None:
+        """Test that ADC is requested with the cloud-platform scope."""
+        default = mocker.patch(
+            "google.auth.default",
+            return_value=(mocker.sentinel.credentials, "test-project"),
+        )
+
+        telemetry.google_channel_credentials()
+
+        default.assert_called_once_with(
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
         )
 
     def test_missing_adc_reraises_with_hint(
@@ -238,20 +193,55 @@ class TestGoogleChannelCredentials:
         assert "gcloud auth application-default login" in capsys.readouterr().out
 
 
+class TestEventNameProcessor:
+    """Tests for copying the event name into an attribute."""
+
+    @pytest.mark.parametrize(
+        ("event_name", "attributes", "expected"),
+        [
+            ("gen_ai.event", {"a": 1}, {"event.name": "gen_ai.event", "a": 1}),
+            ("gen_ai.event", None, {"event.name": "gen_ai.event"}),
+            ("gen_ai.event", {"event.name": "ours"}, {"event.name": "ours"}),
+            (None, {"a": 1}, {"a": 1}),
+        ],
+        ids=["adds", "no-attributes", "keeps-existing", "no-event-name"],
+    )
+    def test_on_emit(self, event_name, attributes, expected) -> None:
+        """Test that the event name lands in ``event.name`` unless already set."""
+        record = ReadWriteLogRecord(
+            log_record=LogRecord(event_name=event_name, attributes=attributes)
+        )
+
+        telemetry.EventNameProcessor().on_emit(record)
+
+        assert dict(record.log_record.attributes or {}) == expected
+
+    def test_shutdown_and_flush_are_no_ops(self) -> None:
+        """Test that the processor holds nothing to flush or release."""
+        processor = telemetry.EventNameProcessor()
+
+        processor.shutdown()
+
+        assert processor.force_flush() is True
+
+
 class TestConfigureTelemetry:
     """Tests for provider and exporter wiring."""
 
-    def test_defaults_send_traces_and_logs_to_google(
-        self, mock_telemetry_sdk, create_telemetry_env
+    def test_traces_and_logs_go_to_google_without_a_region(
+        self, mock_telemetry_sdk, capsys
     ) -> None:
-        """Test the Telemetry API with ADC for traces and logs, and no metrics."""
-        settings = create_telemetry_env({})
+        """Test the Telemetry API with ADC, and no metrics without a region."""
         credentials = mock_telemetry_sdk["google_channel_credentials"].return_value
 
-        telemetry.configure_telemetry(settings, **CONFIGURE_ARGS)
+        telemetry.configure_telemetry(**CONFIGURE_ARGS)
 
+        assert (
+            f"Telemetry export: {telemetry.TELEMETRY_API_ENDPOINT} "
+            "(metrics off, no cloud.region)"
+        ) in capsys.readouterr().out
         google = {
-            "endpoint": settings.telemetry_api_endpoint,
+            "endpoint": telemetry.TELEMETRY_API_ENDPOINT,
             "credentials": credentials,
         }
         mock_telemetry_sdk["OTLPSpanExporter"].assert_called_once_with(**google)
@@ -260,56 +250,23 @@ class TestConfigureTelemetry:
         mock_telemetry_sdk["set_meter_provider"].assert_not_called()
         mock_telemetry_sdk["google_channel_credentials"].assert_called_once_with()
 
-    def test_collector_endpoint_gets_no_google_credentials(
-        self, mock_telemetry_sdk, create_telemetry_env
+    def test_sets_providers_with_their_resources(
+        self, mock_telemetry_sdk, capsys
     ) -> None:
-        """Test that a collector receives every signal with SDK-owned credentials."""
-        settings = create_telemetry_env({"OTEL_EXPORTER_OTLP_ENDPOINT": COLLECTOR})
+        """Test traces and logs share one resource and metrics get the meter one."""
+        resource = Resource({"cloud.region": "us-central1", "gcp.resource_type": "x"})
+        meter_resource = Resource({"cloud.region": "us-central1"})
+        mock_telemetry_sdk["build_resources"].return_value = (resource, meter_resource)
 
-        telemetry.configure_telemetry(settings, **CONFIGURE_ARGS)
+        telemetry.configure_telemetry(**CONFIGURE_ARGS)
 
-        collector = {"endpoint": COLLECTOR, "credentials": None}
-        mock_telemetry_sdk["OTLPSpanExporter"].assert_called_once_with(**collector)
-        mock_telemetry_sdk["OTLPLogExporter"].assert_called_once_with(**collector)
-        mock_telemetry_sdk["OTLPMetricExporter"].assert_called_once_with(**collector)
-        mock_telemetry_sdk["set_meter_provider"].assert_called_once_with(
-            mock_telemetry_sdk["MeterProvider"].return_value
-        )
-        mock_telemetry_sdk["google_channel_credentials"].assert_not_called()
-
-    def test_per_signal_endpoint_routes_only_that_signal(
-        self, mock_telemetry_sdk, create_telemetry_env
-    ) -> None:
-        """Test that a traces-only endpoint keeps logs on Google and metrics off."""
-        settings = create_telemetry_env(
-            {"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": COLLECTOR}
-        )
-
-        telemetry.configure_telemetry(settings, **CONFIGURE_ARGS)
-
-        span_kwargs = mock_telemetry_sdk["OTLPSpanExporter"].call_args.kwargs
-        log_kwargs = mock_telemetry_sdk["OTLPLogExporter"].call_args.kwargs
-        assert span_kwargs == {"endpoint": COLLECTOR, "credentials": None}
-        assert log_kwargs["endpoint"] == settings.telemetry_api_endpoint
-        mock_telemetry_sdk["OTLPMetricExporter"].assert_not_called()
-        mock_telemetry_sdk["google_channel_credentials"].assert_called_once_with()
-
-    def test_sets_providers_with_shared_resource(
-        self, mock_telemetry_sdk, create_telemetry_env
-    ) -> None:
-        """Test that every provider is built on the resource and set globally."""
-        settings = create_telemetry_env({"OTEL_EXPORTER_OTLP_ENDPOINT": COLLECTOR})
-        resource = mock_telemetry_sdk["build_resource"].return_value
-
-        telemetry.configure_telemetry(settings, **CONFIGURE_ARGS)
-
-        mock_telemetry_sdk["build_resource"].assert_called_once_with(
-            "test-agent", "test-project", "local", None
+        mock_telemetry_sdk["build_resources"].assert_called_once_with(
+            "test-agent", "test-project"
         )
         for provider in ("TracerProvider", "LoggerProvider"):
             mock_telemetry_sdk[provider].assert_called_once_with(resource=resource)
         mock_telemetry_sdk["MeterProvider"].assert_called_once_with(
-            resource=resource,
+            resource=meter_resource,
             metric_readers=[
                 mock_telemetry_sdk["PeriodicExportingMetricReader"].return_value
             ],
@@ -320,139 +277,80 @@ class TestConfigureTelemetry:
         mock_telemetry_sdk["set_logger_provider"].assert_called_once_with(
             mock_telemetry_sdk["LoggerProvider"].return_value
         )
+        assert "gcp.resource_type=x" in capsys.readouterr().out
+
+    def test_event_name_processor_runs_before_export(self, mock_telemetry_sdk) -> None:
+        """Test that ``event.name`` is set before the batch processor exports."""
+        telemetry.configure_telemetry(**CONFIGURE_ARGS)
+
+        add = mock_telemetry_sdk["LoggerProvider"].return_value.add_log_record_processor
+        first, second = (call.args[0] for call in add.call_args_list)
+        assert isinstance(first, telemetry.EventNameProcessor)
+        assert second is mock_telemetry_sdk["BatchLogRecordProcessor"].return_value
 
     def test_metrics_go_to_google_with_a_region(
-        self, mock_telemetry_sdk, create_telemetry_env
+        self, mock_telemetry_sdk, capsys
     ) -> None:
         """Test that a resource region sends metrics to the Telemetry API."""
-        settings = create_telemetry_env({})
-        mock_telemetry_sdk["build_resource"].return_value = Resource(
-            {"cloud.region": "us-central1"}
-        )
+        region = Resource({"cloud.region": "us-central1"})
+        mock_telemetry_sdk["build_resources"].return_value = (region, region)
         credentials = mock_telemetry_sdk["google_channel_credentials"].return_value
 
-        telemetry.configure_telemetry(settings, **CONFIGURE_ARGS)
+        telemetry.configure_telemetry(**CONFIGURE_ARGS)
 
         mock_telemetry_sdk["OTLPMetricExporter"].assert_called_once_with(
-            endpoint=settings.telemetry_api_endpoint, credentials=credentials
+            endpoint=telemetry.TELEMETRY_API_ENDPOINT, credentials=credentials
         )
         mock_telemetry_sdk["set_meter_provider"].assert_called_once_with(
             mock_telemetry_sdk["MeterProvider"].return_value
         )
-        mock_telemetry_sdk["google_channel_credentials"].assert_called_once_with()
+        assert "(metrics on, cloud.region=us-central1)" in capsys.readouterr().out
 
-    def test_on_cloud_run_meter_resource_omits_resource_type(
-        self, mock_telemetry_sdk, create_telemetry_env
-    ) -> None:
-        """Test traces and logs get cloud_run_revision, metrics only cloud.region."""
-        settings = create_telemetry_env(CLOUD_RUN_ENV)
-        mock_telemetry_sdk["build_resource"].return_value = Resource(
-            {"cloud.region": "us-central1"}
-        )
-
-        telemetry.configure_telemetry(settings, **CONFIGURE_ARGS)
-
-        mock_telemetry_sdk["build_resource"].assert_called_once_with(
-            "test-agent", "test-project", "test-agent-dev-00001-abc", "us-central1"
-        )
-        for provider in ("TracerProvider", "LoggerProvider"):
-            resource = mock_telemetry_sdk[provider].call_args.kwargs["resource"]
-            assert resource.attributes["gcp.resource_type"] == "cloud_run_revision"
-            assert resource.attributes["location"] == "us-central1"
-        meter_resource = mock_telemetry_sdk["MeterProvider"].call_args.kwargs[
-            "resource"
-        ]
-        assert "gcp.resource_type" not in meter_resource.attributes
-        assert meter_resource.attributes["cloud.region"] == "us-central1"
-
-    def test_disabled_sdk_builds_no_exporters(
-        self, mock_telemetry_sdk, create_telemetry_env
-    ) -> None:
-        """Test that OTEL_SDK_DISABLED sets bare providers with no export."""
-        settings = create_telemetry_env(
-            {"OTEL_SDK_DISABLED": "true", "OTEL_EXPORTER_OTLP_ENDPOINT": COLLECTOR}
-        )
-
-        telemetry.configure_telemetry(settings, **CONFIGURE_ARGS)
-
-        for exporter in ("OTLPSpanExporter", "OTLPLogExporter", "OTLPMetricExporter"):
-            mock_telemetry_sdk[exporter].assert_not_called()
-        mock_telemetry_sdk["google_channel_credentials"].assert_not_called()
-        mock_telemetry_sdk["set_meter_provider"].assert_not_called()
-        mock_telemetry_sdk["set_tracer_provider"].assert_called_once_with(
-            mock_telemetry_sdk["TracerProvider"].return_value
-        )
-        mock_telemetry_sdk["set_logger_provider"].assert_called_once_with(
-            mock_telemetry_sdk["LoggerProvider"].return_value
-        )
-
-    def test_disabled_sdk_still_accepts_web_ui_processors(
-        self, create_telemetry_env, mocker: MockerFixture
-    ) -> None:
-        """Test that the patch attaches web UI processors to disabled providers."""
-        settings = create_telemetry_env({"OTEL_SDK_DISABLED": "true"})
-        set_tracer = mocker.patch.object(trace, "set_tracer_provider")
-        set_logger = mocker.patch.object(logs, "set_logger_provider")
-        mocker.patch.object(telemetry, "LoggingInstrumentor")
-        mocker.patch.object(telemetry, "AsyncPGInstrumentor")
-        credentials = mocker.patch.object(telemetry, "google_channel_credentials")
-        sdk_logger = logging.getLogger("opentelemetry")
-        mocker.patch.object(sdk_logger, "handlers", [])
-        mocker.patch.object(sdk_logger, "propagate", True)
-        mocker.patch.object(logging.getLogger(), "setLevel")
-
-        telemetry.configure_telemetry(settings, **CONFIGURE_ARGS)
-        tracer_provider = set_tracer.call_args.args[0]
-        logger_provider = set_logger.call_args.args[0]
-        mocker.patch.object(trace, "get_tracer_provider", return_value=tracer_provider)
-        mocker.patch.object(logs, "get_logger_provider", return_value=logger_provider)
-        add_span = mocker.patch.object(tracer_provider, "add_span_processor")
-        add_log = mocker.patch.object(logger_provider, "add_log_record_processor")
-
-        telemetry._attach_web_ui_processors(
-            internal_processors=OTelHooks(
-                span_processors=[mocker.sentinel.span_processor],
-                log_record_processors=[mocker.sentinel.log_processor],
-            )
-        )
-
-        credentials.assert_not_called()
-        add_span.assert_called_once_with(mocker.sentinel.span_processor)
-        add_log.assert_called_once_with(mocker.sentinel.log_processor)
-
-    def test_instruments_logging_and_asyncpg(
-        self, mock_telemetry_sdk, create_telemetry_env
-    ) -> None:
-        """Test log correlation, root level and asyncpg spans are enabled."""
-        telemetry.configure_telemetry(create_telemetry_env({}), **CONFIGURE_ARGS)
+    def test_instruments_logging(self, mock_telemetry_sdk) -> None:
+        """Test log correlation and the root level are set."""
+        telemetry.configure_telemetry(**CONFIGURE_ARGS)
 
         mock_telemetry_sdk["root_set_level"].assert_called_once_with("DEBUG")
         logging_instrumentor = mock_telemetry_sdk["LoggingInstrumentor"].return_value
         logging_instrumentor.instrument.assert_called_once_with(
             log_code_attributes=True
         )
-        asyncpg_instrumentor = mock_telemetry_sdk["AsyncPGInstrumentor"].return_value
-        asyncpg_instrumentor.instrument.assert_called_once_with()
 
-    def test_sdk_logger_writes_to_console_only(
-        self, mock_telemetry_sdk, create_telemetry_env
-    ) -> None:
+    def test_sdk_logger_writes_to_console_only(self, mock_telemetry_sdk) -> None:
         """Test that export errors cannot feed back into the log exporter."""
-        telemetry.configure_telemetry(create_telemetry_env({}), **CONFIGURE_ARGS)
+        telemetry.configure_telemetry(**CONFIGURE_ARGS)
 
         sdk_logger = logging.getLogger("opentelemetry")
         assert sdk_logger.propagate is False
         assert [type(h) for h in sdk_logger.handlers] == [logging.StreamHandler]
 
 
-class TestInstrumentApp:
-    """Tests for FastAPI instrumentation."""
+class TestHealthCheckFilter:
+    """Tests for dropping health check access log lines."""
 
-    def test_instruments_the_given_app(self, mocker: MockerFixture) -> None:
-        """Test that the live app instance is instrumented."""
-        instrumentor = mocker.patch.object(telemetry, "FastAPIInstrumentor")
-        app = mocker.sentinel.app
+    @pytest.mark.parametrize(
+        ("args", "kept"),
+        [
+            (("169.254.0.1:1", "GET", "/health", "1.1", 200), False),
+            (("169.254.0.1:1", "GET", "/health?probe=1", "1.1", 200), False),
+            (("127.0.0.1:1", "POST", "/run", "1.1", 200), True),
+            (("127.0.0.1:1", "GET", "/apps/health-agent", "1.1", 200), True),
+            (("127.0.0.1:1", "GET", "/healthz", "1.1", 200), True),
+            (None, True),
+        ],
+        ids=["health", "health-query", "run", "health-substring", "healthz", "plain"],
+    )
+    def test_filter(self, args, kept) -> None:
+        """Test that only the exact health check path is dropped."""
+        record = logging.LogRecord(
+            "uvicorn.access", logging.INFO, "", 0, "%s", args, None
+        )
 
-        telemetry.instrument_app(app)
+        assert telemetry.HealthCheckFilter().filter(record) is kept
 
-        instrumentor.return_value.instrument_app.assert_called_once_with(app)
+    def test_attached_to_uvicorn_access_logger(self, mock_telemetry_sdk) -> None:
+        """Test that configure_telemetry filters the uvicorn access logger."""
+        telemetry.configure_telemetry(**CONFIGURE_ARGS)
+
+        filters = logging.getLogger("uvicorn.access").filters
+        assert [type(f) for f in filters] == [telemetry.HealthCheckFilter]
