@@ -20,7 +20,7 @@ Built for teams who need to move beyond prototypes and ship production AI agents
 
 ### ⚙️ Development & Build Optimization
 - **Optimized Docker builds**: Multi-stage uv builds; a code change rebuilds and pushes only a kilobyte-sized source layer
-- **Developer experience**: File sync with auto-restart via Docker Compose watch mode for fast feedback
+- **Developer experience**: Local persistent sessions with no infrastructure; Docker Compose to connect to deployed resources
 - **Code quality**: Strict type checking (mypy), 100% test coverage, modern linting (ruff)
 - **Template-ready**: One-command initialization script for rapid project setup
 
@@ -42,22 +42,15 @@ Built for teams who need to move beyond prototypes and ship production AI agents
 - **Non-root containers**: Security-hardened runtime with least-privilege IAM
 - **Health checks**: Kubernetes-style probes with startup grace periods
 
-## Try It Locally
-
-Run the agent with no cloud dependencies: [Development: Quick Start](docs/development.md#quick-start)
-
 ## Getting Started
-
-> [!IMPORTANT]
-> Complete deployment first to create required resources (Cloud SQL, Agent Engine, GCS buckets, other agent-specific resources) before running locally with cloud persistence.
 
 > [!NOTE]
 > The project starts in **dev-only mode** (single environment) by default. To enable production mode with staged deployments (dev → stage → prod), see [Infrastructure: Deployment Modes](docs/infrastructure.md#deployment-modes).
 
-Follow three steps to get started:
-1. **Bootstrap CI/CD** — provision WIF, Artifact Registry, GCS state bucket, and GitHub Environments
-2. **Deploy** — merge a PR to trigger deployment to Cloud Run with Cloud SQL sessions, Agent Engine memory, and artifact storage
-3. **Run the Agent** — start a local agent or test the remote agent via the Cloud Run proxy
+1. **Set up and run the local agent** — install, test, and run the agent with local storage; needs only a GCP project for Vertex AI
+2. **Bootstrap CI/CD** — provision WIF, Artifact Registry, GCS state bucket, and GitHub Environments
+3. **Deploy** — merge a PR to trigger deployment to Cloud Run with Cloud SQL sessions, Agent Engine memory, and artifact storage
+4. **Run the deployed agent** — test it through the Cloud Run proxy
 
 See [Getting Started](docs/getting-started.md) for the complete walkthrough.
 

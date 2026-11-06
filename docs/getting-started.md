@@ -1,6 +1,6 @@
 # Getting Started
 
-First-time setup: from a fresh repository to a deployed agent you can run.
+First-time setup: from a fresh repository to an agent running locally, then deployed.
 
 > [!NOTE]
 > Bootstrap is a one-time setup per GitHub Environment. After the first deployment, use the feature branch workflow described in [Development](development.md).
@@ -26,13 +26,11 @@ First-time setup: from a fresh repository to a deployed agent you can run.
 - Create a new repository from this template
 - Admin access (for GitHub Environments and Variables)
 
-## Bootstrap CI/CD
-
-Bootstrap creates the one-time CI/CD infrastructure for the dev environment: keyless GitHub Actions authentication, the image registry, and the GitHub Environment and its variables. [Bootstrap Reference](references/bootstrap.md) lists every resource and covers production mode.
+## Set Up the Project
 
 ### 1. Authenticate
 
-Choose your dev project ID now. Use the same ID for `projects.dev` in pre-bootstrap and `project` in the dev bootstrap configuration below.
+Choose your dev project ID now. Use the same ID for `GOOGLE_CLOUD_PROJECT` in `.env` below, and for `projects.dev` in pre-bootstrap and `project` in the dev bootstrap configuration later.
 
 ```bash
 gcloud auth login
@@ -44,7 +42,48 @@ gh auth login
 
 ADC login can set the quota project automatically; the explicit command confirms the intended project. For quota and billing errors, see [Troubleshooting](troubleshooting.md#adc-quota-project-and-billing-errors).
 
-### 2. Create State Buckets (Pre-Bootstrap)
+### 2. Enable the APIs for a Local Run
+
+The local agent calls Gemini through Vertex AI and exports traces and logs through the Telemetry API.
+
+```bash
+gcloud services enable aiplatform.googleapis.com telemetry.googleapis.com
+```
+
+### 3. Install and Test
+
+```bash
+uv sync                      # Create .venv with runtime and dev dependencies
+uv run pre-commit install    # Run the CI quality checks on each commit
+uv run pytest --cov          # Unit tests, 100% coverage required
+```
+
+### 4. Configure .env
+
+```bash
+cp .env.example .env
+```
+
+Set `GOOGLE_CLOUD_PROJECT` to your dev project ID. Leave the deployed-resource block commented out: with those URIs unset, the agent stores sessions and artifacts locally.
+
+## Run the Agent Locally
+
+```bash
+SERVE_WEB_INTERFACE=TRUE uv run server
+```
+
+The web interface is at `http://localhost:8000`. Sessions persist in SQLite under `src/<package>/.adk/` (gitignored), so you can stop the server and return to a previous conversation, like with `adk web`. Memory is in-process only and resets on restart.
+
+> [!TIP]
+> Add `RELOAD_AGENTS=TRUE` to reload the agent when you edit files under `src/`, with no restart.
+
+Local options and connecting to deployed resources: [Development](development.md).
+
+## Bootstrap CI/CD
+
+Bootstrap creates the one-time CI/CD infrastructure for the dev environment: keyless GitHub Actions authentication, the image registry, and the GitHub Environment and its variables. [Bootstrap Reference](references/bootstrap.md) lists every resource and covers production mode.
+
+### 1. Create State Buckets (Pre-Bootstrap)
 
 Pre-bootstrap creates the GCS state buckets used by bootstrap and the main module.
 
@@ -58,7 +97,7 @@ terraform -chdir=terraform/bootstrap/pre apply
 
 See [Bootstrap Reference: Pre-Bootstrap](references/bootstrap.md#pre-bootstrap) for scope options (dev-only, full production, incremental) and how to skip pre-bootstrap if you already have a GCS bucket.
 
-### 3. Configure
+### 2. Configure
 
 Dev-only mode (default): bootstrap only the dev environment.
 
@@ -71,7 +110,7 @@ Fill in every value under the `REQUIRED` header in `terraform.tfvars`; the comme
 > [!NOTE]
 > For production mode (dev → stage → prod), see [Infrastructure](infrastructure.md).
 
-### 4. Bootstrap
+### 3. Bootstrap
 
 ```bash
 terraform -chdir=terraform/bootstrap/dev init \
@@ -85,7 +124,7 @@ Confirm the GitHub Environment variables exist:
 gh variable list --env dev  # or GitHub repo Settings > Environments > dev
 ```
 
-### 5. Set Up Claude PR Review
+### 4. Set Up Claude PR Review
 
 Opening a pull request triggers an automated Claude code review. It needs a one-time setup before the first PR: install the Claude GitHub App, then pick a model auth path, either Vertex AI in the dev project or a direct Anthropic credential. See [Claude PR Review](references/claude-pr-review.md).
 
@@ -96,9 +135,6 @@ Merging to `main` deploys the agent's infrastructure and Cloud Run service to de
 ### 1. Create Pull Request
 
 ```bash
-# Install the git hooks (one time; runs the CI quality checks on each commit)
-uv run pre-commit install
-
 git checkout -b feat/initial-setup
 git add .
 git commit -m "feat: initial setup"
@@ -119,44 +155,9 @@ gh run view <run-id>         # Job summary: Cloud Run URL and resource URIs
 gh run view <run-id> --log   # Full logs
 ```
 
-Save the cloud resource values from the job summary for the next step.
+The job summary lists the deployed resource values. You need them only to run a local agent against deployed resources ([Development: Connect to Deployed Resources](development.md#connect-to-deployed-resources)).
 
-## Run the Agent
-
-### 1. Configure .env
-
-```bash
-cp .env.example .env
-```
-
-Add the values from the deployment job summary to `.env`, and enable the development web interface:
-
-```bash
-BASTION_INSTANCE=agent-name-dev-bastion
-BASTION_ZONE=YOUR_ZONE
-SESSION_SERVICE_URI=postgresql+asyncpg://YOUR_SERVICE_ACCOUNT@project.iam:@localhost:5432/agent_sessions
-MEMORY_SERVICE_URI=agentengine://projects/YOUR_PROJECT_ID/locations/YOUR_LOCATION/reasoningEngines/YOUR_ENGINE_ID
-ARTIFACT_SERVICE_URI=gs://YOUR_BUCKET_NAME
-SERVE_WEB_INTERFACE=TRUE
-# Add values for resources you customized for your agent
-```
-
-See [Environment Variables: Cloud Resources](environment-variables.md#cloud-resources) for where to find each value.
-
-### 2. Run the Local Agent
-
-Docker Compose mirrors production and connects to the deployed cloud resources:
-
-```bash
-docker compose up --build --watch
-```
-
-> [!IMPORTANT]
-> Docker Compose requires `roles/iap.tunnelResourceAccessor` on your Google account for the IAP tunnel to the bastion host. Grant via GCP Console (IAM) or `gcloud projects add-iam-policy-binding`.
-
-The web interface is at `http://localhost:8000`. To run without cloud resources (`uv run server`), see [Development](development.md).
-
-### 3. Run the Remote Agent
+## Run the Deployed Agent
 
 Proxy the deployed Cloud Run service to your machine:
 
