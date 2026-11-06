@@ -26,8 +26,8 @@ repository_name  = "your-agent-repository"
 # Recommended Defaults for the stage environment
 # ==============================================
 
-# OpenTelemetry Configuration
-otel_instrumentation_genai_capture_message_content = "TRUE"
+# OpenTelemetry Configuration (stage: no user content in telemetry)
+otel_instrumentation_genai_capture_message_content = "NO_CONTENT"
 
 # Registry Cleanup Policies (stage: moderate)
 registry_cleanup_general_retention_days = 90   # Images expire after 90 days

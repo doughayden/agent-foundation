@@ -18,7 +18,7 @@ SERVE_WEB_INTERFACE=TRUE uv run server     # With ADK web UI
 docker compose up --build --watch          # Cloud SQL (via IAP tunnel), Agent Engine, GCS
 ```
 
-Both modes always export traces and structured logs to Cloud Trace and Cloud Logging. Set `TELEMETRY_NAMESPACE` in `.env` to a unique value (e.g., your name) so teammates can filter to your traces when reviewing experiments.
+Both modes export traces and logs to Google Cloud; metrics go to Google locally only with `cloud.region` in `OTEL_RESOURCE_ATTRIBUTES` ([Observability](observability.md)). Set `OTEL_RESOURCE_ATTRIBUTES=service.namespace=<your-name>` in `.env` so teammates can filter to your traces when reviewing experiments.
 
 **Prerequisites:**
 - `.env` file configured with required authentication and identification values (copy from `.env.example`)
@@ -182,7 +182,7 @@ docker compose up --build --watch
 
 ## Local-Only (uv run server)
 
-`uv run server` reads `.env` like Docker Compose. With cloud resource URIs set, it connects to those services. For fully local development, comment out `SESSION_SERVICE_URI`, `MEMORY_SERVICE_URI`, and `ARTIFACT_SERVICE_URI` in `.env`. Sessions persist locally in SQLite (`.adk/` directory). Traces and logs still export to Cloud Trace and Cloud Logging.
+`uv run server` reads `.env` like Docker Compose. With cloud resource URIs set, it connects to those services. For fully local development, comment out `SESSION_SERVICE_URI`, `MEMORY_SERVICE_URI`, and `ARTIFACT_SERVICE_URI` in `.env`. Sessions persist locally in SQLite (`.adk/` directory). Traces and logs still export to Google Cloud.
 
 ```bash
 uv run server                              # Uses cloud resources if URIs set, local storage if unset
@@ -297,10 +297,10 @@ See [Cloud Run proxy documentation](https://cloud.google.com/run/docs/authentica
 - Print to stdout (via LoggingPlugin callbacks)
 - Basic request/response logging for immediate feedback
 
-**Opentelemetry Traces and Logs:**
+**OpenTelemetry Traces and Logs:**
 - Detailed traces → Cloud Trace
-- Structured logs → Cloud Logging
-- Full correlation between traces and logs
+- Application logs and GenAI events → Cloud Logging, correlated with traces
+- ADK metrics → Cloud Monitoring on Cloud Run (locally with `cloud.region` set)
 
 See [Observability](observability.md) for querying, filtering, and trace analysis.
 

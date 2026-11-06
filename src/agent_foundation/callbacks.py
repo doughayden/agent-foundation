@@ -14,7 +14,6 @@ from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.tool_context import ToolContext
-from opentelemetry import trace
 
 logger = logging.getLogger(__name__)
 
@@ -168,38 +167,6 @@ class LoggingCallbacks:
         if llm_content := llm_response.content:
             response_data = llm_content.model_dump(exclude_none=True, mode="json")
             self.logger.debug(f"LLM response: {response_data}")
-
-        if usage := llm_response.usage_metadata:
-            token_info: dict[str, int] = {
-                key: value
-                for key, value in {
-                    "prompt_tokens": usage.prompt_token_count,
-                    "response_tokens": usage.candidates_token_count,
-                    "cached_tokens": usage.cached_content_token_count,
-                    "reasoning_tokens": usage.thoughts_token_count,
-                    "tool_use_tokens": usage.tool_use_prompt_token_count,
-                }.items()
-                if value is not None
-            }
-            if token_info:
-                self.logger.info(f"Token usage: {token_info}")
-
-            span = trace.get_current_span()
-            if usage.cached_content_token_count is not None:
-                span.set_attribute(
-                    "gen_ai.usage.cache_read.input_tokens",
-                    usage.cached_content_token_count,
-                )
-            if usage.thoughts_token_count is not None:
-                span.set_attribute(
-                    "gen_ai.usage.reasoning_tokens",
-                    usage.thoughts_token_count,
-                )
-            if usage.tool_use_prompt_token_count is not None:
-                span.set_attribute(
-                    "gen_ai.usage.tool_use.input_tokens",
-                    usage.tool_use_prompt_token_count,
-                )
 
         return
 

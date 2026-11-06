@@ -26,8 +26,8 @@ repository_name  = "your-agent-repository"
 # Recommended Defaults for the dev environment
 # ==============================================
 
-# OpenTelemetry Configuration
-otel_instrumentation_genai_capture_message_content = "TRUE"
+# OpenTelemetry Configuration (dev: capture prompts and responses for debugging)
+otel_instrumentation_genai_capture_message_content = "SPAN_AND_EVENT"
 
 # Registry Cleanup Policies (dev: aggressive)
 registry_cleanup_general_retention_days = 90   # All images expire after 90 days

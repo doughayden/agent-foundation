@@ -42,7 +42,7 @@ GitHub Actions workflow architecture, mechanics, and customization.
 | `ARTIFACT_REGISTRY_LOCATION` | Registry location |
 | `TERRAFORM_STATE_BUCKET` | GCS bucket for main module state |
 | `WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER` | WIF principal identifier for main module IAM bindings |
-| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | Capture LLM content in traces |
+| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | GenAI message content capture mode |
 
 **Note:** These are Variables (not Secrets) because they're resource identifiers, not credentials. Security comes from WIF IAM policies.
 

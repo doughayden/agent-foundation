@@ -15,23 +15,25 @@ See `.env.example` in the repository root for template configuration with inline
 | **[GOOGLE_CLOUD_PROJECT](#google-cloud-vertex-ai)** | ✅ | - | GCP project ID |
 | **[GOOGLE_CLOUD_LOCATION](#google-cloud-vertex-ai)** | ✅ | - | Vertex AI model endpoint location |
 | **[AGENT_NAME](#agent-identification)** | ✅ | - | Unique agent identifier |
-| **[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT](#opentelemetry)** | ✅ | - | Capture LLM content in traces |
+| **[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT](#opentelemetry)** | ✅ | - | GenAI message content capture mode |
 | **[BASTION_INSTANCE](#cloud-resources)** | Recommended | - | Bastion host name for IAP tunnel (docker-compose) |
 | **[BASTION_ZONE](#cloud-resources)** | Recommended | - | Bastion host zone for IAP tunnel (docker-compose) |
 | **[SESSION_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Session persistence |
 | **[MEMORY_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Memory persistence |
 | **[ARTIFACT_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Artifact storage |
 | [LOG_LEVEL](#logging) | Optional | `INFO` | Logging verbosity |
-| [TELEMETRY_NAMESPACE](#logging) | Optional | `local` | Trace grouping |
+| [OTEL_RESOURCE_ATTRIBUTES](#opentelemetry-export) | Optional | unset | Override or add resource attributes |
+| [ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS](#opentelemetry) | Optional | `true` (deployed: `false` with `NO_CONTENT`) | ADK's live streaming content attribute |
 | [SERVE_WEB_INTERFACE](#agent-features) | Optional | `FALSE` | Enable ADK web UI |
 | [RELOAD_AGENTS](#agent-features) | Optional | `FALSE` | Hot-reload on file changes |
 | [ALLOW_ORIGINS](#cors) | Optional | `["http://127.0.0.1:8000", "http://localhost:8000"]` | CORS allowed origins |
 | [AGENT_DIR](#advanced) | Optional | Auto-detected | Override agent directory |
 | [HOST](#advanced) | Optional | `127.0.0.1` | Server bind address |
 | [PORT](#advanced) | Optional | `8000` | Server listening port |
+| [ADK_EXPERIMENTAL_TELEMETRY](#advanced) | Optional | `FALSE` (template sets `TRUE`) | ADK's experimental metrics and span data |
 | [ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS](#advanced) | Optional | `FALSE` | Suppress ADK warnings |
 
-**Cloud Run auto-set:** [K_REVISION](#cloud-run-auto-set-read-only)
+**Cloud Run auto-set:** [K_CONFIGURATION](#cloud-run-auto-set-read-only)
 
 **CI/CD only:** [TF_VAR_*](#terraform-inputs-tf_var_) variables and [repository secrets](#repository-secrets) (GitHub Actions)
 
@@ -72,13 +74,21 @@ These must be set for the agent to function.
 ### OpenTelemetry
 
 **OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT**
-- **Options:**
-  - `TRUE` - Capture full prompts and responses in traces
-  - `FALSE` - Capture metadata only (no message content)
-- **Purpose:** Controls LLM message content capture in OpenTelemetry traces
+- **Options** (exact, uppercase; `ServerEnv` rejects anything else, including `TRUE` and `FALSE`):
+  - `NO_CONTENT` - No message content (pair with `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false` to keep live streaming content out too)
+  - `EVENT_ONLY` - Put prompts and responses on `gen_ai.client.inference.operation.details` log records (GenAI events), shown in Cloud Trace's Input/Output view
+  - `SPAN_ONLY` - Put them on span attributes: `gen_ai.input.messages` and `gen_ai.output.messages` on model calls, `gen_ai.tool.call.arguments` and `gen_ai.tool.call.result` on tool calls
+  - `SPAN_AND_EVENT` - Both
+- **Purpose:** Controls whether and where ADK records GenAI message content, including tool arguments and results. Live streaming content follows `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS` instead
 - **Where:** Set locally in `.env`, set before bootstrap
-- **Reference:** [OpenTelemetry GenAI Instrumentation](https://opentelemetry.io/blog/2024/otel-generative-ai/#example-usage)
-- **Security:** Set to `FALSE` if handling sensitive data
+- **Reference:** [Message Content Capture](observability.md#message-content-capture) (recommended values and why) and OpenTelemetry's [GenAI utilities](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/util/opentelemetry-util-genai)
+- **Security:** For sensitive data, set `NO_CONTENT` and `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false`
+
+**ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS**
+- **Default:** `true` when unset (ADK's default, independent of the capture mode); the Cloud Run service sets `false` whenever its capture mode is `NO_CONTENT`
+- **Purpose:** Read by ADK, not `ServerEnv`. Under ADK's default telemetry schema it only controls live streaming (`/run_live`): the content sent to the model, on the `gcp.vertex.agent.data` span attribute. It also controls content on ADK's deprecated legacy schema (`ADK_TELEMETRY_SCHEMA_VERSION_OPT_IN=otel_semconv_1_36`). `false` leaves them empty
+- **Where:** `.env` locally; derived from the capture mode in `terraform/main/main.tf` on Cloud Run
+- **Reference:** [Message Content Capture](observability.md#message-content-capture)
 
 ---
 
@@ -137,12 +147,22 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
   LOG_LEVEL=DEBUG uv run server
   ```
 
-**TELEMETRY_NAMESPACE**
-- **Default:** `local`
-- **Purpose:** Groups traces and logs by developer in Cloud Trace — set to a unique value (e.g., your name) so teammates can filter to your experiments for collaborative debugging and review
-- **Where:** Set locally via `.env`, auto-set to environment name in Cloud Run deployments (dev/stage/prod)
-- **Note:** Both `uv run server` and Docker Compose always export traces and structured logs to Cloud Trace and Cloud Logging. This is always on — there is no local-only telemetry mode.
-- **Example:** `TELEMETRY_NAMESPACE=alice-local`
+### OpenTelemetry Export
+
+Every signal exports to the Google Cloud Telemetry API with Application Default Credentials. `telemetry.py` passes the endpoint to every exporter explicitly, so the SDK's `OTEL_EXPORTER_OTLP_*` endpoint variables have no effect. On Cloud Run, metrics go to Google automatically; locally they go only when you add `cloud.region=<region>` to `OTEL_RESOURCE_ATTRIBUTES`. The OpenTelemetry SDK reads these variables itself, from `.env` or the shell.
+
+> [!NOTE]
+> Only `uv run server` and the container entry point run the template's telemetry setup. `adk web`, `adk api_server` and `adk run` use ADK's own telemetry setup instead.
+
+**OTEL_RESOURCE_ATTRIBUTES**
+- **Default:** unset (no `service.namespace`)
+- **Purpose:** Override or add resource attributes on every signal. A key set here wins over the template's value (like `service.name`). Set `service.namespace` to a unique value, like your name, so teammates can filter to your local experiments
+- **Where:** `.env` or the shell; Terraform sets `service.namespace=<environment>` on the Cloud Run service
+- **Format:** comma-separated `key=value` pairs, like `OTEL_RESOURCE_ATTRIBUTES=service.name=my-agent,service.namespace=alice-local`
+- **Metrics locally:** add `cloud.region=<region>` (like `cloud.region=us-central1`) to send metrics to Google from your machine; without a region, metrics are off
+- **Note:** The SDK also honors the standard `OTEL_SERVICE_NAME`, which wins over `service.name` in `OTEL_RESOURCE_ATTRIBUTES`; the template neither sets nor prints it
+
+The SDK reads its other standard variables too, like `OTEL_TRACES_SAMPLER` for trace sampling; the template sets none of them on Cloud Run. See the OpenTelemetry [SDK environment variables](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/).
 
 ### Agent Features
 
@@ -189,6 +209,11 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
 - **Where:** Rarely needs override - Cloud Run always uses 8000, Docker Compose maps to host port 8000
 - **Note:** Only override if you have port conflicts on your local machine
 
+**ADK_EXPERIMENTAL_TELEMETRY**
+- **Default:** `FALSE` when unset; `.env.example` and the Cloud Run service (`terraform/main/main.tf`) set `TRUE`
+- **Purpose:** Read by ADK, not `ServerEnv`. Adds ADK's `adk.experimental.*` metrics (token breakdowns, workflow call counts, skill loads, compactions) and experimental span data. ADK's seven default `gen_ai.*` metrics need no flag
+- **Where:** `.env` locally; fixed in the Terraform env map on Cloud Run
+
 **ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS**
 - **Default:** `FALSE`
 - **Purpose:** Suppress ADK experimental feature warnings
@@ -200,11 +225,11 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
 
 These variables are automatically set by Cloud Run. Do not set manually.
 
-**K_REVISION**
-- **Default:** `local` when unset (local development)
-- **Purpose:** Cloud Run revision identifier
-- **Where:** Auto-set by Cloud Run (used for `service.version` in traces)
-- **Example:** `your-agent-dev-00042-abc`
+**K_CONFIGURATION**
+- **Default:** unset (local development)
+- **Purpose:** Cloud Run configuration name. `telemetry.py` reads it for the `configuration_name` label that places OTLP logs on the `cloud_run_revision` resource; the GCP resource detector supplies the other labels
+- **Where:** Auto-set by Cloud Run
+- **Example:** `your-agent-dev`
 
 ---
 
@@ -240,6 +265,12 @@ GitHub Environment Variables are mapped to Terraform inputs via `TF_VAR_*` prefi
 - **Source:** `${{ vars.TERRAFORM_STATE_BUCKET }}` (GitHub Environment Variable)
 - **Purpose:** GCS bucket for Terraform state
 
+**TF_VAR_otel_instrumentation_genai_capture_message_content**
+- **Source:** `${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}` (GitHub Environment Variable, written by bootstrap from `otel_instrumentation_genai_capture_message_content` in each bootstrap root's `terraform.tfvars`)
+- **Purpose:** Message content capture mode on the Cloud Run service. Required: Terraform validation accepts only the four capture modes, so deleting the GitHub variable fails the plan. With `NO_CONTENT`, Terraform also sets `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false`
+- **Recommended:** `SPAN_AND_EVENT` in dev to debug prompts, responses and tool calls; `NO_CONTENT` in stage and prod (the bootstrap `terraform.tfvars.example` files)
+- **Change:** set the bootstrap value and re-apply bootstrap, which rewrites the GitHub variable
+
 **TF_VAR_docker_image**
 - **Source:** `${{ inputs.docker_image }}` (workflow input)
 - **Purpose:** Immutable image digest for deployment
@@ -264,10 +295,6 @@ Override runtime config via GitHub Environment Variables (mapped to `TF_VAR_*`):
 - **Source:** `${{ vars.SERVE_WEB_INTERFACE }}` (optional GitHub Environment Variable)
 - **Purpose:** Override SERVE_WEB_INTERFACE for Cloud Run deployment
 - **Set:** `gh variable set SERVE_WEB_INTERFACE --env dev --body "TRUE"` (or Settings → Environments), then re-run the latest CI/CD workflow to redeploy. The web interface is then at `http://localhost:8000` through `gcloud run services proxy`
-
-**TF_VAR_otel_instrumentation_genai_capture_message_content**
-- **Source:** `${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}` (optional GitHub Environment Variable)
-- **Purpose:** Override OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT for Cloud Run deployment
 
 ### Test Lane Inputs
 
@@ -322,11 +349,11 @@ Set in GitHub Actions > Secrets and variables > Actions. Both select the model a
 
 The environment wins over `.env`, everywhere `.env` is read:
 
-1. `ServerEnv` (`config.py`) reads the process environment first, then `.env` in the working directory for anything still unset. `.env` keys that `ServerEnv` does not define are ignored.
-2. ADK's agent loader loads `.env` into `os.environ` before it imports the agent module, keeping any variable already set. This covers variables `ServerEnv` does not own, like `GOOGLE_GENAI_USE_ENTERPRISE`, and anything `agent.py` reads at import. ADK finds `.env` by searching upward from the agent package.
+1. `initialize_environment()` (`config.py`) runs first in `server.py`. It finds `.env` by searching upward from the working directory and copies it into `os.environ` with python-dotenv's `load_dotenv()`, without overriding any variable already set. `ServerEnv` then reads `os.environ`; `.env` keys it does not define are ignored.
+2. ADK's agent loader then finds `.env` by searching upward from the agent's package and loads it with `override=True`, but first snapshots every variable already in `os.environ` and restores those after loading. Everything `initialize_environment()` set is in that snapshot, so ADK only adds keys that neither the environment nor the working directory's `.env` set. `adk web`, `adk api_server` and `adk run` skip step 1, so there ADK's loader is the only one.
 3. The eval lane loads `.env` with `python-dotenv` without overriding set variables.
 
-`.env` reaches `os.environ` only when ADK loads the agent, so anything that reads `os.environ` earlier in startup, like Application Default Credentials discovery, sees the shell and not `.env`. Set `GOOGLE_APPLICATION_CREDENTIALS` in your shell, not in `.env`. With `ADK_DISABLE_LOAD_DOTENV=true`, ADK skips step 2 while `ServerEnv` still reads `.env`.
+Because `.env` reaches `os.environ` before anything else in startup, every reader sees it: `ServerEnv`, the OpenTelemetry SDK's `OTEL_*` variables, ADK, and the Google SDKs.
 
 Cloud Run never reads `.env` (`.dockerignore` keeps it out of the image), and Docker Compose passes it to the container through `env_file:`, so the platform's values always apply there.
 
@@ -337,7 +364,7 @@ Cloud Run never reads `.env` (`.dockerignore` keeps it out of the image), and Do
 
 - **Never commit `.env` files** to version control - Already gitignored
 - **Workload Identity Federation** - No service account keys needed for CI/CD
-- **Sensitive data** - Set `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=FALSE` when handling sensitive information
+- **Sensitive data** - Set `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT` and `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false` when handling sensitive information
 
 ---
 

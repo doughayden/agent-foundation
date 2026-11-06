@@ -185,7 +185,7 @@ Production mode uses **image promotion** (pull from source, push to target) inst
 **Runtime app config** (configurable via GitHub Environment variables):
 - `LOG_LEVEL` - Logging verbosity
 - `SERVE_WEB_INTERFACE` - Enable web UI
-- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` - Capture LLM content in traces
+- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` - GenAI message content capture mode
 
 GitHub Environment Variables pass overrides to Terraform as `TF_VAR_*` inputs. Default values managed in Terraform.
 

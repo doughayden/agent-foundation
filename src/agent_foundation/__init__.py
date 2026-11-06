@@ -19,7 +19,7 @@ ref: https://peps.python.org/pep-0562/
 
 Lazy loading workflow:
 1. Package import does NOT trigger agent.py execution
-2. server.py validates ServerEnv (environment, then .env) via initialize_environment()
+2. server.py validates ServerEnv via initialize_environment()
 3. server.py creates FastAPI app (does not access agent attribute)
 4. ADK's agent loader loads .env into os.environ, finds no `app` or `root_agent`
    on the package (step 1 above), then imports agent.py as a submodule (step 2)

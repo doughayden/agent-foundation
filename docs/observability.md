@@ -1,61 +1,59 @@
 # Agent Observability with OpenTelemetry
 
-This project includes production-ready OpenTelemetry observability that provides consistent behavior across local development and deployed environments. The implementation automatically instruments LLM calls and application logs with minimal configuration while coexisting with ADK's internal telemetry infrastructure.
+The server exports traces, logs and metrics over OTLP gRPC to Google Cloud, with the same setup locally and on Cloud Run. The ADK web UI keeps its trace view when enabled.
 
 ## What's Instrumented
 
-- **LLM Operations**: Google Generative AI SDK calls with request/response details
-- **Structured Logging**: JSON logs with automatic trace correlation for Google Cloud Logging
-- **Agent Callbacks**: Lifecycle logging for agent start/end, model calls, and tool invocations
+- **Agent runs**: ADK spans for each invocation, agent, model call and tool call, plus ADK's GenAI metrics (operation duration, token usage, agent and tool call counts, and the `adk.experimental.*` breakdowns that `ADK_EXPERIMENTAL_TELEMETRY` adds) whenever metrics are on
+- **GenAI events**: Model call details as log records, with message content when [capture](#message-content-capture) is on
+- **Application logs**: Python `logging` records with trace context, including the [callback logging](#callback-logging)
 
 ## Key Features
 
-- **Consistent Setup**: The same two-phase setup in every environment, local and deployed: `configure_otel_resource()` before `get_fast_api_app()`, then `configure_telemetry()`
-- **Instance-Level Tracking**: Unique `SERVICE_INSTANCE_ID` per process (PID + UUID) for collision-free identification
-- **Environment Grouping**: `SERVICE_NAMESPACE` automatically set to environment name in deployed environments (`dev`, `stage`, `prod`)
-- **Version Tracking**: `SERVICE_VERSION` set to Cloud Run revision ID for deployment correlation
-- **Google Cloud Integration**: Direct export to Google Cloud Trace (OTLP) and Cloud Logging
-- **Trace Correlation**: Logs automatically include trace context via `LoggingInstrumentor`
-- **Service Identification**: OpenTelemetry `service.name` set to `AGENT_NAME` environment variable
-- **Authentication**: Uses Application Default Credentials (ADC) for Google Cloud APIs
+- **Owned providers**: `configure_telemetry()` sets the tracer, logger and (when the resource has `cloud.region`) meter providers before `get_fast_api_app()`; ADK only attaches its web UI processors to them
+- **Google Cloud**: Traces and logs go to the [Telemetry API](https://cloud.google.com/stackdriver/docs/reference/telemetry/overview) with Application Default Credentials, landing in Cloud Trace and Cloud Logging
+- **Metrics where a location is known**: On Cloud Run, metrics go to Google automatically. Locally they go to Google only when you add `cloud.region=<region>` to `OTEL_RESOURCE_ATTRIBUTES`; otherwise they are off. Google metrics land in Cloud Monitoring beside Cloud Run's native metrics
+- **One backend**: Telemetry targets Google Cloud only. To use another backend, replace `telemetry.py`
+- **Consistent resource**: Every signal carries the same identifying attributes: `service.name` from `AGENT_NAME`, `service.namespace` per environment, a unique `service.instance.id` per process, and the Cloud Run revision as `faas.version` from the resource detector
+- **Cloud Run logs in place**: On Cloud Run, the traces and logs resource adds the `cloud_run_revision` attributes, so logs appear in the service's Logs tab beside stdout. Metrics use a separate resource without them, because the Telemetry API drops metric points that carry `gcp.resource_type`, so metric queries cannot filter on revision labels
 
 ## Configuration
 
 **Required environment variables:**
-- `AGENT_NAME`: OpenTelemetry service identifier (required)
-- `GOOGLE_CLOUD_PROJECT`: GCP project ID for trace and log export (required)
-- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`: Capture LLM message content - `TRUE` or `FALSE` (required)
+- `AGENT_NAME`: OpenTelemetry `service.name` (required)
+- `GOOGLE_CLOUD_PROJECT`: GCP project ID (required)
+- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`: Message content capture mode (required, see [Message Content Capture](#message-content-capture))
 
 **Optional variables:**
-- `GOOGLE_CLOUD_LOCATION`: Vertex AI model endpoint location, not the deployment region
 - `LOG_LEVEL`: Logging verbosity - `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` (default: `INFO`)
-- `TELEMETRY_NAMESPACE`: Service namespace for trace grouping (default: `local`, auto-set to the environment name, like `dev`, in deployed environments)
+- `OTEL_RESOURCE_ATTRIBUTES`: override or add resource attributes, like `OTEL_RESOURCE_ATTRIBUTES=service.namespace=alice-local` to group your local experiments (Terraform sets `service.namespace` to the environment name when deployed)
 
-See `.env.example` for complete configuration reference.
+Details and defaults: [Environment Variables](environment-variables.md).
 
-## Usage
+> [!NOTE]
+> Only `uv run server` and the container entry point run this setup. `adk web`, `adk api_server` and `adk run` use ADK's own telemetry setup instead.
 
-Identical OpenTelemetry setup across local development and deployed environments:
-- Traces and logs automatically exported to Google Cloud
-- ADK web UI available locally (when web interface enabled)
-- **Production tip**: Use INFO log level to minimize logging costs
+## Viewing Telemetry in Google Cloud
 
-## Viewing Traces and Logs
+**[Cloud Trace](https://console.cloud.google.com/traces):** Filter by service name, view spans, timing, and generative AI events.
 
-### Google Cloud Console (Recommended)
+On Cloud Run, a request's traces, logs and metrics can arrive late on a quiet service, because CPU is allocated only during requests. Causes and options: [OpenTelemetry Architecture](references/opentelemetry-architecture.md#export).
 
-**[Cloud Trace](https://console.cloud.google.com/traces):** Filter by agent name, view spans, timing, and generative AI events
+**[Logs Explorer](https://console.cloud.google.com/logs):** Application logs land in the log `otlp` and GenAI events in `gen_ai.client.inference.operation.details`. On Cloud Run both are on the `cloud_run_revision` resource; locally they are on `generic_task`.
 
-**[Logs Explorer](https://console.cloud.google.com/logs):** Query `logName="projects/{PROJECT_ID}/logs/{AGENT_NAME}-otel-logs"` for correlated logs (replace `{AGENT_NAME}` with your agent identifier)
+```text
+logName="projects/{PROJECT_ID}/logs/otlp"
+resource.type="cloud_run_revision"
+resource.labels.service_name="{AGENT_NAME}-{ENVIRONMENT}"
+```
+
+**[Metrics Explorer](https://console.cloud.google.com/monitoring/metrics-explorer):** ADK's GenAI metrics (like `gen_ai.client.token.usage`) appear as `prometheus.googleapis.com/<name>/<kind>` on the `prometheus_target` resource, beside Cloud Run's native metrics on the service's Metrics tab. On Cloud Run, metrics go to Google automatically. Locally they go to Google only when you add `cloud.region=<region>` to `OTEL_RESOURCE_ATTRIBUTES`; otherwise they are off.
 
 ### gcloud CLI
 
 ```bash
-# Tail logs in real-time
-gcloud logging tail "resource.type=cloud_run_revision" --format=json
-
-# Filter by log name
-gcloud logging tail "logName:projects/{PROJECT_ID}/logs/{AGENT_NAME}-otel-logs"
+# Tail the service's OpenTelemetry logs
+gcloud logging tail 'logName="projects/{PROJECT_ID}/logs/otlp" AND resource.type="cloud_run_revision"' --format=json
 
 # View recent traces
 gcloud trace list --limit=10
@@ -67,47 +65,21 @@ Install the [Google Cloud Code extension](https://cloud.google.com/code/docs/vsc
 
 ## Architecture
 
-The deployed ADK server runs on Cloud Run and exports traces directly to Cloud Trace through the Telemetry OTLP API.
+`server.py` calls `configure_telemetry()` before `get_fast_api_app()`. It builds the resource and the tracer, logger and meter providers (the meter provider only when the resource has `cloud.region`), sets them globally, and instruments logging. `telemetry.py` replaces ADK's internal telemetry setup with a function that only attaches the web UI's span and log processors to those providers, so ADK builds no providers, exporters or instrumentation of its own.
 
-The observability module uses a two-phase initialization strategy to coexist with ADK's internal telemetry:
-
-1. **Phase 1** (`configure_otel_resource()`): Set resource attributes via `OTEL_RESOURCE_ATTRIBUTES` env var *before* ADK starts. ADK reads these when constructing its internal `TracerProvider`.
-2. **Phase 2** (`configure_telemetry()`): Run *after* `get_fast_api_app()` returns. Augment ADK's existing `TracerProvider` with a Cloud Trace span processor rather than replacing it. Configure logging exporters independently.
-
-This approach preserves ADK's web UI traces (in-memory spans for local development) while adding Google Cloud export for all environments.
-
-For the full explanation of why this design exists, including ADK's auto-instrumentation behavior and dependency decisions, see [OpenTelemetry Architecture](references/opentelemetry-architecture.md).
-
-## Implementation Details
-
-**Functions:** `configure_otel_resource()` sets resource attributes, `configure_telemetry()` configures exporters
-
-**Components:** `GoogleGenAiSdkInstrumentor` (LLM ops), `LoggingInstrumentor` (trace context), `CloudLoggingExporter` (logs), `OTLPSpanExporter` (traces)
-
-> [!NOTE]
-> ADK auto-detects and calls `GoogleGenAiSdkInstrumentor().instrument()` when the package is installed. The explicit call in `telemetry.py` is redundant but idempotent — it serves as a defensive measure if the project ever stops using ADK's `get_fast_api_app()`.
+Design decisions, the ADK patch, and dependencies: [OpenTelemetry Architecture](references/opentelemetry-architecture.md).
 
 ### Resource Attributes
 
-OpenTelemetry resource attributes uniquely identify your service instances in traces and logs:
+| Attribute | Source | Example |
+|-----------|--------|---------|
+| `service.name` | `AGENT_NAME` | `your-agent-name` |
+| `service.namespace` | `OTEL_RESOURCE_ATTRIBUTES` (unset by default) | `dev`/`stage`/`prod` (deployed) or `alice-local` |
+| `service.instance.id` | Generated per process (PID + UUID) | `worker-1234-a1b2c3d4e5f6` |
+| `gcp.project_id` | `GOOGLE_CLOUD_PROJECT` | `my-project-id` |
+| `cloud.*`, `faas.*` | GCP resource detector | `cloud.region=us-central1`, `faas.version=your-agent-name-dev-00042-abc` on Cloud Run |
 
-| Attribute | Source | Example | Description |
-|-----------|--------|---------|-------------|
-| `service.name` | `AGENT_NAME` env var | `your-agent-name` | Service identifier (set explicitly in `.env`) |
-| `service.namespace` | `TELEMETRY_NAMESPACE` env var | `dev`/`stage`/`prod` (deployed) or `local` (dev) | Environment name grouping for traces |
-| `service.version` | `K_REVISION` env var | `your-agent-name-00042-abc` (deployed) or `local` (dev) | Cloud Run revision or local dev indicator |
-| `service.instance.id` | Generated | `worker-1234-a1b2c3d4e5f6` | Unique process instance (PID + UUID) |
-| `gcp.project_id` | `GOOGLE_CLOUD_PROJECT` env var | `my-project-id` | GCP project for resource correlation |
-
-**Local Development:**
-- `service.namespace`: Defaults to `"local"` (customize via `TELEMETRY_NAMESPACE` for multi-developer disambiguation)
-- `service.version`: Set to `"local"`
-- `service.instance.id`: Unique per server restart (includes UUID to prevent collisions)
-
-**Deployed Environments:**
-- `service.namespace`: Automatically set to environment name (`dev`, `stage`, `prod`)
-- `service.version`: Automatically set to Cloud Run revision ID
-- `service.instance.id`: Unique per container instance
+`OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES` win over these on a shared key, and the template's values win over the detector's. The standard `OTEL_SDK_DISABLED=true` turns all export off (SDK behavior) and leaves the web UI trace view empty.
 
 ## Alerting
 
@@ -135,28 +107,44 @@ The traffic policy fires on a spike rather than on silence: an idle environment 
 
 `LoggingCallbacks` (in `callbacks.py`) logs agent lifecycle events (start/end, model calls, tool invocations) with automatic trace context correlation.
 
-### Custom Gen AI Usage Attributes
+### Gen AI Usage Attributes
 
-`LoggingCallbacks.after_model` (registered as the root agent's `after_model_callback`) supplements the genai instrumentor's auto-emitted attributes with three token counts extracted from `GenerateContentResponseUsageMetadata`:
+ADK records token usage on its `generate_content` span from `GenerateContentResponseUsageMetadata`:
 
-| Attribute | Source field | Semconv status |
-|---|---|---|
-| `gen_ai.usage.cache_read.input_tokens` | `cached_content_token_count` | Canonical (Development stability) — matches "tokens served from provider-managed cache" |
-| `gen_ai.usage.reasoning_tokens` | `thoughts_token_count` | Draft / convention-consistent — name not yet final in semconv, but converging across Gemini / OpenAI / Anthropic telemetry |
-| `gen_ai.usage.tool_use.input_tokens` | `tool_use_prompt_token_count` | Custom — no semconv equivalent yet; name follows the `cache_read.input_tokens` pattern for symmetry |
+| Attribute | Source fields |
+|---|---|
+| `gen_ai.usage.input_tokens` | `prompt_token_count` + `tool_use_prompt_token_count` |
+| `gen_ai.usage.output_tokens` | `candidates_token_count` + `thoughts_token_count` |
+| `gen_ai.usage.cache_read.input_tokens` | `cached_content_token_count` |
+| `gen_ai.usage.reasoning.output_tokens` | `thoughts_token_count` |
 
-The genai instrumentor already auto-emits `gen_ai.usage.input_tokens` (from `prompt_token_count`) and `gen_ai.usage.output_tokens` (from `candidates_token_count`) on its `generate_content` span. The callback does not duplicate those. `total_token_count` is intentionally omitted — no corresponding semconv span attribute exists; the total is derivable as `input_tokens + output_tokens + reasoning_tokens + tool_use.input_tokens`.
-
-String literals are used at the emission site rather than imported constants because the installed `opentelemetry-semantic-conventions` (0.58b0) does not yet export constants for the cache/reasoning/tool-use attributes. On future version bumps, check `opentelemetry.semconv._incubating.attributes.gen_ai_attributes` and switch to constant imports once upstream ships them.
+For usage analysis over time, use ADK's token metrics (`gen_ai.client.token.usage` and the `adk.experimental.*` token histograms) rather than span attributes.
 
 ## Message Content Capture
 
-`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` controls LLM content capture:
-- `TRUE`: Full content (debugging, higher costs, sensitive data)
-- `FALSE`: Metadata only (production, lower costs, privacy)
+Two settings decide where user content (prompts, responses, tool arguments and results) lands in telemetry:
+
+| Setting | Controls | Default |
+|---|---|---|
+| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | GenAI content: event log records, and the `gen_ai.input.messages` / `gen_ai.output.messages` and `gen_ai.tool.call.arguments` / `gen_ai.tool.call.result` span attributes | Required. Deployed, bootstrap writes it from each root's `terraform.tfvars` |
+| `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS` | Live streaming (`/run_live`) content on `gcp.vertex.agent.data`, and content on ADK's deprecated legacy telemetry schema | ADK default `true`, whatever the capture mode |
+
+The capture mode takes exactly one of these four values, defined by OpenTelemetry's [GenAI utilities](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/util/opentelemetry-util-genai):
+
+| Value | Standard content goes to |
+|---|---|
+| `NO_CONTENT` | Nowhere (metadata only) |
+| `EVENT_ONLY` | GenAI event log records (`gen_ai.client.inference.operation.details`), shown in the span's Input/Output view in Cloud Trace |
+| `SPAN_ONLY` | Span attributes: `gen_ai.input.messages` and `gen_ai.output.messages` on model calls, `gen_ai.tool.call.arguments` and `gen_ai.tool.call.result` on tool calls |
+| `SPAN_AND_EVENT` | Both |
 
 > [!IMPORTANT]
-> Must be explicitly set to `TRUE` for ADK to capture conversation content
+> `NO_CONTENT` keeps content out of normal agent runs, but live streaming still records what it sends to the model on `gcp.vertex.agent.data` unless `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false`. Deployed, Terraform sets it whenever the capture mode is `NO_CONTENT`; locally, set both in `.env`.
+
+Captured content raises logging costs and stores user data. The bootstrap examples choose:
+
+- Dev: `SPAN_AND_EVENT`. The events feed Cloud Trace's Input/Output view, which reads events, not span attributes. The span attributes put tool arguments and results on the tool spans, the only place they are recorded, and show content in the span attribute panels of Cloud Trace and the ADK web UI. Content is stored twice, and model-call spans grow with the conversation.
+- Stage and prod: `NO_CONTENT`, so Terraform also sets `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false` and no user content reaches telemetry.
 
 ## Resources
 

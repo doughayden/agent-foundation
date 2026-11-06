@@ -1,7 +1,7 @@
 """Shared pytest fixtures for unit tests.
 
 ``pytest_configure()`` mocks Google auth so unit collection never touches real
-credentials. ``ServerEnv`` tests stay off the real ``.env`` via ``isolated_environ``.
+credentials. Config tests stay off the real ``.env`` via ``isolated_environ``.
 """
 
 from __future__ import annotations
@@ -34,6 +34,22 @@ PACKAGE_NAME = next(SRC_DIR.glob("*/__init__.py")).parent.name
 EVAL_LANE_DIR = Path(__file__).parents[1] / "eval"
 EVAL_GATE_MODULE_PATH = EVAL_LANE_DIR / "test_agent_eval.py"
 EVAL_CONFTEST_PATH = EVAL_LANE_DIR / "conftest.py"
+
+# Names in telemetry.py that mock_telemetry_sdk replaces
+TELEMETRY_SDK_NAMES = (
+    "TracerProvider",
+    "LoggerProvider",
+    "MeterProvider",
+    "BatchSpanProcessor",
+    "BatchLogRecordProcessor",
+    "PeriodicExportingMetricReader",
+    "OTLPSpanExporter",
+    "OTLPLogExporter",
+    "OTLPMetricExporter",
+    "LoggingInstrumentor",
+    "build_resources",
+    "google_channel_credentials",
+)
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -219,38 +235,15 @@ class MockLlmRequest:
         self.contents = contents
 
 
-class MockUsageMetadata:
-    """Mock UsageMetadata for token usage tracking tests."""
-
-    def __init__(
-        self,
-        prompt_token_count: int | None = None,
-        candidates_token_count: int | None = None,
-        total_token_count: int | None = None,
-        cached_content_token_count: int | None = None,
-        thoughts_token_count: int | None = None,
-        tool_use_prompt_token_count: int | None = None,
-    ) -> None:
-        """Initialize mock usage metadata with optional token counts."""
-        self.prompt_token_count = prompt_token_count
-        self.candidates_token_count = candidates_token_count
-        self.total_token_count = total_token_count
-        self.cached_content_token_count = cached_content_token_count
-        self.thoughts_token_count = thoughts_token_count
-        self.tool_use_prompt_token_count = tool_use_prompt_token_count
-
-
 class MockLlmResponse:
     """Mock LlmResponse for model callbacks."""
 
     def __init__(
         self,
         content: MockContent | None = None,
-        usage_metadata: MockUsageMetadata | None = None,
     ) -> None:
         """Initialize mock LLM response."""
         self.content = content
-        self.usage_metadata = usage_metadata
 
 
 class MockEventActions:
@@ -436,46 +429,20 @@ def create_mock_llm_request() -> Callable[..., MockLlmRequest]:
 
 @pytest.fixture
 def mock_llm_response() -> MockLlmResponse:
-    """Create a mock LLM response with content and usage metadata."""
+    """Create a mock LLM response with content."""
     return MockLlmResponse(
-        content=MockContent({"text": "The answer is 42", "confidence": 0.95}),
-        usage_metadata=MockUsageMetadata(
-            prompt_token_count=150,
-            candidates_token_count=50,
-            total_token_count=200,
-        ),
+        content=MockContent({"text": "The answer is 42", "confidence": 0.95})
     )
 
 
 @pytest.fixture
 def create_mock_llm_response() -> Callable[..., MockLlmResponse]:
-    """Factory for MockLlmResponse with custom content and usage metadata."""
+    """Factory for MockLlmResponse with custom content."""
 
-    def _factory(
-        content: MockContent | None = None,
-        usage_metadata: MockUsageMetadata | None = None,
-    ) -> MockLlmResponse:
-        return MockLlmResponse(content=content, usage_metadata=usage_metadata)
+    def _factory(content: MockContent | None = None) -> MockLlmResponse:
+        return MockLlmResponse(content=content)
 
     return _factory
-
-
-@pytest.fixture
-def create_mock_usage_metadata() -> Callable[..., MockUsageMetadata]:
-    """Factory for MockUsageMetadata with custom token counts."""
-
-    def _factory(**kwargs: Any) -> MockUsageMetadata:
-        return MockUsageMetadata(**kwargs)
-
-    return _factory
-
-
-@pytest.fixture
-def mock_span(mocker: MockerFixture) -> MockType:
-    """Mock span returned by ``trace.get_current_span()`` in callbacks."""
-    span: MockType = mocker.Mock()
-    mocker.patch(f"{PACKAGE_NAME}.callbacks.trace.get_current_span", return_value=span)
-    return span
 
 
 @pytest.fixture
@@ -575,7 +542,7 @@ def valid_server_env() -> dict[str, str]:
     return {
         "GOOGLE_CLOUD_PROJECT": "test-project",
         "AGENT_NAME": "test-agent",
-        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "EVENT_ONLY",
     }
 
 
@@ -583,19 +550,44 @@ def valid_server_env() -> dict[str, str]:
 def isolated_environ(mocker: MockerFixture) -> Callable[[dict[str, str]], None]:
     """Factory that sets ``os.environ`` to exactly the given variables.
 
-    Also turns off ``ServerEnv``'s ``.env`` loading, so neither the developer's shell
-    nor a local ``.env`` reaches the result. A test exercising ``.env`` passes
-    ``_env_file`` at construction, which takes precedence over the model config.
+    Also replaces ``load_dotenv`` in the config module with a no-op, so neither the
+    developer's shell nor a local ``.env`` reaches the result. Tests exercising
+    ``.env`` use ``create_dotenv`` instead.
 
     Returns:
         Function that replaces the environment with its argument.
     """
-    mocker.patch.dict(
-        f"{PACKAGE_NAME}.config.ServerEnv.model_config", {"env_file": None}
-    )
+    mocker.patch(f"{PACKAGE_NAME}.config.load_dotenv")
 
     def _factory(variables: dict[str, str]) -> None:
         mocker.patch.dict(os.environ, variables, clear=True)
+
+    return _factory
+
+
+@pytest.fixture
+def create_dotenv(mocker: MockerFixture, tmp_path: Path) -> Callable[[str], Path]:
+    """Factory that writes a ``.env`` file above a temporary working directory.
+
+    Restores the real ``load_dotenv`` in the config module and points the working
+    directory two levels below the file, so the template's own lookup (upward from
+    the working directory) and python-dotenv's precedence over ``os.environ`` both
+    run for real. Use with ``isolated_environ``, called first, which this patch then
+    replaces.
+
+    Returns:
+        Function taking the file content and returning the written path.
+    """
+    import dotenv
+
+    def _factory(content: str) -> Path:
+        env_file = tmp_path / ".env"
+        env_file.write_text(content)
+        working_directory = tmp_path / "app" / "src"
+        working_directory.mkdir(parents=True)
+        mocker.patch(f"{PACKAGE_NAME}.config.load_dotenv", dotenv.load_dotenv)
+        mocker.patch("os.getcwd", return_value=str(working_directory))
+        return env_file
 
     return _factory
 
@@ -809,3 +801,43 @@ def create_mock_session(mocker: MockerFixture) -> Callable[..., MockType]:
         return session
 
     return _factory
+
+
+# Telemetry fixtures
+@pytest.fixture
+def mock_telemetry_sdk(mocker: MockerFixture) -> dict[str, MockType]:
+    """Replace the SDK classes, globals and loggers ``configure_telemetry`` touches.
+
+    Global provider setters are patched so no test changes process-wide providers,
+    and the ``opentelemetry`` and root loggers are restored after each test.
+
+    Returns:
+        Mocks keyed by the patched name in the telemetry module (the
+        ``uvicorn.access`` filters are restored after each test), the three
+        ``set_*_provider`` setters keyed by their function names, and the root
+        logger's ``setLevel`` as ``root_set_level``.
+    """
+    telemetry = importlib.import_module(f"{PACKAGE_NAME}.telemetry")
+    mocks: dict[str, MockType] = {
+        name: mocker.patch.object(telemetry, name) for name in TELEMETRY_SDK_NAMES
+    }
+    empty = telemetry.Resource.get_empty()
+    mocks["build_resources"].return_value = (empty, empty)
+    mocks["set_tracer_provider"] = mocker.patch.object(
+        telemetry.trace, "set_tracer_provider"
+    )
+    mocks["set_logger_provider"] = mocker.patch.object(
+        telemetry.logs, "set_logger_provider"
+    )
+    mocks["set_meter_provider"] = mocker.patch.object(
+        telemetry.metrics, "set_meter_provider"
+    )
+    sdk_logger = telemetry.logging.getLogger("opentelemetry")
+    mocker.patch.object(sdk_logger, "handlers", [])
+    mocker.patch.object(sdk_logger, "propagate", True)
+    access_logger = telemetry.logging.getLogger("uvicorn.access")
+    mocker.patch.object(access_logger, "filters", [])
+    mocks["root_set_level"] = mocker.patch.object(
+        telemetry.logging.getLogger(), "setLevel"
+    )
+    return mocks

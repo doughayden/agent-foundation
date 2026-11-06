@@ -341,9 +341,6 @@ omit = [
 
     # prompt.py: Prompt text and formatting (integration tested via agent runs)
     "src/{your_agent}/**/prompt.py",
-
-    # telemetry.py: OpenTelemetry setup (infrastructure initialization)
-    "src/{your_agent}/telemetry.py",
 ]
 ```
 
@@ -352,7 +349,6 @@ omit = [
 - **`server.py`**: FastAPI entrypoint with ADK initialization - tested via integration tests in CI/CD
 - **`agent.py`**: Pure ADK configuration (plugin registration, model selection) - tested through agent behavior
 - **`prompt.py`**: Prompt templates and formatting - tested via agent evaluations, not unit tests
-- **`telemetry.py`**: OpenTelemetry infrastructure setup - validated through trace output, not unit tests
 
 **Pattern:** We exclude configuration and infrastructure initialization files. Business logic and utilities must have 100% coverage.
 

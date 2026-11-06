@@ -1,6 +1,6 @@
 """Comprehensive unit tests for config module."""
 
-from pathlib import Path
+import os
 
 import pytest
 from pydantic import ValidationError
@@ -50,7 +50,7 @@ class TestServerEnv:
         env = ServerEnv()
 
         # Check defaults
-        assert env.google_cloud_location == "us-central1"
+        assert env.google_cloud_location == "global"
         assert env.log_level == "INFO"
         assert env.serve_web_interface is False
         assert env.reload_agents is False
@@ -78,7 +78,7 @@ class TestServerEnv:
             "ALLOW_ORIGINS": '["http://localhost:3000"]',
             "HOST": "0.0.0.0",  # noqa: S104
             "PORT": "9000",
-            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "false",
+            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "NO_CONTENT",
         }
 
         isolated_environ(data)
@@ -98,7 +98,40 @@ class TestServerEnv:
         assert env.allow_origins == '["http://localhost:3000"]'
         assert env.host == "0.0.0.0"  # noqa: S104
         assert env.port == 9000
-        assert env.otel_instrumentation_genai_capture_message_content is False
+        assert env.otel_instrumentation_genai_capture_message_content == "NO_CONTENT"
+
+    @pytest.mark.parametrize(
+        "value", ["NO_CONTENT", "EVENT_ONLY", "SPAN_ONLY", "SPAN_AND_EVENT"]
+    )
+    def test_content_capture_accepts_adk_modes(
+        self, value: str, valid_server_env: dict[str, str], isolated_environ
+    ) -> None:
+        """Test that each ADK capture mode passes."""
+        data = {
+            **valid_server_env,
+            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": value,
+        }
+        isolated_environ(data)
+
+        env = ServerEnv()
+
+        assert env.otel_instrumentation_genai_capture_message_content == value
+
+    @pytest.mark.parametrize("value", ["TRUE", "false", "event_only", ""])
+    def test_content_capture_rejects_other_values(
+        self, value: str, valid_server_env: dict[str, str], isolated_environ
+    ) -> None:
+        """Test that booleans and non-exact mode names fail validation."""
+        data = {
+            **valid_server_env,
+            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": value,
+        }
+        isolated_environ(data)
+
+        with pytest.raises(ValidationError) as exc_info:
+            ServerEnv()
+
+        assert exc_info.value.errors()[0]["type"] == "literal_error"
 
     def test_allow_origins_list_property(
         self, valid_server_env: dict[str, str], isolated_environ
@@ -235,7 +268,7 @@ class TestInitializeEnvironment:
     def test_initialize_environment_success(
         self, valid_server_env: dict[str, str], isolated_environ, mock_print_config
     ) -> None:
-        """Test that a valid environment is returned and printed."""
+        """Test that the validated settings are returned and printed."""
         isolated_environ(valid_server_env)
         mock_print = mock_print_config(ServerEnv)
 
@@ -267,47 +300,56 @@ class TestDotEnv:
     """Tests for .env loading and its precedence below the environment."""
 
     def test_env_file_supplies_values_absent_from_environment(
-        self, isolated_environ, tmp_path: Path
+        self, isolated_environ, create_dotenv, mock_print_config
     ) -> None:
         """Test that .env fills in variables the environment does not set."""
         isolated_environ({})
-        env_file = tmp_path / ".env"
-        env_file.write_text(
+        create_dotenv(
             "GOOGLE_CLOUD_PROJECT=dotenv-project\n"
             "AGENT_NAME=dotenv-agent\n"
-            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true\n"
+            "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=SPAN_ONLY\n"
         )
+        mock_print_config(ServerEnv)
 
-        env = ServerEnv(_env_file=env_file)
+        env = initialize_environment()
 
         assert env.google_cloud_project == "dotenv-project"
         assert env.agent_name == "dotenv-agent"
-        assert env.otel_instrumentation_genai_capture_message_content is True
+        assert env.otel_instrumentation_genai_capture_message_content == "SPAN_ONLY"
 
     def test_environment_wins_over_env_file(
-        self, valid_server_env: dict[str, str], isolated_environ, tmp_path: Path
+        self,
+        valid_server_env: dict[str, str],
+        isolated_environ,
+        create_dotenv,
+        mock_print_config,
     ) -> None:
-        """Test that a variable set in the environment beats the same key in .env."""
+        """Test that a variable set in the shell beats the same key in .env."""
         isolated_environ({**valid_server_env, "LOG_LEVEL": "DEBUG"})
-        env_file = tmp_path / ".env"
-        env_file.write_text("LOG_LEVEL=WARNING\nGOOGLE_CLOUD_PROJECT=dotenv-project\n")
+        create_dotenv("LOG_LEVEL=WARNING\nGOOGLE_CLOUD_PROJECT=dotenv-project\n")
+        mock_print_config(ServerEnv)
 
-        env = ServerEnv(_env_file=env_file)
+        env = initialize_environment()
 
         assert env.log_level == "DEBUG"
         assert env.google_cloud_project == "test-project"
 
-    def test_env_file_keys_the_model_does_not_define_are_ignored(
-        self, valid_server_env: dict[str, str], isolated_environ, tmp_path: Path
+    def test_env_file_values_reach_os_environ(
+        self,
+        valid_server_env: dict[str, str],
+        isolated_environ,
+        create_dotenv,
+        mock_print_config,
     ) -> None:
-        """Test that .env keys owned by other readers do not fail validation."""
+        """Test that keys other readers own (ADK, the OTel SDK) land in os.environ."""
         isolated_environ(valid_server_env)
-        env_file = tmp_path / ".env"
-        env_file.write_text("GOOGLE_GENAI_USE_ENTERPRISE=TRUE\nBASTION_ZONE=z\n")
+        create_dotenv("ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS=TRUE\n")
+        mock_print_config(ServerEnv)
 
-        env = ServerEnv(_env_file=env_file)
+        env = initialize_environment()
 
         assert env.google_cloud_project == "test-project"
+        assert os.environ["ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS"] == "TRUE"
 
 
 class TestEdgeCases:

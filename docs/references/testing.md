@@ -142,7 +142,7 @@ def test_config_with_custom_region(mocker: MockerFixture) -> None:
     # Test config loading with custom region
 ```
 
-`ServerEnv` tests build settings through the `isolated_environ` factory fixture, which sets `os.environ` to exactly the given variables and disables `env_file`, so neither the developer's shell nor a local `.env` leaks in. Tests that exercise `.env` loading pass `_env_file=tmp_path / ".env"`.
+`ServerEnv` tests build settings through the `isolated_environ` factory fixture, which sets `os.environ` to exactly the given variables and replaces the config module's `load_dotenv` with a no-op, so neither the developer's shell nor a local `.env` leaks in. Tests that exercise `.env` loading use the `create_dotenv` factory, which writes a temporary `.env` and points `load_dotenv` at it.
 
 If a future import chain triggers env var reads at collection time, add direct `os.environ` assignments in `pytest_configure()` (see section below).
 

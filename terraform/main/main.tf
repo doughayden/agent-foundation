@@ -14,11 +14,11 @@ locals {
     "roles/aiplatform.user",
     "roles/cloudsql.client",
     "roles/cloudsql.instanceUser",
-    "roles/cloudtrace.agent",
     "roles/logging.logWriter",
     "roles/serviceusage.serviceUsageConsumer",
     "roles/storage.bucketViewer",
     "roles/storage.objectUser",
+    "roles/telemetry.metricsWriter",
     "roles/telemetry.tracesWriter",
   ])
 
@@ -26,7 +26,8 @@ locals {
   locations = toset([var.region])
 
   # Cloud Run service environment variables
-  run_app_env = {
+  run_app_env = merge({
+    ADK_EXPERIMENTAL_TELEMETRY                         = "TRUE"
     ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS         = coalesce(var.adk_suppress_experimental_feature_warnings, "TRUE")
     AGENT_NAME                                         = var.agent_name
     ALLOW_ORIGINS                                      = jsonencode(["http://127.0.0.1:8000", "http://localhost:8000"]) # Localhost-only for gcloud proxy access (add client service origins when UI is deployed)
@@ -36,12 +37,15 @@ locals {
     GOOGLE_GENAI_USE_ENTERPRISE                        = "TRUE"
     LOG_LEVEL                                          = coalesce(var.log_level, "INFO")
     MEMORY_SERVICE_URI                                 = "agentengine://${google_vertex_ai_reasoning_engine.session_and_memory.id}"
-    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = coalesce(var.otel_instrumentation_genai_capture_message_content, "FALSE")
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = var.otel_instrumentation_genai_capture_message_content
+    OTEL_RESOURCE_ATTRIBUTES                           = "service.namespace=${var.environment}"
     RELOAD_AGENTS                                      = "FALSE"
     SERVE_WEB_INTERFACE                                = coalesce(var.serve_web_interface, "FALSE")
     SESSION_SERVICE_URI                                = "postgresql+asyncpg://${google_sql_user.app.name}:@localhost:5432/${google_sql_database.sessions.name}"
-    TELEMETRY_NAMESPACE                                = var.environment
-  }
+    },
+    # ADK's live streaming records content unless told not to, so NO_CONTENT turns that off too
+    var.otel_instrumentation_genai_capture_message_content == "NO_CONTENT" ? { ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS = "false" } : {},
+  )
 
   # Cloud SQL Auth Proxy args — shared between bastion and Cloud Run sidecar
   cloud_sql_proxy_args = [

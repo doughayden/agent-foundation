@@ -1,16 +1,19 @@
 """Environment configuration for the server.
 
-``ServerEnv`` reads the process environment, then a ``.env`` file in the working
-directory. The environment wins over ``.env``, so a value set in the shell or by the
-platform is never replaced by a stale local file.
+``initialize_environment()`` loads a ``.env`` file into ``os.environ`` without
+overriding variables already set, then ``ServerEnv`` reads the environment. A value
+set in the shell or by the platform is never replaced by a stale local file, and
+every reader of ``os.environ`` (ADK, the OpenTelemetry SDK) sees the ``.env``
+values.
 """
 
 import json
 import sys
 from typing import Literal
 
+from dotenv import find_dotenv, load_dotenv
 from pydantic import Field, ValidationError, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 
 class ServerEnv(BaseSettings):
@@ -21,7 +24,7 @@ class ServerEnv(BaseSettings):
 
     Attributes:
         google_cloud_project: GCP project ID for authentication and observability
-        google_cloud_location: Vertex AI region (e.g., us-central1)
+        google_cloud_location: Vertex AI model endpoint location
         agent_name: Unique agent identifier for resources and logs
         log_level: Logging verbosity level
         serve_web_interface: Whether to serve the ADK web interface
@@ -32,10 +35,8 @@ class ServerEnv(BaseSettings):
         allow_origins: JSON array string of allowed CORS origins
         host: Server host (127.0.0.1 for local, 0.0.0.0 for containers)
         port: Server port
-        otel_instrumentation_genai_capture_message_content: Capture LLM content in
-            OpenTelemetry spans
-        telemetry_namespace: OpenTelemetry service.namespace (environment grouping)
-        k_revision: Cloud Run revision, the OpenTelemetry service.version
+        otel_instrumentation_genai_capture_message_content: GenAI message content
+            capture mode, read by ADK
     """
 
     google_cloud_project: str = Field(
@@ -44,8 +45,8 @@ class ServerEnv(BaseSettings):
     )
 
     google_cloud_location: str = Field(
-        default="us-central1",
-        description="Vertex AI region (e.g., us-central1)",
+        default="global",
+        description="Vertex AI model endpoint location (global or a region)",
     )
 
     agent_name: str = Field(
@@ -107,25 +108,11 @@ class ServerEnv(BaseSettings):
         description="Server port",
     )
 
-    otel_instrumentation_genai_capture_message_content: bool = Field(
+    otel_instrumentation_genai_capture_message_content: Literal[
+        "NO_CONTENT", "EVENT_ONLY", "SPAN_ONLY", "SPAN_AND_EVENT"
+    ] = Field(
         ...,
-        description="OpenTelemetry message content capture setting",
-    )
-
-    telemetry_namespace: str = Field(
-        default="local",
-        description="OpenTelemetry service.namespace that groups traces by environment",
-    )
-
-    k_revision: str = Field(
-        default="local",
-        description="Cloud Run revision name, set by Cloud Run; unset means local",
-    )
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        # .env also carries variables other readers own (ADK, compose, the genai SDK)
-        extra="ignore",
+        description="ADK GenAI message content capture mode",
     )
 
     @field_validator("allow_origins")
@@ -171,8 +158,6 @@ class ServerEnv(BaseSettings):
         print(f"HOST:                  {self.host}")
         print(f"PORT:                  {self.port}")
         print(f"ALLOW_ORIGINS:         {self.allow_origins}")
-        print(f"TELEMETRY_NAMESPACE:   {self.telemetry_namespace}")
-        print(f"K_REVISION:            {self.k_revision}")
         print(
             "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: "
             f"{self.otel_instrumentation_genai_capture_message_content}\n\n"
@@ -194,20 +179,23 @@ class ServerEnv(BaseSettings):
 
 
 def initialize_environment() -> ServerEnv:
-    """Validate ``ServerEnv`` and print it, exiting on invalid configuration.
+    """Load ``.env``, then validate and print the server settings.
+
+    ``.env`` is found by searching upward from the working directory, and loading it
+    never overrides a variable already set, so the shell and the platform win.
 
     Returns:
-        Validated environment configuration.
+        Validated server configuration.
 
     Raises:
         SystemExit: Exits with code 1 if validation fails.
     """
+    load_dotenv(find_dotenv(usecwd=True))
     try:
         env = ServerEnv()
     except ValidationError as e:
         print("\n❌ Environment validation failed:\n")
         print(e)
         sys.exit(1)
-
     env.print_config()
     return env
