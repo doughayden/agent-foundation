@@ -19,7 +19,7 @@ Built for teams who need to move beyond prototypes and ship production AI agents
 ## Features
 
 ### ⚙️ Development & Build Optimization
-- **Optimized Docker builds**: Multi-stage builds with uv (~200MB images, fast rebuilds with layer caching)
+- **Optimized Docker builds**: Multi-stage uv builds; a code change rebuilds and pushes only a kilobyte-sized source layer
 - **Developer experience**: File sync with auto-restart via Docker Compose watch mode for fast feedback
 - **Code quality**: Strict type checking (mypy), 100% test coverage, modern linting (ruff)
 - **Template-ready**: One-command initialization script for rapid project setup

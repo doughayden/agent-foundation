@@ -239,12 +239,12 @@ For test modules with significant downstream customization, use the IDE diff-and
 
 ### Phase 4: Dependencies & Build (Mixed)
 
-**Goal:** Review dependency and build changes. pyproject.toml needs manual merge; Dockerfile and docker-compose.yml may be safe to sync directly or need manual review.
+**Goal:** Review dependency and build changes. pyproject.toml needs manual merge; Dockerfile and compose.yml may be safe to sync directly or need manual review.
 
 **Review order:**
 1. `pyproject.toml` — **Always manual review** (has project-specific deps). Open IDE diff.
 2. `Dockerfile` — Often safe to edit directly (version bumps). Open IDE diff.
-3. `docker-compose.yml` — Likely has project customizations (additive merge). Open IDE diff.
+3. `compose.yml` — Likely has project customizations (additive merge). Open IDE diff.
 4. `.env.example` — May have new variables (manual merge to preserve project-specific vars). Open IDE diff.
 
 **For each file:** Open IDE diff and **STOP** with options:

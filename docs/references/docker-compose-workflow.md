@@ -17,7 +17,7 @@ docker compose up --build --watch
 **What happens:**
 - Container starts with your latest code
 - Watch mode monitors your files for changes
-- Edits to `src/` files are **synced instantly** (no rebuild needed)
+- Edits to `src/` files are **synced and the app restarts** (no rebuild needed)
 - Changes to `pyproject.toml` or `uv.lock` **trigger automatic rebuild**
 
 **Leave it running** while you develop - changes are applied automatically!
@@ -61,12 +61,12 @@ docker compose up --build
 
 ## How Watch Mode Works
 
-Watch mode uses the configuration in `docker-compose.yml`:
+Watch mode uses the configuration in `compose.yml`:
 
 ```yaml
 develop:
   watch:
-    # Sync + restart: Instant file copy, editable install resolves imports
+    # Sync + restart: copy changed files in, the image imports from /app/src
     - action: sync+restart
       path: ./src
       target: /app/src
@@ -81,14 +81,14 @@ develop:
 
 ### Sync + Restart Action
 - **Triggers when:** You edit files in `src/`
-- **What happens:** Files are synced into running container, then container restarts
-- **Speed:** ~2-5 seconds (no rebuild)
+- **What happens:** Files are synced into running container, then container restarts on the same image
+- **Speed:** About 3 seconds from save to a healthy app (2.6-3.3s over five edits on an arm64 laptop)
 - **Use case:** Code changes during development
 
 ### Rebuild Action
 - **Triggers when:** You edit `pyproject.toml` or `uv.lock`
-- **What happens:** Full image rebuild, container recreated
-- **Speed:** ~5-10 seconds (with cache)
+- **What happens:** Image rebuilds from the dependency step on, container recreated on the new image
+- **Speed:** About 18 seconds from save to a healthy app (17.6s and 18.8s on an arm64 laptop with a warm uv cache)
 - **Use case:** Dependency changes
 
 ---
@@ -115,7 +115,7 @@ The bastion Auth Proxy binds to `0.0.0.0` (not loopback) to accept IAP tunnel co
 
 **Credentials:** Mounts `~/.config/gcloud` to `/gcloud-config` with `CLOUDSDK_CONFIG=/gcloud-config` (decouples from container home directory). IAP tunnel requires full gcloud CLI config, not just Application Default Credentials.
 
-**Developer IAM prerequisite:** `roles/iap.tunnelResourceAccessor` on your Google account. Without this role, the IAP tunnel fails with a permission denied error.
+**Developer IAM prerequisite:** `roles/iap.tunnelResourceAccessor` on your Google account. Without this role, the IAP tunnel fails to connect.
 
 **Port:** `5432` on the app container's localhost. The app connects to `localhost:5432` identically to Cloud Run, where the Auth Proxy sidecar also listens on the same address.
 
@@ -123,13 +123,13 @@ The bastion Auth Proxy binds to `0.0.0.0` (not loopback) to accept IAP tunnel co
 
 ### Connecting a local DB client
 
-The `app` service publishes `127.0.0.1:5432:5432`, so a database client on your host (psql, a GUI, migration tooling) can reach Cloud SQL through the same tunnel: the published port forwards into the app namespace where the IAP tunnel binds `0.0.0.0:5432`, then on through the bastion Auth Proxy. Connect as the app SA (the proxy impersonates it via `--auto-iam-authn`, so no password is needed):
+The `app` service publishes `127.0.0.1:5432:5432`, so a database client on your host (psql, a GUI, migration tooling) can reach Cloud SQL through the same tunnel: the published port forwards into the app namespace where the IAP tunnel binds `0.0.0.0:5432`, then on through the bastion Auth Proxy. Connect as the app SA: the bastion proxy impersonates it (`--impersonate-service-account`) and logs in with IAM database authentication (`--auto-iam-authn`), so no password is needed:
 
 ```bash
 psql "host=127.0.0.1 port=5432 user=<app-sa-email-without-.gserviceaccount.com> dbname=agent_sessions sslmode=disable"
 ```
 
-`sslmode=disable` is correct here, not a downgrade: the enforced TLS to Cloud SQL is terminated by the Auth Proxy, the local hop to the proxy is plaintext by design, and the laptop-to-bastion hop is already encrypted by the IAP tunnel. `sslmode=require` fails, because the proxy does not present a TLS server on its local listener. The same `roles/iap.tunnelResourceAccessor` prerequisite applies.
+`sslmode=disable` is the setting the proxy expects (the bastion's own bootstrap connects the same way): the Auth Proxy encrypts the connection to Cloud SQL, and the laptop-to-bastion hop runs inside the IAP tunnel. The same `roles/iap.tunnelResourceAccessor` prerequisite applies.
 
 > [!NOTE]
 > The compose services publish on their default host ports (`8000` app, `5432` Postgres), all bound to `127.0.0.1`. If one is already in use on your host (a local Postgres on `5432` is the common case), `docker compose up` fails to bind. Remap the host side of the affected `ports:` entry (like `127.0.0.1:5433:5432`); the container-side port and the app's in-namespace `localhost:5432` path are unaffected.
@@ -144,7 +144,7 @@ psql "host=127.0.0.1 port=5432 user=<app-sa-email-without-.gserviceaccount.com> 
 - **Sync:** Automatic via watch mode
 
 ### Credentials
-- **App container:** `~/.config/gcloud/application_default_credentials.json` mounted read-only at `/gcloud/application_default_credentials.json` — for Vertex AI and Cloud SQL IAM auth via `GOOGLE_APPLICATION_CREDENTIALS`
+- **App container:** `~/.config/gcloud/application_default_credentials.json` mounted read-only at `/gcloud/application_default_credentials.json` — for Vertex AI and telemetry export via `GOOGLE_APPLICATION_CREDENTIALS`
 - **IAP tunnel container:** Full `~/.config/gcloud/` directory mounted (writable) at `/gcloud-config/` with `CLOUDSDK_CONFIG=/gcloud-config` — decouples from container home directory, writable because gcloud CLI writes token cache and logs at runtime, IAP tunnel requires full gcloud CLI config beyond ADC
 
 ---
@@ -174,13 +174,8 @@ gcloud auth configure-docker us-central1-docker.pkg.dev
 # Set your image
 export REGISTRY_IMAGE="us-central1-docker.pkg.dev/project/repo/app:sha123"
 
-# Pull and run with docker-compose
+# Pull and run it with your local settings and credentials
 docker pull $REGISTRY_IMAGE
-docker compose run -e IMAGE=$REGISTRY_IMAGE app
-```
-
-**Alternative - direct run:**
-```bash
 docker run --rm \
   -v ~/.config/gcloud/application_default_credentials.json:/gcloud/application_default_credentials.json:ro \
   -e GOOGLE_APPLICATION_CREDENTIALS=/gcloud/application_default_credentials.json \
@@ -193,14 +188,15 @@ docker run --rm \
 
 ## Direct Docker Commands (Without Compose)
 
-If you need to build and run without docker-compose:
+If you need to build and run without Docker Compose:
 
 ```bash
-# Build the image with BuildKit
-DOCKER_BUILDKIT=1 docker build -t your-agent-name:latest .
+docker build -t your-agent-name:latest .
 
-# Run directly
-docker run \
+# Startup needs Application Default Credentials (telemetry export uses them)
+docker run --rm \
+  -v ~/.config/gcloud/application_default_credentials.json:/gcloud/application_default_credentials.json:ro \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/gcloud/application_default_credentials.json \
   -p 127.0.0.1:8000:8000 \
   --env-file .env \
   your-agent-name:latest

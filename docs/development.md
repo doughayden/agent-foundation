@@ -177,8 +177,8 @@ docker compose up --build --watch
 - App connects to `localhost:5432` identically to Cloud Run
 - Source files sync to container without rebuild (instant feedback)
 - Loads `.env` automatically for configuration
-- Multi-stage Dockerfile optimized with uv cache mounts (~80% faster rebuilds)
-- Non-root container (~200MB final image)
+- Multi-stage Dockerfile with uv; dependencies and source in separate layers
+- Non-root container
 
 ## Local-Only (uv run server)
 
@@ -325,7 +325,7 @@ your-agent-name/
   docs/                   # Documentation
   .env.example            # Environment template
   pyproject.toml          # Project configuration
-  docker-compose.yml      # Local development
+  compose.yml             # Local development
   Dockerfile              # Container image
   AGENTS.md               # AI coding agent instructions (plus tests/, terraform/, .github/workflows/)
   README.md               # Main documentation

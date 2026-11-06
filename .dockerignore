@@ -1,6 +1,6 @@
 # Python cache and compiled files
-__pycache__/
-*.py[cod]
+**/__pycache__/
+**/*.py[cod]
 *$py.class
 *.so
 .Python
@@ -22,9 +22,9 @@ htmlcov/
 # Development tools
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
+**/*.swp
+**/*.swo
+**/*~
 
 # Git and version control
 .git/
@@ -41,17 +41,17 @@ docs/
 !README.md
 
 # Environment files (should be provided at runtime)
-.env
-.env.*
+**/.env
+**/.env.*
 !.env.example
 
 # Logs and temporary files
 .log/
 .tmp/
-*.log
+**/*.log
 
 # ADK local storage (v1.20.0+)
-.adk/
+**/.adk/
 
 # Build artifacts
 dist/
@@ -59,7 +59,7 @@ build/
 *.egg-info/
 
 # OS files
-.DS_Store
+**/.DS_Store
 Thumbs.db
 
 # Scripts not needed in production

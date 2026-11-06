@@ -81,7 +81,7 @@ Work through each phase in order. See [Quick Reference](#quick-reference) for co
 | 1 | Test fixtures (`conftest.py`) | Sync first — everything else depends on these |
 | 2 | Code + tests per module | IDE diff, adapt code and tests together |
 | 3 | Bulk test sync | Wholesale replacement for unchanged test modules |
-| 4 | Dependencies & build | Manual review (`pyproject.toml`, `Dockerfile`, `docker-compose.yml`) |
+| 4 | Dependencies & build | Manual review (`pyproject.toml`, `Dockerfile`, `compose.yml`) |
 | 5 | Infrastructure (`terraform/`) | Bulk checkout, verify downstream files preserved |
 | 6 | CI/CD (`.github/workflows/`) | Bulk checkout, remove foundation-only workflows |
 | 7 | Config & project files | Per-file review (`.gitignore`, `AGENTS.md`, `tests/AGENTS.md`, `README.md`); `terraform/AGENTS.md` and `.github/workflows/AGENTS.md` arrive with phases 5-6 |
@@ -136,7 +136,7 @@ diff <(sed "s/agent_foundation/$DOWNSTREAM_PKG/g" <(git show foundation-tags/$VE
 **Phase 4 — Dependencies & build:**
 ```bash
 git diff foundation-tags/$VERSION -- pyproject.toml
-git diff foundation-tags/$VERSION -- Dockerfile docker-compose.yml .env.example
+git diff foundation-tags/$VERSION -- Dockerfile compose.yml .env.example
 # Manual review and edit. Run uv lock after pyproject.toml changes.
 ```
 

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ============================================================================
-# Builder Stage: Install dependencies with optimal caching
+# Builder Stage: install dependencies into .venv
 # ============================================================================
 FROM python:3.14-slim AS builder
 
@@ -11,63 +11,53 @@ COPY --from=ghcr.io/astral-sh/uv:0.13.6 /uv /uvx /bin/
 # Set working directory
 WORKDIR /app
 
-# Environment variables for optimal uv behavior
+# uv settings: copy from the cache mount instead of hardlinking, precompile
+# bytecode, use the base image's Python
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
     UV_PYTHON_DOWNLOADS=never
 
-# Copy dependency files - explicit cache invalidation when either file changes
+# A change to either file re-runs the dependency sync
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies (cache mount provides the performance optimization)
+# The cache mount reuses downloaded packages across builds
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project --no-dev
 
-# Copy only source code (documentation changes won't invalidate this layer)
+# Source runs from /app/src; the project is never installed, so .venv changes only with dependencies
 COPY src ./src
 
-# Build argument: set to "true" for editable install (local dev with file sync)
-ARG editable=false
-
-# Install project (create empty README to satisfy package metadata requirements)
-RUN --mount=type=cache,target=/root/.cache/uv \
-    touch README.md && \
-    if [ "$editable" = "true" ]; then \
-        uv sync --locked --no-dev; \
-    else \
-        uv sync --locked --no-editable --no-dev; \
-    fi
-
 # ============================================================================
-# Runtime Stage: Minimal production image
+# Runtime Stage: Python, .venv and src only
 # ============================================================================
 FROM python:3.14-slim AS runtime
 
-# Create non-root user for security
-RUN groupadd -r app && useradd -r -g app app
+# Create a non-root user to run the server
+RUN groupadd -r app && useradd -r -s /usr/sbin/nologin -g app app
 
 # Set working directory
 WORKDIR /app
 
-# Copy application and virtual environment from builder
-COPY --from=builder --chown=app:app /app .
+# Separate layers: a source edit invalidates only the small src layer
+COPY --from=builder --chown=app:app /app/.venv ./.venv
+COPY --from=builder --chown=app:app /app/src ./src
 
-# Set environment to use virtual environment
-# AGENT_DIR=/app/src: Use source code instead of installed package (.venv)
+# Use the virtual environment
+# PYTHONPATH=/app/src: Import the package from source (not installed)
 # HOST=0.0.0.0: Bind to all interfaces for container networking
-# PORT=8000: Explicitly set for consistent deployment
+# PORT=8000: Default port
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
-    AGENT_DIR=/app/src \
+    PYTHONPATH=/app/src \
     HOST=0.0.0.0 \
     PORT=8000
 
 # Switch to non-root user
 USER app
 
-# Expose port (configurable via PORT env var, default 8000)
+# Document the default port (EXPOSE publishes nothing)
 EXPOSE 8000
 
-# Run the FastAPI server via main() for unified startup logic (logging, etc.)
+# Run server.main(), the same entry point as `uv run server`
 CMD ["python", "-m", "agent_foundation.server"]

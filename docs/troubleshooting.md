@@ -40,11 +40,11 @@ gcloud auth application-default login
 lsof -i :8000
 
 # Stop the conflicting process or change PORT in .env
-# (Update docker-compose.yml if changing port)
+# (Update compose.yml if changing port)
 ```
 
 **Windows path compatibility:**
-- `docker-compose.yml` uses `${HOME}` (Unix/Mac specific)
+- `compose.yml` uses `${HOME}` (Unix/Mac specific)
 - Windows users need to update volume paths:
   - App container ADC: Replace `${HOME}/.config/gcloud/application_default_credentials.json` with Windows equivalent
   - IAP tunnel gcloud config: Replace `${HOME}/.config/gcloud` with Windows equivalent

@@ -3,8 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        editable: "true"
     image: agent-foundation:latest
     container_name: agent-foundation-local
     ports:
@@ -25,7 +23,7 @@ services:
     develop:
       # Watch configuration for file sync with auto-restart
       watch:
-        # Sync source files and restart — editable install resolves imports from /app/src
+        # Sync source files and restart — the image imports the package from /app/src
         - action: sync+restart
           path: ./src
           target: /app/src
