@@ -26,8 +26,8 @@ repository_name  = "your-agent-repository"
 # Recommended Defaults for the prod environment
 # ==============================================
 
-# OpenTelemetry Configuration
-otel_instrumentation_genai_capture_message_content = "EVENT_ONLY"
+# OpenTelemetry Configuration (prod: no user content in telemetry)
+otel_instrumentation_genai_capture_message_content = "NO_CONTENT"
 
 # Registry Cleanup Policies (prod: conservative)
 registry_cleanup_general_retention_days = 365  # Images expire after 1 year

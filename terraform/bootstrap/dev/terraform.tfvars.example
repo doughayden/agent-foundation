@@ -26,7 +26,7 @@ repository_name  = "your-agent-repository"
 # Recommended Defaults for the dev environment
 # ==============================================
 
-# OpenTelemetry Configuration
+# OpenTelemetry Configuration (dev: capture prompts and responses for debugging)
 otel_instrumentation_genai_capture_message_content = "EVENT_ONLY"
 
 # Registry Cleanup Policies (dev: aggressive)

@@ -81,7 +81,7 @@ These must be set for the agent to function.
   - `SPAN_AND_EVENT` - Both
 - **Purpose:** Controls whether and where ADK records standard GenAI message content. ADK's own `gcp.vertex.agent.*` span attributes follow `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS` instead
 - **Where:** Set locally in `.env`, set before bootstrap
-- **Reference:** [Message Content Capture](observability.md#message-content-capture)
+- **Reference:** [Message Content Capture](observability.md#message-content-capture) (recommended values and why) and OpenTelemetry's [GenAI utilities](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/util/opentelemetry-util-genai)
 - **Security:** For sensitive data, set `NO_CONTENT` and `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false`
 
 **ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS**
@@ -268,6 +268,7 @@ GitHub Environment Variables are mapped to Terraform inputs via `TF_VAR_*` prefi
 **TF_VAR_otel_instrumentation_genai_capture_message_content**
 - **Source:** `${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}` (GitHub Environment Variable, written by bootstrap from `otel_instrumentation_genai_capture_message_content` in each bootstrap root's `terraform.tfvars`)
 - **Purpose:** Message content capture mode on the Cloud Run service. Required: Terraform validation accepts only the four capture modes, so deleting the GitHub variable fails the plan. With `NO_CONTENT`, Terraform also sets `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false`
+- **Recommended:** `EVENT_ONLY` in dev to debug prompts and responses; `NO_CONTENT` in stage and prod (the bootstrap `terraform.tfvars.example` files)
 - **Change:** set the bootstrap value and re-apply bootstrap, which rewrites the GitHub variable
 
 **TF_VAR_docker_image**

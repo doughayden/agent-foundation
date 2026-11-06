@@ -129,7 +129,7 @@ Two settings decide where user content (prompts, responses, tool arguments and r
 | `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | Standard GenAI content: GenAI event log records and the `gen_ai.input.messages` / `gen_ai.output.messages` span attributes | Required. Deployed, bootstrap writes it from each root's `terraform.tfvars` |
 | `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS` | ADK's own `gcp.vertex.agent.*` span attributes: the full model request and response, and tool arguments and results. The ADK web UI trace view reads them | ADK default `true`, whatever the capture mode |
 
-The capture mode takes exactly one of these four values:
+The capture mode takes exactly one of these four values, defined by OpenTelemetry's [GenAI utilities](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/util/opentelemetry-util-genai):
 
 | Value | Standard content goes to |
 |---|---|
@@ -141,7 +141,10 @@ The capture mode takes exactly one of these four values:
 > [!IMPORTANT]
 > `NO_CONTENT` alone does not keep user content out of traces: ADK still writes it to its `gcp.vertex.agent.*` span attributes. Set `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false` as well. Deployed, Terraform sets it whenever the capture mode is `NO_CONTENT`; locally, set both in `.env`.
 
-Captured content raises logging costs and stores user data. Use `NO_CONTENT` for sensitive workloads.
+Captured content raises logging costs and stores user data. The bootstrap examples choose:
+
+- Dev: `EVENT_ONLY`. Cloud Trace's Input/Output view reads the GenAI events, not span attributes, and ADK's own span attributes still carry the content for the web UI. `SPAN_ONLY` and `SPAN_AND_EVENT` add another copy of the same content to every inference span without a new view.
+- Stage and prod: `NO_CONTENT`, so Terraform also sets `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false` and no user content reaches telemetry.
 
 ## Resources
 
