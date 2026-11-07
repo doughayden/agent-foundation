@@ -12,7 +12,7 @@ SERVE_WEB_INTERFACE=TRUE RELOAD_AGENTS=TRUE uv run server  # Reload the agent on
 LOG_LEVEL=DEBUG uv run server                              # Debug logging
 ```
 
-With the service URIs in `.env` unset, ADK stores sessions and artifacts locally under `src/<package>/.adk/` and keeps memory in-process ([Environment Variables: Cloud Resources](environment-variables.md#cloud-resources)). `.env` is shared with Docker Compose: with the URIs set, `uv run server` uses the deployed services instead, and the session database is reachable only through the Compose tunnel.
+With the service URIs in `.env` unset, ADK stores sessions and artifacts locally under `src/<package>/.adk/` and keeps memory in-process ([Environment Variables: Cloud Resources](environment-variables.md#cloud-resources)). `.env` is shared with Docker Compose: with the URIs set, `uv run server` uses the deployed services instead, and reaching the session database needs an IAP tunnel: Compose starts one, or start it yourself ([Cloud Backend Options](references/cloud-backend-options.md)).
 
 `RELOAD_AGENTS` reloads the agent, tools, callbacks and prompt; restart the server after changing `server.py`, `config.py`, `telemetry.py` or `.env`. Local runs export traces and logs to Google Cloud like the deployed service; metrics go to Google locally only with `cloud.region` in `OTEL_RESOURCE_ATTRIBUTES` ([Observability](observability.md)). Set `OTEL_RESOURCE_ATTRIBUTES=service.namespace=<your-name>` in `.env` so teammates can filter to your traces when reviewing experiments. Full variable reference: [Environment Variables](environment-variables.md).
 
