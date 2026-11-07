@@ -34,18 +34,19 @@ jobs:
             SHA_SHORT=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
             TAGS="pr-${{ github.event.pull_request.number }}-${SHA_SHORT}"
           else
-            # Main branch or manual - build multiple tags (SHA, latest, version if available)
-            SHA_SHORT=$(git rev-parse --short HEAD)
-            TAGS="${SHA_SHORT}"$'\n'"latest"
+            # The full SHA names the commit's image; an abbreviation can collide with another commit's
+            TAGS="$(git rev-parse HEAD)"$'\n'"latest"
             if [ "${{ github.ref_type }}" == "tag" ]; then
               # A promotion tag (<env>-vX.Y.Z) names the release tag it promotes, which must mark the same commit
-              VERSION="${GITHUB_REF_NAME#*-}"
+              VERSION="v${GITHUB_REF_NAME#*-v}"
+              if [[ ! "${VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+                echo "::error::Promotion tag ${GITHUB_REF_NAME} does not have the form <env>-vX.Y.Z"
+                exit 1
+              fi
               if [ "$(git rev-parse -q --verify "refs/tags/${VERSION}^{commit}")" != "$(git rev-parse HEAD)" ]; then
                 echo "::error::Promotion tag ${GITHUB_REF_NAME} needs release tag ${VERSION} on the same commit"
                 exit 1
               fi
-              TAGS="${TAGS}"$'\n'"${VERSION}"
-            elif VERSION=$(git describe --tags --exact-match --match 'v[0-9]*' 2>/dev/null); then
               TAGS="${TAGS}"$'\n'"${VERSION}"
             fi
           fi
@@ -68,7 +69,7 @@ jobs:
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             SHA_SHORT=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
           else
-            SHA_SHORT=$(git rev-parse --short HEAD)
+            SHA_SHORT=$(git rev-parse HEAD | cut -c1-7)
           fi
 
           cat >> "$GITHUB_STEP_SUMMARY" << EOF

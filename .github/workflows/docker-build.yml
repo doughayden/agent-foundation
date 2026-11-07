@@ -27,7 +27,7 @@ on:
         type: string
     outputs:
       image_sha:
-        description: 'Short SHA tag (user-friendly reference)'
+        description: 'Commit SHA tag (first image tag)'
         value: ${{ jobs.build-push.outputs.image_sha }}
       digest:
         description: 'Image digest (immutable content hash: sha256:...)'
