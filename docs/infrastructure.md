@@ -29,7 +29,7 @@ Configure protection rules after bootstrap (manual setup):
 4. No force pushes, no deletions
 
 **Tag Protection (production mode, automated):**
-- Bootstrap creates ruleset protecting `v*` tags
+- Bootstrap creates a ruleset that lets only repository admins create `prod-v*` promotion tags
 - Verify: Settings → Rules → Rulesets
 
 **Environment Protection (production mode, manual):**
@@ -131,13 +131,16 @@ if: github.ref_type == 'branch'
 > Requires manual approval gate setup: Repository admin must configure required reviewers for `prod-apply` environment (Settings → Environments → prod-apply → Required reviewers). See [Protection Strategies](references/protection-strategies.md).
 
 1. Ensure dev and stage deployments successful
-2. Create and push annotated tag:
+2. Tag the release, then promote it with a second tag on the same commit (repository admin):
    ```bash
    git checkout main
    git pull
    git tag -a v1.0.0 -m "Release v1.0.0"
    git push origin v1.0.0
+   git tag -a prod-v1.0.0 v1.0.0^{commit} -m "Promote v1.0.0 to prod"
+   git push origin prod-v1.0.0
    ```
+   The `v1.0.0` tag marks the release and deploys nothing. The `prod-v1.0.0` push starts the prod jobs, and fails at metadata extraction unless `v1.0.0` marks the same commit.
 3. Monitor workflow: Actions tab → CI/CD Pipeline
 4. **Repository admin or approved reviewer:** Actions → prod-apply job → Review deployments → Approve
 5. Verify production deployment
@@ -174,11 +177,13 @@ gh pr create
 # After approval, merge PR
 gh pr merge --squash
 
-# Tag for production (annotated)
+# Tag the release and promote it to production (annotated, repository admin)
 git checkout main
 git pull
 git tag -a v1.0.1 -m "Hotfix: revert bad change"
 git push origin v1.0.1
+git tag -a prod-v1.0.1 v1.0.1^{commit} -m "Promote v1.0.1 to prod"
+git push origin prod-v1.0.1
 ```
 
 See [Troubleshooting](troubleshooting.md) for detailed rollback decision tree.
@@ -281,7 +286,7 @@ See the [Cloud SQL planning guide](https://cloud.google.com/sql/docs/postgres/pl
 Production mode promotes images between registries instead of rebuilding, ensuring exact tested bytes deploy across environments:
 
 **Dev → Stage:** Triggered on merge to main
-**Stage → Prod:** Triggered on tag push (requires manual approval)
+**Stage → Prod:** Triggered on a `prod-vX.Y.Z` promotion tag push (requires manual approval)
 
 Cross-project IAM for promotion is configured automatically during bootstrap.
 

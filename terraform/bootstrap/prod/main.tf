@@ -59,21 +59,20 @@ resource "google_artifact_registry_repository_iam_member" "promotion_source" {
   member     = module.gcp.workload_identity_pool_principal_identifier
 }
 
-# Protect production release tags in GitHub
 data "github_repository" "repo" {
   full_name = "${var.repository_owner}/${var.repository_name}"
 }
 
+# A prod-v* tag deploys prod, so only repository admins may create, move or delete one
 resource "github_repository_ruleset" "production_tags" {
-  name        = "Production Release Tag Protection"
+  name        = "Production Promotion Tag Protection"
   repository  = data.github_repository.repo.name
   target      = "tag"
   enforcement = "active"
 
-  # Apply restriction to tags that match the pattern v* (e.g., v1.2.3, etc.)
   conditions {
     ref_name {
-      include = ["refs/tags/v*"]
+      include = ["refs/tags/prod-v*"]
       exclude = []
     }
   }
@@ -92,15 +91,5 @@ resource "github_repository_ruleset" "production_tags" {
     required_linear_history = false
     required_signatures     = false
     non_fast_forward        = true # Prevent force pushes to protected tags
-
-    # Future: add required status checks when stage tests exist
-    # required_status_checks {
-    #   required_check {
-    #     context = "stage-apply"
-    #   }
-    #   required_check {
-    #     context = "stage-tests"
-    #   }
-    # }
   }
 }

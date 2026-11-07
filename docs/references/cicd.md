@@ -51,7 +51,7 @@ GitHub Actions workflow architecture, mechanics, and customization.
 **Triggers:**
 - Pull request to main (docs and local development changes excluded)
 - Push to main (docs and local development changes excluded)
-- Tag push matching `v*`
+- Tag push matching `prod-v*` (a promotion tag on the commit a `vX.Y.Z` release tag marks; a `v*` tag alone starts no run)
 
 **Key jobs:**
 - `changes` - dorny/paths-filter resolving the `deploy` and `eval` filters that gate `build` and `judge-eval` (branch events only)
@@ -163,7 +163,7 @@ changes ─→ (docker-build and every deploy job skipped)
 ```
 config, metadata-extract → (no deploy)
 ```
-Tags are a no-op in dev-only mode: `build` skips on tag events and `dev-plan`/`dev-apply` are branch-only, so only `meta` and `config` run. Dev-only mode deploys on merge to main, not on tags.
+Tags are a no-op in dev-only mode: a `v*` release tag starts no run, and on a `prod-v*` promotion tag `build` skips and `dev-plan`/`dev-apply` are branch-only, so only `meta` and `config` run. Dev-only mode deploys on merge to main, not on tags.
 
 **Production mode:**
 ```
@@ -193,7 +193,7 @@ Tags name images for people and for the tag-time digest lookup. Every deploy con
 | Pull request | dev | `pr-{number}-{sha7}` (PR head commit, not the merge commit) | `build` |
 | Merge to main | dev | `{sha7}`, `latest` | `build` |
 | Merge to main (production mode) | stage | `{sha7}`, `latest` (same digest, copied) | `stage-promote` |
-| Release tag (production mode) | prod | `{sha7}`, `latest`, `{version}` (the git tag, like `v1.0.0`) | `prod-promote` |
+| Promotion tag (production mode) | prod | `{sha7}`, `latest`, `{version}` (the release tag the promotion tag names, like `v1.0.0` for `prod-v1.0.0`) | `prod-promote` |
 | Every build | dev | `buildcache` (BuildKit layer cache, never deployed) | `build` |
 
 `latest` is a convenience pointer that moves on every merge (and on every release in prod). No workflow reads it. `buildcache` is overwritten on every build; [Image Digest Resolution](image-digest-resolution.md#the-registry-cache-artifact) describes the artifact.
@@ -425,7 +425,7 @@ Stage success is the whole prod gate for image fidelity. The promotion workflow 
 
 **Tagging a commit that built no image.** Not every merge produces an image. A merge touching only `tests/eval/**` runs the judge gate and skips `build`, so `Apply Stage` and `Smoke Stage` are skipped in that run and this gate fails closed on them. It's intentional behavior: no image exists for that commit, so stage `{sha7}` resolves to nothing and prod's deploy-by-digest has nothing to promote. Relaxing the gate to accept a skipped stage job would trade a clear failure for an unsound pass.
 
-Practically, a release tag belongs on a commit whose merge deployed and smoked stage. If the last merge before a tag changed only eval data, tag the commit before it, or land a deployable change first.
+Practically, a release belongs on a commit whose merge deployed and smoked stage. If the last merge before a release changed only eval data, tag the commit before it, or land a deployable change first.
 
 **Permissions:** `actions: read` (read the merge run's job conclusions), `contents: read`. No GCP credentials.
 
@@ -610,7 +610,7 @@ on:
     paths-ignore:
       - '*.md'
     tags:
-      - 'v*'
+      - 'prod-v*'
       # Add more tag patterns
 ```
 

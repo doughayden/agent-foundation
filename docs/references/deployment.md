@@ -39,12 +39,12 @@ jobs:
 - Three GCP projects (dev/stage/prod)
 - Four GitHub Environments (dev/stage/prod/prod-apply)
 - Environment-scoped variables
-- Tag protection ruleset (v*)
+- Tag protection ruleset (admin-only `prod-v*` promotion tags)
 
 **Workflow:**
 - PR → dev plan (comment on PR)
 - Merge → dev + stage deploy (parallel)
-- Tag → prod deploy (manual approval required)
+- `prod-vX.Y.Z` promotion tag → prod deploy (manual approval required)
 
 **Use cases:**
 - Customer-facing production services
@@ -112,13 +112,13 @@ For detailed job-level dependency graphs, see [CI/CD Workflows: Workflow Flows](
   - Deploy to dev → Smoke
   - Deploy to stage → Smoke
 
-**Git tag push:**
+**Promotion tag push (`prod-vX.Y.Z`):**
 - Verify staged image exists and stage run passed (parallel gates) → Deploy to prod (manual approval) → Smoke
 
 **Key principles:**
 - Dev deployment never waits for stage or prod
 - Stage validates every merge (continuous feedback)
-- Prod deploys only on explicit git tags (release discipline)
+- Prod deploys only on an explicit `prod-vX.Y.Z` promotion tag, pushed by a repository admin on the commit a `vX.Y.Z` release tag marks (release discipline)
 - Prod promotion is gated on the tagged commit's stage run passing (see [CI/CD Workflows: Require Stage Success](cicd.md#require-stage-successyml))
 - Uniform plan → apply pattern across all environments
 
@@ -144,11 +144,11 @@ Production mode uses **image promotion** (pull from source, push to target) inst
 
 ### Stage → Prod
 
-**Trigger:** Git tag push (e.g., `v1.0.0`)
+**Trigger:** Promotion tag push (like `prod-v1.0.0`) on the commit the `v1.0.0` release tag marks
 
 **Process:**
 1. resolve-digest job:
-   - Queries stage registry for image by tag: `v1.0.0`
+   - Queries stage registry for the image by the commit's `{sha7}` tag
    - Extracts digest: `sha256:abc123`
 2. require-stage-success job (gates prod-promote):
    - Confirms the tagged commit's merge run had `Apply Stage`, `Smoke Stage`, and `Judge Eval` all succeed
@@ -240,7 +240,7 @@ gh pr create
 - Artifact Registry (Docker image storage with cleanup policies)
 - GitHub Environments (dev/stage/prod/prod-apply in production mode)
 - GitHub Environment Variables (auto-configured per environment)
-- Tag Protection (production tag ruleset, prod bootstrap only)
+- Tag Protection (promotion tag ruleset, prod bootstrap only)
 - Cross-Project IAM (Artifact Registry reader for promotion, stage/prod)
 
 **State management:** Remote state in GCS (per environment, `bootstrap/` prefix). Pre-bootstrap (`terraform/bootstrap/pre/`, local state) creates the state buckets used by bootstrap and the main module.

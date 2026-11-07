@@ -31,7 +31,7 @@ on:
       - '.env.example'
       - '.pre-commit-config.yaml'
     tags:
-      - 'v*'
+      - 'prod-v*'
 
 permissions:
   contents: read

@@ -14,7 +14,7 @@ Bootstrap creates one-time CI/CD infrastructure per environment:
 2. Artifact Registry - Docker image storage with cleanup policies
 3. GitHub Environments - dev/stage/prod/prod-apply (production mode)
 4. GitHub Environment Variables - Auto-configured per environment
-5. Tag Protection - Production tag ruleset (prod bootstrap only)
+5. Tag Protection - Production promotion (`prod-v*`) tag ruleset (prod bootstrap only)
 6. Cross-Project IAM - Artifact Registry reader for image promotion (stage/prod)
 
 **State management:** Remote state in GCS per environment project using `bootstrap/` prefix (bucket created by pre-bootstrap)
@@ -293,8 +293,8 @@ terraform -chdir=terraform/bootstrap/prod apply
 
 **Check Tag Protection:**
 1. Settings → Rules → Rulesets
-2. Confirm ruleset: **Production Release Tag Protection**
-3. Check: Enforcement=Active, Target=Tags, Patterns=`refs/tags/v*`
+2. Confirm ruleset: **Production Promotion Tag Protection**
+3. Check: Enforcement=Active, Target=Tags, Patterns=`refs/tags/prod-v*`
 
 **Check Environment Variables:**
 1. Settings → Environments → click each (`dev`, `stage`, `prod`)
@@ -311,7 +311,7 @@ gh api repos/:owner/:repo/rulesets | jq '.[] | {name, enforcement, target}'
 
 ### 8. Configure prod-apply Reviewers (REQUIRED)
 
-Bootstrap creates `prod-apply` with no protection rules. Add required reviewers and a `v*.*.*` deployment tag rule:
+Bootstrap creates `prod-apply` with no protection rules. Add required reviewers and a `prod-v*.*.*` deployment tag rule:
 
 1. Settings → Environments → prod-apply
 2. Under **Deployment protection rules**, check **Required reviewers**
@@ -320,7 +320,7 @@ Bootstrap creates `prod-apply` with no protection rules. Add required reviewers 
 3. Click **Save protection rules**
 4. Under **Deployment branches and tags**:
   - Click dropdown → Select **Selected branches and tags**
-  - Add tag rule: `v*.*.*` (version tags can trigger prod deployments)
+  - Add tag rule: `prod-v*.*.*` (promotion tags can trigger prod deployments)
 5. Click **Save protection rules**
 
 Refer to [Protection Strategies](protection-strategies.md#environment-protection-manual-approval-setup-required) for detailed setup instructions including `gh api` commands.

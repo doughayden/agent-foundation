@@ -79,6 +79,6 @@ output "promotion_source_artifact_registry_name" {
 }
 
 output "production_tag_ruleset_rules" {
-  description = "GitHub tag protection ruleset rules for production"
+  description = "GitHub tag protection ruleset rules for prod-v* promotion tags"
   value       = github_repository_ruleset.production_tags.rules
 }

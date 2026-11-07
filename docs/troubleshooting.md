@@ -106,13 +106,27 @@ See [Terraform State Lock](#state-lock-timeout) in Terraform section below.
 
 **Check path filters:**
 - `ci.yml` has no path filter, so it runs on every push and pull request; `ci-cd.yml` and `deploy-docs.yml` both filter
-- Tag triggers (`v*`) always run regardless of paths
+- Only `prod-v*` promotion tags start `ci-cd.yml`, and they run regardless of paths. A `v*` release tag alone starts nothing
 - `ci-cd.yml` filters in two layers: `paths-ignore` exclusions on the trigger prevent the CI/CD workflow from running on docs or local development changes, and the `changes` job's `deploy` and `eval` filters select which downstream jobs run when the change set passes exclusion. No run at all points at the `paths-ignore` exclusions; a run where everything after `Detect Changes` skipped points at the `changes` job filters. See [CI/CD Reference: Path filtering](references/cicd.md#ci-cdyml-orchestrator)
 
 **Verify branch protection:**
 ```bash
 # Check branch protection rules
 gh api repos/:owner/:repo/branches/main/protection
+```
+
+### Promotion Tag Fails at Extract Build Metadata
+
+**Symptom:** a `prod-vX.Y.Z` run fails in `Extract Build Metadata` with `Promotion tag prod-vX.Y.Z needs release tag vX.Y.Z on the same commit`.
+
+**Cause:** the promotion tag names a release tag that does not exist, or that marks a different commit. The prod jobs never start.
+
+**Fix:** delete the promotion tag (repository admin), then tag the release commit and promote it again:
+```bash
+git push origin :refs/tags/prod-v1.0.1
+git tag -d prod-v1.0.1
+git tag -a prod-v1.0.1 v1.0.1^{commit} -m "Promote v1.0.1 to prod"
+git push origin prod-v1.0.1
 ```
 
 ## Cloud Run
@@ -364,11 +378,13 @@ gh pr create
 # After approval, merge PR
 gh pr merge --squash
 
-# Tag for production (annotated)
+# Tag the release and promote it to production (annotated, repository admin)
 git checkout main
 git pull
 git tag -a v1.0.1 -m "Hotfix: revert bad change"
 git push origin v1.0.1
+git tag -a prod-v1.0.1 v1.0.1^{commit} -m "Promote v1.0.1 to prod"
+git push origin prod-v1.0.1
 
 # Approve in prod-apply when workflow runs
 ```
