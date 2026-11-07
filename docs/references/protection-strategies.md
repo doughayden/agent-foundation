@@ -97,7 +97,7 @@ Production tag protection is **automatically configured** by bootstrap in produc
 A release is two tags on one commit: `vX.Y.Z` marks the release and deploys nothing, and `prod-vX.Y.Z` promotes it to prod. Bootstrap (`terraform/bootstrap/prod/`) creates the **Production Promotion Tag Protection** ruleset on `refs/tags/prod-v*`: only repository admins can create, move or delete a promotion tag, so only an admin can start the template's prod promotion pipeline. `v*` release tags have no ruleset, since pushing one deploys nothing.
 
 > [!NOTE]
-> The ruleset governs the template's pipeline, not every path to prod. The prod Workload Identity Federation provider is scoped to the repository, not to the GitHub environment, so a workflow on any branch of the repository can authenticate to the prod project.
+> The ruleset also guards prod credentials. The prod Workload Identity Federation provider accepts only tokens from the `prod` and `prod-apply` environments, which accept only `prod-v*.*.*` tags ([Environment Protection](#environment-protection-automated)).
 
 ### Verify
 
@@ -150,7 +150,7 @@ The tag rule matches the promotion tag format the [tag ruleset](#tag-protection-
 
 ### Verify
 
-**GitHub UI:** Settings → Environments → **prod-apply** shows the reviewers, the self-review and bypass settings, and the `prod-v*.*.*` tag rule under **Deployment branches and tags**. **prod** shows the same tag rule.
+**GitHub UI:** Settings → Environments → **prod-apply** shows the reviewers, the self-review and bypass settings, and the `prod-v*.*.*` tag rule under **Deployment branches and tags**. **prod** shows the same tag rule, and **stage** shows a `main` branch rule plus the same tag rule.
 
 **CLI:**
 ```bash
