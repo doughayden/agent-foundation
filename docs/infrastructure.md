@@ -34,7 +34,7 @@ Configure protection rules after bootstrap (manual setup):
 
 **Environment Protection (production mode, automated):**
 - Set the `prod_apply_*` variables in `terraform/bootstrap/prod/terraform.tfvars` (reviewers, self-review, admin bypass, wait timer), then apply the prod bootstrap root
-- Bootstrap also limits the `prod` and `prod-apply` environments to `prod-v*.*.*` tags
+- Bootstrap also limits the `prod` and `prod-apply` environments to `prod-v*.*.*` tags, and `stage` to `main` plus those tags. Each environment's WIF provider accepts only tokens from those environments, so no other ref can authenticate to stage or prod
 
 See [Protection Strategies](references/protection-strategies.md) for the settings, verification and rationale.
 

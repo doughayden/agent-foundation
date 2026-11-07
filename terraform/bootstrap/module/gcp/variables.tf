@@ -32,6 +32,11 @@ variable "repository_owner" {
   type        = string
 }
 
+variable "github_environments" {
+  description = "GitHub environments whose OIDC tokens the WIF provider accepts"
+  type        = list(string)
+}
+
 variable "registry_cleanup_general_retention_days" {
   description = "Days to retain images generally"
   type        = number

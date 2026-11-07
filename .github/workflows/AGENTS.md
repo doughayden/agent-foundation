@@ -25,7 +25,7 @@ Standalone `ci.yml` (not called by the orchestrator). Branch protection requires
 - **Terraform concurrency lives on the `terraform` job, never the workflow:** applies share `terraform-apply-<env>` (`cancel-in-progress: false`), plans get a per-run group, and `-lock-timeout` on plan and apply makes the state lock serialize them. A shared plan group lets a new job cancel the pending one, merge applies included (`docs/references/cicd.md` terraform-plan-apply.yml)
 - Summary steps stream and capture via `tee` + `PIPESTATUS` (`docs/references/cicd.md` Job Summaries)
 - **No `registry` input override** (it breaks per-env isolation and promotion; `docs/references/cicd.md` Subproject Builds)
-- **Auth:** WIF, no SA keys. Bootstrap creates the GitHub Variables (`docs/references/cicd.md` GitHub Variables)
+- **Auth:** WIF, no SA keys. Bootstrap creates the GitHub Variables (`docs/references/cicd.md` GitHub Variables). **Every job that authenticates to GCP MUST declare `environment:`**: each provider accepts only its own environments' tokens (`github_environments` in each bootstrap root), and the environment's deployment policy MUST allow the job's ref (`stage`: `main` + `prod-v*.*.*`; `prod`/`prod-apply`: `prod-v*.*.*`), or the job fails before it runs. A new stage job on another ref needs a pattern in `terraform/bootstrap/stage/main.tf`
 - **Pin every external action to a full commit SHA** with a `  # vX.Y.Z` comment (`actions/*` and `google-github-actions/*` included; local `./.github/workflows/` calls stay unpinned). **Never a floating tag**; remote pre-commit hook revs likewise (`# frozen: vX.Y.Z`). Dependabot bumps both (`docs/references/cicd.md` Action and Hook Pinning)
 
 ## Workflow Lint

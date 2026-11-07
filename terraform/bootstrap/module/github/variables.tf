@@ -53,11 +53,16 @@ variable "repository_owner" {
 }
 
 # Environment protection
-variable "deployment_tag_pattern" {
-  description = "Tag pattern a ref must match to deploy to the environment (null allows any ref)"
-  type        = string
-  nullable    = true
-  default     = null
+variable "deployment_branch_patterns" {
+  description = "Branch patterns allowed to deploy to the environment (any ref when both pattern lists are empty)"
+  type        = list(string)
+  default     = []
+}
+
+variable "deployment_tag_patterns" {
+  description = "Tag patterns allowed to deploy to the environment (any ref when both pattern lists are empty)"
+  type        = list(string)
+  default     = []
 }
 
 variable "reviewer_users" {

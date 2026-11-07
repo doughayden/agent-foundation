@@ -2,13 +2,17 @@
 
 Rules for editing `terraform/`. **Template Internals:** everything here except `terraform/main/services.tf`, `terraform/main/iam.tf` and the `terraform/main/monitoring.tf` locals (the consumer extension points, see root `AGENTS.md` Consumer Extension Points). Cross-cutting rules live in the root `AGENTS.md`.
 
+## Conventions
+
+- **Prefer `for_each` over `count`**, even for optional resources: key by a set or map that is empty when the resource is off (like `toset(var.patterns)`)
+
 ## Pre-Bootstrap
 
 `terraform/bootstrap/pre/` creates one state bucket per env (`terraform_state_buckets` output). **Local state only — do not lose `terraform/bootstrap/pre/terraform.tfstate`.** Steps: `docs/references/bootstrap.md` Pre-Bootstrap.
 
 ## Bootstrap
 
-One root per env (`dev/`, `stage/`, `prod/`) over shared modules (`gcp/`, `github/`), GCS remote state. Stage/prod roots also grant the WIF principal cross-project Artifact Registry read for promotion (`terraform/bootstrap/{stage,prod}/main.tf`). Base-template services/roles ONLY — **do not modify to add custom services/roles** (extend `terraform/main/services.tf` / `iam.tf`). Detail: `docs/references/bootstrap.md`.
+One root per env (`dev/`, `stage/`, `prod/`) over shared modules (`gcp/`, `github/`), GCS remote state. Stage/prod roots also grant the WIF principal cross-project Artifact Registry read for promotion (`terraform/bootstrap/{stage,prod}/main.tf`). **WIF trust = repository AND environment:** each root's `github_environments` feeds the provider's `attribute_condition`; deployment policies on `stage`/`prod`/`prod-apply` decide which refs get that claim (`docs/references/security-posture.md` Identity Layer). Base-template services/roles ONLY — **do not modify to add custom services/roles** (extend `terraform/main/services.tf` / `iam.tf`). Detail: `docs/references/bootstrap.md`.
 
 ## Main Module
 

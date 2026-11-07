@@ -65,7 +65,8 @@ resource "google_iam_workload_identity_pool_provider" "github" {
     "attribute.repository_owner" = "assertion.repository_owner"
     "attribute.environment"      = "assertion.environment"
   }
-  attribute_condition = "attribute.repository == '${var.repository_owner}/${var.repository_name}'"
+  # A job gets the environment claim only when it passes that environment's deployment policy
+  attribute_condition = "attribute.repository == '${var.repository_owner}/${var.repository_name}' && attribute.environment in ${jsonencode(var.github_environments)}"
 }
 
 resource "google_project_iam_member" "github" {

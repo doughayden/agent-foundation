@@ -1,6 +1,7 @@
 module "gcp" {
-  source      = "../module/gcp"
-  environment = "dev"
+  source              = "../module/gcp"
+  environment         = "dev"
+  github_environments = ["dev"]
 
   project                                 = var.project
   region                                  = var.region

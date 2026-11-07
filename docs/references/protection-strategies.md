@@ -140,12 +140,13 @@ Bootstrap creates and configures the `prod` and `prod-apply` GitHub Environments
 | Setting | Environment | Source | Recommended |
 |---|---|---|---|
 | Deployment tag rule `prod-v*.*.*` | `prod`, `prod-apply` | Fixed in the prod root | Not configurable: the prod jobs only run on promotion tag pushes, so only a `prod-v*.*.*` tag can use either environment |
+| Deployment branch rule `main`, tag rule `prod-v*.*.*` | `stage` | Fixed in the stage root | Not configurable: the stage jobs run on pushes to `main`, and a promotion run reads the stage registry under `stage` |
 | Required reviewers | `prod-apply` | `prod_apply_reviewer_users` (GitHub logins), `prod_apply_reviewer_teams` (team slugs) | The users or teams who own production releases (up to six; one approval releases the job) |
 | Prevent self-review | `prod-apply` | `prod_apply_prevent_self_review` | On for a team; off for a solo maintainer, who could otherwise never approve |
 | Allow administrators to bypass | `prod-apply` | `prod_apply_can_admins_bypass` | Off for strict release control; on to keep a break-glass path |
 | Wait timer | `prod-apply` | `prod_apply_wait_timer` (minutes) | Off (`null`), unless you want a cooling-off window |
 
-The tag rule matches the promotion tag format the [tag ruleset](#tag-protection-automated) limits to admins, so only an admin-pushed promotion tag reaches the approval. `terraform.tfvars.example` sets a starting value for each variable; replace the placeholder reviewer with your own.
+The tag rule matches the promotion tag format the [tag ruleset](#tag-protection-automated) limits to admins, so only an admin-pushed promotion tag reaches the approval. The rules also limit credentials: each environment's WIF provider accepts only tokens from its own GitHub Environments, so a ref these rules reject cannot authenticate to the stage or prod project ([Security Posture](security-posture.md) Identity Layer). `terraform.tfvars.example` sets a starting value for each variable; replace the placeholder reviewer with your own.
 
 ### Verify
 
@@ -160,12 +161,12 @@ gh api repos/:owner/:repo/environments/prod-apply --jq '{
   can_admins_bypass,
   deployment_branch_policy
 }'
-for env in prod prod-apply; do
+for env in stage prod prod-apply; do
   gh api repos/:owner/:repo/environments/$env/deployment-branch-policies --jq '[.branch_policies[] | {name, type}]'
 done
 ```
 
-Expected: the reviewers from `terraform.tfvars`, `custom_branch_policies: true`, and exactly one `{"name": "prod-v*.*.*", "type": "tag"}` policy per environment. A second policy (like an older `v*.*.*` rule created by hand) is not managed by bootstrap and keeps allowing those tags; delete it:
+Expected: the reviewers from `terraform.tfvars`, `custom_branch_policies: true`, and exactly one `{"name": "prod-v*.*.*", "type": "tag"}` policy per environment, plus `{"name": "main", "type": "branch"}` on `stage`. A second policy (like an older `v*.*.*` rule created by hand) is not managed by bootstrap and keeps allowing those tags; delete it:
 
 ```bash
 gh api repos/:owner/:repo/environments/prod-apply/deployment-branch-policies \
@@ -192,7 +193,7 @@ On a private repository without GitHub Enterprise, leave `prod_apply_reviewer_us
 What still guards production on those plans:
 
 - **`require-stage-success`.** `prod-promote` needs it, so a promotion tag deploys only a commit whose merge run passed `Apply Stage`, `Smoke Stage`, and `Judge Eval`. This holds on every plan because it is a job dependency, not an environment rule.
-- **The deployment tag policy** (Pro and Team only). Only `prod-v*.*.*` tags reach `prod` and `prod-apply`.
+- **The deployment branch and tag policy** (Pro and Team only). Only `prod-v*.*.*` tags reach `prod` and `prod-apply`, and only `main` and those tags reach `stage`. On GitHub Free, a workflow on any branch can declare `environment: stage` or `environment: prod` and receive that project's credentials.
 - **Who can push a `prod-v*` tag.** The promotion tag ruleset limits this to admins where your plan enforces rulesets on private repositories; confirm it shows **Active** under Settings → Rules → Rulesets. Without it, anyone with write access can start the prod promotion pipeline.
 
 To keep a human approval on a private fork, use GitHub Enterprise or make the repository public.
