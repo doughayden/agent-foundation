@@ -6,7 +6,7 @@ See [Environment Variables: Cloud Resources](../environment-variables.md#cloud-r
 
 ## Connect `uv run server` to Cloud SQL
 
-When `SESSION_SERVICE_URI` is unset, `uv run server` uses SQLite sessions (`.adk/` directory). To connect to Cloud SQL for production-consistent session persistence, run the IAP tunnel in a separate terminal or background process.
+When `SESSION_SERVICE_URI` is unset, `uv run server` uses SQLite sessions (`src/<package>/.adk/` directory). To connect to Cloud SQL for production-consistent session persistence, run the IAP tunnel in a separate terminal or background process.
 
 **1. Start IAP tunnel to bastion:**
 
@@ -55,9 +55,9 @@ Each service URI environment variable is independent — set or omit each one to
 
 | Variable | Set | Unset |
 |----------|-----|-------|
-| `SESSION_SERVICE_URI` | Cloud SQL or Agent Engine | Local SQLite (`.adk/` directory) |
+| `SESSION_SERVICE_URI` | Cloud SQL or Agent Engine | Local SQLite (`src/<package>/.adk/` directory) |
 | `MEMORY_SERVICE_URI` | Agent Engine | In-memory (lost on restart) |
-| `ARTIFACT_SERVICE_URI` | GCS bucket | Local files (`.adk/artifacts/` directory) |
+| `ARTIFACT_SERVICE_URI` | GCS bucket | Local files (`src/<package>/.adk/artifacts/` directory) |
 
 **Examples:**
 
