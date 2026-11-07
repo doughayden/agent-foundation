@@ -1,3 +1,8 @@
+locals {
+  # GitHub environment deployment policy pattern for prod promotion tags (prod-vX.Y.Z)
+  promotion_tag_pattern = "prod-v*.*.*"
+}
+
 module "gcp" {
   source      = "../module/gcp"
   environment = "prod"
@@ -29,6 +34,7 @@ module "github" {
   workload_identity_provider_name                    = module.gcp.workload_identity_provider_name
   workload_identity_pool_principal_identifier        = module.gcp.workload_identity_pool_principal_identifier
   terraform_state_bucket                             = var.terraform_state_bucket
+  deployment_tag_pattern                             = local.promotion_tag_pattern
 }
 
 module "github_protected" {
@@ -48,8 +54,13 @@ module "github_protected" {
   workload_identity_provider_name                    = module.gcp.workload_identity_provider_name
   workload_identity_pool_principal_identifier        = module.gcp.workload_identity_pool_principal_identifier
   terraform_state_bucket                             = var.terraform_state_bucket
+  deployment_tag_pattern                             = local.promotion_tag_pattern
+  reviewer_users                                     = var.prod_apply_reviewer_users
+  reviewer_teams                                     = var.prod_apply_reviewer_teams
+  prevent_self_review                                = var.prod_apply_prevent_self_review
+  can_admins_bypass                                  = var.prod_apply_can_admins_bypass
+  wait_timer                                         = var.prod_apply_wait_timer
 }
-
 
 # Cross-project binding to allow docker image promotion
 resource "google_artifact_registry_repository_iam_member" "promotion_source" {
