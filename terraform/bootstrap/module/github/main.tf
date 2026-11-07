@@ -14,19 +14,45 @@ locals {
   }
 }
 
-resource "github_repository_environment" "env" {
-  repository  = var.repository_name
-  environment = var.environment
+data "github_user" "reviewer" {
+  for_each = toset(var.reviewer_users)
+  username = each.value
+}
 
-  # Prevent manual changes to required reviewers in prod from affecting bootstrap state
-  lifecycle {
-    ignore_changes = [
-      prevent_self_review,
-      wait_timer,
-      deployment_branch_policy,
-      reviewers,
-    ]
+data "github_team" "reviewer" {
+  for_each = toset(var.reviewer_teams)
+  slug     = each.value
+}
+
+resource "github_repository_environment" "env" {
+  repository          = var.repository_name
+  environment         = var.environment
+  can_admins_bypass   = var.can_admins_bypass
+  prevent_self_review = var.prevent_self_review
+  wait_timer          = var.wait_timer
+
+  dynamic "reviewers" {
+    for_each = length(var.reviewer_users) + length(var.reviewer_teams) > 0 ? [1] : []
+    content {
+      users = [for user in data.github_user.reviewer : tonumber(user.id)]
+      teams = [for team in data.github_team.reviewer : tonumber(team.id)]
+    }
   }
+
+  dynamic "deployment_branch_policy" {
+    for_each = var.deployment_tag_pattern == null ? [] : [1]
+    content {
+      protected_branches     = false
+      custom_branch_policies = true
+    }
+  }
+}
+
+resource "github_repository_environment_deployment_policy" "tag" {
+  count       = var.deployment_tag_pattern == null ? 0 : 1
+  repository  = var.repository_name
+  environment = github_repository_environment.env.environment
+  tag_pattern = var.deployment_tag_pattern
 }
 
 resource "github_actions_environment_variable" "variable" {

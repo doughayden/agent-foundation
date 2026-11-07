@@ -169,7 +169,7 @@ uv lock --upgrade               # Update all
 
 ## CI/CD & Deployment
 
-**Deployment Modes:** Dev-only (default, `production_mode: false` in ci-cd.yml config job) deploys to dev on merge. Production mode (`production_mode: true`) deploys dev+stage on merge, prod on git tag with approval gate. See [Infrastructure Guide](docs/infrastructure.md).
+**Deployment Modes:** Dev-only (default, `production_mode: false` in ci-cd.yml config job) deploys to dev on merge. Production mode (`production_mode: true`) deploys dev+stage on merge, prod on an admin-pushed `prod-vX.Y.Z` promotion tag (on the commit a `vX.Y.Z` release tag marks; `v*` alone deploys nothing) with approval gate. See [Infrastructure Guide](docs/infrastructure.md).
 
 **Template Internals:** orchestration, the stage-success gate, required checks and workflow patterns: `.github/workflows/AGENTS.md`. Terraform bootstrap and main module: `terraform/AGENTS.md`.
 

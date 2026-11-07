@@ -69,6 +69,7 @@ nav:
     - Infrastructure:
       - Bootstrap Setup: references/bootstrap.md
       - Protection Strategies: references/protection-strategies.md
+      - Manual Environment Protection: references/manual-environment-protection.md
       - Deployment Modes: references/deployment.md
       - CI/CD Workflows: references/cicd.md
       - Cloud SQL Scaling: references/cloud-sql.md

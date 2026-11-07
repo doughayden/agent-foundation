@@ -6,6 +6,7 @@ Deep-dive technical documentation for optional follow-up.
 
 - [Bootstrap](bootstrap.md) - Complete bootstrap setup for both deployment modes
 - [Protection Strategies](protection-strategies.md) - Branch, tag, environment protection
+- [Manual Environment Protection](manual-environment-protection.md) - Configure the prod approval gate by hand in the GitHub UI or with gh api
 - [Deployment Modes](deployment.md) - Multi-environment strategy and infrastructure
 - [CI/CD Workflows](cicd.md) - Workflow architecture, mechanics, and image tagging strategy
 - [Claude PR Review](claude-pr-review.md) - Automated PR review setup: GitHub App, model auth paths, and workflow behavior

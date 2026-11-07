@@ -81,3 +81,35 @@ variable "promotion_source_artifact_registry_name" {
   nullable    = true
   default     = null
 }
+
+# prod-apply approval gate (required reviewers on a private repository need GitHub Enterprise)
+variable "prod_apply_reviewer_users" {
+  description = "GitHub usernames whose approval releases the prod apply"
+  type        = list(string)
+  default     = []
+}
+
+variable "prod_apply_reviewer_teams" {
+  description = "GitHub team slugs whose approval releases the prod apply"
+  type        = list(string)
+  default     = []
+}
+
+variable "prod_apply_prevent_self_review" {
+  description = "Stop the user who pushed the promotion tag from approving the prod apply"
+  type        = bool
+  default     = false
+}
+
+variable "prod_apply_can_admins_bypass" {
+  description = "Let repository admins deploy prod without an approval"
+  type        = bool
+  default     = true
+}
+
+variable "prod_apply_wait_timer" {
+  description = "Minutes to delay the prod apply after approval is requested (null for none)"
+  type        = number
+  nullable    = true
+  default     = null
+}

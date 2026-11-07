@@ -106,13 +106,37 @@ See [Terraform State Lock](#state-lock-timeout) in Terraform section below.
 
 **Check path filters:**
 - `ci.yml` has no path filter, so it runs on every push and pull request; `ci-cd.yml` and `deploy-docs.yml` both filter
-- Tag triggers (`v*`) always run regardless of paths
+- Only `prod-v*` promotion tags start `ci-cd.yml`, and they run regardless of paths. A `v*` release tag alone starts nothing
+- GitHub creates no push event for tags when more than three tags arrive in one push ([push event](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#push)), so `git push origin --tags` with several releases starts nothing. Push each promotion tag on its own
 - `ci-cd.yml` filters in two layers: `paths-ignore` exclusions on the trigger prevent the CI/CD workflow from running on docs or local development changes, and the `changes` job's `deploy` and `eval` filters select which downstream jobs run when the change set passes exclusion. No run at all points at the `paths-ignore` exclusions; a run where everything after `Detect Changes` skipped points at the `changes` job filters. See [CI/CD Reference: Path filtering](references/cicd.md#ci-cdyml-orchestrator)
 
 **Verify branch protection:**
 ```bash
 # Check branch protection rules
 gh api repos/:owner/:repo/branches/main/protection
+```
+
+### Promotion Tag Fails at Extract Build Metadata
+
+**Symptom:** a `prod-vX.Y.Z` run fails in `Extract Build Metadata` with one of:
+- `Promotion tag <tag> does not have the form <env>-vX.Y.Z`: the tag is not a promotion tag for a semantic version, like `prod-v1.0` or `prod-v1.0.0+build.5`. Delete it (repository admin) and push a correctly named one
+- `Promotion tag prod-vX.Y.Z needs release tag vX.Y.Z on the same commit`: see the causes below
+
+**Cause:** the promotion tag names a release tag that does not exist, or that marks a different commit. No prod deploy job starts (`Require Stage Success` still runs, since it needs only the workflow configuration).
+
+**Fix when the release tag is missing:** if the promotion tag marks the commit you meant to release, create the release tag there, then use **Re-run failed jobs** on the failed run. The re-run checks out the repository again and finds the new tag.
+```bash
+git tag -a v1.0.1 'prod-v1.0.1^{commit}' -m "Release v1.0.1"
+git push origin v1.0.1
+```
+
+**Fix when the release tag marks a different commit:** the promotion tag is on the wrong commit. Leave the release tag where it is, delete the promotion tag (repository admin), and recreate it on the release commit. Fetch the release tag first: `git fetch` never overwrites a local tag, so a stale local `v1.0.1` would rebuild the same mistake.
+```bash
+git fetch origin --force tag v1.0.1
+git push origin :refs/tags/prod-v1.0.1
+git tag -d prod-v1.0.1
+git tag -a prod-v1.0.1 'v1.0.1^{commit}' -m "Promote v1.0.1 to prod"
+git push origin prod-v1.0.1
 ```
 
 ## Cloud Run
@@ -298,7 +322,7 @@ Production issue detected?
 │  │  └─→ Strategy 1: Cloud Run Traffic Split (instant)
 │  │
 │  └─ No direct GCP access?
-│     └─→ Strategy 2: Hotfix + Tag (10-20 minutes)
+│     └─→ Strategy 2: Hotfix + Release (10-20 minutes)
 │
 ├─ Bad container image (won't start, missing dependencies)
 │  │
@@ -306,7 +330,7 @@ Production issue detected?
 │  │  └─→ Strategy 1: Cloud Run Traffic Split (instant)
 │  │
 │  └─ No old revision or no GCP access?
-│     └─→ Strategy 2: Hotfix + Tag (10-20 minutes)
+│     └─→ Strategy 2: Hotfix + Release (10-20 minutes)
 │
 ├─ Configuration regression (wrong env vars, feature flags)
 │  │
@@ -314,10 +338,10 @@ Production issue detected?
 │  │  └─→ Manual GitHub UI edit + re-trigger deployment
 │  │
 │  └─ Config in application code?
-│     └─→ Strategy 2: Hotfix + Tag
+│     └─→ Strategy 2: Hotfix + Release
 │
 └─ Infrastructure regression (IAM, GCS, Cloud Run config)
-   └─→ Strategy 2: Infrastructure Hotfix + Tag
+   └─→ Strategy 2: Infrastructure Hotfix + Release
 ```
 
 ### Strategy 1: Cloud Run Traffic Split (Instant)
@@ -345,33 +369,11 @@ gcloud run services update-traffic <service-name> \
 - Only works if old revision still exists
 - Doesn't fix root cause (need follow-up)
 
-### Strategy 2: Hotfix + Tag (10-20 minutes)
+### Strategy 2: Hotfix + Release (10-20 minutes)
 
 **When to use:** No GCP access, or need to fix config/code permanently
 
-**Steps:**
-```bash
-# Create hotfix branch
-git checkout -b hotfix/revert-bad-change
-
-# Revert or cherry-pick fix
-git revert <bad-commit>
-
-# Push and create PR
-git push origin hotfix/revert-bad-change
-gh pr create
-
-# After approval, merge PR
-gh pr merge --squash
-
-# Tag for production (annotated)
-git checkout main
-git pull
-git tag -a v1.0.1 -m "Hotfix: revert bad change"
-git push origin v1.0.1
-
-# Approve in prod-apply when workflow runs
-```
+**Steps:** revert or fix on a branch, merge the PR, then release the fix as a new version (`v1.0.1`, then `prod-v1.0.1` once the merge run's stage jobs pass) and approve the `prod-apply` job. Commands: [Infrastructure Guide: Rollback](infrastructure.md#rollback-production).
 
 **Pros:**
 - Works without GCP access

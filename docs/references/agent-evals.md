@@ -338,7 +338,7 @@ The judge gate is off the PR path deliberately: it is non-deterministic and call
 
 **An eval-data change gets its own judge run.** A change to the eval set or the judge config is the change most likely to alter what the gate asserts, and it always gets a score. `ci-cd.yml` resolves two path filters in a `changes` job: `build` gates on `deploy`, and `judge-eval` gates on `eval`, which is `deploy` plus `tests/eval/**`. A merge touching only `tests/eval/data/` therefore runs the judge gate and builds no image. That works because `judge-eval` scores the checked-out agent in-process, independent of the build chain. Details in [CI/CD Reference: Path filtering](cicd.md#ci-cdyml-orchestrator).
 
-Such a merge has no `Apply Stage` or `Smoke Stage` conclusion, so in production mode tagging that commit fails `require-stage-success` closed. That is correct: no image was built, so there is nothing to promote. Put a release tag on a commit whose merge deployed stage.
+Such a merge has no `Apply Stage` or `Smoke Stage` conclusion, so in production mode promoting that commit with a `prod-v*` tag fails `require-stage-success` closed. That is correct: no image was built, so there is nothing to promote. Put a release tag on a commit whose merge deployed stage.
 
 ### Varying a run
 

@@ -2,10 +2,10 @@
 #
 # Tag-time gate that requires the tagged commit's stage release candidate to have passed
 # before prod promotion. The tag run and the original merge share a SHA, and the tag run
-# never rebuilds (it only re-reads stage `{sha7}` and promotes it), so verifying the
-# merge run's gates passed is sufficient: stage `{sha7}` is written only by that
+# never rebuilds (it only re-reads stage `{sha}` and promotes it), so verifying the
+# merge run's gates passed is sufficient: stage `{sha}` is written only by that
 # commit's own merge-run attempts, and the jobs API reports the latest attempt, so a
-# green `Smoke Stage` means `{sha7}` resolves to the digest that was smoked. The
+# green `Smoke Stage` means `{sha}` resolves to the digest that was smoked. The
 # promotion workflow (digest-preserving copy) and deploy-by-digest then guarantee prod
 # runs exactly that digest.
 #

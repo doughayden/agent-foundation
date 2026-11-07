@@ -9,7 +9,7 @@ Rules for editing `.github/workflows/`. **Template Internals:** this whole file 
 - **Deploy by immutable digest** (not tag) so every deploy creates a new Cloud Run revision
 - **A reusable-workflow caller job may not use `continue-on-error`** (nor `env`/`steps`/`timeout-minutes`): non-blocking behavior is an input the callee honors by exiting 0 (`judge-eval.yml` `gating`)
 - **Path filtering is two layers with opposite polarity:** trigger `paths-ignore` DENYLIST (does a run start) + `changes` job ALLOWLIST (`deploy`, `eval`: which jobs run). **Never invert the allowlist** (a denylist on the deploy decision fails open). **Every `paths-ignore` entry MUST be absent from both filters** (else the allowlist entry is unreachable). Markdown pattern is root-only `'*.md'`; **do not make it recursive** (it would swallow markdown under `src/`). `deploy` lists every reusable workflow `ci-cd.yml` calls, tag-only ones included. Rationale: `docs/references/cicd.md` ci-cd.yml (Orchestrator)
-- An eval-data-only merge builds nothing, so tagging it fails `require-stage-success` closed. Correct; do not relax. Tag a commit whose merge deployed stage
+- An eval-data-only merge builds nothing, so promoting it fails `require-stage-success` closed. Correct; do not relax. Release a commit whose merge deployed stage
 
 ## Require Stage Success
 
