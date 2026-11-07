@@ -15,7 +15,7 @@ Multi-environment deployment strategy, infrastructure parity, and image promotio
 **Workflow:**
 - PR → dev plan (comment on PR)
 - Merge → dev deploy
-- Tag → dev deploy (version labeled)
+- Tags start no deployment
 
 **Use cases:**
 - Experiments and prototypes
@@ -118,7 +118,7 @@ For detailed job-level dependency graphs, see [CI/CD Workflows: Workflow Flows](
 **Key principles:**
 - Dev deployment never waits for stage or prod
 - Stage validates every merge (continuous feedback)
-- Prod deploys only on an explicit `prod-vX.Y.Z` promotion tag, pushed by a repository admin on the commit a `vX.Y.Z` release tag marks (release discipline)
+- Prod deploys only on an explicit `prod-vX.Y.Z` promotion tag, pushed by a repository admin on the commit a `vX.Y.Z` release tag marks (release discipline). Commands: [Infrastructure Guide: Deploy to Production](../infrastructure.md#deploy-to-production-production-mode)
 - Prod promotion is gated on the tagged commit's stage run passing (see [CI/CD Workflows: Require Stage Success](cicd.md#require-stage-successyml))
 - Uniform plan → apply pattern across all environments
 
@@ -148,7 +148,7 @@ Production mode uses **image promotion** (pull from source, push to target) inst
 
 **Process:**
 1. resolve-digest job:
-   - Queries stage registry for the image by the commit's `{sha7}` tag
+   - Queries stage registry for the image by the commit's `{sha}` tag
    - Extracts digest: `sha256:abc123`
 2. require-stage-success job (gates prod-promote):
    - Confirms the tagged commit's merge run had `Apply Stage`, `Smoke Stage`, and `Judge Eval` all succeed

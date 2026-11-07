@@ -8,7 +8,7 @@ Three protection layers ensure code quality and security:
 
 1. **Branch Protection (main)** - Manual setup, requires PR approval and status checks
 2. **Tag Protection (`prod-v*`)** - Automated by bootstrap (production mode), limits prod promotion to admins
-3. **Environment Protection (prod-apply)** - Manual reviewers, approval gate for production
+3. **Environment Protection (prod, prod-apply)** - Automated by bootstrap from `terraform.tfvars`, approval gate for production
 
 ## Branch Protection (Manual Setup Required)
 
@@ -94,7 +94,10 @@ Production tag protection is **automatically configured** by bootstrap in produc
 
 ### What Bootstrap Creates
 
-A release is two tags on one commit: `vX.Y.Z` marks the release and deploys nothing, and `prod-vX.Y.Z` promotes it to prod. Bootstrap (`terraform/bootstrap/prod/`) creates the **Production Promotion Tag Protection** ruleset on `refs/tags/prod-v*`: only repository admins can create, move or delete a promotion tag, so only an admin can promote a release to prod. `v*` release tags have no ruleset, since pushing one deploys nothing.
+A release is two tags on one commit: `vX.Y.Z` marks the release and deploys nothing, and `prod-vX.Y.Z` promotes it to prod. Bootstrap (`terraform/bootstrap/prod/`) creates the **Production Promotion Tag Protection** ruleset on `refs/tags/prod-v*`: only repository admins can create, move or delete a promotion tag, so only an admin can start the template's prod promotion pipeline. `v*` release tags have no ruleset, since pushing one deploys nothing.
+
+> [!NOTE]
+> The ruleset governs the template's pipeline, not every path to prod. The prod Workload Identity Federation provider is scoped to the repository, not to the GitHub environment, so a workflow on any branch of the repository can authenticate to the prod project.
 
 ### Verify
 
@@ -128,85 +131,25 @@ Tag protection is environment-specific infrastructure:
 
 Bootstrap enforces this consistently based on deployment mode. No manual decision needed.
 
-## Environment Protection (Manual Approval Setup Required)
+## Environment Protection (Automated)
 
-The `prod-apply` GitHub Environment requires manual approval before production deployments.
+Bootstrap creates and configures the `prod` and `prod-apply` GitHub Environments from `terraform/bootstrap/prod/terraform.tfvars`. Every bootstrap apply enforces those values, so change protection in `terraform.tfvars` and re-apply; a change made in the GitHub UI is reverted by the next apply. To set protection by hand outside bootstrap, see [Manual Environment Protection](manual-environment-protection.md).
 
-### What Bootstrap Creates
+### What Bootstrap Configures
 
-**Automated by bootstrap (production mode):**
-- GitHub Environment: `prod-apply`
-- Environment variables scoped to `prod-apply`
+| Setting | Environment | Source | Recommended |
+|---|---|---|---|
+| Deployment tag rule `prod-v*.*.*` | `prod`, `prod-apply` | Fixed in the prod root | Not configurable: the prod jobs only run on promotion tag pushes, so only a `prod-v*.*.*` tag can use either environment |
+| Required reviewers | `prod-apply` | `prod_apply_reviewer_users` (GitHub logins), `prod_apply_reviewer_teams` (team slugs) | The users or teams who own production releases (up to six; one approval releases the job) |
+| Prevent self-review | `prod-apply` | `prod_apply_prevent_self_review` | On for a team; off for a solo maintainer, who could otherwise never approve |
+| Allow administrators to bypass | `prod-apply` | `prod_apply_can_admins_bypass` | Off for strict release control; on to keep a break-glass path |
+| Wait timer | `prod-apply` | `prod_apply_wait_timer` (minutes) | Off (`null`), unless you want a cooling-off window |
 
-**Bootstrap does NOT configure** (the module lists these in `lifecycle.ignore_changes`, so a later bootstrap apply never overwrites them):
-- Required reviewers
-- Prevent self-review
-- Wait timer
-- Deployment branch and tag policy
-
-Admin bypass is on by default for a new environment.
-
-### What to Configure
-
-| Setting | Recommended | Why |
-|---|---|---|
-| Required reviewers | The users or teams who own production releases (up to six; one approval releases the job) | The approval gate itself |
-| Prevent self-review | On for a team; off for a solo maintainer | Stops the person who pushed the promotion tag from approving their own deployment. A solo maintainer who turns it on can never approve |
-| Wait timer | Off, unless you want a cooling-off window | Delays the job after approval is requested |
-| Allow administrators to bypass | Off for strict release control; on to keep a break-glass path | An admin can deploy without an approval |
-| Deployment branches and tags | **Selected branches and tags**, with tag rule `prod-v*.*.*` | The `prod-apply` job only runs on promotion tag pushes, so GitHub checks the rule against a `refs/tags/...` ref. Leave out a `main` branch rule: it never matches a prod run, and it would let any future job that targets `prod-apply` on a main push deploy |
-
-The tag rule matches the promotion tag format the [tag ruleset](#tag-protection-automated) limits to admins, so only an admin-pushed promotion tag can reach the approval.
-
-### Configure in the GitHub UI
-
-1. Go to **Settings** → **Environments** → **prod-apply**
-2. Under **Deployment protection rules**:
-   - Check **Required reviewers** and add users or teams
-   - Set **Prevent self-review** per the table above
-   - Optionally set **Wait timer**
-   - Set **Allow administrators to bypass** per the table above
-3. Click **Save protection rules**
-4. Under **Deployment branches and tags**, select **Selected branches and tags** and add a tag rule `prod-v*.*.*`
-5. Click **Save protection rules**
-
-### Configure with `gh api`
-
-The [environments REST API](https://docs.github.com/en/rest/deployments/environments) sets the protection rules in one `PUT`, and the [deployment branch policies API](https://docs.github.com/en/rest/deployments/branch-policies) adds the tag rule.
-
-```bash
-# Look up the reviewer's numeric ID (a team: gh api orgs/<org>/teams/<team-slug> --jq .id)
-REVIEWER_ID=$(gh api users/<github-login> --jq .id)
-
-# Reviewers, self-review, wait timer, and a custom branch/tag policy.
-# prevent_self_review is false for a solo maintainer; set it to true for a team
-gh api --method PUT repos/:owner/:repo/environments/prod-apply --input - <<EOF
-{
-  "reviewers": [{"type": "User", "id": ${REVIEWER_ID}}],
-  "prevent_self_review": false,
-  "wait_timer": 0,
-  "deployment_branch_policy": {"protected_branches": false, "custom_branch_policies": true}
-}
-EOF
-
-# Allow only promotion tags to deploy
-gh api --method POST repos/:owner/:repo/environments/prod-apply/deployment-branch-policies \
-  -f name='prod-v*.*.*' -f type=tag
-```
-
-To replace an existing tag rule, delete it by ID before adding the new one:
-
-```bash
-gh api repos/:owner/:repo/environments/prod-apply/deployment-branch-policies \
-  --jq '.branch_policies[] | {id, name, type}'
-gh api --method DELETE repos/:owner/:repo/environments/prod-apply/deployment-branch-policies/<policy-id>
-```
-
-The `PUT` body has no admin-bypass field: set **Allow administrators to bypass** in the UI.
+The tag rule matches the promotion tag format the [tag ruleset](#tag-protection-automated) limits to admins, so only an admin-pushed promotion tag reaches the approval. `terraform.tfvars.example` sets a starting value for each variable; replace the placeholder reviewer with your own.
 
 ### Verify
 
-**GitHub UI:** Settings → Environments → **prod-apply** shows the reviewers, the self-review and bypass settings, and the `prod-v*.*.*` tag rule under **Deployment branches and tags**.
+**GitHub UI:** Settings → Environments → **prod-apply** shows the reviewers, the self-review and bypass settings, and the `prod-v*.*.*` tag rule under **Deployment branches and tags**. **prod** shows the same tag rule.
 
 **CLI:**
 ```bash
@@ -217,11 +160,18 @@ gh api repos/:owner/:repo/environments/prod-apply --jq '{
   can_admins_bypass,
   deployment_branch_policy
 }'
-gh api repos/:owner/:repo/environments/prod-apply/deployment-branch-policies \
-  --jq '[.branch_policies[] | {name, type}]'
+for env in prod prod-apply; do
+  gh api repos/:owner/:repo/environments/$env/deployment-branch-policies --jq '[.branch_policies[] | {name, type}]'
+done
 ```
 
-Expected: a non-empty `reviewers` list, `custom_branch_policies: true`, and a `{"name": "prod-v*.*.*", "type": "tag"}` policy.
+Expected: the reviewers from `terraform.tfvars`, `custom_branch_policies: true`, and exactly one `{"name": "prod-v*.*.*", "type": "tag"}` policy per environment. A second policy (like an older `v*.*.*` rule created by hand) is not managed by bootstrap and keeps allowing those tags; delete it:
+
+```bash
+gh api repos/:owner/:repo/environments/prod-apply/deployment-branch-policies \
+  --jq '.branch_policies[] | {id, name, type}'
+gh api --method DELETE repos/:owner/:repo/environments/prod-apply/deployment-branch-policies/<policy-id>
+```
 
 ### Private Repositories
 
@@ -234,34 +184,26 @@ GitHub gates environment protection by plan for private repositories ([deploymen
 | Private, GitHub Pro or Team | Not available | Available |
 | Private, GitHub Enterprise | Available | Available |
 
+On a private repository without GitHub Enterprise, leave `prod_apply_reviewer_users` and `prod_apply_reviewer_teams` empty.
+
 > [!WARNING]
 > On a private repository without GitHub Enterprise there is no approval gate: `prod-apply` deploys to production as soon as `prod-plan` finishes, with no reviewer prompt.
 
 What still guards production on those plans:
 
 - **`require-stage-success`.** `prod-promote` needs it, so a promotion tag deploys only a commit whose merge run passed `Apply Stage`, `Smoke Stage`, and `Judge Eval`. This holds on every plan because it is a job dependency, not an environment rule.
-- **The deployment tag policy** (Pro and Team only). Only `prod-v*.*.*` tags reach `prod-apply`.
-- **Who can push a `prod-v*` tag.** The promotion tag ruleset limits this to admins where your plan enforces rulesets on private repositories; confirm it shows **Active** under Settings → Rules → Rulesets. Without it, anyone with write access can promote a release.
+- **The deployment tag policy** (Pro and Team only). Only `prod-v*.*.*` tags reach `prod` and `prod-apply`.
+- **Who can push a `prod-v*` tag.** The promotion tag ruleset limits this to admins where your plan enforces rulesets on private repositories; confirm it shows **Active** under Settings → Rules → Rulesets. Without it, anyone with write access can start the prod promotion pipeline.
 
 To keep a human approval on a private fork, use GitHub Enterprise or make the repository public.
-
-### Why Manual?
-
-Reviewer selection is a **human security decision** that changes over time:
-
-- Team composition changes (new hires, departures, role changes)
-- Responsibility shifts (different teams own production approvals)
-- Organization structure evolves
-
-Bootstrap creates the environment, but your team decides who can approve production deployments. The bootstrap module explicitly ignores reviewer changes (`lifecycle.ignore_changes`) to prevent Terraform from overwriting your manual selections.
 
 ## How Approvals Work
 
 ### Production Deployment Flow
 
-1. A release tag marks the commit: `git tag -a v1.0.0 -m "Release v1.0.0" && git push origin v1.0.0`. It deploys nothing
-2. A repository admin (allowed to bypass the promotion tag ruleset) pushes the promotion tag on the same commit: `git tag -a prod-v1.0.0 v1.0.0^{commit} -m "Promote v1.0.0 to prod" && git push origin prod-v1.0.0`
-3. GitHub Actions workflow starts. Metadata extraction fails unless `v1.0.0` marks the same commit, and the tag must match the environment's `prod-v*.*.*` tag rule to reach `prod-apply`
+1. A release tag (`vX.Y.Z`) marks the commit and deploys nothing
+2. After that commit's merge run passes its stage jobs, a repository admin pushes the promotion tag (`prod-vX.Y.Z`) on the same commit. Commands: [Infrastructure Guide: Deploy to Production](../infrastructure.md#deploy-to-production-production-mode)
+3. GitHub Actions workflow starts. Metadata extraction fails unless the promotion tag has the form `prod-vX.Y.Z` and `vX.Y.Z` marks the same commit, and the tag must match the `prod-v*.*.*` tag rule to reach `prod` and `prod-apply`
 4. Jobs run sequentially:
    - Resolve image digest from stage
    - Promote image to prod registry
@@ -276,7 +218,8 @@ Bootstrap creates the environment, but your team decides who can approve product
 9. If approved: Terraform apply runs, deploys to production
 10. If rejected: Workflow fails, no deployment
 
-**Note:** A tag that doesn't match the `prod-v*.*.*` tag rule is blocked by the environment before the approval prompt.
+> [!NOTE]
+> A tag that doesn't match the `prod-v*.*.*` tag rule is blocked by the environment before the approval prompt.
 
 ### Approving a Deployment
 
@@ -310,7 +253,7 @@ gh api --method POST repos/:owner/:repo/actions/runs/<run-id>/pending_deployment
 |------------|------|------|-----|
 | Branch (main) | Manual | After repo creation | Team-specific workflow preferences |
 | Tags (`prod-v*`) | Automated | Bootstrap (prod mode) | Environment-specific requirement |
-| Environment (prod-apply) | Manual reviewers | After prod bootstrap | Human security decision, changes over time |
+| Environments (prod, prod-apply) | Automated | Bootstrap (prod mode), from `terraform.tfvars` | Reviewers are a human decision recorded in code and enforced on every apply |
 
 ---
 

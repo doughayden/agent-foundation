@@ -12,7 +12,7 @@ Bootstrap creates one-time CI/CD infrastructure per environment:
 **Resources created:**
 1. Workload Identity Federation - Keyless GitHub Actions authentication
 2. Artifact Registry - Docker image storage with cleanup policies
-3. GitHub Environments - dev/stage/prod/prod-apply (production mode)
+3. GitHub Environments - dev/stage/prod/prod-apply (production mode), with `prod-apply` protection and `prod-v*.*.*` tag rules on `prod`/`prod-apply`
 4. GitHub Environment Variables - Auto-configured per environment
 5. Tag Protection - Production promotion (`prod-v*`) tag ruleset (prod bootstrap only)
 6. Cross-Project IAM - Artifact Registry reader for image promotion (stage/prod)
@@ -275,7 +275,18 @@ promotion_source_artifact_registry_name = "your-registry-stage"
 # GitHub Configuration
 repository_owner = "your-github-username-or-org"
 repository_name  = "your-agent-repository"
+
+# prod-apply approval gate
+prod_apply_reviewer_users      = ["your-github-username"]
+prod_apply_reviewer_teams      = []
+prod_apply_prevent_self_review = false # true for a team
+prod_apply_can_admins_bypass   = true  # false for strict release control
 ```
+
+The `prod_apply_*` variables configure the `prod-apply` approval gate, and bootstrap limits `prod` and `prod-apply` to `prod-v*.*.*` tags. Every apply enforces these values, so change them here rather than in the GitHub UI. Settings and recommendations: [Protection Strategies](protection-strategies.md#environment-protection-automated).
+
+> [!IMPORTANT]
+> Required reviewers are not available on private repositories outside GitHub Enterprise: leave both reviewer lists empty there, and `prod-apply` deploys without approval. Check the plan table in [Protection Strategies](protection-strategies.md#private-repositories) before relying on the gate.
 
 **Bootstrap:**
 
@@ -290,6 +301,10 @@ terraform -chdir=terraform/bootstrap/prod apply
 **Check GitHub Environments:**
 1. Settings → Environments
 2. Confirm environments: `dev`, `stage`, `prod`, `prod-apply`
+
+**Check prod-apply Protection:**
+1. Settings → Environments → prod-apply
+2. Confirm the reviewers from `terraform.tfvars` and the `prod-v*.*.*` tag rule under **Deployment branches and tags** (`prod` shows the same tag rule)
 
 **Check Tag Protection:**
 1. Settings → Rules → Rulesets
@@ -308,25 +323,6 @@ gh api repos/:owner/:repo/environments | jq -r '.environments[].name'
 # Check tag protection ruleset
 gh api repos/:owner/:repo/rulesets | jq '.[] | {name, enforcement, target}'
 ```
-
-### 8. Configure prod-apply Reviewers (REQUIRED)
-
-Bootstrap creates `prod-apply` with no protection rules. Add required reviewers and a `prod-v*.*.*` deployment tag rule:
-
-1. Settings → Environments → prod-apply
-2. Under **Deployment protection rules**, check **Required reviewers**
-  - Click **Add reviewers** search box
-  - Search for and add users or teams who can approve production deployments
-3. Click **Save protection rules**
-4. Under **Deployment branches and tags**:
-  - Click dropdown → Select **Selected branches and tags**
-  - Add tag rule: `prod-v*.*.*` (promotion tags can trigger prod deployments)
-5. Click **Save protection rules**
-
-Refer to [Protection Strategies](protection-strategies.md#environment-protection-manual-approval-setup-required) for detailed setup instructions including `gh api` commands.
-
-> [!IMPORTANT]
-> Required reviewers are not available on private repositories outside GitHub Enterprise, so `prod-apply` deploys without approval there. Check the plan table in [Protection Strategies](protection-strategies.md#private-repositories) before relying on the gate.
 
 ## Claude PR Review
 
@@ -371,7 +367,7 @@ The `claude.yml` workflow adds an automated Claude code review on pull requests 
 
 **GitHub Environments (Production Mode):**
 - `dev`, `stage`, `prod` - Standard deployment environments
-- `prod-apply` - Separate environment for approval gate (manual reviewers)
+- `prod-apply` - Separate environment for the approval gate (reviewers from `terraform.tfvars`)
 
 ## Extending the Main Module
 

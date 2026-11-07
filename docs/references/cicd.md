@@ -51,7 +51,7 @@ GitHub Actions workflow architecture, mechanics, and customization.
 **Triggers:**
 - Pull request to main (docs and local development changes excluded)
 - Push to main (docs and local development changes excluded)
-- Tag push matching `prod-v*` (a promotion tag on the commit a `vX.Y.Z` release tag marks; a `v*` tag alone starts no run)
+- Tag push matching `prod-v*` (a promotion tag on the commit a `vX.Y.Z` release tag marks; a `v*` tag alone starts no run). Release steps: [Infrastructure Guide: Deploy to Production](../infrastructure.md#deploy-to-production-production-mode)
 
 **Key jobs:**
 - `changes` - dorny/paths-filter resolving the `deploy` and `eval` filters that gate `build` and `judge-eval` (branch events only)
@@ -155,7 +155,7 @@ changes, config ─→ judge-eval
 changes ─→ (docker-build and every deploy job skipped)
 ```
 
-`eval` matches and `deploy` does not, so the judge gate scores the change that altered what it asserts and nothing is rebuilt or redeployed. In production mode this merge run has no `Apply Stage` or `Smoke Stage` conclusion, so tagging that commit fails `require-stage-success` closed. That is correct, not a defect; see [Require Stage Success](#require-stage-successyml).
+`eval` matches and `deploy` does not, so the judge gate scores the change that altered what it asserts and nothing is rebuilt or redeployed. In production mode this merge run has no `Apply Stage` or `Smoke Stage` conclusion, so promoting that commit fails `require-stage-success` closed. That is correct, not a defect; see [Require Stage Success](#require-stage-successyml).
 
 ### Tag Flow
 
@@ -163,7 +163,7 @@ changes ─→ (docker-build and every deploy job skipped)
 ```
 config, metadata-extract → (no deploy)
 ```
-Tags are a no-op in dev-only mode: a `v*` release tag starts no run, and on a `prod-v*` promotion tag `build` skips and `dev-plan`/`dev-apply` are branch-only, so only `meta` and `config` run. Dev-only mode deploys on merge to main, not on tags.
+Tags deploy nothing in dev-only mode: a `v*` release tag starts no run, and a `prod-v*` promotion tag runs only `meta` and `config` (`build` skips and `dev-plan`/`dev-apply` are branch-only). `meta` still validates the promotion tag, so a malformed one or one without its release tag on the same commit turns that run red. Dev-only mode deploys on merge to main, not on tags.
 
 **Production mode:**
 ```
@@ -178,7 +178,7 @@ config ──┬────────┘                        │
 
 `require-stage-success` gates the prod pipeline tag run. No eval runs at tag time; the gate reads the merge run's `Judge Eval` conclusion. See [Require Stage Success](#require-stage-successyml) for details.
 
-**Result:** Version-tagged deployment, gated on stage success plus the behavioral judge gate, and smoked after apply. Prod requires manual approval in `prod-apply` environment.
+**Result:** Version-tagged deployment, gated on stage success plus the behavioral judge gate, and smoked after apply. Prod requires an approval in the `prod-apply` environment from the reviewers bootstrap configures.
 
 ## Image Tagging Strategy
 
@@ -186,52 +186,52 @@ Tags name images for people and for the tag-time digest lookup. Every deploy con
 
 ### Tags by Event
 
-`metadata-extract.yml` derives the tag list. `{sha7}` is the commit's `git rev-parse --short` SHA and always comes first, because `resolve-image-digest.yml` and the promotion digest check read the first tag.
+`metadata-extract.yml` derives the tag list. `{sha}` is the full 40-character commit SHA, so no two commits share it, and it always comes first, because `resolve-image-digest.yml` and the promotion digest check read the first tag. `{sha7}` in the PR tag is the first 7 characters of the PR head commit, for readability; nothing promotes PR images.
 
 | Event | Registry | Tags | Written by |
 |---|---|---|---|
 | Pull request | dev | `pr-{number}-{sha7}` (PR head commit, not the merge commit) | `build` |
-| Merge to main | dev | `{sha7}`, `latest` | `build` |
-| Merge to main (production mode) | stage | `{sha7}`, `latest` (same digest, copied) | `stage-promote` |
-| Promotion tag (production mode) | prod | `{sha7}`, `latest`, `{version}` (the release tag the promotion tag names, like `v1.0.0` for `prod-v1.0.0`) | `prod-promote` |
+| Merge to main | dev | `{sha}`, `latest` | `build` |
+| Merge to main (production mode) | stage | `{sha}`, `latest` (same digest, copied) | `stage-promote` |
+| Promotion tag (production mode) | prod | `{sha}`, `latest`, `{version}` (the release tag the promotion tag names, like `v1.0.0` for `prod-v1.0.0`) | `prod-promote` |
 | Every build | dev | `buildcache` (BuildKit layer cache, never deployed) | `build` |
 
 `latest` is a convenience pointer that moves on every merge (and on every release in prod). No workflow reads it. `buildcache` is overwritten on every build; [Image Digest Resolution](image-digest-resolution.md#the-registry-cache-artifact) describes the artifact.
 
 ### Build Once, Promote by Digest
 
-1. **Build (merge):** `build` builds the image once, in dev, and pushes it with its tags. `{sha7}` is applied at push time, before any smoke test has run against that digest.
+1. **Build (merge):** `build` builds the image once, in dev, and pushes it with its tags. `{sha}` is applied at push time, before any smoke test has run against that digest.
 2. **Promote to stage (merge, production mode):** `stage-promote` copies the dev digest into the stage registry under the same tags with `crane cp`, then fails unless the target digest equals the source digest.
 3. **Deploy:** Terraform receives a digest URI (`registry/image@sha256:...`), so every Cloud Run revision pins a digest and every new digest creates a new revision. The deployed digest is the OCI index; revisions record the platform image digest inside it ([Image Digest Resolution](image-digest-resolution.md)).
-4. **Release (tag, production mode):** nothing rebuilds. `resolve-digest` reads the digest behind stage `{sha7}`, `require-stage-success` confirms the tagged commit's merge run passed `Apply Stage`, `Smoke Stage`, and `Judge Eval`, and `prod-promote` copies that digest into prod with the `{version}` tag added. Prod then deploys the digest after the `prod-apply` approval.
+4. **Release (promotion tag, production mode):** nothing rebuilds. `resolve-digest` reads the digest behind stage `{sha}`, `require-stage-success` confirms the tagged commit's merge run passed `Apply Stage`, `Smoke Stage`, and `Judge Eval`, and `prod-promote` copies that digest into prod with the `{version}` tag added. Prod then deploys the digest after the `prod-apply` approval.
 
-Prod therefore runs a digest that stage deployed and smoked: the tag run promotes only what stage `{sha7}` resolves to, `require-stage-success` ties that digest to a green stage smoke ([Require Stage Success](#require-stage-successyml)), and the copy and deploy steps preserve it byte for byte.
+Prod therefore runs a digest that stage deployed and smoked: the tag run promotes only what stage `{sha}` resolves to, `require-stage-success` ties that digest to a green stage smoke ([Require Stage Success](#require-stage-successyml)), and the copy and deploy steps preserve it byte for byte.
 
 ### Registry Tags Stay Mutable
 
-The Artifact Registry repositories do not enable [immutable tags](https://docs.cloud.google.com/artifact-registry/docs/docker/immutable-image-tags). Deployment already consumes only immutable digests, `{sha7}` is unique per commit, and `require-stage-success` proves the promoted digest is the one stage smoked, so registry-level immutability would guarantee nothing the pipeline does not already guarantee.
+The Artifact Registry repositories do not enable [immutable tags](https://docs.cloud.google.com/artifact-registry/docs/docker/immutable-image-tags). Deployment already consumes only immutable digests, `{sha}` is unique per commit, and `require-stage-success` proves the promoted digest is the one stage smoked, so registry-level immutability would guarantee nothing the pipeline does not already guarantee.
 
-The setting is repository-wide, so enabling it would also reject the re-push of `latest` and `buildcache` on every build. Keeping it off preserves the registry build cache and the `latest` pointer at no correctness cost. The remaining way to repoint `{sha7}` is a manual push to the registry, which Artifact Registry IAM governs.
+The setting is repository-wide, so enabling it would also reject the re-push of `latest` and `buildcache` on every build. Keeping it off preserves the registry build cache and the `latest` pointer at no correctness cost. The remaining way to repoint `{sha}` is a manual push to the registry, which Artifact Registry IAM governs.
 
 ### Re-running a Merge Run
 
-`require-stage-success` reads the conclusions of the merge run's latest attempt, and stage `{sha7}` is written only by that commit's own merge-run attempts. Any re-run is therefore safe for prod: a re-run that leaves stage on an unsmoked digest also leaves `Smoke Stage` not green, and the tag fails closed.
+`require-stage-success` reads the conclusions of the merge run's latest attempt, and stage `{sha}` is written only by that commit's own merge-run attempts. Any re-run is therefore safe for prod: a re-run that leaves stage on an unsmoked digest also leaves `Smoke Stage` not green, and the tag fails closed.
 
 - **To re-validate the same image:** use "Re-run failed jobs" on the merge run. Jobs that succeeded keep their results, and the re-run jobs work on the digest already built.
-- **To rebuild:** "Re-run all jobs" rebuilds from the same commit. With a warm `buildcache` every layer is cached and the digest is byte-identical; a cache miss produces a new digest, which moves `{sha7}` in dev and stage, and that attempt's own stage smoke must pass before the commit can be released.
-- **To ship a different image:** land a new commit. A new image belongs to a new `{sha7}`; never retag a digest by hand.
+- **To rebuild:** "Re-run all jobs" rebuilds from the same commit. With a warm `buildcache` every layer is cached and the digest is byte-identical; a cache miss produces a new digest, which moves `{sha}` in dev and stage, and that attempt's own stage smoke must pass before the commit can be released.
+- **To ship a different image:** land a new commit. A new image belongs to a new `{sha}`; never retag a digest by hand.
 
-Tag a release only on a commit whose merge run's latest attempt is green.
+Promote a release only from a commit whose merge run's latest attempt is green.
 
 ### Registry Cleanup
 
 The cleanup policies in `terraform/bootstrap/module/gcp/main.tf` decide how long a tagged image stays available. Retention values are set per environment in each bootstrap root's `terraform.tfvars`.
 
-- **Untagged images are deleted.** A digest that loses its last tag, like the previous image when a rebuild moves `{sha7}`, is removed.
+- **Untagged images are deleted.** A digest that loses its last tag, like the previous image when a rebuild moves `{sha}`, is removed.
 - **Tagged images age out too.** The general retention policy deletes images older than `registry_cleanup_general_retention_days`, tagged or not, unless a KEEP policy (`registry_cleanup_keep_count`, or the `buildcache` keep) protects them. Artifact Registry applies a KEEP policy over a DELETE policy when both match ([cleanup policies](https://docs.cloud.google.com/artifact-registry/docs/repositories/cleanup-policy)).
 - **PR images expire separately** when `registry_cleanup_pr_retention_days` is set (dev only).
 
-Two consequences follow. Stage `{sha7}` must still exist when you tag, or `resolve-digest` fails and the release stops before promotion. And re-deploying an older prod digest from the registry works only while that digest is retained, so size prod retention to your rollback window.
+Two consequences follow. Stage `{sha}` must still exist when you promote, or `resolve-digest` fails and the release stops before promotion; a release tag can sit unpromoted only as long as stage retention keeps its image. And re-deploying an older prod digest from the registry works only while that digest is retained, so size prod retention to your rollback window.
 
 ## Reusable Workflows
 
@@ -421,9 +421,9 @@ The eval runs in-process and App-aware, so it scores the same agent the built im
 
 `Judge Eval` covers the behavioral dimension: it scores the same commit's agent code in-process, so requiring its conclusion gates the behavior the promoted digest carries without depending on the stage rollout. A behavioral regression reds the merge run after stage has already deployed, which blocks the prod tag rather than reverting stage.
 
-Stage success is the whole prod gate for image fidelity. The promotion workflow copies the image digest-for-digest and prod deploys by digest, so prod runs exactly the digest `resolve-digest` reads from stage `{sha7}` — the fidelity guarantee lives there, not in this gate. So the gate only has to confirm that digest was validated, and a green `Smoke Stage` does: stage `{sha7}` is written only by that commit's own merge-run attempts, the tag run never rebuilds (it only re-reads `{sha7}` and promotes it), and the jobs API reports the latest attempt, so a green smoke means `{sha7}` resolves to the digest that was smoked. No separate digest comparison is needed (and conclusions, not outputs, are what the REST API exposes after a run). The only way to break that equivalence is an out-of-band registry repoint of `{sha7}`, governed by Artifact Registry IAM. Because `prod-promote` declares `needs: require-stage-success`, a failure halts the tag run upstream of the `prod-apply` approval.
+Stage success is the whole prod gate for image fidelity. The promotion workflow copies the image digest-for-digest and prod deploys by digest, so prod runs exactly the digest `resolve-digest` reads from stage `{sha}` — the fidelity guarantee lives there, not in this gate. So the gate only has to confirm that digest was validated, and a green `Smoke Stage` does: stage `{sha}` is written only by that commit's own merge-run attempts, the tag run never rebuilds (it only re-reads `{sha}` and promotes it), and the jobs API reports the latest attempt, so a green smoke means `{sha}` resolves to the digest that was smoked. No separate digest comparison is needed (and conclusions, not outputs, are what the REST API exposes after a run). The only way to break that equivalence is an out-of-band registry repoint of `{sha}`, governed by Artifact Registry IAM. Because `prod-promote` declares `needs: require-stage-success`, a failure halts the tag run upstream of the `prod-apply` approval.
 
-**Tagging a commit that built no image.** Not every merge produces an image. A merge touching only `tests/eval/**` runs the judge gate and skips `build`, so `Apply Stage` and `Smoke Stage` are skipped in that run and this gate fails closed on them. It's intentional behavior: no image exists for that commit, so stage `{sha7}` resolves to nothing and prod's deploy-by-digest has nothing to promote. Relaxing the gate to accept a skipped stage job would trade a clear failure for an unsound pass.
+**Tagging a commit that built no image.** Not every merge produces an image. A merge touching only `tests/eval/**` runs the judge gate and skips `build`, so `Apply Stage` and `Smoke Stage` are skipped in that run and this gate fails closed on them. It's intentional behavior: no image exists for that commit, so stage `{sha}` resolves to nothing and prod's deploy-by-digest has nothing to promote. Relaxing the gate to accept a skipped stage job would trade a clear failure for an unsound pass.
 
 Practically, a release belongs on a commit whose merge deployed and smoked stage. If the last merge before a release changed only eval data, tag the commit before it, or land a deployable change first.
 
