@@ -12,12 +12,9 @@ SERVE_WEB_INTERFACE=TRUE RELOAD_AGENTS=TRUE uv run server  # Reload the agent on
 LOG_LEVEL=DEBUG uv run server                              # Debug logging
 ```
 
-With the service URIs in `.env` unset, ADK stores data locally:
-- **Sessions:** SQLite under `src/<package>/.adk/` (gitignored), kept across restarts
-- **Artifacts:** files under `src/<package>/.adk/artifacts/`
-- **Memory:** in-process only, reset on restart
+With the service URIs in `.env` unset, ADK stores sessions and artifacts locally under `src/<package>/.adk/` and keeps memory in-process ([Environment Variables: Cloud Resources](environment-variables.md#cloud-resources)). `.env` is shared with Docker Compose: with the URIs set, `uv run server` uses the deployed services instead, and the session database is reachable only through the Compose tunnel.
 
-`RELOAD_AGENTS` reloads the agent package (agent, tools, callbacks, prompt); restart the server after changing `server.py`, `telemetry.py` or `.env`. Local runs export traces and logs to Google Cloud like the deployed service; metrics go to Google locally only with `cloud.region` in `OTEL_RESOURCE_ATTRIBUTES` ([Observability](observability.md)). Set `OTEL_RESOURCE_ATTRIBUTES=service.namespace=<your-name>` in `.env` so teammates can filter to your traces when reviewing experiments. Full variable reference: [Environment Variables](environment-variables.md).
+`RELOAD_AGENTS` reloads the agent, tools, callbacks and prompt; restart the server after changing `server.py`, `config.py`, `telemetry.py` or `.env`. Local runs export traces and logs to Google Cloud like the deployed service; metrics go to Google locally only with `cloud.region` in `OTEL_RESOURCE_ATTRIBUTES` ([Observability](observability.md)). Set `OTEL_RESOURCE_ATTRIBUTES=service.namespace=<your-name>` in `.env` so teammates can filter to your traces when reviewing experiments. Full variable reference: [Environment Variables](environment-variables.md).
 
 ## Feature Branch Workflow
 
@@ -114,14 +111,14 @@ Run the local agent against the deployed dev session database (Cloud SQL), memor
 > [!IMPORTANT]
 > This path needs a completed [deploy](getting-started.md#deploy) and `roles/iap.tunnelResourceAccessor` on your Google account for the IAP tunnel. Grant it via `gcloud projects add-iam-policy-binding` or the GCP Console.
 
-1. Copy the values from the deploy job summary (`gh run view <run-id>`) into the deployed-resource block of `.env`: `BASTION_INSTANCE`, `BASTION_ZONE`, `SESSION_SERVICE_URI`, `MEMORY_SERVICE_URI` and `ARTIFACT_SERVICE_URI`. [Environment Variables: Cloud Resources](environment-variables.md#cloud-resources) says where to find each.
+1. Open the deploy run's job summary (`gh run view <run-id> --web`). In the deployed-resource block of `.env`, uncomment and fill in `BASTION_INSTANCE`, `BASTION_ZONE`, `SESSION_SERVICE_URI`, `MEMORY_SERVICE_URI` and `ARTIFACT_SERVICE_URI`, plus any variables you added for your own resources. Set `SERVE_WEB_INTERFACE=TRUE` in `.env` too: Compose reads only `.env`, not your shell. [Environment Variables: Cloud Resources](environment-variables.md#cloud-resources) says where to find each value.
 2. Start the stack and leave it running:
 
-   ```bash
-   docker compose up --build --watch   # Stop: Ctrl+C or docker compose down
-   ```
+    ```bash
+    docker compose up --build --watch   # Stop: Ctrl+C or docker compose down
+    ```
 
-   Edits under `src/` sync into the container and restart the app; changes to `pyproject.toml` or `uv.lock` rebuild the image.
+    Edits under `src/` sync into the container and restart the app; changes to `pyproject.toml` or `uv.lock` rebuild the image.
 
 To go back to local storage, comment the service URIs out again and use `uv run server`. To connect `uv run server` to individual backends without Compose, see [Cloud Backend Options](references/cloud-backend-options.md). Watch mode, volumes and the tunnel: [Docker Compose Workflow](references/docker-compose-workflow.md); image layout: [Dockerfile Strategy](references/dockerfile-strategy.md).
 
@@ -256,7 +253,7 @@ your-agent-name/
   docs/                   # Documentation
   .env.example            # Environment template
   pyproject.toml          # Project configuration
-  compose.yml             # Local development
+  compose.yml             # Local agent against deployed resources
   Dockerfile              # Container image
   AGENTS.md               # AI coding agent instructions (plus tests/, terraform/, .github/workflows/)
   README.md               # Main documentation

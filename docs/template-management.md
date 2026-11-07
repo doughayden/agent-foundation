@@ -93,7 +93,7 @@ Work through each phase in order. See [Quick Reference](#quick-reference) for co
 ```bash
 # Test thoroughly
 uv run pre-commit run --all-files && uv run pytest --cov
-docker compose up --build
+docker compose build   # Image still builds; run it with Compose only if .env has the deployed-resource values
 terraform -chdir=terraform/bootstrap/dev plan
 
 # Create PR and merge

@@ -94,7 +94,7 @@ These must be set for the agent to function.
 
 ## Cloud Resources
 
-Deployed persistence for sessions, memory, and artifacts. Set locally only to run against deployed resources with Docker Compose ([Development: Connect to Deployed Resources](development.md#connect-to-deployed-resources)); Terraform sets them on Cloud Run. Unset, ADK stores sessions and artifacts locally under `src/<package>/.adk/` and keeps memory in-process.
+Deployed persistence for sessions, memory, and artifacts. Set locally to run against deployed resources: all of them for Docker Compose ([Development: Connect to Deployed Resources](development.md#connect-to-deployed-resources)), or individual URIs for `uv run server` ([Cloud Backend Options](references/cloud-backend-options.md)). `uv run server` and Compose read the same `.env`. Terraform sets the service URIs on Cloud Run; the bastion values are local only. Unset, ADK stores sessions and artifacts locally under `src/<package>/.adk/` and keeps memory in-process.
 
 **BASTION_INSTANCE**
 - **Value:** Bastion VM instance name (e.g., `my-agent-dev-bastion`)

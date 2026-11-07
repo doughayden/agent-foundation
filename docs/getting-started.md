@@ -75,7 +75,7 @@ SERVE_WEB_INTERFACE=TRUE uv run server
 The web interface is at `http://localhost:8000`. Sessions persist in SQLite under `src/<package>/.adk/` (gitignored), so you can stop the server and return to a previous conversation, like with `adk web`. Memory is in-process only and resets on restart.
 
 > [!TIP]
-> Add `RELOAD_AGENTS=TRUE` to reload the agent when you edit files under `src/`, with no restart.
+> Add `RELOAD_AGENTS=TRUE` to reload the agent, tools, callbacks and prompt when you edit them, with no restart. Changes to `server.py`, `config.py`, `telemetry.py` or `.env` still require a restart.
 
 Local options and connecting to deployed resources: [Development](development.md).
 
@@ -151,7 +151,7 @@ gh pr create --title "feat: initial setup" --body "Initial agent deployment"
 
 ```bash
 gh run list --workflow=ci-cd.yml --limit 5
-gh run view <run-id>         # Job summary: Cloud Run URL and resource URIs
+gh run view <run-id> --web   # Job summary: Cloud Run URL and resource URIs
 gh run view <run-id> --log   # Full logs
 ```
 

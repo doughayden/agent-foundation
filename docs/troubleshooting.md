@@ -134,7 +134,7 @@ gh api repos/:owner/:repo/branches/main/protection
 gcloud run services logs read <service-name> --region <region> --limit 50
 
 # 2. Test locally with same config
-docker compose up --build  # or: uv run server
+docker compose up --build  # needs the deployed-resource values in .env; or: uv run server
 
 # 3. Verify environment variables set correctly
 gcloud run services describe <service-name> --region <region> --format="value(spec.template.spec.containers[0].env)"

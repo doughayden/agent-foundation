@@ -176,6 +176,7 @@ uv lock --upgrade               # Update all
 ## Local Development
 
 **`uv run server`:** local dev path, first run in `docs/getting-started.md` (before bootstrap). URIs unset → ADK `.adk/` storage (persistent sessions/artifacts, in-process memory).
+
 **Compose:** use deployed resources (app + IAP tunnel → Cloud SQL at `localhost:5432`). Details: `docs/development.md` Connect to Deployed Resources.
 
 **Test deployed service:** `gcloud run services proxy <agent_name>-<environment> --project <project> --region <region> --port 8000`.

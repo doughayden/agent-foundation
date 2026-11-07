@@ -59,8 +59,8 @@ See [Getting Started](docs/getting-started.md) for the complete walkthrough.
 See [docs/](docs/) for complete documentation.
 
 ### Core
-- **[Getting Started](docs/getting-started.md)** - Prerequisites, bootstrap, deploy, run
-- **[Development](docs/development.md)** - Local workflow, Docker, testing, code quality
+- **[Getting Started](docs/getting-started.md)** - Prerequisites, local run, bootstrap, deploy
+- **[Development](docs/development.md)** - Local workflow, testing, code quality, deployed resources
 - **[Infrastructure](docs/infrastructure.md)** - Deployment modes, CI/CD, protection strategies, IaC
 - **[Environment Variables](docs/environment-variables.md)** - Complete configuration reference
 
