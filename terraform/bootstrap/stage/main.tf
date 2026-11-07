@@ -1,9 +1,3 @@
-locals {
-  # Stage deploys on pushes to main; promotion tags (prod-vX.Y.Z) read the stage registry
-  deployment_branch_patterns = ["main"]
-  deployment_tag_patterns    = ["prod-v*.*.*"]
-}
-
 module "gcp" {
   source              = "../module/gcp"
   environment         = "stage"
@@ -36,8 +30,9 @@ module "github" {
   workload_identity_provider_name                    = module.gcp.workload_identity_provider_name
   workload_identity_pool_principal_identifier        = module.gcp.workload_identity_pool_principal_identifier
   terraform_state_bucket                             = var.terraform_state_bucket
-  deployment_branch_patterns                         = local.deployment_branch_patterns
-  deployment_tag_patterns                            = local.deployment_tag_patterns
+  # Stage deploys on pushes to main; promotion tags (prod-vX.Y.Z) read the stage registry
+  deployment_branch_patterns = ["main"]
+  deployment_tag_patterns    = ["prod-v*.*.*"]
 }
 
 

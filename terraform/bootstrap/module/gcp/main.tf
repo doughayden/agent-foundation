@@ -66,7 +66,7 @@ resource "google_iam_workload_identity_pool_provider" "github" {
     "attribute.repository_owner" = "assertion.repository_owner"
     "attribute.environment"      = "assertion.environment"
   }
-  # Repository ID survives renames and transfers; a job gets the environment claim only when it passes that environment's deployment policy
+  # Repository ID rejects another repository that later takes this name; a job gets the environment claim only when it passes that environment's deployment policy
   attribute_condition = "attribute.repository_id == '${data.github_repository.agent.repo_id}' && attribute.environment in ${jsonencode(var.github_environments)}"
 }
 
