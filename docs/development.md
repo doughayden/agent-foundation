@@ -1,70 +1,20 @@
 # Development
 
-Day-to-day development workflow, code quality, testing, and Docker.
+Day-to-day development workflow, code quality, testing, and connecting to deployed resources.
 
-> [!IMPORTANT]
-> Configure cloud resource values in `.env` after first deployment. See [Getting Started](getting-started.md) for initial setup and [Environment Variables](environment-variables.md) for complete reference.
+## Local Development
 
-## Quick Start
-
-**Local-only** (cloud resource URIs commented out in `.env`):
-```bash
-uv run server                              # API at 127.0.0.1:8000 (SQLite sessions, in-memory storage)
-SERVE_WEB_INTERFACE=TRUE uv run server     # With ADK web UI
-```
-
-**Standard development** (mirrors production, requires deployed cloud resource URIs configured in `.env`):
-```bash
-docker compose up --build --watch          # Cloud SQL (via IAP tunnel), Agent Engine, GCS
-```
-
-Both modes export traces and logs to Google Cloud; metrics go to Google locally only with `cloud.region` in `OTEL_RESOURCE_ATTRIBUTES` ([Observability](observability.md)). Set `OTEL_RESOURCE_ATTRIBUTES=service.namespace=<your-name>` in `.env` so teammates can filter to your traces when reviewing experiments.
-
-**Prerequisites:**
-- `.env` file configured with required authentication and identification values (copy from `.env.example`)
-- `gcloud auth application-default login` (for Vertex AI and telemetry)
-
-See [Getting Started](getting-started.md) for initial setup.
-
-## Environment Setup
-
-Configure your local `.env` file after completing your first deployment. The deployed resources provide production-ready persistence for sessions, memory, and artifacts.
-
-### 1. Create .env File
+Start the agent with `uv run server`. It reads `.env` (setup: [Getting Started](getting-started.md)) and needs no containers or deployed infrastructure.
 
 ```bash
-cp .env.example .env
+SERVE_WEB_INTERFACE=TRUE uv run server                     # API and ADK web UI at 127.0.0.1:8000
+SERVE_WEB_INTERFACE=TRUE RELOAD_AGENTS=TRUE uv run server  # Reload the agent on edits under src/
+LOG_LEVEL=DEBUG uv run server                              # Debug logging
 ```
 
-### 2. Configure Environment Variables
+With the service URIs in `.env` unset, ADK stores sessions and artifacts locally under `src/<package>/.adk/` and keeps memory in-process ([Environment Variables: Cloud Resources](environment-variables.md#cloud-resources)). `.env` is shared with Docker Compose: with the URIs set, `uv run server` uses the deployed services instead, and reaching the session database needs an IAP tunnel: Compose starts one, or start it yourself ([Cloud Backend Options](references/cloud-backend-options.md)).
 
-Edit `.env` and configure required values. The `.env.example` file includes inline comments for each variable.
-
-**Required configuration:**
-- Google Cloud Vertex AI credentials
-- Agent identification
-- OpenTelemetry settings
-
-**Recommended (after first deployment):**
-- `BASTION_INSTANCE` - Bastion host name for IAP tunnel (docker-compose)
-- `BASTION_ZONE` - Bastion host zone for IAP tunnel (docker-compose)
-- `SESSION_SERVICE_URI` - Session persistence (Cloud SQL)
-- `MEMORY_SERVICE_URI` - Memory persistence (Agent Engine)
-- `ARTIFACT_SERVICE_URI` - Artifact storage
-
-See [Environment Variables](environment-variables.md) for complete reference.
-
-### 3. Verify Configuration
-
-```bash
-# Check auth
-gcloud auth application-default login
-
-# Verify with Docker Compose (starts server and connects to cloud resources configured above)
-docker compose up --build --watch
-```
-
-See [Environment Variables](environment-variables.md) for complete reference.
+`RELOAD_AGENTS` reloads the agent, tools, callbacks and prompt; restart the server after changing `server.py`, `config.py`, `telemetry.py` or `.env`. Local runs export traces and logs to Google Cloud like the deployed service; metrics go to Google locally only with `cloud.region` in `OTEL_RESOURCE_ATTRIBUTES` ([Observability](observability.md)). Set `OTEL_RESOURCE_ATTRIBUTES=service.namespace=<your-name>` in `.env` so teammates can filter to your traces when reviewing experiments. Full variable reference: [Environment Variables](environment-variables.md).
 
 ## Feature Branch Workflow
 
@@ -73,8 +23,7 @@ See [Environment Variables](environment-variables.md) for complete reference.
 git checkout -b feat/your-feature-name
 
 # Develop locally
-docker compose up --build --watch  # Standard (cloud resources, mirrors production)
-# Or: uv run server                # Local-only with cloud resource URIs commented out in .env
+SERVE_WEB_INTERFACE=TRUE RELOAD_AGENTS=TRUE uv run server
 
 # Commit (Conventional Commits: 50 char title, list body); the hooks run lint/format/typecheck
 git add . && git commit -m "feat: add new tool"
@@ -155,44 +104,23 @@ See [Agent Evals](references/agent-evals.md) for the full evaluation suite refer
 
 See [Testing Strategy](references/testing.md) and [Code Quality](references/code-quality.md) references for detailed patterns, tool usage, and exclusion strategies.
 
-## Docker Compose for Standard Development
+## Connect to Deployed Resources
 
-Docker Compose reads `.env` values and mirrors the production Cloud Run architecture: IAP tunnel to bastion → Auth Proxy → Cloud SQL private IP, with file sync and auto-restart (~2-5s feedback loop).
-
-```bash
-# Start with watch mode (leave running)
-docker compose up --build --watch
-
-# Changes in src/ sync instantly
-# Changes in pyproject.toml or uv.lock trigger rebuild
-
-# Stop: Ctrl+C or docker compose down
-```
+Run the local agent against the deployed dev session database (Cloud SQL), memory (Agent Engine) and artifact bucket. Docker Compose starts everything this needs: the app container and an IAP tunnel container that reaches Cloud SQL's private IP through the bastion host, so the app connects to `localhost:5432` as on Cloud Run.
 
 > [!IMPORTANT]
-> Docker Compose requires `roles/iap.tunnelResourceAccessor` on your Google account for IAP tunnel access. Grant via `gcloud projects add-iam-policy-binding` or GCP Console.
+> This path needs a completed [deploy](getting-started.md#deploy) and `roles/iap.tunnelResourceAccessor` on your Google account for the IAP tunnel. Grant it via `gcloud projects add-iam-policy-binding` or the GCP Console.
 
-**Key details:**
-- IAP tunnel container connects to bastion host running Auth Proxy, sharing app's localhost via `network_mode: "service:app"`
-- App connects to `localhost:5432` identically to Cloud Run
-- Source files sync to container without rebuild (instant feedback)
-- Loads `.env` automatically for configuration
-- Multi-stage Dockerfile with uv; dependencies and source in separate layers
-- Non-root container
+1. Open the deploy run's job summary (`gh run view <run-id> --web`). In the deployed-resource block of `.env`, uncomment and fill in `BASTION_INSTANCE`, `BASTION_ZONE`, `SESSION_SERVICE_URI`, `MEMORY_SERVICE_URI` and `ARTIFACT_SERVICE_URI`, plus any variables you added for your own resources. Set `SERVE_WEB_INTERFACE=TRUE` in `.env` too: Compose reads only `.env`, not your shell. [Environment Variables: Cloud Resources](environment-variables.md#cloud-resources) says where to find each value.
+2. Start the stack and leave it running:
 
-## Local-Only (uv run server)
+    ```bash
+    docker compose up --build --watch   # Stop: Ctrl+C or docker compose down
+    ```
 
-`uv run server` reads `.env` like Docker Compose. With cloud resource URIs set, it connects to those services. For fully local development, comment out `SESSION_SERVICE_URI`, `MEMORY_SERVICE_URI`, and `ARTIFACT_SERVICE_URI` in `.env`. Sessions persist locally in SQLite (`.adk/` directory). Traces and logs still export to Google Cloud.
+    Edits under `src/` sync into the container and restart the app; changes to `pyproject.toml` or `uv.lock` rebuild the image.
 
-```bash
-uv run server                              # Uses cloud resources if URIs set, local storage if unset
-SERVE_WEB_INTERFACE=TRUE uv run server     # With ADK web UI
-LOG_LEVEL=DEBUG uv run server              # Debug logging
-```
-
-You can also connect `uv run server` to Cloud SQL, Agent Engine, or GCS selectively by setting individual service URI environment variables. See [Cloud Backend Options](references/cloud-backend-options.md) for manual IAP tunnel setup and selective backend options.
-
-See [Docker Compose Workflow](references/docker-compose-workflow.md) and [Dockerfile Strategy](references/dockerfile-strategy.md) for details on watch mode, volumes, layer optimization, and security.
+To go back to local storage, comment the service URIs out again and use `uv run server`. To connect `uv run server` to individual backends without Compose, see [Cloud Backend Options](references/cloud-backend-options.md). Watch mode, volumes and the tunnel: [Docker Compose Workflow](references/docker-compose-workflow.md); image layout: [Dockerfile Strategy](references/dockerfile-strategy.md).
 
 ## Common Tasks
 
@@ -325,7 +253,7 @@ your-agent-name/
   docs/                   # Documentation
   .env.example            # Environment template
   pyproject.toml          # Project configuration
-  compose.yml             # Local development
+  compose.yml             # Local agent against deployed resources
   Dockerfile              # Container image
   AGENTS.md               # AI coding agent instructions (plus tests/, terraform/, .github/workflows/)
   README.md               # Main documentation

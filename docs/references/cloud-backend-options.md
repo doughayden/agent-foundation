@@ -6,7 +6,7 @@ See [Environment Variables: Cloud Resources](../environment-variables.md#cloud-r
 
 ## Connect `uv run server` to Cloud SQL
 
-When `SESSION_SERVICE_URI` is unset, `uv run server` uses SQLite sessions (`.adk/` directory). To connect to Cloud SQL for production-consistent session persistence, run the IAP tunnel in a separate terminal or background process.
+When `SESSION_SERVICE_URI` is unset, `uv run server` uses SQLite sessions (`src/<package>/.adk/` directory). To connect to Cloud SQL for production-consistent session persistence, run the IAP tunnel in a separate terminal or background process.
 
 **1. Start IAP tunnel to bastion:**
 
@@ -55,9 +55,9 @@ Each service URI environment variable is independent — set or omit each one to
 
 | Variable | Set | Unset |
 |----------|-----|-------|
-| `SESSION_SERVICE_URI` | Cloud SQL or Agent Engine | Local SQLite (`.adk/` directory) |
+| `SESSION_SERVICE_URI` | Cloud SQL or Agent Engine | Local SQLite (`src/<package>/.adk/` directory) |
 | `MEMORY_SERVICE_URI` | Agent Engine | In-memory (lost on restart) |
-| `ARTIFACT_SERVICE_URI` | GCS bucket | In-memory (lost on restart) |
+| `ARTIFACT_SERVICE_URI` | GCS bucket | Local files (`src/<package>/.adk/artifacts/` directory) |
 
 **Examples:**
 
@@ -65,7 +65,7 @@ Use Cloud SQL sessions with local memory and artifacts (no Agent Engine dependen
 ```bash
 SESSION_SERVICE_URI=postgresql+asyncpg://SA_NAME@PROJECT.iam:@localhost:5432/agent_sessions
 # MEMORY_SERVICE_URI=     (commented out — in-memory)
-# ARTIFACT_SERVICE_URI=   (commented out — in-memory)
+# ARTIFACT_SERVICE_URI=   (commented out — local files)
 ```
 
 Use GCS artifacts with local sessions and memory:
@@ -83,7 +83,7 @@ ARTIFACT_SERVICE_URI=gs://YOUR_BUCKET_NAME
 ```
 
 > [!NOTE]
-> Docker Compose configures all three URIs automatically. These options are for `uv run server` workflows where you want selective cloud connectivity.
+> Docker Compose reads the same `.env` and connects to every URI you set there ([Development: Connect to Deployed Resources](../development.md#connect-to-deployed-resources)). These options are for `uv run server` workflows where you want selective cloud connectivity.
 
 ---
 

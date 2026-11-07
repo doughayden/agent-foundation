@@ -16,11 +16,11 @@ See `.env.example` in the repository root for template configuration with inline
 | **[GOOGLE_CLOUD_LOCATION](#google-cloud-vertex-ai)** | ✅ | - | Vertex AI model endpoint location |
 | **[AGENT_NAME](#agent-identification)** | ✅ | - | Unique agent identifier |
 | **[OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT](#opentelemetry)** | ✅ | - | GenAI message content capture mode |
-| **[BASTION_INSTANCE](#cloud-resources)** | Recommended | - | Bastion host name for IAP tunnel (docker-compose) |
-| **[BASTION_ZONE](#cloud-resources)** | Recommended | - | Bastion host zone for IAP tunnel (docker-compose) |
-| **[SESSION_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Session persistence |
-| **[MEMORY_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Memory persistence |
-| **[ARTIFACT_SERVICE_URI](#cloud-resources)** | Recommended | in-memory | Artifact storage |
+| **[BASTION_INSTANCE](#cloud-resources)** | Optional | - | Bastion host name for IAP tunnel (docker-compose) |
+| **[BASTION_ZONE](#cloud-resources)** | Optional | - | Bastion host zone for IAP tunnel (docker-compose) |
+| **[SESSION_SERVICE_URI](#cloud-resources)** | Optional | local SQLite | Session persistence |
+| **[MEMORY_SERVICE_URI](#cloud-resources)** | Optional | in-memory | Memory persistence |
+| **[ARTIFACT_SERVICE_URI](#cloud-resources)** | Optional | local files | Artifact storage |
 | [LOG_LEVEL](#logging) | Optional | `INFO` | Logging verbosity |
 | [OTEL_RESOURCE_ATTRIBUTES](#opentelemetry-export) | Optional | unset | Override or add resource attributes |
 | [ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS](#opentelemetry) | Optional | `true` (deployed: `false` with `NO_CONTENT`) | ADK's live streaming content attribute |
@@ -94,7 +94,7 @@ These must be set for the agent to function.
 
 ## Cloud Resources
 
-Production-ready persistence for sessions, memory, and artifacts. Configure after first deployment.
+Deployed persistence for sessions, memory, and artifacts. Set locally to run against deployed resources: all of them for Docker Compose ([Development: Connect to Deployed Resources](development.md#connect-to-deployed-resources)), or individual URIs for `uv run server` ([Cloud Backend Options](references/cloud-backend-options.md)). `uv run server` and Compose read the same `.env`. Terraform sets the service URIs on Cloud Run; the bastion values are local only. Unset, ADK stores sessions and artifacts locally under `src/<package>/.adk/` and keeps memory in-process.
 
 **BASTION_INSTANCE**
 - **Value:** Bastion VM instance name (e.g., `my-agent-dev-bastion`)
@@ -113,23 +113,23 @@ Production-ready persistence for sessions, memory, and artifacts. Configure afte
 **SESSION_SERVICE_URI**
 - **Value:** Service-specific URI with protocol prefix (e.g., `postgresql+asyncpg://sa-name@project.iam:@localhost:5432/agent_sessions`)
 - **Purpose:** Session persistence (production-consistent behavior)
-- **Where:** Set locally in `.env` after first deployment, auto-configured in Cloud Run
+- **Where:** Set locally in `.env` for Docker Compose, auto-configured in Cloud Run
 - **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or `terraform output session_service_uri`
-- **Note:** Database Session Service connects through Cloud SQL Auth Proxy on localhost. IAM database auth — no password needed. Defaults to in-memory if unset.
+- **Note:** Database Session Service connects through Cloud SQL Auth Proxy on localhost. IAM database auth — no password needed. Unset: SQLite under `src/<package>/.adk/`, kept across restarts.
 
 **MEMORY_SERVICE_URI**
 - **Value:** Service-specific URI with protocol prefix (e.g., `agentengine://projects/123/locations/us-central1/reasoningEngines/456`)
 - **Purpose:** Memory persistence (production-consistent behavior)
-- **Where:** Set locally in `.env` after first deployment, auto-configured in Cloud Run
+- **Where:** Set locally in `.env` for Docker Compose, auto-configured in Cloud Run
 - **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or `terraform output memory_service_uri`
-- **Note:** Defaults to in-memory if unset (not recommended for development)
+- **Note:** Unset: in-memory, reset on restart
 
 **ARTIFACT_SERVICE_URI**
 - **Value:** GCS bucket URI (e.g., `gs://your-artifact-bucket`)
 - **Purpose:** Artifact storage persistence (production-consistent behavior)
-- **Where:** Set locally in `.env` after first deployment, auto-configured in Cloud Run
+- **Where:** Set locally in `.env` for Docker Compose, auto-configured in Cloud Run
 - **How to get:** GitHub Actions job summary (`gh run view <run-id>`) or GCP Console (Cloud Storage → Buckets)
-- **Note:** Defaults to in-memory if unset (not recommended for development)
+- **Note:** Unset: files under `src/<package>/.adk/artifacts/`
 
 ---
 

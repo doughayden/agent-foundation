@@ -30,7 +30,7 @@ Deep-dive technical documentation for optional follow-up.
 - [Agent Evals](agent-evals.md) - The full agent-evaluation surface: formats, commands, metrics, and user simulation
 - [Code Quality](code-quality.md) - Tool usage and exclusion strategies
 - [Cloud Backend Options](cloud-backend-options.md) - Advanced options for uv run server with cloud backends
-- [Docker Compose Workflow](docker-compose-workflow.md) - Watch mode, volumes, and configuration
+- [Docker Compose Workflow](docker-compose-workflow.md) - Run a local agent against deployed resources: watch mode, IAP tunnel, volumes
 - [Dockerfile Strategy](dockerfile-strategy.md) - Multi-stage builds and optimization
 - [MkDocs Setup](mkdocs-setup.md) - Documentation site setup and customization
 

@@ -274,7 +274,7 @@ Compressed sizes are the `size` of each layer in the image's platform manifest i
 
 ## Local Development
 
-For local development with Docker Compose (recommended), see [Docker Compose Workflow](docker-compose-workflow.md).
+To run the image locally against deployed resources with Docker Compose, see [Docker Compose Workflow](docker-compose-workflow.md).
 
 ---
 
@@ -292,7 +292,7 @@ For local development with Docker Compose (recommended), see [Docker Compose Wor
 - [Docker Best Practices: ADD or COPY (bind mounts)](https://docs.docker.com/build/building/best-practices/#add-or-copy)
 
 ### Docker Compose
-- [Docker Compose Workflow](docker-compose-workflow.md) - Local development workflow
+- [Docker Compose Workflow](docker-compose-workflow.md) - Run a local agent against deployed resources
 - [Docker Compose Watch Mode](https://docs.docker.com/compose/file-watch/)
 
 ---

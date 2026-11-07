@@ -41,9 +41,9 @@ Base template repo. Run `uv run init_template.py --dry-run` (preview) or `uv run
 
 ```bash
 # Local
-docker compose up --build --watch           # File sync + auto-restart
-uv run server                               # API at 127.0.0.1:8000
+uv run server                               # API at 127.0.0.1:8000, local .adk/ storage
 LOG_LEVEL=DEBUG uv run server               # Debug mode
+docker compose up --build --watch           # Against deployed resources (bastion tunnel)
 uv run pytest --cov --cov-report=term-missing  # Tests + 100% coverage required
 uv run pytest tests/eval -m "deterministic"  # Deterministic agent eval gate (real LLM, Vertex AI creds)
 
@@ -175,7 +175,9 @@ uv lock --upgrade               # Update all
 
 ## Local Development
 
-**docker-compose:** app + IAP-tunnel container (shared network namespace) so the app reaches Cloud SQL at `localhost:5432`, same as Cloud Run. Setup, IAM prerequisite, watch actions: `docs/references/docker-compose-workflow.md`.
+**`uv run server`:** local dev path, first run in `docs/getting-started.md` (before bootstrap). URIs unset → ADK `.adk/` storage (persistent sessions/artifacts, in-process memory).
+
+**Compose:** use deployed resources (app + IAP tunnel → Cloud SQL at `localhost:5432`). Details: `docs/development.md` Connect to Deployed Resources.
 
 **Test deployed service:** `gcloud run services proxy <agent_name>-<environment> --project <project> --region <region> --port 8000`.
 

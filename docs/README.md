@@ -22,12 +22,12 @@ Built for teams who need to move beyond prototypes and ship production AI agents
 
 ## First Time Setup
 
-- [Getting Started](getting-started.md) - Prerequisites, bootstrap, deploy, run
+- [Getting Started](getting-started.md) - Prerequisites, local run, bootstrap, deploy
 - [Environment Variables](environment-variables.md) - Complete configuration reference
 
 ## Development
 
-- [Development](development.md) - Local workflow, Docker, testing, code quality
+- [Development](development.md) - Local workflow, testing, code quality, deployed resources
 - [Infrastructure](infrastructure.md) - Deployment modes, CI/CD, protection strategies, IaC
 
 ## Operations
@@ -67,6 +67,6 @@ Deep dives for optional follow-up:
 - [Agent Evals](references/agent-evals.md) - The full agent-evaluation surface: formats, commands, metrics, and user simulation
 - [Code Quality](references/code-quality.md) - Tool usage and exclusion strategies
 - [Cloud Backend Options](references/cloud-backend-options.md) - Advanced options for uv run server with cloud backends
-- [Docker Compose Workflow](references/docker-compose-workflow.md) - Watch mode, volumes, and configuration
+- [Docker Compose Workflow](references/docker-compose-workflow.md) - Run a local agent against deployed resources: watch mode, IAP tunnel, volumes
 - [Dockerfile Strategy](references/dockerfile-strategy.md) - Multi-stage builds and optimization
 - [MkDocs Setup](references/mkdocs-setup.md) - Documentation site setup and customization

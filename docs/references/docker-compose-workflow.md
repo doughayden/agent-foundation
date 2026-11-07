@@ -1,10 +1,12 @@
-# Docker Compose Local Development Workflow
+# Docker Compose Workflow
 
-This guide covers the recommended workflow for local development using Docker Compose.
+Running the local agent against deployed resources (Cloud SQL through the bastion, Agent Engine, GCS) with Docker Compose. For local sessions and artifacts with in-process memory, use `uv run server` ([Development: Local Development](../development.md#local-development)).
 
 ## Quick Start
 
-### Daily Development (Recommended)
+### Start the Stack
+
+Requires the deployed-resource values in `.env` and `roles/iap.tunnelResourceAccessor` ([Development: Connect to Deployed Resources](../development.md#connect-to-deployed-resources)).
 
 ```bash
 docker compose up --build --watch
@@ -20,7 +22,7 @@ docker compose up --build --watch
 - Edits to `src/` files are **synced and the app restarts** (no rebuild needed)
 - Changes to `pyproject.toml` or `uv.lock` **trigger automatic rebuild**
 
-**Leave it running** while you develop - changes are applied automatically!
+**Leave it running** while you work; changes apply automatically.
 
 ---
 
@@ -205,7 +207,7 @@ docker run --rm \
 
 Both `docker run` recipes on this page differ from Compose:
 
-- **No IAP tunnel:** a `SESSION_SERVICE_URI` pointing at `localhost:5432` fails on the first session request. Unset it to use in-memory sessions, or use Compose for Cloud SQL
+- **No IAP tunnel:** a `SESSION_SERVICE_URI` pointing at `localhost:5432` fails on the first session request. Unset it to store sessions inside the container (lost when the container is removed), or use Compose for Cloud SQL
 - **`--env-file` keeps quotes:** Docker passes `KEY='value'` with the quotes included, while Compose and `python-dotenv` strip them. Remove the quotes from values like `ALLOW_ORIGINS` or startup validation fails
 
 They mount credentials with `--mount` rather than `-v`, so a missing credentials file fails the command instead of being created as an empty directory. Run `gcloud auth application-default login` first.
