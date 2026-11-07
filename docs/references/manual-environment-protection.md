@@ -2,10 +2,10 @@
 
 Configure the `prod-apply` approval gate by hand in the GitHub UI or with `gh api`, for repositories whose environments bootstrap does not manage.
 
-Bootstrap configures environment protection from `terraform/bootstrap/prod/terraform.tfvars` ([Protection Strategies](protection-strategies.md#environment-protection-automated)). Use this page when you set protection on an environment outside that root, or when you need the raw API calls to inspect or repair a setting.
+Bootstrap configures environment protection from `terraform/bootstrap/prod/terraform.tfvars` and `terraform/bootstrap/stage/main.tf` ([Protection Strategies](protection-strategies.md#environment-protection-automated)). Use this page when you set protection on an environment outside that root, or when you need the raw API calls to inspect or repair a setting.
 
 > [!WARNING]
-> In a repository where `terraform/bootstrap/prod` manages the environments, every bootstrap apply reverts settings made here to the `terraform.tfvars` values. Make lasting changes in `terraform.tfvars`, or the next apply undoes them.
+> In a repository where `terraform/bootstrap/prod` and `terraform/bootstrap/stage` manage the environments, every bootstrap apply reverts settings made here to the values in those roots. Make lasting changes there, or the next apply undoes them.
 
 ## Settings
 
@@ -17,7 +17,7 @@ Bootstrap configures environment protection from `terraform/bootstrap/prod/terra
 | Allow administrators to bypass | Off for strict release control; on to keep a break-glass path | An admin can deploy without an approval |
 | Deployment branches and tags | **Selected branches and tags**, with tag rule `prod-v*.*.*` | Prod jobs only run on promotion tag pushes, so GitHub checks the rule against a `refs/tags/...` ref. Leave out a `main` branch rule: it never matches a prod run, and it would let any future job that targets the environment on a main push deploy |
 
-Apply the same tag rule to the `prod` environment, which `prod-promote`, `prod-plan` and `prod-smoke` target, so a tag outside the promotion format cannot reach prod credentials through those jobs.
+Apply the same tag rule to the `prod` environment, which `prod-promote`, `prod-plan` and `prod-smoke` target, so a tag outside the promotion format cannot reach prod credentials through those jobs. Give the `stage` environment a `main` branch rule and the same tag rule: stage jobs run on pushes to `main`, and promotion runs read the stage registry under `stage`. Each environment's WIF provider trusts only its environments' tokens, so these rules decide which refs can reach the stage and prod projects.
 
 ## Configure in the GitHub UI
 
@@ -31,6 +31,7 @@ Apply the same tag rule to the `prod` environment, which `prod-promote`, `prod-p
 4. Under **Deployment branches and tags**, select **Selected branches and tags** and add a tag rule `prod-v*.*.*`
 5. Click **Save protection rules**
 6. Repeat step 4 for the **prod** environment
+7. For the **stage** environment, select **Selected branches and tags**, add a branch rule `main` and a tag rule `prod-v*.*.*`, and save
 
 ## Configure with `gh api`
 
@@ -71,7 +72,12 @@ gh api --method POST repos/:owner/:repo/environments/prod-apply/deployment-branc
   -f name='prod-v*.*.*' -f type=tag
 ```
 
-For the `prod` environment, the same calls apply with `prod` in place of `prod-apply`; send only `deployment_branch_policy` in its `PUT` body.
+For the `prod` environment, the same calls apply with `prod` in place of `prod-apply`; send only `deployment_branch_policy` in its `PUT` body. For `stage`, send the same `deployment_branch_policy` body, add the same tag rule, and add a branch rule:
+
+```bash
+gh api --method POST repos/:owner/:repo/environments/stage/deployment-branch-policies \
+  -f name='main' -f type=branch
+```
 
 ## Verify
 

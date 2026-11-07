@@ -26,10 +26,12 @@ GitHub Actions workflow architecture, mechanics, and customization.
 ## GitHub Variables (Auto-Created by Bootstrap)
 
 **Dev-only mode:**
-- Variables scoped to repository (no environments)
+- Variables scoped to the `dev` environment
 
 **Production mode:**
-- Variables scoped to environments (dev/stage/prod)
+- Variables scoped to each environment (`dev`, `stage`, `prod`, `prod-apply`)
+
+Jobs read these variables, and authenticate to GCP, only when they declare the matching `environment:`.
 
 | Variable Name | Description |
 |---------------|-------------|

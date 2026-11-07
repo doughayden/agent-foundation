@@ -133,7 +133,7 @@ Bootstrap enforces this consistently based on deployment mode. No manual decisio
 
 ## Environment Protection (Automated)
 
-Bootstrap creates and configures the `prod` and `prod-apply` GitHub Environments from `terraform/bootstrap/prod/terraform.tfvars`. Every bootstrap apply enforces those values, so change protection in `terraform.tfvars` and re-apply; a change made in the GitHub UI is reverted by the next apply. To set protection by hand outside bootstrap, see [Manual Environment Protection](manual-environment-protection.md).
+Bootstrap creates and configures the `prod` and `prod-apply` GitHub Environments from `terraform/bootstrap/prod/terraform.tfvars`, and the `stage` environment's deployment rules from `terraform/bootstrap/stage/main.tf`. Every bootstrap apply enforces those values, so change protection there and re-apply; a change made in the GitHub UI is reverted by the next apply of that root. To set protection by hand outside bootstrap, see [Manual Environment Protection](manual-environment-protection.md).
 
 ### What Bootstrap Configures
 
@@ -166,12 +166,13 @@ for env in stage prod prod-apply; do
 done
 ```
 
-Expected: the reviewers from `terraform.tfvars`, `custom_branch_policies: true`, and exactly one `{"name": "prod-v*.*.*", "type": "tag"}` policy per environment, plus `{"name": "main", "type": "branch"}` on `stage`. A second policy (like an older `v*.*.*` rule created by hand) is not managed by bootstrap and keeps allowing those tags; delete it:
+Expected: the reviewers from `terraform.tfvars`, `custom_branch_policies: true`, and exactly one `{"name": "prod-v*.*.*", "type": "tag"}` policy per environment, plus `{"name": "main", "type": "branch"}` on `stage`. A second policy (like an older `v*.*.*` rule created by hand) is not managed by bootstrap and keeps allowing those tags; delete it (set `env` to the environment that has it):
 
 ```bash
-gh api repos/:owner/:repo/environments/prod-apply/deployment-branch-policies \
+env=prod-apply
+gh api repos/:owner/:repo/environments/$env/deployment-branch-policies \
   --jq '.branch_policies[] | {id, name, type}'
-gh api --method DELETE repos/:owner/:repo/environments/prod-apply/deployment-branch-policies/<policy-id>
+gh api --method DELETE repos/:owner/:repo/environments/$env/deployment-branch-policies/<policy-id>
 ```
 
 ### Private Repositories

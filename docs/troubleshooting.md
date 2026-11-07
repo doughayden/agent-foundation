@@ -139,6 +139,14 @@ git tag -a prod-v1.0.1 'v1.0.1^{commit}' -m "Promote v1.0.1 to prod"
 git push origin prod-v1.0.1
 ```
 
+### GCP Auth Rejected or Environment Blocked
+
+**Symptom:** a job fails in `google-github-actions/auth` with `The given credential is rejected by the attribute condition`, or never starts with `Branch "<branch>" is not allowed to deploy to <environment> due to environment protection rules`.
+
+**Cause:** each environment's WIF provider accepts only tokens from jobs that declare one of its GitHub Environments, and `stage`, `prod` and `prod-apply` accept only the refs their deployment rules allow ([Security Posture](references/security-posture.md) Identity Layer).
+
+**Fix:** add `environment: <env>` to the job that authenticates. A job on a ref the environment rejects belongs on an allowed ref (`main` or a `prod-v*` tag); to allow another ref, add a pattern in the environment's bootstrap root and re-apply it.
+
 ## Cloud Run
 
 ### Startup Failures
