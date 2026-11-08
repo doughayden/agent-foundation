@@ -31,3 +31,16 @@ module "github" {
   workload_identity_pool_principal_identifier        = module.gcp.workload_identity_pool_principal_identifier
   terraform_state_bucket                             = var.terraform_state_bucket
 }
+
+# Repository-wide settings: the dev root is the one every deployment mode applies
+resource "github_repository_vulnerability_alerts" "repo" {
+  repository = var.repository_name
+  enabled    = true
+}
+
+resource "github_repository_dependabot_security_updates" "repo" {
+  repository = var.repository_name
+  enabled    = true
+
+  depends_on = [github_repository_vulnerability_alerts.repo]
+}

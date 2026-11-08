@@ -15,7 +15,8 @@ Bootstrap creates one-time CI/CD infrastructure per environment:
 3. GitHub Environments - dev/stage/prod/prod-apply (production mode), with `prod-apply` protection, `prod-v*.*.*` tag rules on `prod`/`prod-apply`, and `main` plus `prod-v*.*.*` on `stage`
 4. GitHub Environment Variables - Auto-configured per environment
 5. Tag Protection - Production promotion (`prod-v*`) tag ruleset (prod bootstrap only)
-6. Cross-Project IAM - Artifact Registry reader for image promotion (stage/prod)
+6. Dependabot Alerts and Security Updates - Repository-wide vulnerability alerts and fix pull requests for every locked dependency (dev bootstrap only, since every mode applies it)
+7. Cross-Project IAM - Artifact Registry reader for image promotion (stage/prod)
 
 **State management:** Remote state in GCS per environment project using `bootstrap/` prefix (bucket created by pre-bootstrap)
 
@@ -149,6 +150,12 @@ Expected variables: `GOOGLE_CLOUD_PROJECT`, `REGION`, `GOOGLE_CLOUD_LOCATION`, `
 1. Go to Settings → Environments
 2. Confirm `dev` environment exists
 3. Click `dev` → check Environment variables populated
+
+**Check Dependabot security settings:**
+```bash
+gh api repos/{owner}/{repo}/vulnerability-alerts --silent && echo "alerts enabled"
+gh api repos/{owner}/{repo}/automated-security-fixes --jq .enabled
+```
 
 ## Production Mode
 
