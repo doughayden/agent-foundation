@@ -10,9 +10,9 @@ Complete bootstrap instructions for dev-only and production modes, including cro
 Bootstrap creates one-time CI/CD infrastructure per environment:
 
 **Resources created:**
-1. Workload Identity Federation - Keyless GitHub Actions authentication
+1. Workload Identity Federation - Keyless GitHub Actions authentication, accepting only jobs that run under that environment's GitHub Environments
 2. Artifact Registry - Docker image storage with cleanup policies
-3. GitHub Environments - dev/stage/prod/prod-apply (production mode), with `prod-apply` protection and `prod-v*.*.*` tag rules on `prod`/`prod-apply`
+3. GitHub Environments - dev/stage/prod/prod-apply (production mode), with `prod-apply` protection, `prod-v*.*.*` tag rules on `prod`/`prod-apply`, and `main` plus `prod-v*.*.*` on `stage`
 4. GitHub Environment Variables - Auto-configured per environment
 5. Tag Protection - Production promotion (`prod-v*`) tag ruleset (prod bootstrap only)
 6. Cross-Project IAM - Artifact Registry reader for image promotion (stage/prod)
@@ -304,7 +304,7 @@ terraform -chdir=terraform/bootstrap/prod apply
 
 **Check prod-apply Protection:**
 1. Settings → Environments → prod-apply
-2. Confirm the reviewers from `terraform.tfvars` and the `prod-v*.*.*` tag rule under **Deployment branches and tags** (`prod` shows the same tag rule)
+2. Confirm the reviewers from `terraform.tfvars` and the `prod-v*.*.*` tag rule under **Deployment branches and tags** (`prod` shows the same tag rule; `stage` shows a `main` branch rule and the same tag rule)
 
 **Check Tag Protection:**
 1. Settings → Rules → Rulesets

@@ -62,10 +62,12 @@ resource "google_iam_workload_identity_pool_provider" "github" {
     "google.subject"             = "assertion.sub"
     "attribute.actor"            = "assertion.actor"
     "attribute.repository"       = "assertion.repository"
+    "attribute.repository_id"    = "assertion.repository_id"
     "attribute.repository_owner" = "assertion.repository_owner"
     "attribute.environment"      = "assertion.environment"
   }
-  attribute_condition = "attribute.repository == '${var.repository_owner}/${var.repository_name}'"
+  # Repository ID rejects another repository that later takes this name; a job gets the environment claim only when it passes that environment's deployment policy
+  attribute_condition = "attribute.repository_id == '${data.github_repository.agent.repo_id}' && attribute.environment in ${jsonencode(var.github_environments)}"
 }
 
 resource "google_project_iam_member" "github" {

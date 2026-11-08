@@ -26,10 +26,12 @@ GitHub Actions workflow architecture, mechanics, and customization.
 ## GitHub Variables (Auto-Created by Bootstrap)
 
 **Dev-only mode:**
-- Variables scoped to repository (no environments)
+- Variables scoped to the `dev` environment
 
 **Production mode:**
-- Variables scoped to environments (dev/stage/prod)
+- Variables scoped to each environment (`dev`, `stage`, `prod`, `prod-apply`)
+
+Jobs read these variables, and authenticate to GCP, only when they declare the matching `environment:`.
 
 | Variable Name | Description |
 |---------------|-------------|
@@ -502,12 +504,12 @@ Terraform plan workflow posts formatted comments on PRs:
 - Keyless authentication (no service account keys)
 - GitHub Actions requests OIDC token
 - GCP validates against WIF provider
-- Grants temporary credentials scoped to repository
+- Grants temporary credentials only to jobs from this repository that run under the environment's GitHub Environments
 
 **IAM roles:** See `terraform/bootstrap/module/gcp/main.tf` for complete role list.
 
 **Security:**
-- Repository-scoped IAM bindings (attribute condition on repository name)
+- Attribute condition on repository ID and GitHub Environment, so a job needs a matching `environment:` to authenticate ([Security Posture](security-posture.md) Identity Layer)
 - Minimal permissions (only required roles)
 - Environment isolation (production mode, separate projects)
 - Cross-project IAM is registry-scoped (not project-level)

@@ -97,7 +97,7 @@ Production tag protection is **automatically configured** by bootstrap in produc
 A release is two tags on one commit: `vX.Y.Z` marks the release and deploys nothing, and `prod-vX.Y.Z` promotes it to prod. Bootstrap (`terraform/bootstrap/prod/`) creates the **Production Promotion Tag Protection** ruleset on `refs/tags/prod-v*`: only repository admins can create, move or delete a promotion tag, so only an admin can start the template's prod promotion pipeline. `v*` release tags have no ruleset, since pushing one deploys nothing.
 
 > [!NOTE]
-> The ruleset governs the template's pipeline, not every path to prod. The prod Workload Identity Federation provider is scoped to the repository, not to the GitHub environment, so a workflow on any branch of the repository can authenticate to the prod project.
+> The ruleset also guards prod credentials. The prod Workload Identity Federation provider accepts only tokens from the `prod` and `prod-apply` environments, which accept only `prod-v*.*.*` tags ([Environment Protection](#environment-protection-automated)).
 
 ### Verify
 
@@ -133,23 +133,24 @@ Bootstrap enforces this consistently based on deployment mode. No manual decisio
 
 ## Environment Protection (Automated)
 
-Bootstrap creates and configures the `prod` and `prod-apply` GitHub Environments from `terraform/bootstrap/prod/terraform.tfvars`. Every bootstrap apply enforces those values, so change protection in `terraform.tfvars` and re-apply; a change made in the GitHub UI is reverted by the next apply. To set protection by hand outside bootstrap, see [Manual Environment Protection](manual-environment-protection.md).
+Bootstrap creates and configures the `prod` and `prod-apply` GitHub Environments from `terraform/bootstrap/prod/terraform.tfvars`, and the `stage` environment's deployment rules from `terraform/bootstrap/stage/main.tf`. Every bootstrap apply enforces those values, so change protection there and re-apply; a change made in the GitHub UI is reverted by the next apply of that root. To set protection by hand outside bootstrap, see [Manual Environment Protection](manual-environment-protection.md).
 
 ### What Bootstrap Configures
 
 | Setting | Environment | Source | Recommended |
 |---|---|---|---|
 | Deployment tag rule `prod-v*.*.*` | `prod`, `prod-apply` | Fixed in the prod root | Not configurable: the prod jobs only run on promotion tag pushes, so only a `prod-v*.*.*` tag can use either environment |
+| Deployment branch rule `main`, tag rule `prod-v*.*.*` | `stage` | Fixed in the stage root | Not configurable: the stage jobs run on pushes to `main`, and a promotion run reads the stage registry under `stage` |
 | Required reviewers | `prod-apply` | `prod_apply_reviewer_users` (GitHub logins), `prod_apply_reviewer_teams` (team slugs) | The users or teams who own production releases (up to six; one approval releases the job) |
 | Prevent self-review | `prod-apply` | `prod_apply_prevent_self_review` | On for a team; off for a solo maintainer, who could otherwise never approve |
 | Allow administrators to bypass | `prod-apply` | `prod_apply_can_admins_bypass` | Off for strict release control; on to keep a break-glass path |
 | Wait timer | `prod-apply` | `prod_apply_wait_timer` (minutes) | Off (`null`), unless you want a cooling-off window |
 
-The tag rule matches the promotion tag format the [tag ruleset](#tag-protection-automated) limits to admins, so only an admin-pushed promotion tag reaches the approval. `terraform.tfvars.example` sets a starting value for each variable; replace the placeholder reviewer with your own.
+The tag rule matches the promotion tag format the [tag ruleset](#tag-protection-automated) limits to admins, so only an admin-pushed promotion tag reaches the approval. The rules also limit credentials: each environment's WIF provider accepts only tokens from its own GitHub Environments, so a ref these rules reject cannot authenticate to the stage or prod project ([Security Posture](security-posture.md) Identity Layer). `terraform.tfvars.example` sets a starting value for each variable; replace the placeholder reviewer with your own.
 
 ### Verify
 
-**GitHub UI:** Settings → Environments → **prod-apply** shows the reviewers, the self-review and bypass settings, and the `prod-v*.*.*` tag rule under **Deployment branches and tags**. **prod** shows the same tag rule.
+**GitHub UI:** Settings → Environments → **prod-apply** shows the reviewers, the self-review and bypass settings, and the `prod-v*.*.*` tag rule under **Deployment branches and tags**. **prod** shows the same tag rule, and **stage** shows a `main` branch rule plus the same tag rule.
 
 **CLI:**
 ```bash
@@ -160,17 +161,18 @@ gh api repos/:owner/:repo/environments/prod-apply --jq '{
   can_admins_bypass,
   deployment_branch_policy
 }'
-for env in prod prod-apply; do
+for env in stage prod prod-apply; do
   gh api repos/:owner/:repo/environments/$env/deployment-branch-policies --jq '[.branch_policies[] | {name, type}]'
 done
 ```
 
-Expected: the reviewers from `terraform.tfvars`, `custom_branch_policies: true`, and exactly one `{"name": "prod-v*.*.*", "type": "tag"}` policy per environment. A second policy (like an older `v*.*.*` rule created by hand) is not managed by bootstrap and keeps allowing those tags; delete it:
+Expected: the reviewers from `terraform.tfvars`, `custom_branch_policies: true`, and exactly one `{"name": "prod-v*.*.*", "type": "tag"}` policy per environment, plus `{"name": "main", "type": "branch"}` on `stage`. A second policy (like an older `v*.*.*` rule created by hand) is not managed by bootstrap and keeps allowing those tags; delete it (set `env` to the environment that has it):
 
 ```bash
-gh api repos/:owner/:repo/environments/prod-apply/deployment-branch-policies \
+env=prod-apply
+gh api repos/:owner/:repo/environments/$env/deployment-branch-policies \
   --jq '.branch_policies[] | {id, name, type}'
-gh api --method DELETE repos/:owner/:repo/environments/prod-apply/deployment-branch-policies/<policy-id>
+gh api --method DELETE repos/:owner/:repo/environments/$env/deployment-branch-policies/<policy-id>
 ```
 
 ### Private Repositories
@@ -192,7 +194,7 @@ On a private repository without GitHub Enterprise, leave `prod_apply_reviewer_us
 What still guards production on those plans:
 
 - **`require-stage-success`.** `prod-promote` needs it, so a promotion tag deploys only a commit whose merge run passed `Apply Stage`, `Smoke Stage`, and `Judge Eval`. This holds on every plan because it is a job dependency, not an environment rule.
-- **The deployment tag policy** (Pro and Team only). Only `prod-v*.*.*` tags reach `prod` and `prod-apply`.
+- **The deployment branch and tag policy** (Pro and Team only). Only `prod-v*.*.*` tags reach `prod` and `prod-apply`, and only `main` and those tags reach `stage`. On GitHub Free, a workflow on any branch can declare `environment: stage` or `environment: prod` and receive that project's credentials.
 - **Who can push a `prod-v*` tag.** The promotion tag ruleset limits this to admins where your plan enforces rulesets on private repositories; confirm it shows **Active** under Settings → Rules → Rulesets. Without it, anyone with write access can start the prod promotion pipeline.
 
 To keep a human approval on a private fork, use GitHub Enterprise or make the repository public.

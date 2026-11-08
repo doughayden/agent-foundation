@@ -40,7 +40,7 @@ resource "github_repository_environment" "env" {
   }
 
   dynamic "deployment_branch_policy" {
-    for_each = var.deployment_tag_pattern == null ? [] : [1]
+    for_each = length(var.deployment_branch_patterns) + length(var.deployment_tag_patterns) > 0 ? [1] : []
     content {
       protected_branches     = false
       custom_branch_policies = true
@@ -48,11 +48,18 @@ resource "github_repository_environment" "env" {
   }
 }
 
+resource "github_repository_environment_deployment_policy" "branch" {
+  for_each       = toset(var.deployment_branch_patterns)
+  repository     = var.repository_name
+  environment    = github_repository_environment.env.environment
+  branch_pattern = each.value
+}
+
 resource "github_repository_environment_deployment_policy" "tag" {
-  count       = var.deployment_tag_pattern == null ? 0 : 1
+  for_each    = toset(var.deployment_tag_patterns)
   repository  = var.repository_name
   environment = github_repository_environment.env.environment
-  tag_pattern = var.deployment_tag_pattern
+  tag_pattern = each.value
 }
 
 resource "github_actions_environment_variable" "variable" {

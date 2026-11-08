@@ -4,8 +4,9 @@ locals {
 }
 
 module "gcp" {
-  source      = "../module/gcp"
-  environment = "prod"
+  source              = "../module/gcp"
+  environment         = "prod"
+  github_environments = ["prod", "prod-apply"]
 
   project                                 = var.project
   region                                  = var.region
@@ -34,7 +35,7 @@ module "github" {
   workload_identity_provider_name                    = module.gcp.workload_identity_provider_name
   workload_identity_pool_principal_identifier        = module.gcp.workload_identity_pool_principal_identifier
   terraform_state_bucket                             = var.terraform_state_bucket
-  deployment_tag_pattern                             = local.promotion_tag_pattern
+  deployment_tag_patterns                            = [local.promotion_tag_pattern]
 }
 
 module "github_protected" {
@@ -54,7 +55,7 @@ module "github_protected" {
   workload_identity_provider_name                    = module.gcp.workload_identity_provider_name
   workload_identity_pool_principal_identifier        = module.gcp.workload_identity_pool_principal_identifier
   terraform_state_bucket                             = var.terraform_state_bucket
-  deployment_tag_pattern                             = local.promotion_tag_pattern
+  deployment_tag_patterns                            = [local.promotion_tag_pattern]
   reviewer_users                                     = var.prod_apply_reviewer_users
   reviewer_teams                                     = var.prod_apply_reviewer_teams
   prevent_self_review                                = var.prod_apply_prevent_self_review
