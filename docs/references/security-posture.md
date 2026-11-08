@@ -49,9 +49,14 @@ The project enforces security at every layer of the stack, from network topology
 | Step inside a pull request job (`environment: dev`) | Credentials | Rejected by WIF | Rejected by WIF |
 | Workflow on a branch, `environment: stage` or `prod` | n/a | Blocked by GitHub | Blocked by GitHub |
 | Merge to `main`, stage jobs | n/a | Credentials | n/a |
-| Admin-pushed `prod-v*` tag, prod jobs | n/a | Stage registry lookups | Credentials |
+| Admin-pushed `prod-v*` tag, prod jobs | n/a | Credentials (used for registry lookups) | Credentials |
 
 "Blocked by GitHub" means the environment's deployment policy refuses the ref, so the job never starts and never gets a token. Dev stays reachable from any branch by design; keep dev free of data and access that would matter if a pull request job were compromised.
+
+**One role set per project.** Every environment admitted to a project's provider gets the same role set. Two consequences follow:
+
+- Promotion-tag runs authenticate to `stage` to resolve the image digest and read the stage registry, so they hold the full stage role set while needing only registry reads. Only admins can push the tag, and admins can already deploy stage by merging to `main`.
+- `prod` jobs (promote, plan, smoke) hold the same prod role set as `prod-apply`, before and after the approval. The approval trusts the plan artifact and summary from `prod-plan`, so a compromised dependency in that job could pass a malicious plan through the gate. Splitting roles between `prod` and `prod-apply` would not close this path, because the plan job still writes the artifact the apply runs. Review third-party actions and dependency changes as carefully as code that runs on prod credentials.
 
 **IAM database authentication, no passwords.** The application service account authenticates to Cloud SQL using IAM identity (`CLOUD_IAM_SERVICE_ACCOUNT` user type, `--auto-iam-authn` proxy flag). No database password is stored, transmitted, or rotatable. The built-in postgres superuser has a random 30-character password with a strict validation policy — it exists only as a locked fallback, not for routine access.
 
