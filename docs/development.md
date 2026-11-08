@@ -126,7 +126,7 @@ To go back to local storage, comment the service URIs out again and use `uv run 
 
 ### Dependencies
 
-Dependabot opens a weekly pull request with minor and patch updates to `uv.lock`, and a separate one for each major update, which also widens the upper bound in `pyproject.toml`. Lower bounds stay where they are; raise one with `uv remove` then `uv add` when you want it to match the lock ([CI/CD: Action and Hook Pinning](references/cicd.md#action-and-hook-pinning)). To add or update by hand:
+Dependabot opens a weekly pull request with minor and patch updates to `uv.lock`, and a separate one for each major update, which also widens the upper bound in `pyproject.toml`. Lower bounds stay where they are; to raise one, re-run `uv add` with the full new constraint, like `uv add "pydantic>=2.14.2,<3.0.0"` ([CI/CD: Action and Hook Pinning](references/cicd.md#action-and-hook-pinning)). To add or update by hand:
 
 ```bash
 # Add runtime dependency
