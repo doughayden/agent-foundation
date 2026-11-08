@@ -66,6 +66,7 @@ import importlib
 import json
 import logging
 import math
+import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -117,9 +118,11 @@ JUDGE_NUM_RUNS = 5
 # Exit code for "the eval could not run or left runs unscored", as opposed to pytest's 1
 # for "a test failed". Both gates use it. `judge-eval.yml` treats 1 as a sub-threshold
 # score its `gating` input may absorb, so a broken eval has to leave through a different
-# door or it would report as a behavioral regression and pass in dev-only mode. Any
-# value outside pytest's own 0-5 works; the workflow only tests for 0 and 1.
-EVAL_ERROR_EXIT_CODE = 6
+# door or it would report as a behavioral regression and pass in dev-only mode. pytest
+# adds exit codes over time (9.0 took 6), so this uses EX_SOFTWARE (70), well clear of
+# its range; the workflow only tests for 0 and 1.
+# https://docs.python.org/3/library/os.html#os.EX_SOFTWARE
+EVAL_ERROR_EXIT_CODE = os.EX_SOFTWARE
 
 LIVENESS_PROMPT = "pls respond with a single 'ready' to confirm you're able to respond"
 LIVENESS_MAX_OUTPUT_TOKENS = 64
