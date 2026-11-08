@@ -41,6 +41,18 @@ The project enforces security at every layer of the stack, from network topology
 
 **Workload Identity Federation (WIF), no service account keys.** CI/CD authenticates to GCP using GitHub's OIDC tokens federated through WIF. No long-lived credentials exist — there are no JSON key files to leak, rotate, or revoke. The identity trust chain is: GitHub OIDC token, verified by GCP's WIF provider, scoped by attribute conditions to the repository ID and to the GitHub Environments that deploy to that project (dev: `dev`; stage: `stage`; prod: `prod` and `prod-apply`). GitHub adds the `environment` claim only to a job that passes the environment's deployment policy, so the environment rules decide which refs can reach each project: `stage` accepts `main` and `prod-v*.*.*` tags, `prod` and `prod-apply` accept only `prod-v*.*.*` tags, which only repository admins can create. A workflow on any other branch, or a job without a matching `environment:`, cannot authenticate to stage or prod, even with `id-token: write`. This holds where GitHub enforces deployment policies and rulesets: a private repository on GitHub Free has neither, so there any writer can reach stage and prod credentials ([Protection Strategies](protection-strategies.md#private-repositories)). `dev` has no deployment policy, since pull request jobs plan against it.
 
+**What the WIF conditions block.** Every job that can request an OIDC token (`id-token: write`) is a potential path to cloud credentials, whether it is a workflow a writer pushes on a branch or a compromised third-party action running inside an existing job. A job's steps can request a token for any provider's audience, so the provider's condition, not the workflow, decides what the token can reach:
+
+| Job | dev | stage | prod |
+|---|---|---|---|
+| Workflow on a branch, no `environment:` | Rejected by WIF | Rejected by WIF | Rejected by WIF |
+| Step inside a pull request job (`environment: dev`) | Credentials | Rejected by WIF | Rejected by WIF |
+| Workflow on a branch, `environment: stage` or `prod` | n/a | Blocked by GitHub | Blocked by GitHub |
+| Merge to `main`, stage jobs | n/a | Credentials | n/a |
+| Admin-pushed `prod-v*` tag, prod jobs | n/a | Stage registry lookups | Credentials |
+
+"Blocked by GitHub" means the environment's deployment policy refuses the ref, so the job never starts and never gets a token. Dev stays reachable from any branch by design; keep dev free of data and access that would matter if a pull request job were compromised.
+
 **IAM database authentication, no passwords.** The application service account authenticates to Cloud SQL using IAM identity (`CLOUD_IAM_SERVICE_ACCOUNT` user type, `--auto-iam-authn` proxy flag). No database password is stored, transmitted, or rotatable. The built-in postgres superuser has a random 30-character password with a strict validation policy — it exists only as a locked fallback, not for routine access.
 
 **Cross-project promotion uses WIF principals, not service accounts.** Stage reads from dev's Artifact Registry, prod reads from stage's — but the IAM binding uses the WIF pool principal, not a service account. This avoids org policies that restrict cross-project service account usage and keeps the trust boundary at the identity pool level.
