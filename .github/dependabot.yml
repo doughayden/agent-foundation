@@ -14,9 +14,23 @@ updates:
       interval: weekly
     cooldown:
       default-days: 6
-  # terraform/main only: CI plans every bump on the PR and applies it on merge; bootstrap providers move with template changes
+  # terraform/main: CI plans each bump on the pull request and applies it to dev on merge
   - package-ecosystem: terraform
     directory: /terraform/main
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 6
+  # Bootstrap roots and modules run only locally: one grouped pull request per provider across all of them.
+  # Verify with a local terraform init and plan per root after merging. Delete this block to stop these updates.
+  - package-ecosystem: terraform
+    directories:
+      - /terraform/bootstrap/*
+      - /terraform/bootstrap/module/*
+    groups:
+      bootstrap-providers:
+        patterns: ["*"]
+        group-by: dependency-name
     schedule:
       interval: weekly
     cooldown:
