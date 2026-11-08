@@ -41,4 +41,6 @@ resource "github_repository_vulnerability_alerts" "repo" {
 resource "github_repository_dependabot_security_updates" "repo" {
   repository = var.repository_name
   enabled    = true
+
+  depends_on = [github_repository_vulnerability_alerts.repo]
 }
