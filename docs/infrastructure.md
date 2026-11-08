@@ -248,6 +248,10 @@ See [Deployment Modes: Terraform Structure](references/deployment.md#terraform-s
 
 ### Upgrading Provider Lockfiles
 
+Dependabot opens one weekly pull request per provider across every root and module (`.github/dependabot.yml`), after the same cooldown as actions and hooks. Constraints allow any release below the next major, so minor and patch releases need no constraint edit. CI plans and applies only `terraform/main`: after merging a bump that touches a bootstrap lockfile, run `terraform init` and `terraform plan` in each changed bootstrap root, and apply if the plan shows changes.
+
+To bump by hand, regenerate the lockfiles:
+
 **Main module** (`terraform/main/`) runs in CI/CD on `linux_amd64`, so its lockfile needs both local and CI platform hashes:
 
 ```bash

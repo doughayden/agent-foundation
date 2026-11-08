@@ -14,3 +14,17 @@ updates:
       interval: weekly
     cooldown:
       default-days: 6
+  # One grouped PR per provider across every root and module; a bootstrap lock bump still needs a local init and apply per root
+  - package-ecosystem: terraform
+    directories:
+      - /terraform/main
+      - /terraform/bootstrap/*
+      - /terraform/bootstrap/module/*
+    groups:
+      providers:
+        patterns: ["*"]
+        group-by: dependency-name
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 6
