@@ -32,9 +32,7 @@ module "github" {
   terraform_state_bucket                             = var.terraform_state_bucket
 }
 
-# Repository-wide settings live in the dev root, the one every deployment mode applies.
-# Alerts flag known vulnerabilities in any locked dependency, transitive ones included;
-# security updates open a fix pull request for each, outside the weekly version updates
+# Repository-wide settings: the dev root is the one every deployment mode applies
 resource "github_repository_vulnerability_alerts" "repo" {
   repository = var.repository_name
   enabled    = true
@@ -43,6 +41,4 @@ resource "github_repository_vulnerability_alerts" "repo" {
 resource "github_repository_dependabot_security_updates" "repo" {
   repository = var.repository_name
   enabled    = true
-
-  depends_on = [github_repository_vulnerability_alerts.repo]
 }
