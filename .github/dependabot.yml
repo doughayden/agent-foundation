@@ -14,11 +14,9 @@ updates:
       interval: weekly
     cooldown:
       default-days: 6
-  # Minor and patch updates share one pull request; each major update gets its own.
-  # increase raises each lower bound to the new version, so the floor matches what CI tested
+  # Minor and patch updates share one pull request; each major update gets its own
   - package-ecosystem: uv
     directory: /
-    versioning-strategy: increase
     groups:
       python-minor-patch:
         update-types: [minor, patch]
