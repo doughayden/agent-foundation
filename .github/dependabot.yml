@@ -34,7 +34,7 @@ updates:
       interval: monthly
     cooldown:
       default-days: 6
-  # terraform/main: CI plans each bump on the pull request and applies it to dev on merge
+  # terraform/main: CI plans the grouped provider bumps on the pull request and applies them to dev on merge
   - package-ecosystem: terraform
     directory: /terraform/main
     groups:
