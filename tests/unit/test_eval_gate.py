@@ -6,12 +6,22 @@ so no model is called.
 """
 
 import math
+import threading
 
 import pytest
 from google.adk.evaluation.eval_config import get_eval_metrics_from_config
 from google.adk.evaluation.eval_metrics import EvalMetricResult, EvalStatus
+from google.adk.evaluation.local_eval_service import LocalEvalService
 
 RUBRIC_METRIC = "rubric_based_final_response_quality_v1"
+WHOLE_CONVERSATION_METRICS = frozenset(
+    {
+        "multi_turn_task_success_v1",
+        "multi_turn_trajectory_quality_v1",
+        "multi_turn_tool_use_quality_v1",
+        "rubric_based_multi_turn_trajectory_quality_v1",
+    }
+)
 
 
 class TestGatingRule:
@@ -142,6 +152,91 @@ class TestUnscoredRuns:
             f"case (session session): {RUBRIC_METRIC} rubric answers_query "
             "was not judged"
         ]
+
+    def test_per_turn_metric_that_skipped_a_turn_is_reported(
+        self, eval_gate, create_eval_case_result
+    ):
+        results = [
+            create_eval_case_result(
+                scores={"hallucinations_v1": 1.0},
+                turns=[{"hallucinations_v1": None}, {"hallucinations_v1": 1.0}],
+            )
+        ]
+
+        assert eval_gate._unscored_runs(results) == [
+            "case (session session): hallucinations_v1 did not score turn 1"
+        ]
+
+    def test_nan_turn_score_counts_as_unscored(
+        self, eval_gate, create_eval_case_result
+    ):
+        results = [
+            create_eval_case_result(
+                scores={"hallucinations_v1": 1.0},
+                turns=[{"hallucinations_v1": 1.0}, {"hallucinations_v1": math.nan}],
+            )
+        ]
+
+        assert eval_gate._unscored_runs(results) == [
+            "case (session session): hallucinations_v1 did not score turn 2"
+        ]
+
+    def test_metric_unscored_overall_is_reported_once_not_per_turn(
+        self, eval_gate, create_eval_case_result
+    ):
+        results = [
+            create_eval_case_result(
+                scores={"safety_v1": None},
+                turns=[{"safety_v1": None}, {"safety_v1": None}],
+            )
+        ]
+
+        assert eval_gate._unscored_runs(results) == [
+            "case (session session): safety_v1 was not scored"
+        ]
+
+    def test_non_gating_turn_metric_is_ignored(
+        self, eval_gate, create_eval_case_result
+    ):
+        results = [
+            create_eval_case_result(
+                efficiency={"invocation_duration_v1": None},
+                turns=[{"invocation_duration_v1": None}],
+            )
+        ]
+
+        assert eval_gate._unscored_runs(results) == []
+
+    @pytest.mark.parametrize("metric_name", sorted(WHOLE_CONVERSATION_METRICS))
+    def test_whole_conversation_metric_scores_only_the_last_turn(
+        self, eval_gate, create_eval_case_result, metric_name
+    ):
+        results = [
+            create_eval_case_result(
+                scores={metric_name: 0.8},
+                turns=[{metric_name: None}, {metric_name: 0.8}],
+            )
+        ]
+
+        assert eval_gate._unscored_runs(results) == []
+
+    @pytest.mark.parametrize("metric_name", sorted(WHOLE_CONVERSATION_METRICS))
+    def test_whole_conversation_metric_missing_its_last_turn_is_reported(
+        self, eval_gate, create_eval_case_result, metric_name
+    ):
+        results = [
+            create_eval_case_result(
+                scores={metric_name: 0.8},
+                turns=[{metric_name: 0.8}, {metric_name: None}],
+            )
+        ]
+
+        assert eval_gate._unscored_runs(results) == [
+            f"case (session session): {metric_name} did not score turn 2"
+        ]
+
+    def test_whole_conversation_exemptions_match_the_gate(self, eval_gate):
+        assert eval_gate.WHOLE_CONVERSATION_METRICS == WHOLE_CONVERSATION_METRICS
 
     def test_empty_capture_is_reported(self, eval_gate):
         assert eval_gate._unscored_runs([]) == ["no eval results were captured"]
@@ -274,3 +369,76 @@ class TestExitStatusHook:
         eval_lane_conftest.pytest_sessionfinish(session, 1)
 
         assert session.exitstatus == 1
+
+
+class TestEvaluatorOffLoopPatch:
+    """Synchronous metric evaluators run in a worker thread (upstream PR #7779)."""
+
+    def test_patch_replaces_local_eval_service_evaluate_metric(self, eval_gate):
+        assert LocalEvalService._evaluate_metric is eval_gate._evaluate_metric_off_loop
+
+    @pytest.mark.parametrize("shape", ["sync", "async", "sync_returning_awaitable"])
+    async def test_evaluator_runs_where_its_shape_needs_with_arguments_forwarded(
+        self, eval_gate, mocker, create_mock_local_eval_service, shape
+    ):
+        loop_thread = threading.get_ident()
+        calls: list[dict[str, object]] = []
+
+        def record(actual_invocations, expected_invocations, conversation_scenario):
+            calls.append(
+                {
+                    "thread": threading.get_ident(),
+                    "actual": actual_invocations,
+                    "expected": expected_invocations,
+                    "scenario": conversation_scenario,
+                }
+            )
+
+        def sync_evaluate(
+            *, actual_invocations, expected_invocations, conversation_scenario
+        ):
+            record(actual_invocations, expected_invocations, conversation_scenario)
+            return mocker.sentinel.result
+
+        async def async_evaluate(
+            *, actual_invocations, expected_invocations, conversation_scenario
+        ):
+            record(actual_invocations, expected_invocations, conversation_scenario)
+            return mocker.sentinel.result
+
+        def sync_returning_awaitable(
+            *, actual_invocations, expected_invocations, conversation_scenario
+        ):
+            record(actual_invocations, expected_invocations, conversation_scenario)
+
+            async def _result():
+                return mocker.sentinel.result
+
+            return _result()
+
+        evaluate = {
+            "sync": sync_evaluate,
+            "async": async_evaluate,
+            "sync_returning_awaitable": sync_returning_awaitable,
+        }[shape]
+        service = create_mock_local_eval_service(evaluate)
+
+        result = await eval_gate._evaluate_metric_off_loop(
+            service,
+            mocker.sentinel.metric,
+            mocker.sentinel.actual,
+            mocker.sentinel.expected,
+            mocker.sentinel.scenario,
+        )
+
+        assert result is mocker.sentinel.result
+        service._metric_evaluator_registry.get_evaluator.assert_called_once_with(
+            eval_metric=mocker.sentinel.metric
+        )
+        [call] = calls
+        assert (call["thread"] == loop_thread) is (shape == "async")
+        assert (call["actual"], call["expected"], call["scenario"]) == (
+            mocker.sentinel.actual,
+            mocker.sentinel.expected,
+            mocker.sentinel.scenario,
+        )

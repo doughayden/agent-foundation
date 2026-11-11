@@ -73,7 +73,7 @@ jobs:
           OUTPUT_FILE=$(mktemp)
 
           # Stream output to both logs (real-time) and file (for summary)
-          uv run pytest tests/smoke 2>&1 | tee "$OUTPUT_FILE"
+          uv run pytest tests/smoke -v --durations=0 2>&1 | tee "$OUTPUT_FILE"
           EXIT_CODE=${PIPESTATUS[0]}  # pytest's exit code, not tee's
 
           if [ "$EXIT_CODE" -eq 0 ]; then

@@ -21,11 +21,10 @@ Eval inference runs the full `App` with its plugins applied, so evals score the 
 
 | File | What it is |
 |---|---|
-| `template_agent.evalset.json` | The gate eval set: one single-turn tool-and-response case |
-| `multi_turn.evalset.json` | A scripted multi-turn conversation case |
+| `template_agent.evalset.json` | The gate eval set: a single-turn case and a scripted two-turn case |
 | `simple_time_query.test.json` | The `.test.json` single-file format, for `adk test` |
 | `test_config.json` | Deterministic gate criteria |
-| `full_eval_config.json` | Merge-gate criteria: judge, rubric, hallucination, and safety metrics |
+| `full_eval_config.json` | Merge-gate criteria: judge, rubric, hallucination, safety, and whole-conversation `multi_turn_*` metrics |
 | `conversation_scenarios.json` | User-simulation scenarios (a pre-built and a custom persona) |
 | `session_input.json` | Session seed for user-simulation cases |
 | `user_sim_config.json` | User-simulation criteria plus simulator config |
@@ -100,14 +99,14 @@ INFO agent_foundation.callbacks *** Leaving agent 'your_agent' with invocation_i
 INFO google_adk…runners Runner closed.
 ```
 
-One such block per run per eval case, each with its own `invocation_id`. Count them:
+One such block per turn, per run, per eval case, each with its own `invocation_id`. Count them:
 
 ```bash
 uv run pytest tests/eval -m "judge" --log-cli-level=INFO 2>&1 \
-  | grep -c "Starting agent"          # JUDGE_NUM_RUNS per eval case
+  | grep -c "Starting agent"          # JUDGE_NUM_RUNS x turns, summed over cases
 ```
 
-Scoring leaves its own trail, one block per run: `rouge_scorer: Using default tokenizer` for the ROUGE metric, and `vertexai…_evals_common: Evaluation run completed.` with a duration for each eval-service metric pass. Counting either cross-checks the inference count.
+Scoring leaves its own trail: `rouge_scorer: Using default tokenizer` once per turn for the ROUGE metric, and `vertexai…_evals_common: Evaluation run completed.` with a duration for each eval-service call (`safety_v1` once per turn, each `multi_turn_*` metric once per run). Counting either cross-checks the inference count.
 
 Count the invocations rather than trusting the constant: `JUDGE_NUM_RUNS` states what was asked for, while the invocation IDs are what ADK actually ran.
 
@@ -123,16 +122,14 @@ AGENT_PACKAGE=$(basename src/*/)
 adk eval src/$AGENT_PACKAGE tests/eval/data/template_agent.evalset.json \
   --config_file_path tests/eval/data/test_config.json --print_detailed_results
 
-# The scripted multi-turn case
-adk eval src/$AGENT_PACKAGE tests/eval/data/multi_turn.evalset.json \
-  --config_file_path tests/eval/data/test_config.json
-
-# Deep run: judge, rubric, hallucination, and safety metrics
+# Deep run: judge, rubric, hallucination, safety, and multi_turn_* metrics
 adk eval src/$AGENT_PACKAGE tests/eval/data/template_agent.evalset.json \
   --config_file_path tests/eval/data/full_eval_config.json --print_detailed_results
 ```
 
 Run a subset of cases with `<evalset>:<eval_id_1>,<eval_id_2>`.
+
+`adk eval` and the adk web eval tab run without the gate's event-loop patch (see "Timeouts and retries"), which only pytest installs. Until an ADK release contains the upstream fix, a deep run with `full_eval_config.json` can report judge metrics as not evaluated after false timeouts. For trustworthy judge scores, run the gate: `uv run pytest tests/eval -m "judge" -s`.
 
 ### Test files: `adk test`
 
@@ -192,11 +189,12 @@ The PR gate uses only judge-free, deterministic metrics; the merge gate adds the
 | `hallucinations_v1` | LLM judge (groundedness) | `full`, `user_sim` | merge |
 | `safety_v1` | eval service | `full`, `user_sim` | merge |
 | `per_turn_user_simulator_quality_v1` | LLM judge | `user_sim` | none |
-| `multi_turn_task_success_v1` | eval service | `user_sim` | none |
-| `multi_turn_trajectory_quality_v1` | eval service | `user_sim` | none |
-| `multi_turn_tool_use_quality_v1` | eval service | `user_sim` | none |
+| `multi_turn_task_success_v1` | eval service | `full`, `user_sim` | merge |
+| `multi_turn_trajectory_quality_v1` | eval service | `full`, `user_sim` | merge |
+| `multi_turn_tool_use_quality_v1` | eval service | `full`, `user_sim` | merge |
+| `rubric_based_multi_turn_trajectory_quality_v1` | LLM judge vs rubrics | not shipped | none |
 
-"Merge" means the `judge-eval` job on merge to main, which scores `full_eval_config.json`. The two deterministic criteria are deliberately not in that file: the PR gate already scores them, and re-scoring them at `JUDGE_NUM_RUNS` would quietly make an exact-match threshold demand five perfect runs where the PR gate demands two, a merge-only failure the PR gate could never reproduce. It blocks only in production mode. `final_response_match_v2` is listed for reference but is deliberately absent from the shipped config, for the reason in "Limits and gotchas" below.
+"Merge" means the `judge-eval` job on merge to main, which scores `full_eval_config.json`. The two deterministic criteria are deliberately not in that file: the PR gate already scores them, and re-scoring them at `JUDGE_NUM_RUNS` would quietly make an exact-match threshold demand five perfect runs where the PR gate demands two, a merge-only failure the PR gate could never reproduce. It blocks only in production mode. `final_response_match_v2` is listed for reference but is deliberately absent from the shipped config, for the reason in "Limits and gotchas" below. `rubric_based_multi_turn_trajectory_quality_v1` is absent until ADK serializes tool results that are not plain JSON ([google/adk-python#7888](https://github.com/google/adk-python/issues/7888)): `load_memory` returns a pydantic model, and the metric goes unscored on every run where the agent calls it.
 
 Reference-based metrics need an expected response, so they do not combine with user simulation.
 
@@ -230,7 +228,7 @@ Three consequences follow.
 
 Sampling does not add resolution. A majority vote collapses `num_samples` draws back into one verdict per rubric, so it buys reliability and nothing else. What does set resolution is everything the final mean divides by: ADK flattens each run's per-invocation scores into one list and averages it, so the achievable scores are the multiples of `1 / (rubrics x num_runs x invocations)`, and a stated threshold is really its **effective threshold**, the smallest achievable score at or above it.
 
-The gate case is single-turn, so `invocations` is 1 and the table below reads as rubrics times runs. A multi-turn case lands on a finer scale, which makes a threshold that was effectively unanimity at one invocation stop being so.
+For the single-turn case `invocations` is 1, and the table below reads as rubrics times runs. The two-turn case puts the per-turn metrics on a finer scale (`invocations` is 2), which makes a threshold that was effectively unanimity at one invocation stop being so. The `multi_turn_*` metrics do not follow this formula at all; see "Whole-conversation metrics" below.
 
 | Rubrics | `num_runs` | Achievable scores (one invocation) | Stated `0.7` is effectively |
 |---|---|---|---|
@@ -257,30 +255,45 @@ score = (5 + a) / 10
 
 A threshold of 0.7 would clear with `a >= 2`, letting an agent that answers the user's actual question two times in five pass the merge gate. **The shipped threshold is 0.9 because that demands four of five on the rubric that matters** while leaving `concise` free to be the style hint it is. In general, to require a real rubric at pass rate `p` when `R - 1` rubrics are near-certain, set the threshold to `(R - 1 + p) / R`.
 
+That arithmetic counts turns, not runs, so the two-turn case reads it differently. Its 20 verdicts per rubric metric (2 rubrics x 5 runs x 2 turns) pool both turns, and 0.9 demands `answers_query` on 8 of 10 turns: the agent can miss the Tokyo follow-up in 2 of 5 runs and still clear it, as long as it answers New York every time. A gate that must catch a weak follow-up needs a rubric or metric that sees the conversation, which is what `multi_turn_task_success_v1` adds.
+
 Collapsing the metric to the one rubric that carries weight is the other way out of the subsidy, and it is simpler. This template keeps both so the multi-rubric shape is demonstrated and its arithmetic is visible rather than avoided. Either way, adding or removing a rubric moves the floor, so recompute the threshold when you change the rubric list.
 
 `hallucinations_v1` has a different shape, and its achievable scores are not even a fixed set. It scores supported sentences over total sentences, and the agent does not write the same number of sentences every run, so the denominator moves between runs and the spacing between achievable scores is unpredictable. Against a terse agent (ours is terse) a single unsupported sentence can be a large fraction of the response, so the threshold is coarser in practice than it looks. Treat its number as a floor on groundedness, not as a tuned pass rate.
 
-`safety_v1` is the third shape, and the simplest: it carries no rubrics and delegates to the Vertex pointwise safety autorater, whose [rating rubric](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/metrics-templates) scores 1 for safe and 0 for unsafe with nothing between. Its achievable scores are therefore the multiples of `1 / num_runs`, and any threshold below 1.0 is an explicit budget for unsafe output: at five runs, `0.8` permits one. It ships at 1.0, which costs nothing in flakiness precisely because the score has no partial-credit path, so a safe response cannot land just under the bar. Check the rubric before copying that reasoning to another eval-service metric: the quality autoraters are graded 1 to 5, where a 1.0 threshold would demand a perfect rating every run.
+`safety_v1` is the third shape, and the simplest: it carries no rubrics and delegates to the Vertex pointwise safety autorater, whose [rating rubric](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/metrics-templates) scores 1 for safe and 0 for unsafe with nothing between. It scores each turn, so its achievable scores are the multiples of `1 / (num_runs x invocations)`, and any threshold below 1.0 is an explicit budget for unsafe output: at five runs, `0.8` permits one unsafe reply on the single-turn case and two unsafe turns on the two-turn case. It ships at 1.0, which costs nothing in flakiness precisely because the score has no partial-credit path, so a safe response cannot land just under the bar. Check the rubric before copying that reasoning to another eval-service metric: the quality autoraters are graded 1 to 5, where a 1.0 threshold would demand a perfect rating every run.
+
+### Whole-conversation metrics
+
+The `multi_turn_*` metrics are the fourth shape. Each judges a run's whole conversation once and attaches the score to the last turn, so every earlier turn carries no score by design and a run contributes one score, not one per turn. The Gen AI evaluation service writes its own rubrics for each conversation and returns the fraction it judged satisfied, so the rubric count, and with it the achievable scores, can change from run to run and cannot be worked out in advance. Set these thresholds from measured runs. The shipped 1.0 requires every service-written rubric to pass in every run, which suits a conversation small enough that the service's verdicts repeat from run to run.
+
+The service derives its rubrics from the agent's instructions, so a rule in `prompt.py` becomes something the gate checks. That cuts both ways: an instruction that another metric penalizes, like asking every user for their name, which `safety_v1` can read as soliciting personal data, fails one metric or the other on every run.
 
 ### What a merge run costs
 
 LLM calls are `num_samples` per invocation per metric. One judge call carries every rubric in that metric, so rubric count does not multiply calls. `hallucinations_v1` is fixed at two calls per response (a segmenter and a validator) and ignores `num_samples` entirely.
 
-Per merge run, for the shipped config's one-invocation case at `JUDGE_NUM_RUNS = 5`:
+Per merge run, for the shipped config's single-turn case (1 invocation) and two-turn case (2 invocations) at `JUDGE_NUM_RUNS = 5`:
 
-| Metric | Calls per run | Total |
+| Metric | Calls per run (single-turn + two-turn) | Total |
 |---|---|---|
-| `rubric_based_final_response_quality_v1` | 5 | 25 |
-| `rubric_based_tool_use_quality_v1` | 5 | 25 |
-| `hallucinations_v1` | 2 | 10 |
-| `safety_v1` | 1 eval-service call | 5 |
+| `rubric_based_final_response_quality_v1` | 5 + 10 | 75 |
+| `rubric_based_tool_use_quality_v1` | 5 + 10 | 75 |
+| `hallucinations_v1` | 2 + 4 | 30 |
+| `safety_v1` | 1 + 2 eval-service calls | 15 |
+| each `multi_turn_*` metric | 1 + 1 eval-service calls | 10 |
 
-Plus the agent's own inference, five times. `num_runs` and `num_samples` are both serial loops, so wall clock is linear in each; the `parallelism` semaphore fans out across eval *cases*, which makes adding a case far cheaper than adding a run.
+Plus the agent's own inference, five times per case. ADK generates the runs one after another, then scores every (case, run) result together:
+
+- **Inference:** run by run, with up to `parallelism` of each run's cases in parallel (the same field caps both stages, so a fork with more cases runs more agent sessions at once).
+- **Scoring:** up to the config's `parallelism` results at once (`full_eval_config.json` sets 10, which covers every result; ADK's default is 4).
+- **Within one result:** metrics in turn, and each rubric metric's samples up to its `parallelism_limit` at once (10 here, which covers both turns' samples; ADK's default of 1 sends them one at a time). `hallucinations_v1` runs its own loop and ignores the field, as it ignores `num_samples`.
+
+Scoring dominates the wall clock, so these limits matter more than the call count. A merge run's judge job takes a few minutes. Higher concurrency can draw HTTP 429 responses, which are retried with backoff (see "Timeouts and retries" below); a call that runs out of retries leaves its turn unscored and exits `EVAL_ERROR_EXIT_CODE`, which `gating` cannot absorb.
 
 ### Sampling and temperature, and why this config sets neither
 
-The shipped config names a `judge_model`, a `threshold`, and a request timeout, and takes ADK's sampling defaults for the rest (`num_samples: 5`, nothing in `judge_model_config` but `http_options`). Two reasons:
+The shipped config names a `judge_model`, a `threshold`, and a request timeout, and takes ADK's sampling defaults for the rest (`num_samples: 5`, nothing in `judge_model_config` but `http_options`). `parallelism_limit` changes only how many samples are in flight, not what they score. Two reasons:
 
 - Majority voting is self-consistency sampling. It extracts information only when the samples can disagree. For example, pinning `temperature: 0` and then paying for a 3-sample vote draws the same opinion three times and votes on it, converting zero uncertainty into confidence at triple the cost. Pick one posture, not both.
 - `num_samples` on `hallucinations_v1` does nothing. That evaluator overrides `evaluate_invocations` and never enters the sampling loop, so the field is accepted and ignored. ADK's [criteria reference](https://adk.dev/evaluate/criteria/) shows its `judge_model_options` with `judge_model` alone, which is the tell; check there before setting the field on any metric.
@@ -293,9 +306,9 @@ The coherent low-cost posture is the other one: `judge_model_config: {"temperatu
 
 Each judge criterion in `full_eval_config.json` and `user_sim_config.json` sets `judge_model_config: {"http_options": {"timeout": <ms>}}`. ADK copies `judge_model_config` into every judge request and sets no temperature or thinking of its own, so a timeout-only config leaves sampling unchanged. A judge call that exceeds it raises `TimeoutError`, ADK logs the traceback and leaves the metric unscored, and the gate exits `EVAL_ERROR_EXIT_CODE`. A criterion without the setting has no per-call limit, so add it to any judge criterion you add. The agent's own model calls carry the timeout in `agent.py` (see [Development](../development.md)).
 
-ADK adds retries to eval-lane model calls, for both the judge and the agent's inference, when a request does not set its own retry options: on HTTP 408, 429 and 5xx responses, with exponential backoff. A slow 5xx is retried, so one call can hold a run for several minutes. A request that times out is not retried. Retry settings live in `google-genai`'s [`HttpRetryOptions`](https://googleapis.github.io/python-genai/genai.html#genai.types.HttpRetryOptions); the defaults are in ADK's `google/adk/evaluation/_retry_options_utils.py`.
+ADK adds retries to eval-lane model calls, for both the judge and the agent's inference, when a request does not set its own retry options: on HTTP 408, 429 and 5xx responses, with exponential backoff. A slow 5xx is retried, so one call can hold a run for several minutes. A request that times out is not retried. The Gen AI evaluation service metrics retry on their own, five attempts with exponential backoff (about 15 to 19 seconds in all), then record the metric with an error and no score, so a sustained 429 there exits `EVAL_ERROR_EXIT_CODE`. Retry settings live in `google-genai`'s [`HttpRetryOptions`](https://googleapis.github.io/python-genai/genai.html#genai.types.HttpRetryOptions); the defaults are in ADK's `google/adk/evaluation/_retry_options_utils.py`.
 
-The Gen AI evaluation service metrics (`safety_v1`, `multi_turn_*`) expose no timeout through ADK, so only the CI job's `timeout-minutes` bounds them. The user simulator's own model calls carry no timeout either: its `model_configuration` replaces ADK's default simulator config (a thinking budget) rather than merging with it, so a timeout there would also have to restate that default.
+The Gen AI evaluation service metrics (`safety_v1`, `multi_turn_*`) expose no timeout through ADK, so only the CI job's `timeout-minutes` bounds them. Their client call is synchronous, and ADK 2.14 runs it on the event loop, which freezes every concurrent judge call for the call's duration (often 20 seconds): a judge response that arrived during the freeze is counted against its own timeout and fails as a `TimeoutError`. `tests/eval/test_agent_eval.py` patches `LocalEvalService._evaluate_metric` to run synchronous evaluators in a worker thread, mirroring the `LocalEvalService` half of the upstream fix ([google/adk-python#7779](https://github.com/google/adk-python/pull/7779)); remove the patch on the ADK upgrade that contains it, along with this page's notes that `adk eval` and the adk web eval tab run unpatched. The upstream fix also moves synchronous `custom_metrics` functions off the loop, which the patch does not, so a synchronous custom metric still freezes it. Only pytest imports the patch: `adk eval` and the adk web eval tab stay unpatched. The user simulator's own model calls carry no timeout either: its `model_configuration` replaces ADK's default simulator config (a thinking budget) rather than merging with it, so a timeout there would also have to restate that default.
 
 ## The CI gates
 
@@ -328,7 +341,7 @@ A green gate, deterministic or judge, means every run of every case produced an 
 - **The liveness preflight fails fast.** An unreachable model would fail every run, but only after the lane paid for each attempt. `test_liveness_agent_model` probes the agent's model (read from `ROOT_AGENT_MODEL`, under both markers, since both gates run the agent); `test_liveness_judge_model` probes each autorater (parametrized from the judge config, `judge` marker only, so the deterministic gate does not depend on judge-model health). Each probe reads its role's own source of truth, so changing a model re-points the probe with no test edit. Both carry the `liveness` marker, which `judge-eval.yml` selects as its own step, so `gating: false` never sees that failure. Only an unreachable model aborts here; partial failures are the unscored-run check's job.
 - **A failing gate says why.** `_gate` raises `pytest.fail.Exception(...) from <cause>` (ADK's `AssertionError`, or the exception that stopped the eval), so pytest's failure report shows the full traceback, the captured log records (ADK logs each failed metric evaluation there with its traceback), and the captured stdout with ADK's results tables. It then calls the `set_exit_status` fixture, and the lane's `conftest.py` (which holds only this hook) replaces the session exit code with `EVAL_ERROR_EXIT_CODE` in `pytest_sessionfinish`, so the report stays native while the exit code still separates the failure from a low score. Do not switch to `pytest.exit`, which discards the captured output, or request `capsys` in a gate, which captures even under `-s`.
 
-The check reads each run's overall score per metric, not per invocation. For a single-turn case, which is every shipped gate case, that covers the autorater metrics and the Gen AI evaluation service metrics like `safety_v1` alike, including the service failing to score a run. In a multi-turn case, a metric that scores some invocations of a run but not others still produces an overall score from the scored ones, so a dropped turn passes this check. Revisit the check when adding a multi-turn case to a gate.
+The check also reads each turn. A per-turn metric's overall score is the mean over the turns it scored, so a metric that skipped one turn of the two-turn case would still report a complete-looking score; the gate treats a gating metric with no score on any turn as an unscored run. The whole-conversation metrics (`multi_turn_*`) score only the last turn by design, so `WHOLE_CONVERSATION_METRICS` in `tests/eval/test_agent_eval.py` exempts their earlier turns.
 
 In the judge workflow's scored step, exit 1 is therefore always ADK's verdict over fully scored runs, and it is the only failure `gating: false` absorbs. In `ci.yml`'s deterministic job every failure blocks, so the exit code there only labels the cause. Whether an unscored run should warn rather than fail is a policy choice; the template fails, and a fork changes it in `_gate` in `tests/eval/test_agent_eval.py`.
 
@@ -349,7 +362,7 @@ DETERMINISTIC_NUM_RUNS = 2
 JUDGE_NUM_RUNS = 5
 ```
 
-The judge gate averages more runs to buy resolution: its per-rubric verdicts are binary, so a case's achievable scores are the multiples of `1 / (rubrics x num_runs x invocations)` and a threshold that lands between them silently rounds up. Five runs put the shipped thresholds on the achievable set; see "How a judge score is built" above. The deterministic gate keeps 2: exact trajectory matching wants unanimity regardless, and ROUGE-1 is spaced finely enough that a two-run mean still carries information. Finely spaced is not the same as continuous. `response_match_score` is an f-measure over unigram overlap, so its denominators are the response's and the reference's token counts, and the response's token count moves between runs; its achievable scores shift run to run exactly as `hallucinations_v1`'s do. The difference is scale, tokens numbering in the tens where sentences number in the low single digits, so the same mechanism that makes groundedness coarse leaves ROUGE finer. ADK runs the passes serially, so raising `JUDGE_NUM_RUNS` costs proportional wall clock on every merge.
+The judge gate averages more runs to buy resolution: its per-rubric verdicts are binary, so a case's achievable scores are the multiples of `1 / (rubrics x num_runs x invocations)` and a threshold that lands between them silently rounds up. Five runs put the shipped thresholds on the achievable set; see "How a judge score is built" above. The deterministic gate keeps 2: exact trajectory matching wants unanimity regardless, and ROUGE-1 is spaced finely enough that a two-run mean still carries information. Finely spaced is not the same as continuous. `response_match_score` is an f-measure over unigram overlap, so its denominators are the response's and the reference's token counts, and the response's token count moves between runs; its achievable scores shift run to run exactly as `hallucinations_v1`'s do. The difference is scale, tokens numbering in the tens where sentences number in the low single digits, so the same mechanism that makes groundedness coarse leaves ROUGE finer. ADK generates the runs one after another, so raising `JUDGE_NUM_RUNS` adds inference time on every merge, and every added run adds a result to score.
 
 To vary either one, edit the constant. That is a reviewable diff in the same file as the eval cases, rather than a value threaded through a workflow input. Nothing calls `judge-eval.yml` except `ci-cd.yml` on merge (it has no `workflow_dispatch`), so a run knob would have no caller while still carrying failure modes: sentinel defaults, a threshold margin that relaxes the gate, and an eval-set override that silently swaps the deterministic criteria for ADK's built-in ones. A fork changing what is evaluated edits `tests/eval/` either way.
 

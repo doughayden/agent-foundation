@@ -36,9 +36,11 @@ jobs:
     name: Judge Eval (${{ inputs.environment }})
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
-    # Measured ~2 min for the shipped one-case config at JUDGE_NUM_RUNS 5, which ADK runs
-    # serially. The margin covers deps, a slow Vertex day, and added eval cases. A timeout
-    # is a job failure `gating` cannot absorb, so leave room rather than trimming this.
+    # Measured ~3.5 min locally for the shipped two-case config at JUDGE_NUM_RUNS 5 with
+    # concurrent scoring (`parallelism` and `parallelism_limit` in full_eval_config.json);
+    # ADK's default concurrency takes tens of minutes. The margin covers deps, a slow
+    # Vertex day, and added eval cases. A timeout is a job failure `gating` cannot
+    # absorb, so leave room rather than trimming this.
     timeout-minutes: 30
     env:
       GOOGLE_GENAI_USE_ENTERPRISE: "TRUE"
@@ -139,7 +141,7 @@ jobs:
           fi
 
           if [ "$GATING" = "true" ]; then
-            GATING_DISPLAY="🚦 \`blocking\`"
+            GATING_DISPLAY="🚦 \`enforced\`"
           else
             GATING_DISPLAY="📊 \`signal only\`"
           fi
