@@ -660,9 +660,10 @@ def create_eval_case_result() -> Callable[..., EvalCaseResult]:
         ``None`` mimics a crashed one, which ADK reports as not evaluated),
         ``rubrics`` (rubric metric name to its configured rubric ids) and
         ``rubric_scores`` (rubric metric name to judged rubric id and score; an id
-        left out was never judged), and ``turns`` (one dict per turn, gating metric
-        name to that turn's score, turn ids ``turn_1`` onward). A rubric metric's
-        overall score is the mean of its judged rubric scores, as ADK computes it.
+        left out was never judged), and ``turns`` (one dict per turn, metric name to
+        that turn's score; a name also in ``efficiency`` is non-gating there too). A
+        rubric metric's overall score is the mean of its judged rubric scores, as ADK
+        computes it.
     """
     from google.adk.evaluation.eval_case import Invocation
     from google.adk.evaluation.eval_metrics import (
@@ -748,7 +749,7 @@ def create_eval_case_result() -> Callable[..., EvalCaseResult]:
                         EvalMetricResult(
                             metric_name=name,
                             score=score,
-                            threshold=threshold,
+                            threshold=None if name in (efficiency or {}) else threshold,
                             eval_status=(
                                 EvalStatus.NOT_EVALUATED
                                 if score is None
@@ -797,6 +798,34 @@ def create_mock_evaluate_eval_set(
             new_callable=mocker.AsyncMock,
             side_effect=_evaluate,
         )
+
+    return _factory
+
+
+@pytest.fixture
+def create_mock_local_eval_service(mocker: MockerFixture) -> Callable[..., MockType]:
+    """Factory for a ``LocalEvalService`` double whose registry serves one evaluator.
+
+    Returns:
+        Function taking ``evaluate_invocations`` (the evaluator's method, sync or
+        async). The service's ``_metric_evaluator_registry.get_evaluator`` returns an
+        evaluator carrying it, so tests can assert what the registry was asked for.
+    """
+    from google.adk.evaluation.evaluator import Evaluator
+    from google.adk.evaluation.local_eval_service import LocalEvalService
+    from google.adk.evaluation.metric_evaluator_registry import (
+        MetricEvaluatorRegistry,
+    )
+
+    def _factory(evaluate_invocations: Callable[..., Any]) -> MockType:
+        registry = mocker.Mock(spec=MetricEvaluatorRegistry)
+        registry.get_evaluator.return_value = mocker.Mock(
+            spec=Evaluator, evaluate_invocations=evaluate_invocations
+        )
+        service: MockType = mocker.Mock(
+            spec=LocalEvalService, _metric_evaluator_registry=registry
+        )
+        return service
 
     return _factory
 

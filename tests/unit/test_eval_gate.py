@@ -11,9 +11,7 @@ import threading
 import pytest
 from google.adk.evaluation.eval_config import get_eval_metrics_from_config
 from google.adk.evaluation.eval_metrics import EvalMetricResult, EvalStatus
-from google.adk.evaluation.evaluator import Evaluator
 from google.adk.evaluation.local_eval_service import LocalEvalService
-from google.adk.evaluation.metric_evaluator_registry import MetricEvaluatorRegistry
 
 RUBRIC_METRIC = "rubric_based_final_response_quality_v1"
 WHOLE_CONVERSATION_METRICS = frozenset(
@@ -166,8 +164,48 @@ class TestUnscoredRuns:
         ]
 
         assert eval_gate._unscored_runs(results) == [
-            "case (session session): hallucinations_v1 did not score turn turn_1"
+            "case (session session): hallucinations_v1 did not score turn 1"
         ]
+
+    def test_nan_turn_score_counts_as_unscored(
+        self, eval_gate, create_eval_case_result
+    ):
+        results = [
+            create_eval_case_result(
+                scores={"hallucinations_v1": 1.0},
+                turns=[{"hallucinations_v1": 1.0}, {"hallucinations_v1": math.nan}],
+            )
+        ]
+
+        assert eval_gate._unscored_runs(results) == [
+            "case (session session): hallucinations_v1 did not score turn 2"
+        ]
+
+    def test_metric_unscored_overall_is_reported_once_not_per_turn(
+        self, eval_gate, create_eval_case_result
+    ):
+        results = [
+            create_eval_case_result(
+                scores={"safety_v1": None},
+                turns=[{"safety_v1": None}, {"safety_v1": None}],
+            )
+        ]
+
+        assert eval_gate._unscored_runs(results) == [
+            "case (session session): safety_v1 was not scored"
+        ]
+
+    def test_non_gating_turn_metric_is_ignored(
+        self, eval_gate, create_eval_case_result
+    ):
+        results = [
+            create_eval_case_result(
+                efficiency={"invocation_duration_v1": None},
+                turns=[{"invocation_duration_v1": None}],
+            )
+        ]
+
+        assert eval_gate._unscored_runs(results) == []
 
     @pytest.mark.parametrize("metric_name", sorted(WHOLE_CONVERSATION_METRICS))
     def test_whole_conversation_metric_scores_only_the_last_turn(
@@ -181,6 +219,21 @@ class TestUnscoredRuns:
         ]
 
         assert eval_gate._unscored_runs(results) == []
+
+    @pytest.mark.parametrize("metric_name", sorted(WHOLE_CONVERSATION_METRICS))
+    def test_whole_conversation_metric_missing_its_last_turn_is_reported(
+        self, eval_gate, create_eval_case_result, metric_name
+    ):
+        results = [
+            create_eval_case_result(
+                scores={metric_name: 0.8},
+                turns=[{metric_name: 0.8}, {metric_name: None}],
+            )
+        ]
+
+        assert eval_gate._unscored_runs(results) == [
+            f"case (session session): {metric_name} did not score turn 2"
+        ]
 
     def test_whole_conversation_exemptions_match_the_gate(self, eval_gate):
         assert eval_gate.WHOLE_CONVERSATION_METRICS == WHOLE_CONVERSATION_METRICS
@@ -324,33 +377,68 @@ class TestEvaluatorOffLoopPatch:
     def test_patch_replaces_local_eval_service_evaluate_metric(self, eval_gate):
         assert LocalEvalService._evaluate_metric is eval_gate._evaluate_metric_off_loop
 
-    @pytest.mark.parametrize("is_async", [False, True], ids=["sync", "async"])
-    async def test_sync_evaluators_leave_the_loop_and_async_ones_stay(
-        self, eval_gate, mocker, is_async
+    @pytest.mark.parametrize("shape", ["sync", "async", "sync_returning_awaitable"])
+    async def test_evaluator_runs_where_its_shape_needs_with_arguments_forwarded(
+        self, eval_gate, mocker, create_mock_local_eval_service, shape
     ):
         loop_thread = threading.get_ident()
-        ran_on: list[int] = []
+        calls: list[dict[str, object]] = []
 
-        def sync_evaluate(**kwargs):
-            ran_on.append(threading.get_ident())
-            return "sync result"
+        def record(actual_invocations, expected_invocations, conversation_scenario):
+            calls.append(
+                {
+                    "thread": threading.get_ident(),
+                    "actual": actual_invocations,
+                    "expected": expected_invocations,
+                    "scenario": conversation_scenario,
+                }
+            )
 
-        async def async_evaluate(**kwargs):
-            ran_on.append(threading.get_ident())
-            return "async result"
+        def sync_evaluate(
+            *, actual_invocations, expected_invocations, conversation_scenario
+        ):
+            record(actual_invocations, expected_invocations, conversation_scenario)
+            return mocker.sentinel.result
 
-        registry = mocker.Mock(spec=MetricEvaluatorRegistry)
-        registry.get_evaluator.return_value = mocker.Mock(
-            spec=Evaluator,
-            evaluate_invocations=async_evaluate if is_async else sync_evaluate,
-        )
-        service = mocker.Mock(
-            spec=LocalEvalService, _metric_evaluator_registry=registry
-        )
+        async def async_evaluate(
+            *, actual_invocations, expected_invocations, conversation_scenario
+        ):
+            record(actual_invocations, expected_invocations, conversation_scenario)
+            return mocker.sentinel.result
+
+        def sync_returning_awaitable(
+            *, actual_invocations, expected_invocations, conversation_scenario
+        ):
+            record(actual_invocations, expected_invocations, conversation_scenario)
+
+            async def _result():
+                return mocker.sentinel.result
+
+            return _result()
+
+        evaluate = {
+            "sync": sync_evaluate,
+            "async": async_evaluate,
+            "sync_returning_awaitable": sync_returning_awaitable,
+        }[shape]
+        service = create_mock_local_eval_service(evaluate)
 
         result = await eval_gate._evaluate_metric_off_loop(
-            service, mocker.sentinel.metric, [], None, None
+            service,
+            mocker.sentinel.metric,
+            mocker.sentinel.actual,
+            mocker.sentinel.expected,
+            mocker.sentinel.scenario,
         )
 
-        assert result == ("async result" if is_async else "sync result")
-        assert (ran_on[0] == loop_thread) is is_async
+        assert result is mocker.sentinel.result
+        service._metric_evaluator_registry.get_evaluator.assert_called_once_with(
+            eval_metric=mocker.sentinel.metric
+        )
+        [call] = calls
+        assert (call["thread"] == loop_thread) is (shape == "async")
+        assert (call["actual"], call["expected"], call["scenario"]) == (
+            mocker.sentinel.actual,
+            mocker.sentinel.expected,
+            mocker.sentinel.scenario,
+        )

@@ -95,43 +95,6 @@ from google.genai import types
 
 logger = logging.getLogger(__name__)
 
-# --- Monkey-patch: run synchronous metric evaluators off the event loop ---
-# The Gen AI evaluation service metrics (`safety_v1`, `multi_turn_*`) make a blocking
-# client call that ADK 2.14 runs on the event loop, so each call (~20 s) freezes every
-# concurrent judge call, and the judge's per-call timeout fires on responses that had
-# already arrived. This mirrors the upstream fix: synchronous evaluators run through
-# `asyncio.to_thread`, async ones are still awaited on the loop.
-# Upstream: https://github.com/google/adk-python/pull/7779
-# TODO: Remove when google-adk is bumped to a release containing PR #7779.
-
-
-async def _evaluate_metric_off_loop(
-    self: LocalEvalService,
-    eval_metric: EvalMetric,
-    actual_invocations: list[Invocation],
-    expected_invocations: list[Invocation] | None,
-    conversation_scenario: ConversationScenario | None,
-) -> EvaluationResult:
-    evaluate = self._metric_evaluator_registry.get_evaluator(
-        eval_metric=eval_metric
-    ).evaluate_invocations
-    kwargs: dict[str, Any] = {
-        "actual_invocations": actual_invocations,
-        "expected_invocations": expected_invocations,
-        "conversation_scenario": conversation_scenario,
-    }
-    if inspect.iscoroutinefunction(evaluate):
-        awaited: EvaluationResult = await evaluate(**kwargs)
-        return awaited
-    result = await asyncio.to_thread(evaluate, **kwargs)
-    if inspect.isawaitable(result):
-        return await result
-    return result
-
-
-LocalEvalService._evaluate_metric = _evaluate_metric_off_loop  # type: ignore[method-assign]
-# --- End monkey-patch ---
-
 DATA_DIR = Path(__file__).parent / "data"
 
 # The agent module is the package directory under src/. The template has exactly one
@@ -186,6 +149,45 @@ WHOLE_CONVERSATION_METRICS = frozenset(
 LIVENESS_PROMPT = "pls respond with a single 'ready' to confirm you're able to respond"
 LIVENESS_MAX_OUTPUT_TOKENS = 64
 LIVENESS_TIMEOUT_MS = 60_000
+
+# --- Monkey-patch: run synchronous metric evaluators off the event loop ---
+# The Gen AI evaluation service metrics (`safety_v1`, `multi_turn_*`) make a blocking
+# client call that ADK 2.14 runs on the event loop, so each call (~20 s) freezes every
+# concurrent judge call, and the judge's per-call timeout fires on responses that had
+# already arrived. This mirrors the `LocalEvalService` half of the upstream fix:
+# synchronous evaluators run through `asyncio.to_thread`, async ones are still awaited
+# on the loop. Synchronous `custom_metrics` functions still run on the loop, and only
+# pytest imports this module, so `adk eval` and the adk web eval tab stay unpatched.
+# Upstream: https://github.com/google/adk-python/pull/7779
+# TODO: Remove when google-adk is bumped to a release containing PR #7779.
+
+
+async def _evaluate_metric_off_loop(
+    self: LocalEvalService,
+    eval_metric: EvalMetric,
+    actual_invocations: list[Invocation],
+    expected_invocations: list[Invocation] | None,
+    conversation_scenario: ConversationScenario | None,
+) -> EvaluationResult:
+    evaluate = self._metric_evaluator_registry.get_evaluator(
+        eval_metric=eval_metric
+    ).evaluate_invocations
+    kwargs: dict[str, Any] = {
+        "actual_invocations": actual_invocations,
+        "expected_invocations": expected_invocations,
+        "conversation_scenario": conversation_scenario,
+    }
+    if inspect.iscoroutinefunction(evaluate):
+        awaited: EvaluationResult = await evaluate(**kwargs)
+        return awaited
+    result = await asyncio.to_thread(evaluate, **kwargs)
+    if inspect.isawaitable(result):
+        return await result
+    return result
+
+
+LocalEvalService._evaluate_metric = _evaluate_metric_off_loop  # type: ignore[method-assign]
+# --- End monkey-patch ---
 
 
 def _judge_models(config_data: dict[str, Any]) -> list[str]:
@@ -416,8 +418,10 @@ def _unscored_runs(eval_case_results: list[EvalCaseResult]) -> list[str]:
     fail. A run is also unscored when a per-turn metric skipped one of its turns,
     since a metric's overall score is the mean over the turns it did score; the
     ``WHOLE_CONVERSATION_METRICS`` score only the last turn, so their earlier turns
-    are exempt. Capturing nothing at all counts as unscored too, since there is then
-    no evidence behind a verdict.
+    are exempt. A metric with no overall score is reported once, not again for each
+    turn ADK left a placeholder on, and a turn is named by its 1-based position in
+    the case's conversation. Capturing nothing at all counts as unscored too, since
+    there is then no evidence behind a verdict.
 
     A run is named by its eval session: ADK saves results in completion order and
     gives them no run number, while each run has its own session unless the case
@@ -431,20 +435,26 @@ def _unscored_runs(eval_case_results: list[EvalCaseResult]) -> list[str]:
         if not case.overall_eval_metric_results:
             unscored.append(f"{label}: produced no metric results")
             continue
+        scored_metrics = set()
         for metric in filter(_is_gating, case.overall_eval_metric_results):
             if not _is_scored(metric.score):
                 unscored.append(f"{label}: {metric.metric_name} was not scored")
                 continue
+            scored_metrics.add(metric.metric_name)
             unscored.extend(
                 f"{label}: {metric.metric_name} rubric {rubric_id} was not judged"
                 for rubric_id in _unjudged_rubrics(metric)
             )
-        for turn in case.eval_metric_result_per_invocation:
+        turns = case.eval_metric_result_per_invocation
+        for number, turn in enumerate(turns, start=1):
             unscored.extend(
-                f"{label}: {metric.metric_name} did not score turn "
-                f"{turn.actual_invocation.invocation_id}"
+                f"{label}: {metric.metric_name} did not score turn {number}"
                 for metric in filter(_is_gating, turn.eval_metric_results)
-                if metric.metric_name not in WHOLE_CONVERSATION_METRICS
+                if metric.metric_name in scored_metrics
+                and not (
+                    metric.metric_name in WHOLE_CONVERSATION_METRICS
+                    and number < len(turns)
+                )
                 and not _is_scored(metric.score)
             )
     return unscored
