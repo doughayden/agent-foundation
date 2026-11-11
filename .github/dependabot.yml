@@ -1,34 +1,47 @@
 version: 2
+# Security updates ignore schedule.interval and open when an advisory is published
 # Cooldown is exclude-newer plus one day: Dependabot counts whole days, so the same number can admit a release up to a day younger
 updates:
   # Bumps SHA pins and their version comments; setup-uv's uv input stays put, held to [tool.uv] required-version
   - package-ecosystem: github-actions
     directory: /
+    groups:
+      actions:
+        patterns: ["*"]
     schedule:
-      interval: weekly
+      interval: monthly
     cooldown:
       default-days: 6
   - package-ecosystem: pre-commit
     directory: /
+    groups:
+      pre-commit-hooks:
+        patterns: ["*"]
     schedule:
-      interval: weekly
+      interval: monthly
     cooldown:
       default-days: 6
-  # Minor and patch updates share one pull request; each major update gets its own
+  # Minor and patch updates share one pull request; each major update gets its own; open security fixes share one
   - package-ecosystem: uv
     directory: /
     groups:
       python-minor-patch:
         update-types: [minor, patch]
+      python-security:
+        applies-to: security-updates
+        patterns: ["*"]
     schedule:
-      interval: weekly
+      interval: monthly
     cooldown:
       default-days: 6
-  # terraform/main: CI plans each bump on the pull request and applies it to dev on merge
+  # terraform/main: CI plans the grouped provider bumps on the pull request and applies them to dev on merge
   - package-ecosystem: terraform
     directory: /terraform/main
+    groups:
+      main-providers:
+        patterns: ["*"]
     schedule:
-      interval: weekly
+      interval: monthly
     cooldown:
       default-days: 6
   # Bootstrap roots and modules run only locally: one grouped pull request per provider across all of them.
@@ -42,6 +55,6 @@ updates:
         patterns: ["*"]
         group-by: dependency-name
     schedule:
-      interval: weekly
+      interval: monthly
     cooldown:
       default-days: 6
