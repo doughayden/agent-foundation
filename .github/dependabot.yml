@@ -30,6 +30,9 @@ updates:
       python-security:
         applies-to: security-updates
         patterns: ["*"]
+    # ADK bumps are manual: each release is tested before its exact pin in pyproject.toml moves
+    ignore:
+      - dependency-name: google-adk
     schedule:
       interval: monthly
     cooldown:
