@@ -218,7 +218,7 @@ def configure_telemetry(service_name: str, project_id: str, log_level: str) -> N
     print(f"📡 Telemetry export: {TELEMETRY_API_ENDPOINT} ({metrics_status})")
     print("✅ Telemetry resource:\n")
     for key, value in sorted(resource.attributes.items()):
-        print(f"{key}={value}")
+        print(f"{key}={value!s}")
     print("\n")
 
     tracer_provider = TracerProvider(resource=resource)
@@ -264,7 +264,7 @@ def configure_telemetry(service_name: str, project_id: str, log_level: str) -> N
 # and instruments the GenAI SDK. With our providers already set, its set_*_provider
 # calls do nothing and the web UI processors riding in the same call are dropped,
 # and log processors never attach to a provider set elsewhere on any path.
-# Upstream: ADK 2.13.0 google/adk/cli/api_server.py _setup_telemetry; tracer reuse
+# Upstream: ADK 2.14.0 google/adk/cli/api_server.py _setup_telemetry; tracer reuse
 # on the default path only: https://github.com/google/adk-python/pull/3548
 # TODO: Remove when an ADK release attaches internal_processors to already-set
 # providers on every path and skips its own providers and exporters.
