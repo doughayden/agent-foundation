@@ -159,7 +159,8 @@ LIVENESS_TIMEOUT_MS = 60_000
 # on the loop. Synchronous `custom_metrics` functions still run on the loop, and only
 # pytest imports this module, so `adk eval` and the adk web eval tab stay unpatched.
 # Upstream: https://github.com/google/adk-python/pull/7779
-# TODO: Remove when google-adk is bumped to a release containing PR #7779.
+# TODO: Remove when google-adk is bumped to a release containing PR #7779, together
+# with the agent-evals.md notes that `adk eval` and adk web run unpatched.
 
 
 async def _evaluate_metric_off_loop(
