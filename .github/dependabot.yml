@@ -21,18 +21,19 @@ updates:
       interval: monthly
     cooldown:
       default-days: 6
-  # Minor and patch updates share one pull request; each major update gets its own; open security fixes share one
+  # Minor and patch updates share one pull request; each major update gets its own; open security fixes share one.
+  # google-adk stays out of both groups, so each ADK version or security bump arrives as its own pull request.
+  # The trailing * matches the extras in its dependency names (google-adk[gcp,otel-gcp], google-adk[eval]).
   - package-ecosystem: uv
     directory: /
     groups:
       python-minor-patch:
         update-types: [minor, patch]
+        exclude-patterns: ["google-adk*"]
       python-security:
         applies-to: security-updates
         patterns: ["*"]
-    # ADK bumps are manual: each release is tested before its exact pin in pyproject.toml moves
-    ignore:
-      - dependency-name: google-adk
+        exclude-patterns: ["google-adk*"]
     schedule:
       interval: monthly
     cooldown:

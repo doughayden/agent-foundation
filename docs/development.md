@@ -126,7 +126,7 @@ To go back to local storage, comment the service URIs out again and use `uv run 
 
 ### Dependencies
 
-On the schedule in `.github/dependabot.yml`, Dependabot opens a pull request with minor and patch updates to `uv.lock`, and a separate one for each major update, which also widens the upper bound in `pyproject.toml`. Security fixes skip that schedule: Dependabot opens them when an advisory is published, with all open fixes in one pull request. Lower bounds stay where they are; to raise one, re-run `uv add` with the full new constraint, like `uv add "pydantic>=2.14.2,<3.0.0"` ([CI/CD: Action and Hook Pinning](references/cicd.md#action-and-hook-pinning)). To add or update by hand:
+On the schedule in `.github/dependabot.yml`, Dependabot opens a pull request with minor and patch updates to `uv.lock`, and a separate one for each major update, which also widens the upper bound in `pyproject.toml`. Security fixes skip that schedule: Dependabot opens them when an advisory is published, with all open fixes in one pull request. `google-adk` stays out of both groups, so each ADK bump, version or security, gets its own pull request. Lower bounds stay where they are; to raise one, re-run `uv add` with the full new constraint, like `uv add "pydantic>=2.14.2,<3.0.0"` ([CI/CD: Action and Hook Pinning](references/cicd.md#action-and-hook-pinning)). To add or update by hand:
 
 ```bash
 # Add runtime dependency
