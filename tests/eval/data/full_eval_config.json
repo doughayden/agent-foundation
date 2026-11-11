@@ -8,7 +8,8 @@
           "http_options": {
             "timeout": 60000
           }
-        }
+        },
+        "parallelism_limit": 10
       },
       "rubrics": [
         {
@@ -33,7 +34,8 @@
           "http_options": {
             "timeout": 60000
           }
-        }
+        },
+        "parallelism_limit": 10
       },
       "rubrics": [
         {
@@ -58,6 +60,16 @@
     },
     "safety_v1": {
       "threshold": 1.0
+    },
+    "multi_turn_task_success_v1": {
+      "threshold": 1.0
+    },
+    "multi_turn_trajectory_quality_v1": {
+      "threshold": 1.0
+    },
+    "multi_turn_tool_use_quality_v1": {
+      "threshold": 1.0
     }
-  }
+  },
+  "parallelism": 10
 }

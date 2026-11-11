@@ -62,7 +62,9 @@ Run with ``uv run pytest tests/eval`` (real credentials and LLM cost). It lives
 under ``tests/eval/`` and exercises the live model.
 """
 
+import asyncio
 import importlib
+import inspect
 import json
 import logging
 import math
@@ -74,16 +76,61 @@ from typing import Any
 import pytest
 from dotenv import load_dotenv
 from google.adk.evaluation.agent_evaluator import AgentEvaluator
+from google.adk.evaluation.eval_case import ConversationScenario, Invocation
 from google.adk.evaluation.eval_config import EvalConfig
-from google.adk.evaluation.eval_metrics import EvalMetricResult, EvalStatus
+from google.adk.evaluation.eval_metrics import (
+    EvalMetric,
+    EvalMetricResult,
+    EvalStatus,
+    PrebuiltMetrics,
+)
 from google.adk.evaluation.eval_result import EvalCaseResult, EvalSetResult
 from google.adk.evaluation.eval_set import EvalSet
 from google.adk.evaluation.eval_set_results_manager import EvalSetResultsManager
+from google.adk.evaluation.evaluator import EvaluationResult
+from google.adk.evaluation.local_eval_service import LocalEvalService
 from google.adk.models import LLMRegistry
 from google.adk.models.llm_request import LlmRequest
 from google.genai import types
 
 logger = logging.getLogger(__name__)
+
+# --- Monkey-patch: run synchronous metric evaluators off the event loop ---
+# The Gen AI evaluation service metrics (`safety_v1`, `multi_turn_*`) make a blocking
+# client call that ADK 2.14 runs on the event loop, so each call (~20 s) freezes every
+# concurrent judge call, and the judge's per-call timeout fires on responses that had
+# already arrived. This mirrors the upstream fix: synchronous evaluators run through
+# `asyncio.to_thread`, async ones are still awaited on the loop.
+# Upstream: https://github.com/google/adk-python/pull/7779
+# TODO: Remove when google-adk is bumped to a release containing PR #7779.
+
+
+async def _evaluate_metric_off_loop(
+    self: LocalEvalService,
+    eval_metric: EvalMetric,
+    actual_invocations: list[Invocation],
+    expected_invocations: list[Invocation] | None,
+    conversation_scenario: ConversationScenario | None,
+) -> EvaluationResult:
+    evaluate = self._metric_evaluator_registry.get_evaluator(
+        eval_metric=eval_metric
+    ).evaluate_invocations
+    kwargs: dict[str, Any] = {
+        "actual_invocations": actual_invocations,
+        "expected_invocations": expected_invocations,
+        "conversation_scenario": conversation_scenario,
+    }
+    if inspect.iscoroutinefunction(evaluate):
+        awaited: EvaluationResult = await evaluate(**kwargs)
+        return awaited
+    result = await asyncio.to_thread(evaluate, **kwargs)
+    if inspect.isawaitable(result):
+        return await result
+    return result
+
+
+LocalEvalService._evaluate_metric = _evaluate_metric_off_loop  # type: ignore[method-assign]
+# --- End monkey-patch ---
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -103,14 +150,14 @@ JUDGE_CONFIG_FILE = DATA_DIR / "full_eval_config.json"
 # Times each case is run and averaged, per gate. ADK means the per-invocation scores of
 # every run together, so judge scores land on multiples of 1/(rubrics x num_runs x
 # invocations) and a threshold between two of them silently rounds up to the next
-# achievable score. The gate case is single-turn (one invocation), so what is left to
-# tune here is the run count: 5 puts the shipped thresholds on achievable scores, where
-# 2 would make a single-rubric metric demand unanimity. A run with a missing score never
-# shrinks that denominator: `_gate` rejects the eval instead. The deterministic gate
-# keeps 2 because exact trajectory matching wants unanimity anyway and ROUGE-1 is
-# finely spaced (not continuous: its denominator counts the response's tokens, so it
-# shifts per run at token scale). ADK runs these serially, so the judge gate costs
-# proportionally more wall clock.
+# achievable score. Invocations are fixed by each case's turns, so what is left to tune
+# here is the run count: 5 puts the shipped thresholds on achievable scores, where 2
+# would make a single-rubric metric demand unanimity on the single-turn case. A run
+# with a missing score never shrinks that denominator: `_gate` rejects the eval
+# instead. The deterministic gate keeps 2 because exact trajectory matching wants
+# unanimity anyway and ROUGE-1 is finely spaced (not continuous: its denominator counts
+# the response's tokens, so it shifts per run at token scale). ADK generates the runs
+# one after another, so each added run adds inference time and a result to score.
 # Threshold arithmetic: docs/references/agent-evals.md, "How a judge score is built".
 DETERMINISTIC_NUM_RUNS = 2
 JUDGE_NUM_RUNS = 5
@@ -123,6 +170,18 @@ JUDGE_NUM_RUNS = 5
 # its range; the workflow only tests for 0 and 1.
 # https://docs.python.org/3/library/os.html#os.EX_SOFTWARE
 EVAL_ERROR_EXIT_CODE = os.EX_SOFTWARE
+
+# Metrics that judge the whole conversation once and attach the score to its last
+# turn, so every earlier turn is unscored by design rather than dropped.
+WHOLE_CONVERSATION_METRICS = frozenset(
+    metric.value
+    for metric in (
+        PrebuiltMetrics.MULTI_TURN_TASK_SUCCESS_V1,
+        PrebuiltMetrics.MULTI_TURN_TRAJECTORY_QUALITY_V1,
+        PrebuiltMetrics.MULTI_TURN_TOOL_USE_QUALITY_V1,
+        PrebuiltMetrics.RUBRIC_BASED_MULTI_TURN_TRAJECTORY_QUALITY_V1,
+    )
+)
 
 LIVENESS_PROMPT = "pls respond with a single 'ready' to confirm you're able to respond"
 LIVENESS_MAX_OUTPUT_TOKENS = 64
@@ -354,9 +413,11 @@ def _unscored_runs(eval_case_results: list[EvalCaseResult]) -> list[str]:
     metric's evaluation raised or it found nothing to score in that run (like a
     groundedness metric on a reply with no text); the captured result cannot tell
     those apart, and both leave the threshold resting on the other runs, so both
-    fail. The check reads each run's overall score per metric rather than its
-    per-invocation scores. Capturing nothing at all counts as unscored too, since
-    there is then no evidence behind a verdict.
+    fail. A run is also unscored when a per-turn metric skipped one of its turns,
+    since a metric's overall score is the mean over the turns it did score; the
+    ``WHOLE_CONVERSATION_METRICS`` score only the last turn, so their earlier turns
+    are exempt. Capturing nothing at all counts as unscored too, since there is then
+    no evidence behind a verdict.
 
     A run is named by its eval session: ADK saves results in completion order and
     gives them no run number, while each run has its own session unless the case
@@ -377,6 +438,14 @@ def _unscored_runs(eval_case_results: list[EvalCaseResult]) -> list[str]:
             unscored.extend(
                 f"{label}: {metric.metric_name} rubric {rubric_id} was not judged"
                 for rubric_id in _unjudged_rubrics(metric)
+            )
+        for turn in case.eval_metric_result_per_invocation:
+            unscored.extend(
+                f"{label}: {metric.metric_name} did not score turn "
+                f"{turn.actual_invocation.invocation_id}"
+                for metric in filter(_is_gating, turn.eval_metric_results)
+                if metric.metric_name not in WHOLE_CONVERSATION_METRICS
+                and not _is_scored(metric.score)
             )
     return unscored
 

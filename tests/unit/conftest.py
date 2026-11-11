@@ -660,17 +660,21 @@ def create_eval_case_result() -> Callable[..., EvalCaseResult]:
         ``None`` mimics a crashed one, which ADK reports as not evaluated),
         ``rubrics`` (rubric metric name to its configured rubric ids) and
         ``rubric_scores`` (rubric metric name to judged rubric id and score; an id
-        left out was never judged). A rubric metric's overall score is the mean of
-        its judged rubric scores, as ADK computes it.
+        left out was never judged), and ``turns`` (one dict per turn, gating metric
+        name to that turn's score, turn ids ``turn_1`` onward). A rubric metric's
+        overall score is the mean of its judged rubric scores, as ADK computes it.
     """
+    from google.adk.evaluation.eval_case import Invocation
     from google.adk.evaluation.eval_metrics import (
         BaseCriterion,
         EvalMetricResult,
         EvalMetricResultDetails,
+        EvalMetricResultPerInvocation,
         EvalStatus,
         RubricScore,
     )
     from google.adk.evaluation.eval_result import EvalCaseResult
+    from google.genai import types
 
     threshold = 0.5
 
@@ -679,6 +683,7 @@ def create_eval_case_result() -> Callable[..., EvalCaseResult]:
         efficiency: dict[str, float | None] | None = None,
         rubrics: dict[str, list[str]] | None = None,
         rubric_scores: dict[str, dict[str, float | None]] | None = None,
+        turns: list[dict[str, float | None]] | None = None,
         eval_id: str = "case",
         session_id: str = "session",
     ) -> EvalCaseResult:
@@ -733,7 +738,28 @@ def create_eval_case_result() -> Callable[..., EvalCaseResult]:
             eval_id=eval_id,
             final_eval_status=EvalStatus.PASSED if metrics else EvalStatus.FAILED,
             overall_eval_metric_results=metrics,
-            eval_metric_result_per_invocation=[],
+            eval_metric_result_per_invocation=[
+                EvalMetricResultPerInvocation(
+                    actual_invocation=Invocation(
+                        invocation_id=f"turn_{index}",
+                        user_content=types.Content(role="user", parts=[]),
+                    ),
+                    eval_metric_results=[
+                        EvalMetricResult(
+                            metric_name=name,
+                            score=score,
+                            threshold=threshold,
+                            eval_status=(
+                                EvalStatus.NOT_EVALUATED
+                                if score is None
+                                else EvalStatus.PASSED
+                            ),
+                        )
+                        for name, score in turn.items()
+                    ],
+                )
+                for index, turn in enumerate(turns or [], start=1)
+            ],
             session_id=session_id,
         )
 

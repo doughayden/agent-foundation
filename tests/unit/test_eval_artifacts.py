@@ -20,7 +20,6 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "eval" / "data"
 
 EVAL_SET_FILES = [
     "template_agent.evalset.json",
-    "multi_turn.evalset.json",
     "simple_time_query.test.json",
 ]
 CONFIG_FILES = [

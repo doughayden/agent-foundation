@@ -139,7 +139,7 @@ jobs:
           fi
 
           if [ "$GATING" = "true" ]; then
-            GATING_DISPLAY="🚦 \`blocking\`"
+            GATING_DISPLAY="🚦 \`enforced\`"
           else
             GATING_DISPLAY="📊 \`signal only\`"
           fi
