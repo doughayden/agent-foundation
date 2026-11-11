@@ -250,8 +250,8 @@ See [Deployment Modes: Terraform Structure](references/deployment.md#terraform-s
 
 Dependabot keeps providers current through two `terraform` entries in `.github/dependabot.yml`, both with the same cooldown as actions and hooks. Constraints allow any release below the next major, so minor and patch releases need no constraint edit.
 
-- **`terraform/main`:** a pull request per provider update. Its Plan Dev shows what the new version changes, and merging applies it to dev.
-- **Bootstrap roots and modules:** one grouped pull request per provider across all of them. CI never runs bootstrap, so after merging, run `terraform init` and `terraform plan` in each bootstrap root and apply if the plan shows changes.
+- **`terraform/main`:** one pull request with every provider update. Its Plan Dev shows what the new version changes, and merging applies it to dev.
+- **Bootstrap roots and modules:** one pull request per provider across all of them. CI never runs bootstrap, so after merging, run `terraform init` and `terraform plan` in each bootstrap root and apply if the plan shows changes.
 
 > [!TIP]
 > If you don't plan to re-run bootstrap after the initial setup, delete the bootstrap entry from `.github/dependabot.yml` to stop those pull requests. Upgrade the bootstrap lockfiles by hand before you next run it.

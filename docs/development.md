@@ -86,10 +86,10 @@ Hooks are configured in `.pre-commit-config.yaml`. `pre-commit autoupdate` is a 
 
 | Hook | Version comes from | Update with |
 |---|---|---|
-| ruff, mypy, codespell | `uv.lock` | Dependabot's weekly PR, or `uv lock --upgrade` |
+| ruff, mypy, codespell | `uv.lock` | a Dependabot PR, or `uv lock --upgrade` |
 | terraform fmt | `.terraform-version`, installed by setup-terraform in CI and by tenv locally (tenv provides the `terraform` on `PATH`) | edit `.terraform-version`, then `tenv terraform install` |
 | uv-lock | your installed uv, held inside `required-version` (CI uses its pinned `setup-uv` uv) | [uv Version](#uv-version) |
-| everything else | the `rev` in `.pre-commit-config.yaml`, a commit SHA with a `# frozen: vX.Y.Z` comment | Dependabot's weekly PR, or `uv run pre-commit autoupdate --freeze` |
+| everything else | the `rev` in `.pre-commit-config.yaml`, a commit SHA with a `# frozen: vX.Y.Z` comment | a Dependabot PR, or `uv run pre-commit autoupdate --freeze` |
 
 ### Agent Evals
 
@@ -126,7 +126,7 @@ To go back to local storage, comment the service URIs out again and use `uv run 
 
 ### Dependencies
 
-Dependabot opens a weekly pull request with minor and patch updates to `uv.lock`, and a separate one for each major update, which also widens the upper bound in `pyproject.toml`. Lower bounds stay where they are; to raise one, re-run `uv add` with the full new constraint, like `uv add "pydantic>=2.14.2,<3.0.0"` ([CI/CD: Action and Hook Pinning](references/cicd.md#action-and-hook-pinning)). To add or update by hand:
+On the schedule in `.github/dependabot.yml`, Dependabot opens a pull request with minor and patch updates to `uv.lock`, and a separate one for each major update, which also widens the upper bound in `pyproject.toml`. Security fixes skip that schedule: Dependabot opens them when an advisory is published, with all open fixes in one pull request. Lower bounds stay where they are; to raise one, re-run `uv add` with the full new constraint, like `uv add "pydantic>=2.14.2,<3.0.0"` ([CI/CD: Action and Hook Pinning](references/cicd.md#action-and-hook-pinning)). To add or update by hand:
 
 ```bash
 # Add runtime dependency
