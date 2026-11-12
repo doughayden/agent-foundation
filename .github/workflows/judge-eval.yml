@@ -33,7 +33,7 @@ permissions:
 
 jobs:
   judge-eval:
-    name: Judge Eval (${{ inputs.environment }})
+    name: Judge Eval
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     # Measured ~3.5 min locally for the shipped two-case config at JUDGE_NUM_RUNS 5 with
