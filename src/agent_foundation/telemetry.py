@@ -36,6 +36,7 @@ from opentelemetry.sdk._logs import (
     ReadWriteLogRecord,
 )
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.sdk.environment_variables import OTEL_TRACES_SAMPLER
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import (
@@ -50,6 +51,7 @@ from opentelemetry.sdk.resources import (
 )
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.sampling import ALWAYS_ON, ParentBased, Sampler
 
 TELEMETRY_API_ENDPOINT = "https://telemetry.googleapis.com:443"
 CLOUD_PLATFORM = "cloud.platform"
@@ -61,6 +63,23 @@ K_CONFIGURATION = "K_CONFIGURATION"
 GOOGLE_CLOUD_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 # Cloud Run startup and readiness probes
 HEALTH_CHECK_PATH = "/health"
+
+
+def build_sampler() -> Sampler | None:
+    """Return the template's trace sampler, or None to let the SDK choose.
+
+    ADK continues the incoming ``traceparent``, and Cloud Run samples few requests,
+    so the SDK default ``ParentBased(ALWAYS_ON)`` would drop every ADK span under an
+    unsampled Cloud Run parent. This sampler records them while keeping the caller's
+    trace ID. A set ``OTEL_TRACES_SAMPLER`` wins: returning None lets the SDK read it.
+
+    Returns:
+        ``ParentBased`` that records under any parent, or None when
+        ``OTEL_TRACES_SAMPLER`` is set.
+    """
+    if os.environ.get(OTEL_TRACES_SAMPLER):
+        return None
+    return ParentBased(root=ALWAYS_ON, remote_parent_not_sampled=ALWAYS_ON)
 
 
 def build_resources(service_name: str, project_id: str) -> tuple[Resource, Resource]:
@@ -200,7 +219,8 @@ def configure_telemetry(service_name: str, project_id: str, log_level: str) -> N
     the resource has ``cloud.region`` (detected on Cloud Run, or set in
     ``OTEL_RESOURCE_ATTRIBUTES``), and the meter resource omits the
     ``cloud_run_revision`` attributes. Prints the endpoint, whether metrics are on
-    and the exported resource. ``OTEL_SDK_DISABLED`` is left to the SDK.
+    and the exported resource. Spans record under an unsampled remote parent
+    (``build_sampler()``). ``OTEL_SDK_DISABLED`` is left to the SDK.
 
     Args:
         service_name: service.name
@@ -221,7 +241,7 @@ def configure_telemetry(service_name: str, project_id: str, log_level: str) -> N
         print(f"{key}={value!s}")
     print("\n")
 
-    tracer_provider = TracerProvider(resource=resource)
+    tracer_provider = TracerProvider(resource=resource, sampler=build_sampler())
     tracer_provider.add_span_processor(
         BatchSpanProcessor(
             OTLPSpanExporter(endpoint=TELEMETRY_API_ENDPOINT, credentials=credentials)

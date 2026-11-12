@@ -35,7 +35,7 @@ Details and defaults: [Environment Variables](environment-variables.md).
 
 ## Viewing Telemetry in Google Cloud
 
-**[Cloud Trace](https://console.cloud.google.com/traces):** Filter by service name, view spans, timing, and generative AI events.
+**[Cloud Trace](https://console.cloud.google.com/traces):** Filter by service name, view spans, timing, and generative AI events. Every agent request is traced. On Cloud Run, the agent spans continue the trace Cloud Run starts for the request, so a request log entry's trace link, the application logs and the agent spans share one trace ID. Sampling and how to override it: [OpenTelemetry Architecture](references/opentelemetry-architecture.md#trace-context-and-sampling).
 
 On Cloud Run, a request's traces, logs and metrics can arrive late on a quiet service, because CPU is allocated only during requests. Causes and options: [OpenTelemetry Architecture](references/opentelemetry-architecture.md#export).
 

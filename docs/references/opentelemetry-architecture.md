@@ -12,7 +12,7 @@ configure_telemetry(...)          # tracer, logger and (with cloud.region) meter
 app = get_fast_api_app(...)       # ADK attaches only its web UI processors
 ```
 
-`configure_telemetry()` builds one resource and the providers that share it, then sets them globally: a `TracerProvider` with a `BatchSpanProcessor` and a `LoggerProvider` with a `BatchLogRecordProcessor` always, and a `MeterProvider` with a `PeriodicExportingMetricReader` (default 60 second interval) only when the resource has `cloud.region` (see Export). The meter provider gets its own resource: the shared one without the `cloud_run_revision` attributes. It also attaches the OTel logging handler to the root logger through `LoggingInstrumentor` (trace context on every record). A filter on the `uvicorn.access` logger drops `/health` access lines (Cloud Run probes), so they reach neither stdout nor Cloud Logging; it is a logger filter because uvicorn's logging config replaces handlers but keeps filters.
+`configure_telemetry()` builds one resource and the providers that share it, then sets them globally: a `TracerProvider` with the template's sampler (see Trace Context and Sampling) and a `BatchSpanProcessor`, a `LoggerProvider` with a `BatchLogRecordProcessor` always, and a `MeterProvider` with a `PeriodicExportingMetricReader` (default 60 second interval) only when the resource has `cloud.region` (see Export). The meter provider gets its own resource: the shared one without the `cloud_run_revision` attributes. It also attaches the OTel logging handler to the root logger through `LoggingInstrumentor` (trace context on every record). A filter on the `uvicorn.access` logger drops `/health` access lines (Cloud Run probes), so they reach neither stdout nor Cloud Logging; it is a logger filter because uvicorn's logging config replaces handlers but keeps filters.
 
 It must run before `get_fast_api_app()`: the patched ADK setup raises `RuntimeError` when the providers are not set yet.
 
@@ -45,6 +45,18 @@ The standard `OTEL_SDK_DISABLED=true` turns export off: the SDK providers read i
 Only `server.py` (`uv run server` and the container entry point) runs this setup. `adk web`, `adk api_server` and `adk run` build their app through ADK's own telemetry setup.
 
 Telemetry API permissions for the runtime service account: `roles/telemetry.tracesWriter` (traces), `roles/logging.logWriter` (logs) and `roles/telemetry.metricsWriter` (metrics), all in `app_iam_roles` in `terraform/main/main.tf`.
+
+## Trace Context and Sampling
+
+ADK's `get_fast_api_app()` runs a middleware on every request that continues the caller's trace: when the request carries a W3C `traceparent` header and `GOOGLE_CLOUD_AGENT_ENGINE_ID` is unset, ADK makes that header's span the parent of its `invoke_workflow` span (since ADK 2.14.0, [google/adk-python#7846](https://github.com/google/adk-python/pull/7846)). Without the header, `invoke_workflow` starts a new trace.
+
+Cloud Run adds a `traceparent` to every request and [samples at most 0.1 requests per second per instance](https://cloud.google.com/run/docs/trace), so most requests arrive marked unsampled. The SDK's default sampler, `ParentBased(ALWAYS_ON)`, follows a remote parent's sampled flag, so it would drop every ADK span under those requests. `build_sampler()` returns `ParentBased(root=ALWAYS_ON, remote_parent_not_sampled=ALWAYS_ON)` instead:
+
+- Every agent request is traced, whatever Cloud Run sampled
+- ADK's spans keep the caller's trace ID, so on Cloud Run the request log entry, the application logs and the agent spans share one trace ID. Cloud Run stores its own span for the request only when it sampled it
+- A caller that sends its own `traceparent`, like another instrumented service, gets the agent spans inside its trace
+
+Setting the standard `OTEL_TRACES_SAMPLER` replaces this sampler: `build_sampler()` returns `None` and the SDK reads the variable. `parentbased_always_on` (the SDK default) brings back the dropping described above, so pick one that ignores the parent's flag, like `traceidratio` with `OTEL_TRACES_SAMPLER_ARG=0.1` to keep a tenth of requests. Every recorded span counts toward [Cloud Trace pricing](https://cloud.google.com/products/observability/pricing#trace-costs); Cloud Run's own spans are free.
 
 ## Resource
 

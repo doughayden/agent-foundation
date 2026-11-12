@@ -48,6 +48,7 @@ TELEMETRY_SDK_NAMES = (
     "OTLPMetricExporter",
     "LoggingInstrumentor",
     "build_resources",
+    "build_sampler",
     "google_channel_credentials",
 )
 

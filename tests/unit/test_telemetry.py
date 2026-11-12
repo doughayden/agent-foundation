@@ -17,6 +17,7 @@ from opentelemetry.resourcedetector.gcp_resource_detector import (
 from opentelemetry.sdk._logs import LoggerProvider, LogRecordLimits, ReadWriteLogRecord
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
 from pytest_mock import MockerFixture, MockType
 
 from agent_foundation import telemetry
@@ -80,6 +81,44 @@ class TestWebUiPatch:
 
         with pytest.raises(RuntimeError, match="must run before get_fast_api_app"):
             telemetry._attach_web_ui_processors(internal_processors=OTelHooks())
+
+
+class TestBuildSampler:
+    """Tests for the trace sampler."""
+
+    @pytest.mark.parametrize("flags", [TraceFlags.DEFAULT, TraceFlags.SAMPLED])
+    def test_records_under_a_remote_parent_either_way(
+        self, flags, isolated_environ
+    ) -> None:
+        """Test ADK spans record whatever the caller's sampled flag says."""
+        isolated_environ({})
+        parent = SpanContext(
+            trace_id=0x1234,
+            span_id=0x5678,
+            is_remote=True,
+            trace_flags=TraceFlags(flags),
+        )
+        tracer = TracerProvider(sampler=telemetry.build_sampler()).get_tracer("test")
+
+        span = tracer.start_span(
+            "child", context=trace.set_span_in_context(NonRecordingSpan(parent))
+        )
+
+        assert span.is_recording()
+        assert span.get_span_context().trace_id == parent.trace_id
+
+    def test_records_a_root_span(self, isolated_environ) -> None:
+        """Test a request without a traceparent starts a recorded trace."""
+        isolated_environ({})
+        tracer = TracerProvider(sampler=telemetry.build_sampler()).get_tracer("test")
+
+        assert tracer.start_span("root").is_recording()
+
+    def test_otel_traces_sampler_wins(self, isolated_environ) -> None:
+        """Test a set OTEL_TRACES_SAMPLER leaves the choice to the SDK."""
+        isolated_environ({"OTEL_TRACES_SAMPLER": "parentbased_always_on"})
+
+        assert telemetry.build_sampler() is None
 
 
 class TestBuildResources:
@@ -318,8 +357,10 @@ class TestConfigureTelemetry:
         mock_telemetry_sdk["build_resources"].assert_called_once_with(
             "test-agent", "test-project"
         )
-        for provider in ("TracerProvider", "LoggerProvider"):
-            mock_telemetry_sdk[provider].assert_called_once_with(resource=resource)
+        mock_telemetry_sdk["TracerProvider"].assert_called_once_with(
+            resource=resource, sampler=mock_telemetry_sdk["build_sampler"].return_value
+        )
+        mock_telemetry_sdk["LoggerProvider"].assert_called_once_with(resource=resource)
         mock_telemetry_sdk["MeterProvider"].assert_called_once_with(
             resource=meter_resource,
             metric_readers=[
