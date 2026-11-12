@@ -1,6 +1,6 @@
 [project]
 name = "agent-foundation"
-version = "0.19.1"
+version = "0.20.0"
 description = "Opinionated, production-ready LLM Agent deployment with enterprise-grade infrastructure"
 readme = "README.md"
 authors = [
@@ -52,7 +52,7 @@ build-backend = "uv_build"
 
 [tool.uv]
 # https://docs.astral.sh/uv/concepts/resolution/#dependency-cooldowns
-exclude-newer = "4 days"
+exclude-newer = "5 days"
 # https://docs.astral.sh/uv/reference/settings/#required-version
 # Developer range; the exact pins (Dockerfile, setup-uv) must fall inside it
 required-version = ">=0.13,<0.14"

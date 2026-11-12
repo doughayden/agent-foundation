@@ -4,7 +4,7 @@ requires-python = "==3.14.*"
 
 [options]
 exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
-exclude-newer-span = "P4D"
+exclude-newer-span = "P5D"
 
 [[package]]
 name = "absl-py"
@@ -17,7 +17,7 @@ wheels = [
 
 [[package]]
 name = "agent-foundation"
-version = "0.19.1"
+version = "0.20.0"
 source = { editable = "." }
 dependencies = [
     { name = "google-adk", extra = ["gcp", "otel-gcp"] },
