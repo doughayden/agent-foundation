@@ -68,10 +68,11 @@ HEALTH_CHECK_PATH = "/health"
 def build_sampler() -> Sampler | None:
     """Return the template's trace sampler, or None to let the SDK choose.
 
-    ADK continues the incoming ``traceparent``, and Cloud Run samples few requests,
-    so the SDK default ``ParentBased(ALWAYS_ON)`` would drop every ADK span under an
-    unsampled Cloud Run parent. This sampler records them while keeping the caller's
-    trace ID. A set ``OTEL_TRACES_SAMPLER`` wins: returning None lets the SDK read it.
+    ADK continues the incoming ``traceparent``, and Cloud Run marks at most one
+    request per instance every 10 seconds sampled, so the SDK default
+    ``ParentBased(ALWAYS_ON)`` records only the turns that happen to land on a sampled
+    request. This sampler records every turn while keeping the caller's trace ID.
+    A set ``OTEL_TRACES_SAMPLER`` wins: returning None lets the SDK read it.
 
     Returns:
         ``ParentBased`` that records under any parent, or None when
