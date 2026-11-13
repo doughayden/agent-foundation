@@ -124,7 +124,9 @@ gh api repos/:owner/:repo/branches/main/protection
 
 **Cause:** the promotion tag names a release tag that does not exist, or that marks a different commit. No prod deploy job starts (`Require Stage Success` still runs, since it needs only the workflow configuration).
 
-**Fix when the release tag is missing:** release-please creates `vX.Y.Z` only when its release pull request merges, so the promotion tag went out before that merge and sits on a commit that will never be the release commit. Leave the release tag to release-please rather than creating it by hand. Delete the promotion tag (repository admin), merge the release pull request, and promote the release commit once its merge run passes stage ([Release a Version](releasing.md#promote-to-production-production-mode)).
+**Fix when the release tag is missing:** release-please creates `vX.Y.Z` in the `Release` workflow run on the release pull request's merge commit. If that pull request merged and the promotion tag marks its merge commit, the run is still in progress or failed (an uninstalled App or a revoked private key): wait for it, or fix the App and re-run it, then use **Re-run failed jobs** on the failed promotion run.
+
+If the release pull request has not merged, the promotion tag went out before that merge and sits on a commit that will never be the release commit. Leave the release tag to release-please rather than creating it by hand. Delete the promotion tag (repository admin), merge the release pull request, and promote the release commit once its merge run passes stage ([Release a Version](releasing.md#promote-to-production-production-mode)).
 ```bash
 git push origin :refs/tags/prod-v1.0.1
 git tag -d prod-v1.0.1

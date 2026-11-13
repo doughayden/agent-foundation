@@ -31,17 +31,14 @@ on:
 
 jobs:
   claude-auto-review:
-    # Skip release-please PRs: the release App opens them, the action refuses
-    # bot actors, and they hold only the version bump and generated changelog.
-    # release-please names every release branch with this prefix.
-    # Skip Dependabot PRs: Dependabot-triggered runs get no repository secrets
-    # and a read-only token, so the review cannot run. Matching the PR author
-    # keeps them excluded after a person pushes to the branch.
+    # Skip PRs opened by bots: the action refuses bot actors (the release App's
+    # release-please PRs), and Dependabot-triggered runs get no repository
+    # secrets and a read-only token. Matching the PR author keeps them excluded
+    # after a person pushes to the branch.
     if: |
       github.event_name == 'pull_request' &&
       github.event.action == 'opened' &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      !startsWith(github.head_ref, 'release-please--')
+      github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     environment: dev
     timeout-minutes: 30

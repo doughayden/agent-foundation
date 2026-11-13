@@ -31,8 +31,8 @@ WHAT IT DOES:
     8. Updates GitHub Pages documentation URLs
     9. Updates mkdocs.yml repository URLs (site_url, repo_url)
     10. Resets CODEOWNERS file (remove template owner)
-    11. Resets version to 0.1.0 in pyproject.toml
-    12. Resets CHANGELOG.md with clean template
+    11. Resets version to 0.1.0 in pyproject.toml and the release-please manifest
+    12. Deletes CHANGELOG.md (release-please creates it on the first release)
     13. Regenerates UV lockfile
 
 OUTPUT:
@@ -276,8 +276,8 @@ def get_validated_config(dry_run: bool = False) -> TemplateConfig:
     print("  5. Update GitHub Actions badge URLs")
     print("  6. Update GitHub Pages documentation URLs")
     print("  7. Reset CODEOWNERS file")
-    print("  8. Reset version to 0.1.0")
-    print("  9. Reset CHANGELOG.md")
+    print("  8. Reset version to 0.1.0 (pyproject.toml, release-please manifest)")
+    print("  9. Delete CHANGELOG.md (the first release creates it)")
     print("  10. Regenerate UV lockfile\n")
 
     # Auto-detect repository name and owner from git
@@ -412,32 +412,50 @@ def reset_version_in_pyproject(dry_run: bool = False) -> None:
         print("  ✅ Reset version to 0.1.0 in pyproject.toml")
 
 
-def replace_changelog(dry_run: bool = False) -> None:
-    """Replace CHANGELOG.md with fresh template.
+def reset_release_please(dry_run: bool = False) -> None:
+    """Reset release-please state so the fork's first release follows 0.1.0.
+
+    Sets the manifest to 0.1.0 and drops `bootstrap-sha`, which names a template
+    commit, so release-please collects the fork's whole history.
+
+    Args:
+        dry_run: If True, only print what would be changed.
+    """
+    manifest_path = Path(".release-please-manifest.json")
+    config_path = Path("release-please-config.json")
+
+    if dry_run:
+        print("  📝 Would reset .release-please-manifest.json to 0.1.0")
+        print("  📝 Would remove bootstrap-sha from release-please-config.json")
+        return
+
+    manifest_path.write_text('{\n  ".": "0.1.0"\n}\n')
+    print("  ✅ Reset .release-please-manifest.json to 0.1.0")
+
+    if config_path.exists():
+        config = config_path.read_text()
+        config_path.write_text(
+            re.sub(r'^\s*"bootstrap-sha": "[^"]*",\n', "", config, flags=re.MULTILINE)
+        )
+        print("  ✅ Removed bootstrap-sha from release-please-config.json")
+
+
+def delete_changelog(dry_run: bool = False) -> None:
+    """Delete CHANGELOG.md so release-please creates it on the first release.
+
+    release-please inserts a release above the newest version heading; a file with
+    no version heading gets rewritten under a new header instead.
 
     Args:
         dry_run: If True, only print what would be changed.
     """
     changelog_path = Path("CHANGELOG.md")
 
-    fresh_changelog = """# Changelog
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-
-### Added
-- Initial project setup from template
-"""
-
     if dry_run:
-        print("  📝 Would replace CHANGELOG.md with fresh template")
+        print("  📝 Would delete CHANGELOG.md")
     else:
-        changelog_path.write_text(fresh_changelog)
-        print("  ✅ Replaced CHANGELOG.md")
+        changelog_path.unlink(missing_ok=True)
+        print("  ✅ Deleted CHANGELOG.md")
 
 
 def replace_codeowners(dry_run: bool = False) -> None:
@@ -509,7 +527,8 @@ def print_summary(config: TemplateConfig, dry_run: bool = False) -> None:
     print("  • Updated mkdocs.yml repository URLs")
     print("  • Removed template author from pyproject.toml")
     print("  • Reset version to 0.1.0 in pyproject.toml")
-    print("  • Replaced CHANGELOG.md with fresh template")
+    print("  • Reset the release-please manifest and config")
+    print("  • Deleted CHANGELOG.md")
     print("  • Replaced CODEOWNERS with fresh template")
     print("  • Regenerated UV lockfile")
 
@@ -552,6 +571,7 @@ def main() -> NoReturn:
             "README.md",
             "mkdocs.yml",
             ".env.example",
+            "release-please-config.json",
         ]
 
         # Glob Compose files
@@ -605,9 +625,13 @@ def main() -> NoReturn:
         print("\n🔢 Resetting version:")
         reset_version_in_pyproject(dry_run)
 
-        # Replace CHANGELOG
-        print("\n📄 Replacing CHANGELOG:")
-        replace_changelog(dry_run)
+        # Reset release-please state
+        print("\n🏷️  Resetting release-please state:")
+        reset_release_please(dry_run)
+
+        # Delete CHANGELOG
+        print("\n📄 Deleting CHANGELOG:")
+        delete_changelog(dry_run)
 
         # Replace CODEOWNERS
         print("\n👥 Replacing CODEOWNERS:")

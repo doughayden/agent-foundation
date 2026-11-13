@@ -30,8 +30,8 @@ Read the matching file before working in its directory. Claude Code also loads i
 ## Critical
 
 - **Never commit to main** (branch protection enforced). Workflow: feature branch → PR → merge.
-- **Never bump the version or edit released `CHANGELOG.md` entries by hand:** release-please owns the version in `pyproject.toml` and `uv.lock` and every new changelog entry (`docs/releasing.md`).
-- **Commit and PR titles are release input:** the squash title becomes the changelog entry and picks the bump. Type → section map in `release-please-config.json`; `docs`/`chore`/`refactor`/`style` are hidden. A change forks rely on (settings, Terraform interface, required checks, documented commands) uses a visible type, plus `!` and a `BREAKING CHANGE:` footer when it breaks.
+- **Never bump the version or edit released `CHANGELOG.md` entries by hand while the release App is set up:** release-please owns the version in `pyproject.toml`, `uv.lock` and `.release-please-manifest.json` and every new changelog entry. Without the App, follow `docs/releasing.md` Release Without the App.
+- **Commit and PR titles are release input:** the squash title becomes the changelog entry and picks the bump. Type → section map in `release-please-config.json`; unmapped types (`build`, `docs`, `chore`, ...) get no entry; retitle a dependency bump that changes what ships to `fix(deps)` at merge. A change forks rely on (settings, Terraform interface, required checks, documented commands) uses a visible type, plus `!` and a `BREAKING CHANGE:` footer when it breaks.
 - **Never lose `terraform/bootstrap/pre/terraform.tfstate`** (pre-bootstrap is local state only).
 
 ## Template Initialization (One-Time)

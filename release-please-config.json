@@ -10,15 +10,10 @@
       "changelog-sections": [
         {"type": "feat", "section": "Added"},
         {"type": "perf", "section": "Changed"},
-        {"type": "build", "section": "Changed"},
         {"type": "ci", "section": "Changed"},
         {"type": "test", "section": "Changed"},
         {"type": "revert", "section": "Removed"},
-        {"type": "fix", "section": "Fixed"},
-        {"type": "docs", "section": "Documentation", "hidden": true},
-        {"type": "chore", "section": "Miscellaneous Chores", "hidden": true},
-        {"type": "refactor", "section": "Code Refactoring", "hidden": true},
-        {"type": "style", "section": "Styles", "hidden": true}
+        {"type": "fix", "section": "Fixed"}
       ],
       "extra-files": [
         {
