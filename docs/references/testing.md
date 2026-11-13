@@ -111,6 +111,7 @@ Factory fixtures use `_factory` as their inner function name:
 def create_mock_state() -> Callable[..., MockState]:
     def _factory(data: dict | None = None) -> MockState:
         return MockState(data)
+
     return _factory
 ```
 
@@ -120,6 +121,7 @@ def create_mock_state() -> Callable[..., MockState]:
 ```python
 from pytest_mock import MockerFixture
 from pytest_mock.plugin import MockType
+
 
 @pytest.fixture
 def mock_session(mocker: MockerFixture) -> MockType:
@@ -181,7 +183,9 @@ def pytest_configure() -> None:
     # Patch google.auth.default to prevent ADC lookup
     mock_creds = Mock(token="fake", valid=True, expired=False)
     patch("google.auth.default", return_value=(mock_creds, "test-project")).start()
-    patch("google.auth._default.default", return_value=(mock_creds, "test-project")).start()
+    patch(
+        "google.auth._default.default", return_value=(mock_creds, "test-project")
+    ).start()
 
     # Environment variables: No module in the test import graph reads env vars at
     # module level. server.py does (initialize_environment()), but it's
@@ -215,6 +219,7 @@ Expect `ValidationError` at model creation:
 ```python
 import pytest
 from pydantic import ValidationError
+
 
 def test_config_invalid_project_id():
     """Test that empty project ID raises validation error."""

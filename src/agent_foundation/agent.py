@@ -3,12 +3,12 @@
 from google.adk.agents import LlmAgent
 from google.adk.apps import App
 from google.adk.plugins.global_instruction_plugin import GlobalInstructionPlugin
-from google.adk.plugins.logging_plugin import LoggingPlugin
 from google.adk.tools.function_tool import FunctionTool
 from google.adk.tools.load_memory_tool import load_memory_tool
 from google.genai import types
 
 from .callbacks import LoggingCallbacks, add_session_to_memory
+from .plugins import build_plugins
 from .prompt import (
     ROOT_AGENT_DESCRIPTION,
     ROOT_AGENT_INSTRUCTION,
@@ -45,6 +45,6 @@ app = App(
     root_agent=root_agent,
     plugins=[
         GlobalInstructionPlugin(return_global_instruction),
-        LoggingPlugin(),
+        *build_plugins(),
     ],
 )

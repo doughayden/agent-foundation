@@ -196,6 +196,7 @@ warn_unreachable = true
 def process_data(items: list[str]):
     return len(items)
 
+
 # Fixed
 def process_data(items: list[str]) -> int:
     return len(items)
@@ -207,6 +208,7 @@ def process_data(items: list[str]) -> int:
 def fetch_user(id: int, cache):
     return cache.get(id)
 
+
 # Fixed
 def fetch_user(id: int, cache: dict[int, User]) -> User | None:
     return cache.get(id)
@@ -217,6 +219,7 @@ def fetch_user(id: int, cache: dict[int, User]) -> User | None:
 # mypy error: Incompatible default for argument (expected str, got None)
 def greet(name: str = None) -> str:
     return f"Hello, {name or 'stranger'}"
+
 
 # Fixed - explicit None in union
 def greet(name: str | None = None) -> str:
@@ -290,6 +293,7 @@ Why `cast()` is bad:
 ```python
 # Bad - using cast() (DON'T DO THIS)
 from typing import cast
+
 result = some_function()
 value = cast(str, result)  # Trust me, it's a string! (no runtime check)
 
