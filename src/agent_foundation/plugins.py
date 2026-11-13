@@ -21,6 +21,6 @@ def build_plugins() -> list[BasePlugin]:
     Returns:
         ``[LoggingPlugin()]`` off Cloud Run, an empty list on it.
     """
-    if os.environ.get(K_CONFIGURATION):
+    if os.environ.get(K_CONFIGURATION) is not None:
         return []
     return [LoggingPlugin()]
