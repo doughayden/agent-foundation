@@ -165,6 +165,8 @@ git restore --staged docs/
 - `src/` — Your agent implementation (adapt manually in Phase 2)
 - `tests/` — Your test suite (sync fixtures in Phase 1, adapt per-module in Phase 2, bulk sync eligible modules in Phase 3)
 - `CHANGELOG.md` — Your version history
+- `.release-please-manifest.json` — Your last released version
+- `release-please-config.json` — Review per file: keep your package name in `package-name` and the `uv.lock` jsonpath, and never copy upstream's `bootstrap-sha`
 - `init_template.py` — Removed from your project after first use
 - `LICENSE` — Your project license
 - `uv.lock` — Regenerate with `uv lock` after syncing pyproject.toml

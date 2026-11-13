@@ -1,15 +1,8 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project will be documented in this file. This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-
-### Fixed
-- Agent traces missing in every deployed environment since ADK 2.14.0: ADK now makes the incoming W3C `traceparent` the parent of its spans, Cloud Run sends one on every request but marks at most one request per instance every 10 seconds sampled, and the SDK's default parent-based sampler dropped the spans of every turn that missed that slot, so almost none were recorded. The tracer provider now records spans whatever the parent's sampled flag, and they keep the caller's trace ID, so on Cloud Run the request log, application logs and agent spans share one trace. Setting the standard `OTEL_TRACES_SAMPLER` replaces this sampler; a parent-based value brings the dropping back (#368)
-- User content in deployed stdout logs: ADK's `LoggingPlugin` prints prompts, responses, tool arguments and results and the rendered system instruction with `print()`, outside `LOG_LEVEL` and the content-capture settings, so stage and prod logged content despite `NO_CONTENT`. `build_plugins()` in the new `plugins.py` now builds the App's plugin list and adds it only when `K_CONFIGURATION` is unset, keeping its readable trace in local runs and the eval lane and off every Cloud Run service, dev included. Forks deploying outside Cloud Run still register it (#370)
+From v0.21.0, [release-please](https://github.com/googleapis/release-please) generates each entry from the squash-merge commit titles on `main`, grouped under [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) headings ([Release a Version](docs/releasing.md)). Earlier entries were written by hand in Keep a Changelog format.
 
 ## [0.20.0] - 2026-11-12
 
@@ -705,7 +698,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff excludes notebooks from linting
 - Notebooks for Agent Engine creation
 
-[Unreleased]: https://github.com/doughayden/agent-foundation/compare/v0.20.0...HEAD
 [0.20.0]: https://github.com/doughayden/agent-foundation/compare/v0.19.1...v0.20.0
 [0.19.1]: https://github.com/doughayden/agent-foundation/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/doughayden/agent-foundation/compare/v0.18.0...v0.19.0

@@ -21,6 +21,9 @@ GitHub Actions workflow architecture, mechanics, and customization.
 **Standalone CI Workflow:**
 - **`ci.yml`** - Code quality (ruff, mypy, pytest with coverage), Postgres integration lane, and deterministic agent eval gate
 
+**Standalone Release Workflow:**
+- **`release.yml`** - release-please: keeps the release pull request open and tags `vX.Y.Z` with a GitHub Release when it merges
+
 **Key principle:** Infrastructure as code + GitOps = reproducible deployments.
 
 ## GitHub Variables (Auto-Created by Bootstrap)
@@ -53,7 +56,7 @@ Jobs read these variables, and authenticate to GCP, only when they declare the m
 **Triggers:**
 - Pull request to main (docs and local development changes excluded)
 - Push to main (docs and local development changes excluded)
-- Tag push matching `prod-v*` (a promotion tag on the commit a `vX.Y.Z` release tag marks; a `v*` tag alone starts no run). Release steps: [Infrastructure Guide: Deploy to Production](../infrastructure.md#deploy-to-production-production-mode)
+- Tag push matching `prod-v*` (a promotion tag on the commit a `vX.Y.Z` release tag marks; a `v*` tag alone starts no run). Release steps: [Release a Version: Promote to Production](../releasing.md#promote-to-production-production-mode)
 
 **Key jobs:**
 - `changes` - dorny/paths-filter resolving the `deploy` and `eval` filters that gate `build` and `judge-eval` (branch events only)
@@ -451,6 +454,18 @@ Practically, a release belongs on a commit whose merge deployed and smoked stage
 **When it runs:** Every push to main and every pull request. `code-quality` always runs; `integration` and `agent-eval` are skipped when no code paths changed; the `status` sentinel always reports.
 
 **Branch protection:** Require `CI / status` (the `status` job). The sentinel requires `code-quality` to pass, and `integration` and `agent-eval` to pass or be skipped because no code paths changed.
+
+## Standalone Release Workflow
+
+### release.yml
+
+**Purpose:** Run release-please, which keeps one release pull request open with the next version and changelog, and tags `vX.Y.Z` and publishes a GitHub Release when that pull request merges.
+
+**Pipeline (one job):** mint a token from the release GitHub App (`RELEASE_APP_CLIENT_ID` variable, `RELEASE_APP_PRIVATE_KEY` secret), then run `googleapis/release-please-action` with it. The App token makes the release pull request start `ci.yml`, so its required checks report; pull requests opened with `GITHUB_TOKEN` start no workflows. The workflow token itself has no permissions.
+
+**When it runs:** Every push to main. The job is skipped when `RELEASE_APP_CLIENT_ID` is unset, so a fork without the App gets no failed runs. `ci-cd.yml` ignores the `v*` tag it creates; the release commit deploys through the normal merge run, and promotion uses `prod-vX.Y.Z`.
+
+Setup, release steps and the changelog mapping: [Release a Version](../releasing.md).
 
 ## Workflow Behavior
 

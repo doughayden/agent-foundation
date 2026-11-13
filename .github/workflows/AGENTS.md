@@ -15,6 +15,10 @@ Rules for editing `.github/workflows/`. **Template Internals:** this whole file 
 
 Tag-time gate upstream of `prod-promote` (halts before the `prod-apply` approval). Requires the tagged SHA's merge run to show `Apply Stage` + `Smoke Stage` + `Judge Eval` success; anything else, `skipped` included, fails closed. No digest comparison: fidelity comes from digest-for-digest promotion plus deploy-by-digest. Reasoning: `docs/references/cicd.md` require-stage-success.yml.
 
+## Release
+
+Standalone `release.yml` (not called by the orchestrator): release-please only, `permissions: {}`, every write through the App token. **Never switch it to `GITHUB_TOKEN`**: release PRs it opens start no workflows, so required checks never report. `claude.yml` skips PRs authored by bots (the review action refuses bot actors). `uv.lock` follows the version through `extra-files`, not a relock job; drop the entry once release-please ships googleapis/release-please#2693.
+
 ## Required Checks
 
 Standalone `ci.yml` (not called by the orchestrator). Branch protection requires `CI / status`, an always-run sentinel over `code-quality` (unfiltered, `persist-credentials: false` since hooks run third-party code) and the path-gated `integration` and `agent-eval` jobs. Job detail: `docs/references/cicd.md` ci.yml.

@@ -118,7 +118,7 @@ For detailed job-level dependency graphs, see [CI/CD Workflows: Workflow Flows](
 **Key principles:**
 - Dev deployment never waits for stage or prod
 - Stage validates every merge (continuous feedback)
-- Prod deploys only on an explicit `prod-vX.Y.Z` promotion tag, pushed by a repository admin on the commit a `vX.Y.Z` release tag marks (release discipline). Commands: [Infrastructure Guide: Deploy to Production](../infrastructure.md#deploy-to-production-production-mode)
+- Prod deploys only on an explicit `prod-vX.Y.Z` promotion tag, pushed by a repository admin on the commit a `vX.Y.Z` release tag marks (release discipline). Commands: [Release a Version: Promote to Production](../releasing.md#promote-to-production-production-mode)
 - Prod promotion is gated on the tagged commit's stage run passing (see [CI/CD Workflows: Require Stage Success](cicd.md#require-stage-successyml))
 - Uniform plan → apply pattern across all environments
 
