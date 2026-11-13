@@ -69,7 +69,7 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 | To... | Edit | Notes |
 |---|---|---|
 | Add a custom tool | define `func` in `tools.py` + register in `agent.py` | `root_agent = LlmAgent(..., tools=[..., FunctionTool(func)])` |
-| Add a plugin | `plugins.py` (`build_plugins()`) for environment-dependent plugins; `App.plugins` in `agent.py` for always-on ones | `build_plugins()` returns a list `agent.py` unpacks (never `None`: `App.plugins` is validated). Cloud Run detection reads `K_CONFIGURATION` directly, never `ServerEnv` (`agent.py` stays settings-free for ADK's loader) |
+| Add a plugin | `build_plugins()` in `plugins.py` | Returns the App's full plugin list; `agent.py` passes it as `App.plugins`. **Order matters**: ADK runs plugins in list order and a non-`None` return skips later plugins and the agent's callbacks. Cloud Run detection reads `K_CONFIGURATION` directly, never `ServerEnv` (`agent.py` stays settings-free for ADK's loader) |
 | Add a callback | `callbacks.py` | ADK callbacks return `None` to observe, or a modified value to mutate/short-circuit — choose per intent |
 | Customize agent instructions | `prompt.py` | InstructionProvider (signature and test pattern: `tests/AGENTS.md` ADK patterns). **Keep per-turn-volatile values (time, request IDs) out of it**: the string is the cached prefix, so volatility busts prompt caching every turn; expose time via a tool (`get_current_time`) |
 | Add an agent eval case | `tests/eval/data/*.evalset.json` | Mark the test `deterministic` (PR gate, `test_config.json`) or `judge` (merge gate, `full_eval_config.json`); user-sim files have no gate. Validate non-flaky: run `uv run pytest tests/eval -m "deterministic"` ≥3 times. Authoring and commands: `docs/references/agent-evals.md` |
@@ -90,7 +90,7 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 
 ## Architecture Overview
 
-**ADK App** (`agent.py`): `App` composes `LlmAgent` (LLM wrapper with instructions, subagent options, custom tools, callbacks), `GlobalInstructionPlugin` (dynamic instruction generation via InstructionProvider), and `LoggingPlugin` (stdout lifecycle trace, registered by `build_plugins()` only off Cloud Run, since it prints user content outside the capture settings). Exact model and plugin wiring in `agent.py`.
+**ADK App** (`agent.py`): `App` composes `LlmAgent` (LLM wrapper with instructions, subagent options, custom tools, callbacks) and the plugins from `build_plugins()` (`plugins.py`): `GlobalInstructionPlugin` (dynamic instruction generation via InstructionProvider), then `LoggingPlugin` (stdout lifecycle trace, only off Cloud Run, since it prints user content outside the capture settings). Exact model wiring in `agent.py`, plugin list in `plugins.py`.
 
 **Package exports** (`__init__.py`): PEP 562 `__getattr__` lazy-loads `agent`, so ADK's loader puts `.env` into `os.environ` before `agent.py` runs module-level code.
 
