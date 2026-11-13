@@ -62,6 +62,7 @@ See [docs/](docs/) for complete documentation.
 - **[Getting Started](docs/getting-started.md)** - Prerequisites, local run, bootstrap, deploy
 - **[Development](docs/development.md)** - Local workflow, testing, code quality, deployed resources
 - **[Infrastructure](docs/infrastructure.md)** - Deployment modes, CI/CD, protection strategies, IaC
+- **[Release a Version](docs/releasing.md)** - Release PRs, production promotion, hotfixes and rollback
 - **[Environment Variables](docs/environment-variables.md)** - Complete configuration reference
 
 ### Operations

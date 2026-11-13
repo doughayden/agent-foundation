@@ -60,6 +60,7 @@ nav:
   - Guides:
     - Development Workflow: development.md
     - Infrastructure & Deployment: infrastructure.md
+    - Release a Version: releasing.md
     - Observability: observability.md
     - Troubleshooting: troubleshooting.md
   - Template:

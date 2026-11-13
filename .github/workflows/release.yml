@@ -1,0 +1,37 @@
+# Keeps a release pull request open with the next version and changelog, and
+# tags vX.Y.Z plus an immutable GitHub Release when it merges. A v* tag starts
+# no deploy; promotion is the separate prod-vX.Y.Z tag. release-please writes
+# with a GitHub App token, since a pull request opened or updated with
+# GITHUB_TOKEN starts no workflow runs and would never get its required checks.
+# Setup: docs/releasing.md
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Release Please
+    # Forks without the release App skip the job instead of failing every push
+    if: vars.RELEASE_APP_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10  # Typical run: <1 min. 10 min prevents hanging
+    steps:
+      - name: Mint App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510  # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - name: Run release-please
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7  # v5.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}

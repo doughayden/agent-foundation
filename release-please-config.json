@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "b8ed785b01f081fc54804158246fdef565b062ce",
+  "bump-minor-pre-major": true,
+  "packages": {
+    ".": {
+      "release-type": "python",
+      "package-name": "agent-foundation",
+      "include-component-in-tag": false,
+      "changelog-sections": [
+        {"type": "feat", "section": "Added"},
+        {"type": "perf", "section": "Changed"},
+        {"type": "build", "section": "Changed"},
+        {"type": "ci", "section": "Changed"},
+        {"type": "test", "section": "Changed"},
+        {"type": "revert", "section": "Removed"},
+        {"type": "fix", "section": "Fixed"},
+        {"type": "docs", "section": "Documentation", "hidden": true},
+        {"type": "chore", "section": "Miscellaneous Chores", "hidden": true},
+        {"type": "refactor", "section": "Code Refactoring", "hidden": true},
+        {"type": "style", "section": "Styles", "hidden": true}
+      ],
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='agent-foundation')].version"
+        }
+      ]
+    }
+  }
+}

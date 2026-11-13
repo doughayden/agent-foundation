@@ -204,7 +204,7 @@ To keep a human approval on a private fork, use GitHub Enterprise or make the re
 ### Production Deployment Flow
 
 1. A release tag (`vX.Y.Z`) marks the commit and deploys nothing
-2. After that commit's merge run passes its stage jobs, a repository admin pushes the promotion tag (`prod-vX.Y.Z`) on the same commit. Commands: [Infrastructure Guide: Deploy to Production](../infrastructure.md#deploy-to-production-production-mode)
+2. After that commit's merge run passes its stage jobs, a repository admin pushes the promotion tag (`prod-vX.Y.Z`) on the same commit. Commands: [Release a Version: Promote to Production](../releasing.md#promote-to-production-production-mode)
 3. GitHub Actions workflow starts. Metadata extraction fails unless the promotion tag has the form `prod-vX.Y.Z` and `vX.Y.Z` marks the same commit, and the tag must match the `prod-v*.*.*` tag rule to reach `prod` and `prod-apply`
 4. Jobs run sequentially:
    - Resolve image digest from stage

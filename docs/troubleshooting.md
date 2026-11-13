@@ -124,7 +124,13 @@ gh api repos/:owner/:repo/branches/main/protection
 
 **Cause:** the promotion tag names a release tag that does not exist, or that marks a different commit. No prod deploy job starts (`Require Stage Success` still runs, since it needs only the workflow configuration).
 
-**Fix when the release tag is missing:** if the promotion tag marks the commit you meant to release, create the release tag there, then use **Re-run failed jobs** on the failed run. The re-run checks out the repository again and finds the new tag.
+**Fix when the release tag is missing:** release-please creates `vX.Y.Z` only when its release pull request merges, so the promotion tag went out before that merge and sits on a commit that will never be the release commit. Leave the release tag to release-please rather than creating it by hand. Delete the promotion tag (repository admin), merge the release pull request, and promote the release commit once its merge run passes stage ([Release a Version](releasing.md#promote-to-production-production-mode)).
+```bash
+git push origin :refs/tags/prod-v1.0.1
+git tag -d prod-v1.0.1
+```
+
+**Fix when releasing without the App:** if the promotion tag marks the commit you meant to release, create the release tag there, then use **Re-run failed jobs** on the failed run. The re-run checks out the repository again and finds the new tag ([Release Without the App](releasing.md#release-without-the-app)).
 ```bash
 git tag -a v1.0.1 'prod-v1.0.1^{commit}' -m "Release v1.0.1"
 git push origin v1.0.1
@@ -381,7 +387,7 @@ gcloud run services update-traffic <service-name> \
 
 **When to use:** No GCP access, or need to fix config/code permanently
 
-**Steps:** revert or fix on a branch, merge the PR, then release the fix as a new version (`v1.0.1`, then `prod-v1.0.1` once the merge run's stage jobs pass) and approve the `prod-apply` job. Commands: [Infrastructure Guide: Rollback](infrastructure.md#rollback-production).
+**Steps:** revert or fix on a branch, merge the PR, then release the fix as a new version (`v1.0.1`, then `prod-v1.0.1` once the merge run's stage jobs pass) and approve the `prod-apply` job. Commands: [Release a Version: Hotfixes and Rollback](releasing.md#hotfixes-and-rollback).
 
 **Pros:**
 - Works without GCP access

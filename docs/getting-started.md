@@ -175,6 +175,7 @@ The deployed service serves the web interface only when enabled; see `TF_VAR_ser
 
 - [Development](development.md): feature branch workflow, testing, and code quality
 - [Infrastructure](infrastructure.md): deployment modes, pipeline behavior, and operations
+- [Release a Version](releasing.md): one-time GitHub App setup, then release pull requests and production promotion
 - [Observability](observability.md): traces and logs in Cloud Trace and Cloud Logging, with query examples
 
 ---

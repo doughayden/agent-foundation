@@ -23,14 +23,15 @@ Read the matching file before working in its directory. Claude Code also loads i
 
 | File | Covers | Ownership |
 |---|---|---|
-| `.github/workflows/AGENTS.md` | Orchestration, path filters, stage-success gate, required checks, workflow patterns, actionlint | Template Internals |
+| `.github/workflows/AGENTS.md` | Orchestration, path filters, stage-success gate, release automation, required checks, workflow patterns, actionlint | Template Internals |
 | `terraform/AGENTS.md` | Pre-bootstrap, bootstrap roots, main module, Cloud Run probes | Template Internals (except `services.tf`/`iam.tf`/`monitoring.tf` locals) |
 | `tests/AGENTS.md` | Lanes, eval gate, smoke lane, conftests, fixtures, mocks, organization | Consumer-owned; eval-gate internals marked |
 
 ## Critical
 
 - **Never commit to main** (branch protection enforced). Workflow: feature branch → PR → merge.
-- **Version bumps:** Update `pyproject.toml` → `uv lock` (both files together required for CI `--locked` to pass).
+- **Never bump the version or edit released `CHANGELOG.md` entries by hand:** release-please owns the version in `pyproject.toml` and `uv.lock` and every new changelog entry (`docs/releasing.md`).
+- **Commit and PR titles are release input:** the squash title becomes the changelog entry and picks the bump. Type → section map in `release-please-config.json`; `docs`/`chore`/`refactor`/`style` are hidden. A change forks rely on (settings, Terraform interface, required checks, documented commands) uses a visible type, plus `!` and a `BREAKING CHANGE:` footer when it breaks.
 - **Never lose `terraform/bootstrap/pre/terraform.tfstate`** (pre-bootstrap is local state only).
 
 ## Template Initialization (One-Time)
@@ -172,7 +173,7 @@ uv lock --upgrade               # Update all
 
 **Deployment Modes:** Dev-only (default, `production_mode: false` in ci-cd.yml config job) deploys to dev on merge. Production mode (`production_mode: true`) deploys dev+stage on merge, prod on an admin-pushed `prod-vX.Y.Z` promotion tag (on the commit a `vX.Y.Z` release tag marks; `v*` alone deploys nothing) with approval gate. See [Infrastructure Guide](docs/infrastructure.md).
 
-**Template Internals:** orchestration, the stage-success gate, required checks and workflow patterns: `.github/workflows/AGENTS.md`. Terraform bootstrap and main module: `terraform/AGENTS.md`.
+**Template Internals:** orchestration, the stage-success gate, release automation, required checks and workflow patterns: `.github/workflows/AGENTS.md`. Terraform bootstrap and main module: `terraform/AGENTS.md`.
 
 ## Local Development
 

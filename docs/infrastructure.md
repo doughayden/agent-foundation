@@ -48,7 +48,7 @@ See [Protection Strategies](references/protection-strategies.md) for the setting
 **Production Mode:**
 - Three GCP projects (dev/stage/prod)
 - Workflow: PR → plan, Merge → dev+stage, `prod-vX.Y.Z` promotion tag → prod (approval required)
-- Release steps: [Deploy to Production](#deploy-to-production-production-mode)
+- Release steps: [Release a Version](releasing.md)
 - Use: Production services, staged deployment, compliance
 
 **Switch modes:** Edit `production_mode` in `.github/workflows/ci-cd.yml`
@@ -125,67 +125,9 @@ if: github.ref_type == 'branch' && github.event_name == 'push'
 if: github.ref_type == 'branch'
 ```
 
-### Deploy to Production (Production Mode)
+### Release and Promote to Production
 
-> [!IMPORTANT]
-> The approval gate needs reviewers: set `prod_apply_reviewer_users` or `prod_apply_reviewer_teams` in `terraform/bootstrap/prod/terraform.tfvars` and apply the prod bootstrap root. See [Protection Strategies](references/protection-strategies.md#environment-protection-automated).
-
-A release is two tags on one commit: `vX.Y.Z` marks the release and deploys nothing, and `prod-vX.Y.Z` promotes it to prod.
-
-1. Tag the release on `main` (the tag can go as soon as the commit is on `main`):
-   ```bash
-   git checkout main
-   git pull
-   git tag -a v1.0.0 -m "Release v1.0.0"
-   git push origin v1.0.0
-   ```
-2. Wait for that commit's merge run to pass `Apply Stage`, `Smoke Stage` and `Judge Eval`. A promotion pushed earlier fails `Require Stage Success` and needs a re-run once stage is green
-3. Promote it with a second tag on the same commit (repository admin). Push each promotion tag on its own, since GitHub starts no workflow when more than three tags arrive in one push:
-   ```bash
-   git tag -a prod-v1.0.0 'v1.0.0^{commit}' -m "Promote v1.0.0 to prod"
-   git push origin prod-v1.0.0
-   ```
-   The push starts the prod jobs, and fails at metadata extraction unless the tag has the form `prod-vX.Y.Z` and `v1.0.0` marks the same commit. Only commits that contain the `prod-v*` pipeline can be promoted; for an older build, use a Cloud Run traffic split (below).
-4. Monitor workflow: Actions tab → CI/CD Pipeline
-5. **Approved reviewer:** Actions → prod-apply job → Review deployments → Approve
-6. Verify production deployment
-
-### Rollback (Production)
-
-**Strategy 1: Cloud Run Traffic Split (instant)**
-
-Requires GCP access:
-```bash
-# List revisions
-gcloud run revisions list --service=<service> --region=<region>
-
-# Rollback to previous
-gcloud run services update-traffic <service> \
-  --to-revisions=<previous-revision>=100 \
-  --region=<region>
-```
-
-**Strategy 2: Hotfix + Release (10-20 min)**
-
-No GCP access needed. Merge the fix, then release it as a new version with the [Deploy to Production](#deploy-to-production-production-mode) steps:
-```bash
-# Create hotfix branch
-git checkout -b hotfix/revert-bad-change
-
-# Revert or cherry-pick fix
-git revert <bad-commit>
-
-# Push and create PR
-git push origin hotfix/revert-bad-change
-gh pr create
-
-# After approval, merge PR
-gh pr merge --squash
-```
-
-Then tag `v1.0.1`, wait for the merge run's stage jobs, and push `prod-v1.0.1`.
-
-See [Troubleshooting](troubleshooting.md) for detailed rollback decision tree.
+Releases, production promotion, hotfixes and rollback: [Release a Version](releasing.md).
 
 ## Monitoring Deployments
 

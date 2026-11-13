@@ -29,6 +29,7 @@ Built for teams who need to move beyond prototypes and ship production AI agents
 
 - [Development](development.md) - Local workflow, testing, code quality, deployed resources
 - [Infrastructure](infrastructure.md) - Deployment modes, CI/CD, protection strategies, IaC
+- [Release a Version](releasing.md) - Release PRs, production promotion, hotfixes and rollback
 
 ## Operations
 
