@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0](https://github.com/doughayden/agent-foundation/compare/probe-v0.20.0...probe-v0.21.0) (2026-11-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* probe only, check this sentence renders in notes.
+
+### Features
+
+* add probe marker file ([e411cb5](https://github.com/doughayden/agent-foundation/commit/e411cb507853dd3c7294887b80e96d6a50f8d61c))
+
+
+### Bug Fixes
+
+* **agent:** keep LoggingPlugin off Cloud Run ([#372](https://github.com/doughayden/agent-foundation/issues/372)) ([e68607a](https://github.com/doughayden/agent-foundation/commit/e68607a79168403e12375d156df586ef5542ddd0)), closes [#370](https://github.com/doughayden/agent-foundation/issues/370)
+* **telemetry:** trace under unsampled parents ([#369](https://github.com/doughayden/agent-foundation/issues/369)) ([07ccb2f](https://github.com/doughayden/agent-foundation/commit/07ccb2fd0cce1237725bb6c444168094c3002ffd)), closes [#368](https://github.com/doughayden/agent-foundation/issues/368)
+
 ## [Unreleased]
 
 ### Fixed
