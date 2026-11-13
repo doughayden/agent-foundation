@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Agent traces missing in every deployed environment since ADK 2.14.0: ADK now makes the incoming W3C `traceparent` the parent of its spans, Cloud Run sends one on every request but marks at most one request per instance every 10 seconds sampled, and the SDK's default parent-based sampler dropped the spans of every turn that missed that slot, so almost none were recorded. The tracer provider now records spans whatever the parent's sampled flag, and they keep the caller's trace ID, so on Cloud Run the request log, application logs and agent spans share one trace. Setting the standard `OTEL_TRACES_SAMPLER` replaces this sampler; a parent-based value brings the dropping back (#368)
+
 ## [0.20.0] - 2026-11-12
 
 ### Added

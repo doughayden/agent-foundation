@@ -23,6 +23,7 @@ See `.env.example` in the repository root for template configuration with inline
 | **[ARTIFACT_SERVICE_URI](#cloud-resources)** | Optional | local files | Artifact storage |
 | [LOG_LEVEL](#logging) | Optional | `INFO` | Logging verbosity |
 | [OTEL_RESOURCE_ATTRIBUTES](#opentelemetry-export) | Optional | unset | Override or add resource attributes |
+| [OTEL_TRACES_SAMPLER](#opentelemetry-export) | Optional | unset | Replace the template's trace sampler |
 | [ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS](#opentelemetry) | Optional | `true` (deployed: `false` with `NO_CONTENT`) | ADK's live streaming content attribute |
 | [SERVE_WEB_INTERFACE](#agent-features) | Optional | `FALSE` | Enable ADK web UI |
 | [RELOAD_AGENTS](#agent-features) | Optional | `FALSE` | Hot-reload on file changes |
@@ -162,7 +163,12 @@ Every signal exports to the Google Cloud Telemetry API with Application Default 
 - **Metrics locally:** add `cloud.region=<region>` (like `cloud.region=us-central1`) to send metrics to Google from your machine; without a region, metrics are off
 - **Note:** The SDK also honors the standard `OTEL_SERVICE_NAME`, which wins over `service.name` in `OTEL_RESOURCE_ATTRIBUTES`; the template neither sets nor prints it
 
-The SDK reads its other standard variables too, like `OTEL_TRACES_SAMPLER` for trace sampling; the template sets none of them on Cloud Run. See the OpenTelemetry [SDK environment variables](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/).
+**OTEL_TRACES_SAMPLER**
+- **Default:** unset (the template's sampler records every span, including under Cloud Run's unsampled `traceparent`)
+- **Purpose:** Replace the template's trace sampler with a standard SDK one, read with `OTEL_TRACES_SAMPLER_ARG`. Pick one that ignores the parent's sampled flag, like `traceidratio`: a parent-based sampler drops most agent spans on Cloud Run. Why: [OpenTelemetry Architecture](references/opentelemetry-architecture.md#trace-context-and-sampling)
+- **Where:** `.env` or the shell; not set on the Cloud Run service
+
+The SDK reads its other standard variables too; the template sets none of them on Cloud Run. See the OpenTelemetry [SDK environment variables](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/).
 
 ### Agent Features
 
