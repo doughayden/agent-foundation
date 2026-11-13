@@ -37,6 +37,8 @@ Details and defaults: [Environment Variables](environment-variables.md).
 
 **[Cloud Trace](https://console.cloud.google.com/traces):** Filter by service name, view spans, timing, and generative AI events. Every agent request is traced. On Cloud Run, the agent spans continue the trace Cloud Run starts for the request, so a request log entry's trace link, the application logs and the agent spans share one trace ID. Sampling and how to override it: [OpenTelemetry Architecture](references/opentelemetry-architecture.md#trace-context-and-sampling).
 
+On Cloud Run, an agent trace usually has no stored root span: Cloud Run stores its own span only for requests it samples, at most 0.1 per second per instance, so the `invoke_workflow` span points at a missing parent. Find agent turns by span name `invoke_workflow`, not with root-span filters.
+
 On Cloud Run, a request's traces, logs and metrics can arrive late on a quiet service, because CPU is allocated only during requests. Causes and options: [OpenTelemetry Architecture](references/opentelemetry-architecture.md#export).
 
 **[Logs Explorer](https://console.cloud.google.com/logs):** Application logs land in the log `otlp` and GenAI events in `gen_ai.client.inference.operation.details`. On Cloud Run both are on the `cloud_run_revision` resource; locally they are on `generic_task`.
@@ -107,6 +109,8 @@ The traffic policy fires on a spike rather than on silence: an idle environment 
 
 `LoggingCallbacks` (in `callbacks.py`) logs agent lifecycle events (start/end, model calls, tool invocations) with automatic trace context correlation.
 
+ADK's `LoggingPlugin` prints a readable trace of every callback to stdout, including user content, outside `LOG_LEVEL` and the content-capture settings. `build_plugins()` (in `plugins.py`) registers it only off Cloud Run: in `uv run server`, Docker Compose, `adk web` and the eval lane, locally and in CI. Deployed services rely on `LoggingCallbacks` for lifecycle, ADK spans and GenAI event records for structure, timing and token usage, and the capture mode for content. A fork deploying outside Cloud Run registers the plugin there too.
+
 ### Gen AI Usage Attributes
 
 ADK records token usage on its `generate_content` span from `GenerateContentResponseUsageMetadata`:
@@ -122,7 +126,7 @@ For usage analysis over time, use ADK's token metrics (`gen_ai.client.token.usag
 
 ## Message Content Capture
 
-Two settings decide where user content (prompts, responses, tool arguments and results) lands in telemetry:
+Two settings decide where user content (prompts, responses, tool arguments and results) lands in OpenTelemetry signals. They do not govern stdout, so `LoggingPlugin` stays off on Cloud Run and no plugin output reaches deployed logs ([Callback Logging](#callback-logging)):
 
 | Setting | Controls | Default |
 |---|---|---|

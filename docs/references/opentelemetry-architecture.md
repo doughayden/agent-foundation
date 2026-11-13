@@ -7,9 +7,10 @@ Provider ownership, the ADK telemetry patch, export to Google Cloud, the resourc
 The application owns all three OpenTelemetry providers. `server.py` runs, at import time:
 
 ```python
-env = initialize_environment()    # ServerEnv
-configure_telemetry(...)          # tracer, logger and (with cloud.region) meter providers set globally
-app = get_fast_api_app(...)       # ADK attaches only its web UI processors
+env = initialize_environment()  # ServerEnv
+# Tracer, logger and (with cloud.region) meter providers set globally
+configure_telemetry(...)
+app = get_fast_api_app(...)  # ADK attaches only its web UI processors
 ```
 
 `configure_telemetry()` builds one resource and the providers that share it, then sets them globally: a `TracerProvider` with the template's sampler (see Trace Context and Sampling) and a `BatchSpanProcessor`, a `LoggerProvider` with a `BatchLogRecordProcessor` always, and a `MeterProvider` with a `PeriodicExportingMetricReader` (default 60 second interval) only when the resource has `cloud.region` (see Export). The meter provider gets its own resource: the shared one without the `cloud_run_revision` attributes. It also attaches the OTel logging handler to the root logger through `LoggingInstrumentor` (trace context on every record). A filter on the `uvicorn.access` logger drops `/health` access lines (Cloud Run probes), so they reach neither stdout nor Cloud Logging; it is a logger filter because uvicorn's logging config replaces handlers but keeps filters.
