@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file. This projec
 
 From v0.21.0, [release-please](https://github.com/googleapis/release-please) generates each entry from the squash-merge commit titles on `main`, grouped under [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) headings ([Release a Version](docs/releasing.md)). Earlier entries were written by hand in Keep a Changelog format.
 
+## [0.21.0](https://github.com/doughayden/agent-foundation/compare/v0.20.0...v0.21.0) (2026-11-13)
+
+
+### Added
+
+* **ci:** cut releases with release-please ([#376](https://github.com/doughayden/agent-foundation/issues/376)) ([bace2a4](https://github.com/doughayden/agent-foundation/commit/bace2a4d1182db0f8636897022ab1f760c27904c)), closes [#320](https://github.com/doughayden/agent-foundation/issues/320)
+
+
+### Fixed
+
+* **agent:** keep LoggingPlugin off Cloud Run ([#372](https://github.com/doughayden/agent-foundation/issues/372)) ([e68607a](https://github.com/doughayden/agent-foundation/commit/e68607a79168403e12375d156df586ef5542ddd0)), closes [#370](https://github.com/doughayden/agent-foundation/issues/370)
+* **telemetry:** trace under unsampled parents ([#369](https://github.com/doughayden/agent-foundation/issues/369)) ([07ccb2f](https://github.com/doughayden/agent-foundation/commit/07ccb2fd0cce1237725bb6c444168094c3002ffd)), closes [#368](https://github.com/doughayden/agent-foundation/issues/368)
+
 ## [0.20.0] - 2026-11-12
 
 ### Added
