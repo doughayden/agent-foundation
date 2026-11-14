@@ -48,6 +48,7 @@ jobs:
                 exit 1
               fi
               TAGS="${TAGS}"$'\n'"${VERSION}"
+              echo "release_tag=${VERSION}" >> "$GITHUB_OUTPUT"
             fi
           fi
 
@@ -58,10 +59,11 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Generate Job Summary
-        # Branch name is attacker-controlled on fork PRs, so it reaches the shell
+        # Ref name is attacker-controlled on fork PRs, so it reaches the shell
         # through the environment rather than through ${{ }} interpolation
         env:
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          REF_NAME: ${{ github.head_ref || github.ref_name }}
+          RELEASE_TAG: ${{ steps.extract.outputs.release_tag }}
         run: |
           set -euo pipefail
 
@@ -75,12 +77,18 @@ jobs:
           cat >> "$GITHUB_STEP_SUMMARY" << EOF
           ## 📦 Build Metadata
 
-          | Event | Branch | Commit |
-          |-------|--------|--------|
-          | \`${{ github.event_name }}\` | \`${BRANCH_NAME}\` | \`${SHA_SHORT}\` |
+          | Event | Ref | Commit |
+          |-------|-----|--------|
+          | \`${{ github.event_name }}\` | \`${REF_NAME}\` | \`${SHA_SHORT}\` |
 
-          ### 🏷️ Image Tags
           EOF
+
+          if [ -n "${RELEASE_TAG}" ]; then
+            echo "**Promotes:** \`${REF_NAME}\` → \`${RELEASE_TAG}\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "### 🏷️ Image Tags" >> "$GITHUB_STEP_SUMMARY"
 
           # Format tags as bulleted list (tags already newline-separated)
           echo "${{ steps.extract.outputs.tags }}" | grep -v '^$' | while read -r tag; do

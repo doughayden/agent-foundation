@@ -147,6 +147,14 @@ git tag -a prod-v1.0.1 'v1.0.1^{commit}' -m "Promote v1.0.1 to prod"
 git push origin prod-v1.0.1
 ```
 
+### Release Pull Request Has the Wrong Version or a Missing Entry
+
+**Symptom:** the release pull request proposes a lower version than the merged commits call for (a patch instead of a minor), or its `CHANGELOG.md` lacks an entry for a merged pull request.
+
+**Cause:** release-please builds entries from squash commit titles, so check the merged title first: an unlisted type (`docs`, `build`, `chore`) gets no entry ([Changelog and Commit Types](releasing.md#changelog-and-commit-types)). If the title is right, the merged pull request's body contains the commit override marker, and release-please replaced the commit with unparsable text after it. The `Release` run reports this only in debug logs (`commit could not be parsed`).
+
+**Fix:** edit the merged pull request's body: remove a marker written in prose, or add an override block with the correct commit message ([Changelog and Commit Types](releasing.md#changelog-and-commit-types)). Then re-run the latest `Release` workflow run (Actions tab) to rebuild the release pull request.
+
 ### GCP Auth Rejected or Environment Blocked
 
 **Symptom:** a job fails in `google-github-actions/auth` with `The given credential is rejected by the attribute condition`, or never starts with `Branch "<branch>" is not allowed to deploy to <environment> due to environment protection rules`.
