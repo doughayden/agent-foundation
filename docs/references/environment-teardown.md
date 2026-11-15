@@ -20,7 +20,7 @@ Claude Code runs this procedure through the `teardown-environment` skill (`.clau
 | Agent Engine (Memory Bank) | `contains child resources: memories` when it holds memories | Temporary edit |
 | Subnetwork | `already being used by .../addresses/serverless-ipv4-cloudrun-...` | Wait and destroy again (step 7) |
 
-The SQL user owns objects in the `postgres` database because the bastion's boot script creates the pg_cron extension (for session cleanup) as that user. Deleting the instance removes the user, so Terraform only drops it from state.
+The SQL user owns objects in the `postgres` database because the bastion's boot script creates the pg_cron extension (for session cleanup) as that user ([Bastion and IAP Tunnel](bastion.md) pg_cron Bootstrap). Deleting the instance removes the user, so Terraform only drops it from state.
 
 Cloud SQL keeps using the connection for a while after its instance is deleted. `REMOVE_PEERING` deletes the VPC peering when the API refuses to delete the connection, so the network can go. It only acts when Terraform deletes the connection, which in this configuration follows the instance's deletion.
 
