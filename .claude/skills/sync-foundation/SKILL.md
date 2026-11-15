@@ -299,7 +299,7 @@ git restore --staged .github/workflows/
 
 **Review order:**
 1. `.gitignore` / `.dockerignore` — Check diff, usually no changes
-2. `mkdocs.yml` / `notebooks/` — Skip if not used in downstream
+2. `mkdocs.yml` — Skip if not used in downstream
 3. `AGENTS.md` / `tests/AGENTS.md` — Have project-specific patterns, skip (updated separately). `terraform/AGENTS.md` and `.github/workflows/AGENTS.md` are template internals and arrive with the Phase 5-6 bulk checkouts
 
 For each: check if diff exists, skip if empty, **STOP** if non-empty.

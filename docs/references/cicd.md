@@ -89,7 +89,6 @@ paths-ignore:
   - 'init_template.py'
   - 'mkdocs.yml'
   - 'LICENSE'
-  - 'notebooks/**'
   - '.claude/**'
   - '.env.example'
   - '.pre-commit-config.yaml'
