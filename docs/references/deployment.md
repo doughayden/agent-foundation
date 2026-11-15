@@ -257,7 +257,7 @@ gh pr create
 - VPC network + subnet + Private Services Access (Cloud SQL private IP)
 - Cloud NAT router (bastion outbound connectivity)
 - IAP firewall rules (SSH + SQL proxy port to bastion)
-- Bastion host (e2-micro, COS, Auth Proxy impersonating the app SA): [Bastion and IAP Tunnel](bastion.md)
+- Bastion host (COS, Auth Proxy impersonating the app SA): [Bastion and IAP Tunnel](bastion.md)
 - Cloud Run Service (Auth Proxy sidecar + direct VPC egress)
 - Service Account (IAM identity for Cloud Run)
 - Cloud SQL instance (private IP only, session persistence via DatabaseSessionService)

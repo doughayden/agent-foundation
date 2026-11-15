@@ -18,7 +18,7 @@ All of it lives in `terraform/main/`:
 
 | Piece | Where | What it does |
 |---|---|---|
-| Bastion VM | `bastion.tf` | `e2-micro`, Container-Optimized OS (`cos-cloud/cos-stable`), no public IP, OS Login enabled (`enable-oslogin = TRUE`), automatic COS updates |
+| Bastion VM | `bastion.tf` | Container-Optimized OS (`cos-cloud/cos-stable`), no public IP, OS Login enabled (`enable-oslogin = TRUE`), automatic COS updates |
 | Bastion service account | `bastion.tf` | Its own identity with `roles/cloudsql.client`, `roles/logging.logWriter` and `roles/monitoring.metricWriter`, plus `roles/iam.serviceAccountTokenCreator` on the app service account |
 | Cloud SQL Auth Proxy | `templates/bastion-cloud-init.yaml` | A systemd unit runs `gcr.io/cloud-sql-connectors/cloud-sql-proxy:2` with the flags shared with the Cloud Run sidecar (`local.cloud_sql_proxy_args` in `main.tf`: `--private-ip`, `--port=5432`, `--auto-iam-authn`), plus two bastion-only flags: `--address=0.0.0.0` and `--impersonate-service-account=<app SA>` |
 | Host firewall | `templates/bastion-cloud-init.yaml` | COS drops inbound traffic by default; `runcmd` adds an `iptables` rule that accepts port 5432 |
@@ -41,12 +41,7 @@ psql "host=127.0.0.1 port=5432 user=<app-sa-email-without-.gserviceaccount.com> 
 
 ## Developer Access
 
-| To... | Needs | Verified |
-|---|---|---|
-| Open the tunnel to port 5432 (`gcloud compute start-iap-tunnel <bastion> 5432 --zone=<zone>`) | `roles/iap.tunnelResourceAccessor` | Yes: a principal holding only this role opened the tunnel and queried `agent_sessions` |
-| SSH to the bastion (`gcloud compute ssh <bastion> --zone=<zone> --tunnel-through-iap`) | `roles/iap.tunnelResourceAccessor` plus an OS Login role (`roles/compute.osLogin`), since the instance enables OS Login | No: from Google's documentation |
-
-Google's [IAP TCP forwarding](https://docs.cloud.google.com/iap/docs/using-tcp-forwarding) permission table also lists `compute.instances.get` and `compute.instances.list` for `start-iap-tunnel`; with `--zone` passed, the tunnel opened without them. Project Owners hold every role above already. Grant the tunnel role to other developers with `gcloud projects add-iam-policy-binding` or in the Console.
+Opening the tunnel (`gcloud compute start-iap-tunnel <bastion> 5432 --zone=<zone>`, as Compose does) needs only `roles/iap.tunnelResourceAccessor`. A principal holding just that role opened the tunnel and queried `agent_sessions`, with no OS Login or Compute Engine role. Project Owners already hold it. Grant it to other developers with `gcloud projects add-iam-policy-binding` or in the Console.
 
 ## pg_cron Bootstrap
 
@@ -89,7 +84,7 @@ ORDER BY 1;
 1. Confirm the VM is running: `gcloud compute instances describe <bastion> --zone=<zone> --format='value(status)'`
 2. Confirm the bastion service account still holds `roles/cloudsql.client`: `gcloud projects get-iam-policy <project> --flatten=bindings --filter='bindings.members:<bastion-sa-email>' --format='value(bindings.role)'` (the `bastion_service_account_email` output names the account)
 3. Confirm the Cloud SQL instance has a private IP on the environment's network: `gcloud sql instances describe <instance> --format='value(ipAddresses)'` lists a `PRIVATE` address, and `gcloud services vpc-peerings list --network=<network>` shows `services/servicenetworking.googleapis.com`
-4. SSH in (see Developer Access for the roles): `gcloud compute ssh <bastion> --zone=<zone> --tunnel-through-iap`
+4. SSH in: `gcloud compute ssh <bastion> --zone=<zone> --tunnel-through-iap`
 5. Check the proxy container and its logs: `docker ps`, then `docker logs cloud-sql-proxy`
 6. Check the host firewall accepts 5432: `sudo iptables -L INPUT -n | grep 5432` shows an `ACCEPT` rule
 7. Check the proxy listens on every interface: `sudo ss -tlnp | grep 5432` shows `*:5432`, not `127.0.0.1:5432`
