@@ -54,6 +54,8 @@ jobs:
       # `deploy` gates the build-and-deploy chain; `eval` gates the judge gate
       deploy: ${{ steps.filter.outputs.deploy }}
       eval: ${{ steps.filter.outputs.eval }}
+      # A release-please PR only bumps the version and changelog; its merge run builds and plans
+      release_pr: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.type == 'Bot' && startsWith(github.head_ref, 'release-please--') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d  # v4.0.3
@@ -99,7 +101,7 @@ jobs:
   build:
     name: Build Docker Image
     # Skip on tag events (image already exists from merge) and when nothing deployable changed; every deploy job needs this one, so skipping here skips the whole chain
-    if: github.ref_type != 'tag' && needs.changes.outputs.deploy == 'true'
+    if: github.ref_type != 'tag' && needs.changes.outputs.deploy == 'true' && needs.changes.outputs.release_pr != 'true'
     needs: [changes, meta]
     uses: ./.github/workflows/docker-build.yml
     with:

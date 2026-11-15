@@ -53,7 +53,7 @@ Promotion only needs a `vX.Y.Z` tag on a commit whose merge run deployed stage, 
 ## Cut a Release
 
 1. Open the release pull request (label `autorelease: pending`) and review the version and changelog entries
-2. Wait for its required checks, then squash-merge it. The release pull request is generated, so skip editing its title or body: release-please rewrites both on the next push to `main`
+2. Wait for its required checks, then squash-merge it. Only `Code Quality and Tests` and the `CI / status` sentinel run: the integration lane, the agent eval and the pull request build and plan skip, since the merge run builds, evaluates and deploys the release commit anyway ([CI/CD Workflows: ci.yml](references/cicd.md#ciyml)). The release pull request is generated, so skip editing its title or body: release-please rewrites both on the next push to `main`
 3. The `Release` workflow run on the merge commit tags `vX.Y.Z`, publishes the GitHub Release, and relabels the pull request `autorelease: tagged`
 
 A merge produces:
