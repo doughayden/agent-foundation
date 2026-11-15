@@ -65,7 +65,7 @@ Because the app's database user creates the extension, it owns pg_cron's objects
 | Tables `cron.job`, `cron.job_run_details` | 2 owner + 2 initial privilege |
 | Sequences `cron.jobid_seq`, `cron.runid_seq` | 2 owner + 2 initial privilege |
 
-Postgres refuses to drop a role that owns objects, so destroying the environment cannot drop this user on its own. `google_sql_user.app` uses `deletion_policy = "ABANDON"`: Terraform drops it from state, and deleting the instance removes it.
+Postgres refuses to drop a role that owns objects, so destroying the environment cannot drop this user on its own. `google_sql_user.app` uses `deletion_policy = "ABANDON"`: Terraform drops it from state, and deleting the instance removes it. The full destroy procedure: [Environment Teardown](environment-teardown.md).
 
 To list the entries yourself, connect to the `postgres` database through the tunnel and run:
 
