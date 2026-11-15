@@ -136,6 +136,8 @@ changes, metadata-extract ─→ docker-build → dev-plan
 
 **Result:** Plan preview in PR comment, no actual deployment. A PR touching only `tests/eval/**` runs `changes`, `meta`, and `config` and skips the rest: there is no image to build and no plan to preview, and the judge gate is a merge-time job. The deterministic eval gate in `ci.yml` covers that PR.
 
+A release-please pull request (opened and updated by a bot on a `release-please--` branch) skips `docker-build` and `dev-plan` too: it only bumps the version and changelog on code `main` already built, and its merge runs the full Merge Flow.
+
 ### Merge Flow
 
 **Dev-only mode:**
@@ -443,17 +445,17 @@ Practically, a release belongs on a commit whose merge deployed and smoked stage
 **Purpose:** Run the pre-commit hook suite and pytest with coverage, the Postgres integration lane, and the deterministic agent eval gate.
 
 **Pipeline (five jobs):**
-1. `changes` - dorny/paths-filter detects whether relevant files changed
+1. `changes` - dorny/paths-filter detects whether relevant files changed, and `release_pr` marks a release-please pull request: a bot author on a `release-please--` branch, updated by a bot. A human-named branch or a human push to the release branch runs every check
 2. `code-quality` - runs every pre-commit hook on all files (`uv run pre-commit run --all-files --show-diff-on-failure`: ruff, mypy, actionlint, `terraform fmt`, config-file checks), then pytest with coverage even when a hook fails. Installs Terraform from `.terraform-version` for the fmt hook and caches hook environments. Restores `.mypy_cache` on every run so mypy re-checks only what changed, and saves it only on pushes to main: pull requests read main's cache without adding entries to the repository's Actions cache quota. Runs on every push and pull request, since the hooks cover every file type. Checks out with `persist-credentials: false`, since the hooks run third-party code.
-3. `integration` - runs `pytest tests/integration`, which starts a throwaway `postgres:18` via `testcontainers` on the runner's Docker daemon (no coverage gate; the 100% gate is unit-lane-only). The `postgres:18` image matches the deployed Cloud SQL `POSTGRES_18` major. Gated on `changes.outputs.code == 'true'`.
-4. `agent-eval` - runs the deterministic agent eval (`uv run pytest tests/eval -m "deterministic"`) against Vertex AI, authenticating with the dev environment's WIF principal (no coverage gate). Gated on `changes.outputs.code == 'true'`.
+3. `integration` - runs `pytest tests/integration`, which starts a throwaway `postgres:18` via `testcontainers` on the runner's Docker daemon (no coverage gate; the 100% gate is unit-lane-only). The `postgres:18` image matches the deployed Cloud SQL `POSTGRES_18` major. Gated on `changes.outputs.code == 'true'`, skipped on release-please pull requests.
+4. `agent-eval` - runs the deterministic agent eval (`uv run pytest tests/eval -m "deterministic"`) against Vertex AI, authenticating with the dev environment's WIF principal (no coverage gate). Gated on `changes.outputs.code == 'true'`, skipped on release-please pull requests.
 5. `status` - always-runs sentinel that aggregates results for branch protection
 
 **Timeout:** 10 minutes each for the `code-quality`, `integration`, and `agent-eval` jobs (typical: 2-3 minutes)
 
-**When it runs:** Every push to main and every pull request. `code-quality` always runs; `integration` and `agent-eval` are skipped when no code paths changed; the `status` sentinel always reports.
+**When it runs:** Every push to main and every pull request. `code-quality` always runs; `integration` and `agent-eval` are skipped when no code paths changed and on release-please pull requests, whose diff is the version bump and generated changelog on code `main` already tested (`code-quality` still checks the changelog); the `status` sentinel always reports.
 
-**Branch protection:** Require `CI / status` (the `status` job). The sentinel requires `code-quality` to pass, and `integration` and `agent-eval` to pass or be skipped because no code paths changed.
+**Branch protection:** Require `CI / status` (the `status` job). The sentinel requires `code-quality` to pass, and `integration` and `agent-eval` to pass or be skipped (no code paths changed, or a release-please pull request).
 
 ## Standalone Release Workflow
 
