@@ -129,6 +129,10 @@ if: github.ref_type == 'branch'
 
 Releases, production promotion, hotfixes and rollback: [Release a Version](releasing.md).
 
+### Tear Down an Environment
+
+Deletion protection keeps stage and prod from being destroyed by accident, and some resources refuse deletion while they hold data. To destroy one environment on purpose, follow [Environment Teardown](references/environment-teardown.md).
+
 ## Monitoring Deployments
 
 ### View Workflow Status
