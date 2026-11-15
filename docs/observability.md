@@ -97,7 +97,7 @@ The main module ships dry-run Cloud Monitoring alert policies for the four [gold
 
 The traffic policy fires on a spike rather than on silence: an idle environment scaled to zero is normal, while a sustained burst multiplies model spend. The service runs a readiness probe on `/health` after the startup probe passes, and Cloud Run stops routing requests to an instance that fails it. The unhealthy-instances policy alerts on those readiness failures and on any failed probe. Readiness only starts once startup passes, so the failed-probe condition is what catches a rollout whose new revision never starts while the previous revision keeps serving traffic, which otherwise shows up only as a failed deploy job. `/health` checks no dependencies, so readiness confirms the process still answers requests.
 
-**Dry-run posture:** the policies evaluate and open incidents in [Cloud Monitoring alerting](https://console.cloud.google.com/monitoring/alerting) but notify nobody, so a fork inherits no inbox noise or paging.
+**Dry-run posture:** the policies evaluate and open incidents in [Cloud Monitoring alerting](https://console.cloud.google.com/monitoring/alerting) but notify nobody, so a consumer inherits no inbox noise or paging.
 
 **Activate notifications:** create a [notification channel](https://cloud.google.com/monitoring/support/notification-options) (email, Slack, PagerDuty and others), then add its ID (`projects/PROJECT_ID/notificationChannels/CHANNEL_ID`) to the environment's list in `alert_notification_channels` in `terraform/main/monitoring.tf`. The next deploy attaches it to every policy.
 
@@ -109,7 +109,7 @@ The traffic policy fires on a spike rather than on silence: an idle environment 
 
 `LoggingCallbacks` (in `callbacks.py`) logs agent lifecycle events (start/end, model calls, tool invocations) with automatic trace context correlation.
 
-ADK's `LoggingPlugin` prints a readable trace of every callback to stdout, including user content, outside `LOG_LEVEL` and the content-capture settings. `build_plugins()` (in `plugins.py`) registers it only off Cloud Run: in `uv run server`, Docker Compose, `adk web` and the eval lane, locally and in CI. Deployed services rely on `LoggingCallbacks` for lifecycle, ADK spans and GenAI event records for structure, timing and token usage, and the capture mode for content. A fork deploying outside Cloud Run registers the plugin there too.
+ADK's `LoggingPlugin` prints a readable trace of every callback to stdout, including user content, outside `LOG_LEVEL` and the content-capture settings. `build_plugins()` (in `plugins.py`) registers it only off Cloud Run: in `uv run server`, Docker Compose, `adk web` and the eval lane, locally and in CI. Deployed services rely on `LoggingCallbacks` for lifecycle, ADK spans and GenAI event records for structure, timing and token usage, and the capture mode for content. A consumer deploying outside Cloud Run registers the plugin there too.
 
 ### Gen AI Usage Attributes
 

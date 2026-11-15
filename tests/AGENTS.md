@@ -1,6 +1,6 @@
 # AGENTS.md: Tests
 
-Rules for writing and changing tests under `tests/`. Consumer-owned: forks add tests freely. The eval-gate internals below (`_gate`, liveness, failure reporting) are **Template Internals**. Rules that apply before you open a test file (lane commands, coverage, eval cost, no root conftest) live in the root `AGENTS.md` Testing Patterns.
+Rules for writing and changing tests under `tests/`. Consumer-owned: consumers add tests freely. The eval-gate internals below (`_gate`, liveness, failure reporting) are **Template Internals**. Rules that apply before you open a test file (lane commands, coverage, eval cost, no root conftest) live in the root `AGENTS.md` Testing Patterns.
 
 ## Lanes
 
@@ -46,7 +46,7 @@ Lane conftests are allowed (only a ROOT `tests/conftest.py` is forbidden): integ
 
 Test module path mirrors source path (`src/<pkg>/config.py` → `tests/unit/test_config.py`); nested source paths flatten with underscores (`<pkg>/sub/foo.py` → `test_sub_foo.py`). Duplicate cross-lane values per lane instead of sharing them (no root conftest). Class grouping. Descriptive names (`test_<what>_<condition>_<expected>`).
 
-**Package-name discovery:** Lanes resolve the package at runtime (`next(SRC_DIR.glob("*/__init__.py")).parent.name`) instead of hard-coding it — unit `conftest.py`, integration `APP_NAME`, eval `AGENT_MODULE` — so a renamed fork reuses every lane unedited. **Do not wrap the bare `next()`** (intentional fail-fast on the single-package invariant) and **do not centralize it** (duplicated per lane by design). Rationale: `docs/references/testing.md` Package-Name Discovery.
+**Package-name discovery:** Lanes resolve the package at runtime (`next(SRC_DIR.glob("*/__init__.py")).parent.name`) instead of hard-coding it — unit `conftest.py`, integration `APP_NAME`, eval `AGENT_MODULE` — so a consumer that renames the package reuses every lane unedited. **Do not wrap the bare `next()`** (intentional fail-fast on the single-package invariant) and **do not centralize it** (duplicated per lane by design). Rationale: `docs/references/testing.md` Package-Name Discovery.
 
 ## Writing Tests
 

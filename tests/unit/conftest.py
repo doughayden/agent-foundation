@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from google.adk.evaluation.eval_result import EvalCaseResult
 
 # Source root holding the single agent package (src/<package>/). The package name is
-# derived from it so a downstream fork that renames the package reuses these fixtures
+# derived from it so a consumer that renames the package reuses these fixtures
 # with no edits — patch targets below build off PACKAGE_NAME rather than a literal.
 SRC_DIR = Path(__file__).parents[2] / "src"
 

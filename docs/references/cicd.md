@@ -94,7 +94,7 @@ paths-ignore:
   - '.pre-commit-config.yaml'
 ```
 
-The Markdown pattern is shallow `'*.md'` and not recursive `'**.md'` to cover only the root files (`README.md`, `AGENTS.md`, `CHANGELOG.md`) and nothing else, while `docs/**` and `.claude/**` cover the Markdown that lives in those trees. A recursive `'**.md'` would also swallow Markdown a fork adds inside the package, like a prompt fragment or a skill definition under `src/`, and that file would silently stop triggering runs. Keeping the pattern shallow makes the safe behavior structural instead of something a fork has to remember.
+The Markdown pattern is shallow `'*.md'` and not recursive `'**.md'` to cover only the root files (`README.md`, `AGENTS.md`, `CHANGELOG.md`) and nothing else, while `docs/**` and `.claude/**` cover the Markdown that lives in those trees. A recursive `'**.md'` would also swallow Markdown a consumer adds inside the package, like a prompt fragment or a skill definition under `src/`, and that file would silently stop triggering runs. Keeping the pattern shallow makes the safe behavior structural instead of something a consumer has to remember.
 
 The rest of the list is local-developer and template scaffolding with no CI or image role: `init_template.py` is the one-time bootstrap script, `.pre-commit-config.yaml` drives local hooks that no workflow invokes, and `.env.example` is a template for local `.env`. The Dockerfile copies only `pyproject.toml`, `uv.lock`, and `src`, so none of them can reach an image.
 
@@ -435,7 +435,7 @@ Practically, a release belongs on a commit whose merge deployed and smoked stage
 
 **Permissions:** `actions: read` (read the merge run's job conclusions), `contents: read`. No GCP credentials.
 
-**When it runs:** Called by `ci-cd.yml` on tag events in production mode, before `prod-promote`. Generic and agent-agnostic, so every fork inherits it.
+**When it runs:** Called by `ci-cd.yml` on tag events in production mode, before `prod-promote`. Generic and agent-agnostic, so every consumer inherits it.
 
 ## Standalone CI Workflow
 
@@ -464,7 +464,7 @@ Practically, a release belongs on a commit whose merge deployed and smoked stage
 
 **Pipeline (one job):** mint a token from the release GitHub App (`RELEASE_APP_CLIENT_ID` variable, `RELEASE_APP_PRIVATE_KEY` secret), then run `googleapis/release-please-action` with it. The App token makes the release pull request start `ci.yml`, so its required checks report; pull requests opened with `GITHUB_TOKEN` start no workflows. The workflow token itself has no permissions.
 
-**When it runs:** Every push to main. The job is skipped when `RELEASE_APP_CLIENT_ID` is unset, so a fork without the App gets no failed runs. `ci-cd.yml` ignores the `v*` tag it creates; the release commit deploys through the normal merge run, and promotion uses `prod-vX.Y.Z`.
+**When it runs:** Every push to main. The job is skipped when `RELEASE_APP_CLIENT_ID` is unset, so a consumer without the App gets no failed runs. `ci-cd.yml` ignores the `v*` tag it creates; the release commit deploys through the normal merge run, and promotion uses `prod-vX.Y.Z`.
 
 Setup, release steps and the changelog mapping: [Release a Version](../releasing.md).
 

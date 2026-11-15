@@ -197,7 +197,7 @@ What still guards production on those plans:
 - **The deployment branch and tag policy** (Pro and Team only). Only `prod-v*.*.*` tags reach `prod` and `prod-apply`, and only `main` and those tags reach `stage`. On GitHub Free, a workflow on any branch can declare `environment: stage` or `environment: prod` and receive that project's credentials.
 - **Who can push a `prod-v*` tag.** The promotion tag ruleset limits this to admins where your plan enforces rulesets on private repositories; confirm it shows **Active** under Settings → Rules → Rulesets. Without it, anyone with write access can start the prod promotion pipeline.
 
-To keep a human approval on a private fork, use GitHub Enterprise or make the repository public.
+To keep a human approval on a private repository, use GitHub Enterprise or make the repository public.
 
 ## How Approvals Work
 

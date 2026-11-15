@@ -126,7 +126,7 @@ Register the App, then store its Client ID and private key, following [create-gi
 
 ## Release Without the App
 
-Without `RELEASE_APP_CLIENT_ID`, the release job is skipped: a fork without the App sees no failed runs and gets no releases. Promotion only needs a `vX.Y.Z` tag on a commit whose merge run deployed stage, so cut the release by hand:
+Without `RELEASE_APP_CLIENT_ID`, the release job is skipped: a consumer without the App sees no failed runs and gets no releases. Promotion only needs a `vX.Y.Z` tag on a commit whose merge run deployed stage, so cut the release by hand:
 
 1. In a pull request, set `version` in `pyproject.toml` and `.release-please-manifest.json`, run `uv lock`, and add the version's entries to `CHANGELOG.md`. Keeping the manifest current lets release-please continue from this version if you install the App later. The change to `pyproject.toml` and `uv.lock` makes the merge run deploy, so the merge commit becomes promotable
 2. Merge it, then look up the version and the merge commit from the manifest on `main`, and check that the printed commit is your release pull request:

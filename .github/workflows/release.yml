@@ -19,7 +19,7 @@ concurrency:
 jobs:
   release-please:
     name: Release Please
-    # Forks without the release App skip the job instead of failing every push
+    # Consumers without the release App skip the job instead of failing every push
     if: vars.RELEASE_APP_CLIENT_ID != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10  # Typical run: <1 min. 10 min prevents hanging

@@ -44,7 +44,7 @@ from google.auth.transport.requests import Request
 from httpx import AsyncClient, TransportError
 
 # Source root holding the single agent package (src/<package>/)
-# The ADK app name is its directory name: auto-discovered for renamed forks
+# The ADK app name is its directory name: auto-discovered for consumers that rename it
 SRC_DIR = Path(__file__).parents[2] / "src"
 APP_NAME = next(SRC_DIR.glob("*/__init__.py")).parent.name
 
