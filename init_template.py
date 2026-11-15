@@ -413,10 +413,10 @@ def reset_version_in_pyproject(dry_run: bool = False) -> None:
 
 
 def reset_release_please(dry_run: bool = False) -> None:
-    """Reset release-please state so the fork's first release follows 0.1.0.
+    """Reset release-please state so the new project's first release follows 0.1.0.
 
     Sets the manifest to 0.1.0 and drops `bootstrap-sha`, which names a template
-    commit, so release-please collects the fork's whole history.
+    commit, so release-please collects the new project's whole history.
 
     Args:
         dry_run: If True, only print what would be changed.
@@ -578,7 +578,7 @@ def main() -> NoReturn:
         compose_files = Path().glob("compose*.yml")
         files_to_update.extend(str(path) for path in compose_files)
 
-        # Skip template-management.md: its foundation refs must survive forking.
+        # Skip template-management.md: its foundation refs must survive initialization.
         skip_docs = {Path("docs/template-management.md")}
         doc_files = (p for p in Path("docs").rglob("*.md") if p not in skip_docs)
         files_to_update.extend(str(path) for path in doc_files)

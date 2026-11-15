@@ -100,7 +100,7 @@ DATA_DIR = Path(__file__).parent / "data"
 # The agent module is the package directory under src/. The template has exactly one
 # package there, so the lone dir with an __init__.py is unambiguous; the marker skips
 # non-package entries (.DS_Store, *.egg-info). Discovered rather than hard-coded so a
-# downstream fork that renames the package runs this gate with no edits. ADK loads the
+# consumer that renames the package runs this gate with no edits. ADK loads the
 # agent purely from this module; a case's ``session_input.app_name`` name-scopes the
 # eval session and the Runner but does not select the agent.
 SRC_DIR = Path(__file__).parents[2] / "src"
@@ -253,11 +253,11 @@ async def _assert_model_live(session: pytest.Session, model: str) -> None:
     (``LLMRegistry``). Thinking is set to ``MINIMAL`` so the output cap yields a
     text reply instead of being spent on thinking tokens (at ``LOW``,
     ``gemini-3.5-flash`` hits ``MAX_TOKENS`` before replying). Accepted levels
-    vary by model: ``gemini-3.8-flash`` rejects ``MINIMAL`` with a 400, so a fork
+    vary by model: ``gemini-3.8-flash`` rejects ``MINIMAL`` with a 400, so a consumer
     that swaps a probed model must re-check this level. The
     request timeout turns a hung endpoint into a fast abort instead of a job
     that waits out its own timeout. This assumes a registry-resolvable model
-    string; a fork that swaps a role to a connector instance
+    string; a consumer that swaps a role to a connector instance
     (LiteLlm/Claude/Apigee) must call that instance directly.
     """
 

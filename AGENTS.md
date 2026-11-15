@@ -13,7 +13,7 @@ Guidance for AI agents. **CRITICAL: Update this file when establishing project p
 
 **Enumerate only when:** the list itself IS the concept (e.g., a security posture's guarantees), discoverability would be hard, or items are load-bearing rules every session must know without reading more files. Default to *concept + location*, not *contents*.
 
-**Template internals vs. consumer extensions.** This is a base template that downstream projects fork. Mark sections describing template internals so consumers understand they carry higher upstream-sync cost if customized — consumers may still modify anything, but expect merge complexity. Intended extension surfaces belong in **Consumer Extension Points** below.
+**Template internals vs. consumer extensions.** This is a base template from which downstream projects create new repositories. Mark sections describing template internals so consumers understand they carry higher upstream-sync cost if customized. Consumers may still modify anything, but expect merge complexity. Intended extension surfaces belong in **Consumer Extension Points** below.
 
 **Root vs. directory files.** A rule that only matters while editing files in one directory goes in that directory's `AGENTS.md`; a rule a session can break without opening a file there (running a command, creating a file, changing another directory) stays here. Add new directory files to the table below.
 
@@ -65,7 +65,7 @@ terraform -chdir=terraform/main init/plan/apply           # Deploy (TF_VAR_envir
 Entry-point map for "I want to add X". Each row points to the file where the change should land.
 
 > [!NOTE]
-> Python file references use basenames only: the single package under `src/` makes them unambiguous (`Glob src/*/<basename>`), and forks never rename paths here after `init_template.py`.
+> Python file references use basenames only: the single package under `src/` makes them unambiguous (`Glob src/*/<basename>`), and consumers never rename paths here after `init_template.py`.
 
 **Replace the example agent** (illustrative, not in the public contract: changes here never break consumers):
 

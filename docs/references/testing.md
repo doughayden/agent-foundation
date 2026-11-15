@@ -20,7 +20,7 @@ Only the unit lane runs `--cov` with the 100% gate.
 **Live output:** pytest captures output and shows it only for failing tests. Two flags stream it as the run happens, and they cover different streams:
 
 - `-s` turns off capture, so anything printed to stdout appears live. In the eval lane that is ADK's own output: the logging plugin's per-event lines, progress bars, and results tables. Both CI eval steps pass it.
-- `--log-cli-level=INFO` (lifecycle) or `--log-cli-level=DEBUG` (full detail) streams Python log records from the `logging` module, like the template's callbacks and library internals, in the timestamped format `pyproject.toml` sets. The flag is the switch; nothing streams by default. `DEBUG` includes model request and response content, so keep it out of CI logs for a fork with real user data.
+- `--log-cli-level=INFO` (lifecycle) or `--log-cli-level=DEBUG` (full detail) streams Python log records from the `logging` module, like the template's callbacks and library internals, in the timestamped format `pyproject.toml` sets. The flag is the switch; nothing streams by default. `DEBUG` includes model request and response content, so keep it out of CI logs for a consumer with real user data.
 
 Eval-lane detail: [Agent Evals](agent-evals.md) "Watching eval logs live".
 
@@ -87,7 +87,7 @@ All reusable unit-lane fixtures go in `tests/unit/conftest.py`:
 
 ### Package-Name Discovery
 
-Lanes that reference the source package resolve its name at runtime from `src/` instead of hard-coding it: `next(SRC_DIR.glob("*/__init__.py")).parent.name`. The unit `conftest.py` uses it for mock patch targets, the integration lane for `APP_NAME`, and the eval lane for `AGENT_MODULE` (resolving `SRC_DIR` as `Path(__file__).parents[2]`). A renamed fork reuses every lane with no edits, and `init_template.py` skips the unit conftest because it carries no literal package name.
+Lanes that reference the source package resolve its name at runtime from `src/` instead of hard-coding it: `next(SRC_DIR.glob("*/__init__.py")).parent.name`. The unit `conftest.py` uses it for mock patch targets, the integration lane for `APP_NAME`, and the eval lane for `AGENT_MODULE` (resolving `SRC_DIR` as `Path(__file__).parents[2]`). A consumer that renames the package reuses every lane with no edits, and `init_template.py` skips the unit conftest because it carries no literal package name.
 
 The bare `next()` is intentional. The template has exactly one package under `src/`, so a violation raises `StopIteration` at import with a traceback on the exact line. A guard would trade one crash for another and would not catch the multiple-package case, where `next()` takes the first match. Discovery is duplicated per lane because there is no shared `tests/conftest.py` to hold it.
 

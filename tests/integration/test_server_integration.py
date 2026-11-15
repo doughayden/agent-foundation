@@ -57,7 +57,7 @@ from testcontainers.community.postgres import PostgresContainer
 POSTGRES_IMAGE = "postgres:18"
 
 # Source root holding the single agent package (src/<package>/). Both the ADK app name
-# and the agent module are derived from it so a downstream fork that renames the package
+# and the agent module are derived from it so a consumer that renames the package
 # reuses this lane with no edits.
 SRC_DIR = Path(__file__).parents[2] / "src"
 
