@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file. This projec
 
 From v0.21.0, [release-please](https://github.com/googleapis/release-please) generates each entry from the squash-merge commit titles on `main`, grouped under [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) headings ([Release a Version](docs/releasing.md)). Earlier entries were written by hand in Keep a Changelog format.
 
+## [0.21.1](https://github.com/doughayden/agent-foundation/compare/v0.21.0...v0.21.1) (2026-11-15)
+
+
+### Changed
+
+* skip redundant checks on release PRs ([#386](https://github.com/doughayden/agent-foundation/issues/386)) ([3777db1](https://github.com/doughayden/agent-foundation/commit/3777db1c8800120483603ad8f2c2ae760f8a4786)), closes [#377](https://github.com/doughayden/agent-foundation/issues/377)
+
+
+### Fixed
+
+* **ci:** name promotion tags, warn on marker ([#381](https://github.com/doughayden/agent-foundation/issues/381)) ([bbc8629](https://github.com/doughayden/agent-foundation/commit/bbc86293628741b224d964454250a170d07933a4)), closes [#379](https://github.com/doughayden/agent-foundation/issues/379)
+* **deps:** remove notebook and ipykernel ([#387](https://github.com/doughayden/agent-foundation/issues/387)) ([5011ab4](https://github.com/doughayden/agent-foundation/commit/5011ab4d744d50e198fd99d7bbbe03feaeb80eee)), closes [#380](https://github.com/doughayden/agent-foundation/issues/380)
+* **terraform:** let environments tear down ([#384](https://github.com/doughayden/agent-foundation/issues/384)) ([58161ea](https://github.com/doughayden/agent-foundation/commit/58161ead3cd7a6d1272ebceb9782ae491a681ce3)), closes [#382](https://github.com/doughayden/agent-foundation/issues/382)
+
 ## [0.21.0](https://github.com/doughayden/agent-foundation/compare/v0.20.0...v0.21.0) (2026-11-13)
 
 
