@@ -206,17 +206,7 @@ gcloud run services describe <service-name> --region <region> --format="value(sp
 
 **Symptom:** IAP tunnel connects but database queries fail
 
-**Troubleshoot:**
-1. SSH to bastion via IAP: `gcloud compute ssh <bastion-instance> --zone=<zone> --tunnel-through-iap`
-2. Check Auth Proxy container: `docker ps` (Container-Optimized OS runs Docker)
-3. Check Auth Proxy logs: `docker logs $(docker ps -q --filter name=cloud-sql-proxy)`
-4. Verify bastion SA has `roles/cloudsql.client`
-5. Confirm Cloud SQL instance private IP is reachable from the VPC subnet
-6. Check COS iptables allows port 5432: `sudo iptables -L INPUT -n | grep 5432` — should show ACCEPT rule. COS default INPUT policy is DROP; the cloud-init `runcmd` must open port 5432 before starting the proxy.
-7. Check proxy listens on all interfaces: `sudo ss -tlnp | grep 5432` — should show `*:5432` (all interfaces), not `127.0.0.1:5432`. The bastion proxy requires `--address=0.0.0.0` because IAP tunnel connections arrive from outside the loopback interface.
-8. Verify bastion SA can impersonate app SA: the bastion SA needs `roles/iam.serviceAccountTokenCreator` on the app SA (granted via `google_service_account_iam_member` in Terraform). Without this, `--impersonate-service-account` fails.
-
-**Common error:** `InvalidAuthorizationSpecificationError: Cloud SQL IAM service account authentication failed` — the bastion proxy cannot impersonate the app SA. Verify `roles/iam.serviceAccountTokenCreator` is granted to the bastion SA on the app SA.
+**Troubleshoot:** follow [Bastion and IAP Tunnel: Health and Recovery](references/bastion.md#health-and-recovery) (VM status, proxy logs, host firewall, impersonation, recovery).
 
 ## Terraform
 
