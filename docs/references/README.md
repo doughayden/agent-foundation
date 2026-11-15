@@ -10,6 +10,7 @@ Deep-dive technical documentation for optional follow-up.
 - [Deployment Modes](deployment.md) - Multi-environment strategy and infrastructure
 - [CI/CD Workflows](cicd.md) - Workflow architecture, mechanics, and image tagging strategy
 - [Claude PR Review](claude-pr-review.md) - Automated PR review setup: GitHub App, model auth paths, and workflow behavior
+- [Environment Teardown](environment-teardown.md) - Destroy one environment's deployed resources: blockers, temporary edits, and the subnet wait
 - [Cloud SQL Scaling and Reliability](cloud-sql.md) - Instance tiers, backups, HA, connection pooling, monitoring
 - [Cloud Run Concurrency Tuning](cloud-run-concurrency-tuning.md) - Async runtime model and concurrency sizing
 
