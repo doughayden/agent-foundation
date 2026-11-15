@@ -63,7 +63,7 @@ write_files:
         exit 1
       fi
 
-      # The extension must live in the postgres DB (Cloud SQL pins cron.database_name there);
+      # pg_cron runs in the postgres DB (Cloud SQL's default cron.database_name), so the extension lives there;
       # the job upserts by name (no duplicate on re-run); the DELETE targets agent_sessions
       # and cascades to events via the FK. now() AT TIME ZONE 'UTC' matches the naive
       # (timestamp without time zone) update_time column created by the ADK db session service.

@@ -32,7 +32,7 @@ uv run server
 The app connects to `localhost:5432` through the IAP tunnel, same as Docker Compose and Cloud Run.
 
 > [!IMPORTANT]
-> Requires `roles/iap.tunnelResourceAccessor` on your Google account.
+> Requires `roles/iap.tunnelResourceAccessor` on your Google account ([Bastion and IAP Tunnel: Developer Access](bastion.md#developer-access)).
 
 ## Select Agent Engine for Sessions
 

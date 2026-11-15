@@ -20,6 +20,7 @@ One root per env (`dev/`, `stage/`, `prod/`) over shared modules (`gcp/`, `githu
 
 - Overrides: `coalesce()` skips empty/null `TF_VAR_*`; null `docker_image` reuses the previous image; service URIs and CORS have no override (`docs/references/deployment.md` Runtime Configuration)
 - Shared proxy args, IAM layering, naming: `docs/references/deployment.md` Main Module and Resource Naming; `time_sleep` propagation: `docs/references/bootstrap.md` Extending the Main Module
+- **Deletion protection stays on for stage/prod** (instance `deletion_protection`; no bucket `force_destroy`, no engine `FORCE`): a teardown flips them with uncommitted edits (`docs/references/environment-teardown.md`, run via the `teardown-environment` skill). `ABANDON` (SQL user owns pg_cron objects) and `REMOVE_PEERING` (Cloud SQL holds the connection after deletion) stay on: neither guards data
 - `required_version` in each root stays a range; the exact pin is `.terraform-version` (root `AGENTS.md` Code Quality)
 
 ## Cloud Run Probes

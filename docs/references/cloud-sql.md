@@ -123,14 +123,11 @@ Partition expiry remains the right tool for time-keyed append-only stores the pr
 ### How it is provisioned (no application code)
 
 - **Flag:** `cloudsql.enable_pg_cron = on` in `terraform/main/database.tf`.
-- **Bootstrap:** the bastion's cloud-init writes `/etc/pg-cron-bootstrap.sh` and a oneshot systemd unit that runs it after the Auth Proxy is up. The script connects through the local proxy as the app SA (`cloudsqlsuperuser`), creates the extension in the `postgres` database (Cloud SQL pins `cron.database_name` there), and schedules the job into `agent_sessions` via `cron.schedule_in_database`. See `terraform/main/templates/bastion-cloud-init.yaml`.
-- **Idempotent:** COS re-runs cloud-init on every boot; `CREATE EXTENSION IF NOT EXISTS` is a no-op and the named job upserts, so reboots re-assert exactly one job. The job lives in the database, not on the bastion, so the bootstrap needs to succeed only once per database lifetime: a failed run on a later boot leaves the existing job intact, and the at-risk runs (first provision, post-edit replacement) are operator-attended moments where verification is the one `cron.job` query below.
-- **Ordering:** the bastion's cloud-init references `google_sql_user.app.name`, which transitively orders the bastion creation after the database and the IAM DB user. These intentional resource graph dependencies prevent the cloud-init bootstrap from running before `agent_sessions` exists, and avoids a `cron.schedule_in_database` error on a missing database.
-- **Replacement on change:** the bastion's rendered cloud-init is tracked by `terraform_data.bastion_user_data` and wired to the instance via `lifecycle.replace_triggered_by`, so editing the payload (retention, schedule, anything in the script) recreates the bastion gce instance rather than updating it in place. This mirrors the `ForceNew` behavior the provider gives the `metadata_startup_script` attribute on standard VMs, and for the same reason: an instance runs its startup script (or COS cloud-init) only on boot, so the metadata must be replaced, not patched, for a change to take effect. COS exposes cloud-init only through the in-place `user-data` metadata key with no force-replace convenience attribute, so the terraform_data + lifecycle strategy reconstructs that behavior explicitly.
+- **Bootstrap:** the bastion host creates the extension and schedules the job on boot. Script, ordering, idempotency, replacement on change, and the objects the app's database user ends up owning: [Bastion and IAP Tunnel: pg_cron Bootstrap](bastion.md#pg_cron-bootstrap).
 
 ### Changing retention or schedule
 
-Both are named constants at the top of the bootstrap script in `bastion-cloud-init.yaml` (`RETENTION_INTERVAL` and `CLEANUP_SCHEDULE`). Edit them and `terraform apply`; the bastion is recreated (see Replacement on change above) so cloud-init re-runs and re-asserts the job at the new value.
+Both are named constants at the top of the bootstrap script in `bastion-cloud-init.yaml` (`RETENTION_INTERVAL` and `CLEANUP_SCHEDULE`). Edit them and `terraform apply`; the bastion is recreated ([Bastion and IAP Tunnel: pg_cron Bootstrap](bastion.md#pg_cron-bootstrap)) so cloud-init re-runs and re-asserts the job at the new value.
 
 The default is 90 days. The floor is the backup window (7 days by default): retention shorter than that leaves a deleted session beyond what a backup could restore. 90 days clears the floor and sits past the 30-day default Cloud Logging retention, so the session database doubles as a recovery window for sessions that have aged off logs, while still bounding table growth. Shorten it if storage outweighs that window for your workload, or lengthen it for richer session histories worth keeping.
 
@@ -138,7 +135,7 @@ The default is 90 days. The floor is the backup window (7 days by default): rete
 
 Two surfaces expose job activity, and they carry different information, so a complete view uses both.
 
-`cron.job_run_details` (in-database, authoritative). Connect through the bastion tunnel (see [Docker Compose Workflow](docker-compose-workflow.md)) to the `postgres` database:
+`cron.job_run_details` (in-database, authoritative). Connect through the tunnel ([Bastion and IAP Tunnel](bastion.md)) to the `postgres` database:
 
 ```sql
 -- the scheduled job
