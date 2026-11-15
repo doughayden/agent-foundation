@@ -141,7 +141,7 @@ git tag -d "${PROMOTION}"
 
 If the release pull request has not merged, the promotion tag went out before that merge and sits on a commit that will never be the release commit. Leave the release tag to release-please rather than creating it by hand. Delete the promotion tag, merge the release pull request, and promote the release commit once its merge run passes stage ([Promote to Production](releasing.md#promote-to-production-production-mode)).
 
-**Fix when releasing without the App:** if the promotion tag marks your release pull request's merge commit, create the release tag with steps 2 and 3 of [Release Without the App](releasing.md#release-without-the-app), then use **Re-run failed jobs** on the failed run. The re-run checks out the repository again and finds the new tag. If it marks another commit, delete the promotion tag, then follow steps 2 to 4 there.
+**Fix when releasing without the App:** your release pull request has already merged, so skip the merge in step 2 of [Release Without the App](releasing.md#release-without-the-app) and run its lookup, then the tag commands in step 3. If the promotion tag marks that merge commit, use **Re-run failed jobs** on the failed run: the re-run checks out the repository again and finds the new tag. If it marks another commit, delete the promotion tag, then promote the release with step 4.
 
 **Fix when the release tag marks a different commit:** the promotion tag is on the wrong commit. Leave the release tag where it is, delete the promotion tag, and promote again with steps 2 and 3 of [Promote to Production](releasing.md#promote-to-production-production-mode), setting `VERSION=vX.Y.Z` in step 2 to the release you meant.
 
