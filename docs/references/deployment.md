@@ -257,7 +257,7 @@ gh pr create
 - VPC network + subnet + Private Services Access (Cloud SQL private IP)
 - Cloud NAT router (bastion outbound connectivity)
 - IAP firewall rules (SSH + SQL proxy port to bastion)
-- Bastion host (e2-micro, COS, Auth Proxy via cloud-init, dedicated SA with `roles/iam.serviceAccountTokenCreator` on app SA for impersonation). COS cloud-init opens port 5432 via iptables (default INPUT policy is DROP), configures `--address=0.0.0.0` (accept IAP tunnel from non-loopback), and `--impersonate-service-account=<app-sa-email>` (IAM database auth as app SA).
+- Bastion host (COS, Auth Proxy impersonating the app SA): [Bastion and IAP Tunnel](bastion.md)
 - Cloud Run Service (Auth Proxy sidecar + direct VPC egress)
 - Service Account (IAM identity for Cloud Run)
 - Cloud SQL instance (private IP only, session persistence via DatabaseSessionService)
@@ -271,7 +271,7 @@ gh pr create
 
 **Inputs:** All via `TF_VAR_*` environment variables from GitHub
 
-**Auth Proxy flags:** `local.cloud_sql_proxy_args` holds the flags shared by the Cloud Run sidecar and the bastion. The bastion-only flags (`--address=0.0.0.0`, `--impersonate-service-account`) and the iptables rule live in `templates/bastion-cloud-init.yaml`.
+**Auth Proxy flags:** `local.cloud_sql_proxy_args` holds the flags shared by the Cloud Run sidecar and the bastion. The bastion-only flags and the iptables rule live in `templates/bastion-cloud-init.yaml` ([Bastion and IAP Tunnel](bastion.md)).
 
 **IAM layering:** each environment has its own GCP project. Project-level WIF roles are same-project only and live in `terraform/bootstrap/module/gcp/`. Cross-project Artifact Registry reader grants for promotion live in the stage and prod bootstrap roots. App service account roles live in `terraform/main/main.tf`, and consumer-added WIF roles in `terraform/main/iam.tf`.
 

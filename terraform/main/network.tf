@@ -28,6 +28,7 @@ resource "google_service_networking_connection" "private_db" {
   network                 = google_compute_network.main.id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_db.name]
+  deletion_policy         = "REMOVE_PEERING"
 }
 
 # NAT for bastion outbound (pull proxy image, reach Cloud SQL Admin API)
