@@ -131,7 +131,6 @@ The `app` service publishes `127.0.0.1:5432:5432`, so a database client on your 
 psql "host=127.0.0.1 port=5432 user=<app-sa-email-without-.gserviceaccount.com> dbname=agent_sessions sslmode=disable"
 ```
 
-
 > [!NOTE]
 > The compose services publish on their default host ports (`8000` app, `5432` Postgres), all bound to `127.0.0.1`. If one is already in use on your host (a local Postgres on `5432` is the common case), `docker compose up` fails to bind. Remap the host side of the affected `ports:` entry (like `127.0.0.1:5433:5432`); the container-side port and the app's in-namespace `localhost:5432` path are unaffected.
 

@@ -87,11 +87,13 @@ ORDER BY 1;
 **Symptom:** the tunnel connects but queries fail or hang.
 
 1. Confirm the VM is running: `gcloud compute instances describe <bastion> --zone=<zone> --format='value(status)'`
-2. SSH in (see Developer Access for the roles): `gcloud compute ssh <bastion> --zone=<zone> --tunnel-through-iap`
-3. Check the proxy container and its logs: `docker ps`, then `docker logs cloud-sql-proxy`
-4. Check the host firewall accepts 5432: `sudo iptables -L INPUT -n | grep 5432` shows an `ACCEPT` rule
-5. Check the proxy listens on every interface: `sudo ss -tlnp | grep 5432` shows `*:5432`, not `127.0.0.1:5432`
-6. Check the bootstrap ran: `sudo journalctl -u pg-cron-bootstrap.service`
+2. Confirm the bastion service account still holds `roles/cloudsql.client`: `gcloud projects get-iam-policy <project> --flatten=bindings --filter='bindings.members:<bastion-sa-email>' --format='value(bindings.role)'` (the `bastion_service_account_email` output names the account)
+3. Confirm the Cloud SQL instance has a private IP on the environment's network: `gcloud sql instances describe <instance> --format='value(ipAddresses)'` lists a `PRIVATE` address, and `gcloud services vpc-peerings list --network=<network>` shows `services/servicenetworking.googleapis.com`
+4. SSH in (see Developer Access for the roles): `gcloud compute ssh <bastion> --zone=<zone> --tunnel-through-iap`
+5. Check the proxy container and its logs: `docker ps`, then `docker logs cloud-sql-proxy`
+6. Check the host firewall accepts 5432: `sudo iptables -L INPUT -n | grep 5432` shows an `ACCEPT` rule
+7. Check the proxy listens on every interface: `sudo ss -tlnp | grep 5432` shows `*:5432`, not `127.0.0.1:5432`
+8. Check the bootstrap ran: `sudo journalctl -u pg-cron-bootstrap.service`
 
 `InvalidAuthorizationSpecificationError: Cloud SQL IAM service account authentication failed` in the proxy logs means the bastion service account cannot impersonate the app service account: check its `roles/iam.serviceAccountTokenCreator` binding (`google_service_account_iam_member.bastion_impersonate_app`).
 
