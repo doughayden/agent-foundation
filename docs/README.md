@@ -39,6 +39,7 @@ Built for teams who need to move beyond prototypes and ship production AI agents
 ## Syncing Upstream Changes
 
 - [Template Management](template-management.md) - Syncing upstream agent-foundation changes
+- [Public Contract](public-contract.md) - What stays stable within a major version
 
 ## References
 

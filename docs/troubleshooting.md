@@ -124,28 +124,26 @@ gh api repos/:owner/:repo/branches/main/protection
 
 **Cause:** the promotion tag names a release tag that does not exist, or that marks a different commit. No prod deploy job starts (`Require Stage Success` still runs, since it needs only the workflow configuration).
 
+**Look up the failed tag first** and check the printed tag and commit. This takes the newest promotion tag on the remote; to fix an older one, replace the `PROMOTION=$(git for-each-ref ...)` line with `PROMOTION=prod-vX.Y.Z`. Run the delete commands below in the same shell:
+```bash
+git fetch origin --tags --force
+PROMOTION=$(git for-each-ref --sort=-creatordate --count=1 --format='%(refname:short)' 'refs/tags/prod-v*')
+git log -1 --format="${PROMOTION} marks: %h %s" "${PROMOTION}^{commit}"
+```
+
+Deleting the promotion tag needs a repository admin:
+```bash
+git push origin ":refs/tags/${PROMOTION}"
+git tag -d "${PROMOTION}"
+```
+
 **Fix when the release tag is missing:** release-please creates `vX.Y.Z` in the `Release` workflow run on the release pull request's merge commit. If that pull request merged and the promotion tag marks its merge commit, the run is still in progress or failed (an uninstalled App or a revoked private key): wait for it, or fix the App and re-run it, then use **Re-run failed jobs** on the failed promotion run.
 
-If the release pull request has not merged, the promotion tag went out before that merge and sits on a commit that will never be the release commit. Leave the release tag to release-please rather than creating it by hand. Delete the promotion tag (repository admin), merge the release pull request, and promote the release commit once its merge run passes stage ([Release a Version](releasing.md#promote-to-production-production-mode)).
-```bash
-git push origin :refs/tags/prod-v1.0.1
-git tag -d prod-v1.0.1
-```
+If the release pull request has not merged, the promotion tag went out before that merge and sits on a commit that will never be the release commit. Leave the release tag to release-please rather than creating it by hand. Delete the promotion tag, merge the release pull request, and promote the release commit once its merge run passes stage ([Promote to Production](releasing.md#promote-to-production-production-mode)).
 
-**Fix when releasing without the App:** if the promotion tag marks the commit you meant to release, create the release tag there, then use **Re-run failed jobs** on the failed run. The re-run checks out the repository again and finds the new tag ([Release Without the App](releasing.md#release-without-the-app)).
-```bash
-git tag -a v1.0.1 'prod-v1.0.1^{commit}' -m "Release v1.0.1"
-git push origin v1.0.1
-```
+**Fix when releasing without the App:** if the promotion tag marks your release pull request's merge commit, create the release tag with steps 2 and 3 of [Release Without the App](releasing.md#release-without-the-app), then use **Re-run failed jobs** on the failed run. The re-run checks out the repository again and finds the new tag. If it marks another commit, delete the promotion tag, then follow steps 2 to 4 there.
 
-**Fix when the release tag marks a different commit:** the promotion tag is on the wrong commit. Leave the release tag where it is, delete the promotion tag (repository admin), and recreate it on the release commit. Fetch the release tag first: `git fetch` never overwrites a local tag, so a stale local `v1.0.1` would rebuild the same mistake.
-```bash
-git fetch origin --force tag v1.0.1
-git push origin :refs/tags/prod-v1.0.1
-git tag -d prod-v1.0.1
-git tag -a prod-v1.0.1 'v1.0.1^{commit}' -m "Promote v1.0.1 to prod"
-git push origin prod-v1.0.1
-```
+**Fix when the release tag marks a different commit:** the promotion tag is on the wrong commit. Leave the release tag where it is, delete the promotion tag, and promote again with steps 2 and 3 of [Promote to Production](releasing.md#promote-to-production-production-mode), setting `VERSION=vX.Y.Z` in step 2 to the release you meant.
 
 ### Release Pull Request Has the Wrong Version or a Missing Entry
 

@@ -8,7 +8,7 @@ Opinionated, production-ready LLM Agent deployment with enterprise-grade infrast
 
 ## What is this?
 
-A comprehensive template for building and deploying LLM Agents, including those built using Google Agent Development Kit (ADK) to production. This is a complete, battle-tested foundation with automated CI/CD, managed state persistence, custom observability, and proven cloud infrastructure.
+A template for managing an LLM agent's lifecycle on Google Cloud: build, test, evaluate, deploy, promote and observe it. It ships automated CI/CD, managed state persistence, custom observability and proven cloud infrastructure, with a working Google Agent Development Kit (ADK) agent as the example you replace with your own. The [Public Contract](docs/public-contract.md) lists the surfaces that stay stable within a major version.
 
 Built for teams who need to move beyond prototypes and ship production AI agents with confidence.
 
@@ -71,3 +71,4 @@ See [docs/](docs/) for complete documentation.
 
 ### Syncing Upstream Changes
 - **[Template Management](docs/template-management.md)** - Syncing upstream agent-foundation changes
+- **[Public Contract](docs/public-contract.md)** - What stays stable within a major version
