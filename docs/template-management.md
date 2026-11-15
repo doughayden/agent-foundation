@@ -17,6 +17,8 @@ This template uses **transparent git-based syncing** rather than opaque automati
 - **Flexible:** Resolve conflicts your way
 - **No magic:** Standard git commands, no proprietary tools
 
+**What a sync can change:** a sync within one major version (like `v1.2.0` to `v1.5.0`) changes no surface in the [Public Contract](public-contract.md): settings, Terraform interface, GitHub configuration, required checks, eval gate and documented commands keep working. Expect conflicts in agent code, which is the template's example. A new major version lists each breaking change and its migration steps in its `CHANGELOG.md` entry; apply them during the sync.
+
 > [!TIP]
 > The `/sync-foundation` skill (`.claude/skills/sync-foundation/SKILL.md`) provides an interactive, AI-assisted version of this workflow with phase-ordered review, IDE diffs, and per-file checkpoints.
 

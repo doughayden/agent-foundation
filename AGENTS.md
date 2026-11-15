@@ -31,7 +31,7 @@ Read the matching file before working in its directory. Claude Code also loads i
 
 - **Never commit to main** (branch protection enforced). Workflow: feature branch → PR → merge.
 - **Never bump the version or edit released `CHANGELOG.md` entries by hand while the release App is set up:** release-please owns the version in `pyproject.toml`, `uv.lock` and `.release-please-manifest.json` and every new changelog entry. Without the App, follow `docs/releasing.md` Release Without the App.
-- **Commit and PR titles are release input:** the squash title becomes the changelog entry and picks the bump. Type → section map in `release-please-config.json`; unmapped types (`build`, `docs`, `chore`, ...) get no entry; retitle a dependency bump that changes what ships to `fix(deps)` at merge. A change forks rely on (settings, Terraform interface, required checks, documented commands) uses a visible type, plus `!` and a `BREAKING CHANGE:` footer when it breaks.
+- **Commit and PR titles are release input:** the squash title becomes the changelog entry and picks the bump. Type → section map in `release-please-config.json`; unmapped types (`build`, `docs`, `chore`, ...) get no entry; retitle a dependency bump that changes what ships to `fix(deps)` at merge. **Breaking = changes a surface in `docs/public-contract.md` Covered** (remove, rename or change meaning): mark it `!` plus a `BREAKING CHANGE:` footer with the migration steps, under a visible type. Agent code (`agent.py`, `tools.py`, `callbacks.py`, `prompt.py`, `plugins.py`, shipped eval cases) is illustrative and never breaking; an additive change to a covered surface is a `feat`. New covered surface → add it to the contract in the same PR.
 - **Never lose `terraform/bootstrap/pre/terraform.tfstate`** (pre-bootstrap is local state only).
 
 ## Template Initialization (One-Time)
@@ -67,20 +67,27 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 > [!NOTE]
 > Python file references use basenames only: the single package under `src/` makes them unambiguous (`Glob src/*/<basename>`), and forks never rename paths here after `init_template.py`.
 
+**Replace the example agent** (illustrative, not in the public contract: changes here never break consumers):
+
 | To... | Edit | Notes |
 |---|---|---|
 | Add a custom tool | define `func` in `tools.py` + register in `agent.py` | `root_agent = LlmAgent(..., tools=[..., FunctionTool(func)])` |
-| Add a plugin | `build_plugins()` in `plugins.py` | Returns the App's full plugin list; `agent.py` passes it as `App.plugins`. **Order matters**: ADK runs plugins in list order and a non-`None` return skips later plugins and the agent's callbacks. Cloud Run detection reads `K_CONFIGURATION` directly, never `ServerEnv` (`agent.py` stays settings-free for ADK's loader) |
+| Add a plugin | `build_plugins()` in `plugins.py` | Returns the App's full plugin list; `agent.py` passes it as `App.plugins`. **Order matters**: ADK runs plugins in list order and a non-`None` return skips later plugins and the agent's callbacks. Cloud Run detection reads `K_CONFIGURATION` directly, never `ServerEnv` (`agent.py` stays settings-free for ADK's loader). The function is illustrative; the content strategy it implements (no user content on Cloud Run stdout) is contract |
 | Add a callback | `callbacks.py` | ADK callbacks return `None` to observe, or a modified value to mutate/short-circuit — choose per intent |
 | Customize agent instructions | `prompt.py` | InstructionProvider (signature and test pattern: `tests/AGENTS.md` ADK patterns). **Keep per-turn-volatile values (time, request IDs) out of it**: the string is the cached prefix, so volatility busts prompt caching every turn; expose time via a tool (`get_current_time`) |
+| Change the model call timeout | `ROOT_AGENT_MODEL_TIMEOUT_MS` in `agent.py`; judge criteria's `judge_model_config.http_options.timeout` in `full_eval_config.json` and `user_sim_config.json` | Per-call cap (ms) in evals AND the deployed service, never retried. Size it per `docs/development.md` Model Call Timeout, not a template default; eval retries: `docs/references/agent-evals.md` Timeouts and retries |
+| Swap the LLM | `ROOT_AGENT_MODEL` in `agent.py` | A model string covers Gemini/Claude/Vertex-hosted; other connectors need the matching ADK extra and a connector instance ([ADK models](https://adk.dev/agents/models/)) |
+
+**Contract surfaces** (covered by `docs/public-contract.md`: a change that removes, renames or changes the meaning of one is breaking):
+
+| To... | Edit | Notes |
+|---|---|---|
 | Add an agent eval case | `tests/eval/data/*.evalset.json` | Mark the test `deterministic` (PR gate, `test_config.json`) or `judge` (merge gate, `full_eval_config.json`); user-sim files have no gate. Validate non-flaky: run `uv run pytest tests/eval -m "deterministic"` ≥3 times. Authoring and commands: `docs/references/agent-evals.md` |
 | Add an env var | field on `ServerEnv` in `config.py` (name = env var lowercased) + `docs/environment-variables.md` | Documentation is mandatory: see Environment Variables below |
 | Enable a GCP API | `terraform/main/services.tf` | `google_project_service`; downstream resources `depends_on = [time_sleep.service_enablement_propagation["api.googleapis.com"]]` |
 | Grant a WIF role | `terraform/main/iam.tf` | `google_project_iam_member`; downstream resources `depends_on = [time_sleep.wif_iam_propagation["roles/example"]]` |
 | Tune or activate alerts | `alert_thresholds` / `alert_notification_channels` in `terraform/main/monitoring.tf` | Dry-run by default (no channel). Conditions read native Cloud Run metrics only, each mirroring a Metrics-tab chart: `docs/observability.md` Alerting |
 | Override runtime config | GitHub Environment Variables → `TF_VAR_*` | See `coalesce()` call sites in `terraform/main/` for current overridable surface |
-| Change the model call timeout | `ROOT_AGENT_MODEL_TIMEOUT_MS` in `agent.py`; judge criteria's `judge_model_config.http_options.timeout` in `full_eval_config.json` and `user_sim_config.json` | Per-call cap (ms) in evals AND the deployed service, never retried. Size it per `docs/development.md` Model Call Timeout, not a template default; eval retries: `docs/references/agent-evals.md` Timeouts and retries |
-| Swap the LLM | `ROOT_AGENT_MODEL` in `agent.py` | A model string covers Gemini/Claude/Vertex-hosted; other connectors need the matching ADK extra and a connector instance ([ADK models](https://adk.dev/agents/models/)) |
 | Add a CI lane for a subproject | new `.github/workflows/ci-<name>.yml` (copy `ci.yml`) | Unique top-level `name:`, scoped filters, new `<Name> / status` in branch protection: `docs/references/cicd.md` Subproject Builds |
 | Add a subproject Docker image to the deploy pipeline | new `build-<name>` job in `ci-cd.yml` calling `docker-build.yml` with `image_name`/`context`; mirror the promote/resolve calls and pass the digest to `terraform-plan-apply.yml` as a new `TF_VAR_*` | Add the context path to the `changes` job's `deploy` filter or the job never fires. `.dockerignore` is read from the context root, so add `<context>/.dockerignore` if needed. Pattern and registry constraint: `docs/references/cicd.md` Subproject Builds |
 

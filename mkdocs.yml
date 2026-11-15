@@ -65,6 +65,7 @@ nav:
     - Troubleshooting: troubleshooting.md
   - Template:
     - Syncing Upstream Changes: template-management.md
+    - Public Contract: public-contract.md
   - Reference:
     - Overview: references/README.md
     - Infrastructure:
