@@ -30,7 +30,7 @@ In dev-only mode, that is the whole release. In production mode, promote it next
 A repository admin promotes a release by pushing `prod-vX.Y.Z` on the commit its `vX.Y.Z` tag marks.
 
 1. Wait for the release commit's merge run to pass `Apply Stage`, `Smoke Stage` and `Judge Eval`. A promotion pushed earlier fails `Require Stage Success` and needs a re-run once stage is green
-2. Look up the latest release on `main` and check the printed version and commit. To promote a different release, set `VERSION=vX.Y.Z` instead:
+2. Look up the latest release on `main` and check the printed version and commit. To promote a different release, replace the `VERSION=$(git describe ...)` line with `VERSION=vX.Y.Z`:
    ```bash
    git fetch origin main --tags
    VERSION=$(git describe --tags --abbrev=0 --match 'v[0-9]*' origin/main)
