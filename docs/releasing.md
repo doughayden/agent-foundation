@@ -133,9 +133,9 @@ release-please writes one changelog entry per commit on `main`, using its title.
 The mapping is `changelog-sections` in `release-please-config.json`; a type it does not list gets no entry. Documentation ships with the change it describes, so that change's entry covers it. When every commit since the last release is unlisted, release-please opens no release pull request.
 
 - **Dependency bumps:** Dependabot titles them `build(deps)`, so they are unlisted. When a bump changes what ships, like an ADK upgrade or a security fix, retitle it `fix(deps): ...` in the squash merge dialog so it gets an entry and a release
-
 - **Breaking changes:** a `!` after the type or scope (`feat!:`, `feat(api)!:`) or a `BREAKING CHANGE:` footer adds the change to a breaking-changes section at the top of the version's notes, with the footer text as the description. Put the migration steps in that footer
 - **Correct a merged entry:** edit the merged pull request's body and add a `BEGIN_COMMIT_OVERRIDE` block with the replacement commit messages, then re-run the latest `Release` workflow run (Actions tab) to rebuild the release pull request. This also fixes a release pull request whose `CHANGELOG.md` fails a spelling or whitespace hook because of a typo in a merged title ([release-please: How can I fix release notes?](https://github.com/googleapis/release-please#how-can-i-fix-release-notes))
+- **Never write the override marker in a pull request body:** release-please treats the marker anywhere in a merged pull request's body as an override, even inside a sentence or code span, and replaces that pull request's commit with the text after it. Prose rarely parses as a commit, so the pull request silently loses its entry and its version bump. Describe it as "the commit override marker" instead. To fix a merged body, remove the marker or reword around it, then re-run the latest `Release` workflow run ([release-please `preprocessCommitMessage`](https://github.com/googleapis/release-please/blob/main/src/commit.ts))
 - **Choose the version:** a `Release-As: X.Y.Z` footer on a commit merged to `main` makes the next release that version
 
 > [!NOTE]
