@@ -181,7 +181,7 @@ See [Observability](observability.md) for query examples and trace analysis.
 
 **Main Module** (`terraform/main/`):
 - VPC networking: VPC + subnet + Private Services Access, Cloud NAT, IAP firewall rules
-- Bastion host: e2-micro (COS), Auth Proxy via cloud-init, dedicated SA that impersonates app SA (`--impersonate-service-account`) for IAM database auth
+- Bastion host: e2-micro (COS), Auth Proxy that impersonates the app SA for developer database access ([Bastion and IAP Tunnel](references/bastion.md))
 - Application deployment: Cloud Run (Auth Proxy sidecar + direct VPC egress), app SA, Cloud SQL Postgres (private IP), Agent Engine, GCS bucket
 - Remote state (bucket created by bootstrap), runs automatically in CI/CD
 - Extend with custom GCP APIs (`services.tf`) and WIF IAM roles (`iam.tf`) via Pull Requests — see [Extending the Main Module](references/bootstrap.md#extending-the-main-module)

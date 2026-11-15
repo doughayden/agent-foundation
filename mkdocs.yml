@@ -73,6 +73,7 @@ nav:
       - Manual Environment Protection: references/manual-environment-protection.md
       - Deployment Modes: references/deployment.md
       - CI/CD Workflows: references/cicd.md
+      - Bastion and IAP Tunnel: references/bastion.md
       - Cloud SQL Scaling: references/cloud-sql.md
     - Security:
       - Security Posture: references/security-posture.md

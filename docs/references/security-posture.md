@@ -110,6 +110,7 @@ The bastion's sole purpose is running the Auth Proxy for developer access to Clo
 
 - Source: `terraform/main/bastion.tf` (COS image, no public IP, metadata)
 - Source: `terraform/main/templates/bastion-cloud-init.yaml` (iptables, systemd proxy service)
+- Reference: [Bastion and IAP Tunnel](bastion.md)
 - GCP docs: [COS features and benefits](https://cloud.google.com/container-optimized-os/docs/concepts/features-and-benefits), [COS security overview](https://cloud.google.com/container-optimized-os/docs/concepts/security) (verified boot, read-only rootfs, default-deny firewall), [COS automatic updates](https://cloud.google.com/container-optimized-os/docs/concepts/auto-update) (active-passive partition scheme), [COS host firewall](https://cloud.google.com/container-optimized-os/docs/how-to/firewall), [Cloud Run execution environments](https://cloud.google.com/run/docs/about-execution-environments)
 - Guide: [Infrastructure](../infrastructure.md)
 

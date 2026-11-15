@@ -104,7 +104,7 @@ Docker Compose uses an IAP tunnel container to reach the bastion host, which run
 App container (localhost:5432) ──► IAP tunnel container ──► IAP ──► Bastion VM (Auth Proxy) ──► Cloud SQL private IP
 ```
 
-The bastion Auth Proxy binds to `0.0.0.0` (not loopback) to accept IAP tunnel connections arriving from outside the loopback interface. It also uses `--impersonate-service-account=<app-sa-email>` to authenticate to Cloud SQL as the app SA, since the bastion runs under its own dedicated SA. These flags are bastion-specific — the Cloud Run sidecar uses the defaults (loopback binding, runs as app SA directly).
+What runs on the bastion, its firewall rules and the identity the tunnel uses in the database: [Bastion and IAP Tunnel](bastion.md).
 
 **Restart policies** differ by role:
 - **App container (`restart: no`):** Crash once, stay down. Keeps stack trace output clean for debugging — no restart noise to scroll past.
@@ -117,7 +117,7 @@ The bastion Auth Proxy binds to `0.0.0.0` (not loopback) to accept IAP tunnel co
 
 **Credentials:** Mounts `~/.config/gcloud` to `/gcloud-config` with `CLOUDSDK_CONFIG=/gcloud-config` (decouples from container home directory). IAP tunnel requires full gcloud CLI config, not just Application Default Credentials.
 
-**Developer IAM prerequisite:** `roles/iap.tunnelResourceAccessor` on your Google account. Without this role, the IAP tunnel fails to connect.
+**Developer IAM prerequisite:** `roles/iap.tunnelResourceAccessor` on your Google account ([Bastion and IAP Tunnel: Developer Access](bastion.md#developer-access)).
 
 **Port:** `5432` on the app container's localhost. The app connects to `localhost:5432` identically to Cloud Run, where the Auth Proxy sidecar also listens on the same address.
 
@@ -125,13 +125,12 @@ The bastion Auth Proxy binds to `0.0.0.0` (not loopback) to accept IAP tunnel co
 
 ### Connecting a local DB client
 
-The `app` service publishes `127.0.0.1:5432:5432`, so a database client on your host (psql, a GUI, migration tooling) can reach Cloud SQL through the same tunnel: the published port forwards into the app namespace where the IAP tunnel binds `0.0.0.0:5432`, then on through the bastion Auth Proxy. Connect as the app SA: the bastion proxy impersonates it (`--impersonate-service-account`) and logs in with IAM database authentication (`--auto-iam-authn`), so no password is needed:
+The `app` service publishes `127.0.0.1:5432:5432`, so a database client on your host (psql, a GUI, migration tooling) can reach Cloud SQL through the same tunnel: the published port forwards into the app namespace where the IAP tunnel binds `0.0.0.0:5432`, then on through the bastion Auth Proxy. Connect as the app's database user, with no password ([Bastion and IAP Tunnel: Identity in the Database](bastion.md#identity-in-the-database)):
 
 ```bash
 psql "host=127.0.0.1 port=5432 user=<app-sa-email-without-.gserviceaccount.com> dbname=agent_sessions sslmode=disable"
 ```
 
-`sslmode=disable` is the setting the proxy expects (the bastion's own bootstrap connects the same way): the Auth Proxy encrypts the connection to Cloud SQL, and the laptop-to-bastion hop runs inside the IAP tunnel. The same `roles/iap.tunnelResourceAccessor` prerequisite applies.
 
 > [!NOTE]
 > The compose services publish on their default host ports (`8000` app, `5432` Postgres), all bound to `127.0.0.1`. If one is already in use on your host (a local Postgres on `5432` is the common case), `docker compose up` fails to bind. Remap the host side of the affected `ports:` entry (like `127.0.0.1:5433:5432`); the container-side port and the app's in-namespace `localhost:5432` path are unaffected.
