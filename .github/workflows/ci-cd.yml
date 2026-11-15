@@ -55,7 +55,7 @@ jobs:
       deploy: ${{ steps.filter.outputs.deploy }}
       eval: ${{ steps.filter.outputs.eval }}
       # A release-please PR only bumps the version and changelog; its merge run builds and plans
-      release_pr: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.type == 'Bot' && startsWith(github.head_ref, 'release-please--') }}
+      release_pr: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.type == 'Bot' && github.event.sender.type == 'Bot' && startsWith(github.head_ref, 'release-please--') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d  # v4.0.3

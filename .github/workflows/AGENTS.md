@@ -21,7 +21,7 @@ Standalone `release.yml` (not called by the orchestrator): release-please only, 
 
 ## Required Checks
 
-Standalone `ci.yml` (not called by the orchestrator). Branch protection requires `CI / status`, an always-run sentinel over `code-quality` (unfiltered, `persist-credentials: false` since hooks run third-party code) and the path-gated `integration` and `agent-eval` jobs. **Release-please PRs** (`release_pr`: bot author AND `release-please--` branch; never the branch alone) skip `integration`, `agent-eval` and `ci-cd.yml`'s `build` (so `dev-plan`); the merge run is unchanged. Job detail: `docs/references/cicd.md` ci.yml.
+Standalone `ci.yml` (not called by the orchestrator). Branch protection requires `CI / status`, an always-run sentinel over `code-quality` (unfiltered, `persist-credentials: false` since hooks run third-party code) and the path-gated `integration` and `agent-eval` jobs. **Release-please PRs** (`release_pr`: bot author AND bot sender AND `release-please--` branch; never the branch alone, so a human push runs every check) skip `integration`, `agent-eval` and `ci-cd.yml`'s `build` (so `dev-plan`); the merge run is unchanged. Job detail: `docs/references/cicd.md` ci.yml.
 
 ## Workflow Patterns
 
