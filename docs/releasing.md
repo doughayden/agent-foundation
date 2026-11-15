@@ -4,51 +4,15 @@ Cut releases with release-please, promote them to production, and ship hotfixes.
 
 ## How Releases Work
 
-`.github/workflows/release.yml` runs [release-please](https://github.com/googleapis/release-please) on every push to `main`, using a token from a GitHub App you create once ([One-Time Setup](#one-time-setup-github-app)).
+`.github/workflows/release.yml` runs [release-please](https://github.com/googleapis/release-please) on every push to `main`, using a token from a GitHub App you create once ([One-Time Setup](#one-time-setup-github-app)). Without the App, cut releases by hand ([Release Without the App](#release-without-the-app)).
 
-- **The release pull request:** release-please keeps one pull request open, titled like `chore(main): release X.Y.Z`. It shows the next version and the changelog entries the release will add, and release-please updates it on every push to `main`. The open pull request takes the place of an `[Unreleased]` changelog section: to see what the next release contains, open it.
+- **The release pull request:** release-please keeps one pull request open, titled like `chore(main): release X.Y.Z`, and updates it on every push to `main`. It sets the version in `pyproject.toml`, `uv.lock` and `.release-please-manifest.json` and adds the version's entries to `CHANGELOG.md`. It takes the place of an `[Unreleased]` changelog section: to see what the next release contains, open it.
 - **The version:** release-please reads the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) titles merged since the last release. A `fix` bumps the patch version, a `feat` the minor version, and a breaking change the major version. Before 1.0.0, a breaking change bumps the minor version instead (`bump-minor-pre-major` in `release-please-config.json`).
-- **Merging it:** release-please tags `vX.Y.Z` on the squash commit and publishes a GitHub Release with the same notes. The `v*` tag deploys nothing.
+- **Merging it:** release-please tags `vX.Y.Z` on the squash commit and publishes an immutable GitHub Release with the same notes. The `v*` tag deploys nothing.
 - **The release commit deploys like any merge:** it changes `pyproject.toml` and `uv.lock`, so it runs the normal merge pipeline (dev in dev-only mode, dev and stage in production mode). That merge run makes the release promotable to prod.
 - **`uv.lock`:** release-please bumps `version` in `pyproject.toml` but not the project's own entry in `uv.lock`, which would fail `uv sync --locked`. An `extra-files` TOML entry in `release-please-config.json` bumps that one version line in the same commit, the workaround from [release-please#2561](https://github.com/googleapis/release-please/issues/2561). Once [release-please#2693](https://github.com/googleapis/release-please/pull/2693) ships, the Python strategy does this itself and the entry can go.
 
 Configuration lives in `release-please-config.json` (release type, changelog sections, `uv.lock` entry) and `.release-please-manifest.json` (the last released version).
-
-## One-Time Setup (GitHub App)
-
-release-please needs a GitHub App token instead of the default `GITHUB_TOKEN`: a pull request opened or updated with `GITHUB_TOKEN` starts no workflow runs, so the release pull request's required checks never report and it can never merge ([release-please-action: Other Actions on Release Please PRs](https://github.com/googleapis/release-please-action#other-actions-on-release-please-prs)). An App token is short-lived and not tied to a person.
-
-Register the App, then store its Client ID and private key, following [create-github-app-token: Usage](https://github.com/actions/create-github-app-token#usage). The template needs these settings:
-
-1. **Repository permissions:** Contents, Issues and Pull requests, all Read and write. Metadata sets itself to Read-only. Leave every other permission at No access.
-2. **Webhook:** uncheck Active. The App only mints tokens.
-3. **Installation:** choose "Only on this account", create the App, then open Install App and install it on this repository only. Registering the App is not enough: the token request fails until the App is installed.
-4. **Variable and secret:** store the Client ID (it starts with `Iv`; the numeric App ID is a different value) and a generated private key under the names `release.yml` reads:
-   ```bash
-   gh variable set RELEASE_APP_CLIENT_ID --body "<client-id>"
-   gh secret set RELEASE_APP_PRIVATE_KEY < <downloaded-key>.pem
-   ```
-   Delete the downloaded `.pem` file afterwards. GitHub generates a new key whenever you need one.
-5. **Immutable releases:** enable them in Settings → General → Releases, or run:
-   ```bash
-   gh api -X PUT repos/<owner>/<repo>/immutable-releases
-   ```
-
-> [!NOTE]
-> Without `RELEASE_APP_CLIENT_ID`, the release job is skipped. A fork without the App sees no failed runs and gets no releases, so it cuts them by hand: [Release Without the App](#release-without-the-app).
-
-### Release Without the App
-
-Promotion only needs a `vX.Y.Z` tag on a commit whose merge run deployed stage, so a release can be cut by hand:
-
-1. In a pull request, set `version` in `pyproject.toml` and `.release-please-manifest.json`, run `uv lock`, and add the version's entries to `CHANGELOG.md`. Keeping the manifest current lets release-please continue from this version if you install the App later. The change to `pyproject.toml` and `uv.lock` makes the merge run deploy, so the merge commit becomes promotable
-2. Merge it, then tag the merge commit and push the tag. The `v*` tag deploys nothing:
-   ```bash
-   git fetch origin main
-   git tag -a vX.Y.Z <merge-commit> -m "Release vX.Y.Z"
-   git push origin vX.Y.Z
-   ```
-3. In production mode, promote it with the same steps as a release-please release ([Promote to Production](#promote-to-production-production-mode))
 
 ## Cut a Release
 
@@ -56,32 +20,31 @@ Promotion only needs a `vX.Y.Z` tag on a commit whose merge run deployed stage, 
 2. Wait for its required checks, then squash-merge it. Only `Code Quality and Tests` and the `CI / status` sentinel run: the integration lane, the agent eval and the pull request build and plan skip, since the merge run builds, evaluates and deploys the release commit anyway ([CI/CD Workflows: ci.yml](references/cicd.md#ciyml)). The release pull request is generated, so skip editing its title or body: release-please rewrites both on the next push to `main`
 3. The `Release` workflow run on the merge commit tags `vX.Y.Z`, publishes the GitHub Release, and relabels the pull request `autorelease: tagged`
 
-A merge produces:
-
-- **Tag:** `vX.Y.Z` on the squash commit
-- **GitHub Release:** immutable, with the version's changelog entries as its notes
-- **Changelog:** the new version's entries at the top of `CHANGELOG.md`, and the version in `pyproject.toml`, `uv.lock` and `.release-please-manifest.json`
-
-In dev-only mode, that is the whole release: the merge run deploys the release commit to dev like any other merge.
+In dev-only mode, that is the whole release. In production mode, promote it next.
 
 ## Promote to Production (Production Mode)
 
 > [!IMPORTANT]
 > The approval gate needs reviewers: set `prod_apply_reviewer_users` or `prod_apply_reviewer_teams` in `terraform/bootstrap/prod/terraform.tfvars` and apply the prod bootstrap root. See [Protection Strategies](references/protection-strategies.md#environment-protection-automated).
 
-A production release is two tags on one commit: `vX.Y.Z`, which release-please creates when the release pull request merges, and `prod-vX.Y.Z`, which promotes that commit to prod.
+A repository admin promotes a release by pushing `prod-vX.Y.Z` on the commit its `vX.Y.Z` tag marks.
 
 1. Wait for the release commit's merge run to pass `Apply Stage`, `Smoke Stage` and `Judge Eval`. A promotion pushed earlier fails `Require Stage Success` and needs a re-run once stage is green
-2. Promote it with a second tag on the same commit (repository admin). Push each promotion tag on its own, since GitHub starts no workflow when more than three tags arrive in one push:
+2. Look up the latest release on `main` and check the printed version and commit. To promote a different release, replace the `VERSION=$(git describe ...)` line with `VERSION=vX.Y.Z`:
    ```bash
-   git fetch --tags
-   git tag -a prod-vX.Y.Z 'vX.Y.Z^{commit}' -m "Promote vX.Y.Z to prod"
-   git push origin prod-vX.Y.Z
+   git fetch origin main --tags
+   VERSION=$(git describe --tags --abbrev=0 --match 'v[0-9]*' origin/main)
+   git log -1 --format="Promote ${VERSION} to prod: %h %s" "${VERSION}^{commit}"
    ```
-   The push starts the prod jobs, and fails at metadata extraction unless the tag has the form `prod-vX.Y.Z` and `vX.Y.Z` marks the same commit. Only commits that contain the `prod-v*` pipeline can be promoted; for an older build, use a Cloud Run traffic split ([Rollback](#rollback)).
-3. Monitor the workflow: Actions tab → CI/CD Pipeline
-4. **Approved reviewer:** Actions → prod-apply job → Review deployments → Approve
-5. Verify the production deployment
+3. Tag and push in the same shell:
+   ```bash
+   git tag -a "prod-${VERSION}" "${VERSION}^{commit}" -m "Promote ${VERSION} to prod"
+   git push origin "prod-${VERSION}"
+   ```
+   Push one promotion tag at a time: GitHub starts no workflow when more than three tags arrive in one push. The run fails at metadata extraction unless the tag has the form `prod-vX.Y.Z` and `vX.Y.Z` marks the same commit. Only commits that contain the `prod-v*` pipeline can be promoted; for an older build, use a Cloud Run traffic split ([Rollback](#rollback))
+4. Monitor the workflow: Actions tab → CI/CD Pipeline
+5. **Approved reviewer:** Actions → prod-apply job → Review deployments → Approve
+6. Verify the production deployment
 
 ## Hotfixes and Rollback
 
@@ -140,6 +103,45 @@ The mapping is `changelog-sections` in `release-please-config.json`; a type it d
 
 > [!NOTE]
 > release-please only adds entries for new versions. Entries for releases before it took over stay as they were written.
+
+## One-Time Setup (GitHub App)
+
+release-please needs a GitHub App token instead of the default `GITHUB_TOKEN`: a pull request opened or updated with `GITHUB_TOKEN` starts no workflow runs, so the release pull request's required checks never report and it can never merge ([release-please-action: Other Actions on Release Please PRs](https://github.com/googleapis/release-please-action#other-actions-on-release-please-prs)). An App token is short-lived and not tied to a person.
+
+Register the App, then store its Client ID and private key, following [create-github-app-token: Usage](https://github.com/actions/create-github-app-token#usage). The template needs these settings:
+
+1. **Repository permissions:** Contents, Issues and Pull requests, all Read and write. Metadata sets itself to Read-only. Leave every other permission at No access.
+2. **Webhook:** uncheck Active. The App only mints tokens.
+3. **Installation:** choose "Only on this account", create the App, then open Install App and install it on this repository only. Registering the App is not enough: the token request fails until the App is installed.
+4. **Variable and secret:** store the Client ID (it starts with `Iv`; the numeric App ID is a different value) and a generated private key under the names `release.yml` reads:
+   ```bash
+   gh variable set RELEASE_APP_CLIENT_ID --body "<client-id>"
+   gh secret set RELEASE_APP_PRIVATE_KEY < <downloaded-key>.pem
+   ```
+   Delete the downloaded `.pem` file afterwards. GitHub generates a new key whenever you need one.
+5. **Immutable releases:** enable them in Settings → General → Releases, or run:
+   ```bash
+   gh api -X PUT repos/<owner>/<repo>/immutable-releases
+   ```
+
+## Release Without the App
+
+Without `RELEASE_APP_CLIENT_ID`, the release job is skipped: a fork without the App sees no failed runs and gets no releases. Promotion only needs a `vX.Y.Z` tag on a commit whose merge run deployed stage, so cut the release by hand:
+
+1. In a pull request, set `version` in `pyproject.toml` and `.release-please-manifest.json`, run `uv lock`, and add the version's entries to `CHANGELOG.md`. Keeping the manifest current lets release-please continue from this version if you install the App later. The change to `pyproject.toml` and `uv.lock` makes the merge run deploy, so the merge commit becomes promotable
+2. Merge it, then look up the version and the merge commit from the manifest on `main`, and check that the printed commit is your release pull request:
+   ```bash
+   git fetch origin main
+   VERSION=v$(git show origin/main:.release-please-manifest.json | jq -r '."."')
+   COMMIT=$(git log -1 --format=%H origin/main -- .release-please-manifest.json)
+   git log -1 --format="Release ${VERSION}: %h %s" "${COMMIT}"
+   ```
+3. Tag the commit and push the tag in the same shell:
+   ```bash
+   git tag -a "${VERSION}" "${COMMIT}" -m "Release ${VERSION}"
+   git push origin "${VERSION}"
+   ```
+4. In production mode, promote it ([Promote to Production](#promote-to-production-production-mode))
 
 ## Immutable Releases
 
