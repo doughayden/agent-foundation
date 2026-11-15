@@ -177,14 +177,25 @@ cmd_wait_subnet() {
 
 cmd_verify() {
   require_prepared
-  local p n left=0; p=$(project)
+  local p n left=0 failed=0; p=$(project)
   n=$(tf state list | wc -l | tr -d ' '); echo "state resources: $n"; [ "$n" -eq 0 ] || left=1
-  check() { local what="$1" out; shift; out=$("$@" 2>/dev/null || true); echo "$what: ${out:-none}"; [ -z "$out" ] || left=1; }
-  check "cloud sql instances" gcloud sql instances list --project "$p" --format='value(name)'
-  check "cloud run services" gcloud run services list --project "$p" --format='value(metadata.name)'
-  check "global addresses" gcloud compute addresses list --global --project "$p" --format='value(name)'
-  check "artifact buckets" sh -c "gcloud storage buckets list --project '$p' --format='value(name)' | grep artifact-service"
-  check "non-default networks" sh -c "gcloud compute networks list --project '$p' --format='value(name)' | grep -vx default"
+  # A lookup that fails must not read as "none": report it and withhold TORN_DOWN
+  check() {
+    local what="$1" pattern="$2" out; shift 2
+    if ! out=$("$@" 2>&1); then
+      echo "$what: LOOKUP FAILED: $(echo "$out" | head -1)"; failed=1; return
+    fi
+    # A pattern of !NAME drops lines equal to NAME; any other pattern keeps matching lines
+    if [[ "$pattern" == !* ]]; then out=$(echo "$out" | grep -vx "${pattern#!}" || true)
+    else out=$(echo "$out" | grep -E "$pattern" || true); fi
+    echo "$what: ${out:-none}"; [ -z "$out" ] || left=1
+  }
+  check "cloud sql instances" '.' gcloud sql instances list --project "$p" --format='value(name)'
+  check "cloud run services" '.' gcloud run services list --project "$p" --format='value(metadata.name)'
+  check "global addresses" '.' gcloud compute addresses list --global --project "$p" --format='value(name)'
+  check "artifact buckets" 'artifact-service' gcloud storage buckets list --project "$p" --format='value(name)'
+  check "non-default networks" '!default' gcloud compute networks list --project "$p" --format='value(name)'
+  if [ "$failed" -eq 1 ]; then echo "VERDICT: UNVERIFIED (a lookup failed: fix access and re-run verify)"; return 1; fi
   if [ "$left" -eq 0 ]; then echo "VERDICT: TORN_DOWN"; else echo "VERDICT: RESOURCES_REMAIN"; return 1; fi
 }
 

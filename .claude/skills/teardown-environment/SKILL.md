@@ -44,6 +44,7 @@ $S cleanup --env stage
 | | `FAILED` | Stop. Report each `Error` line; match it against the doc's blocker table |
 | `verify` | `TORN_DOWN` | `cleanup` |
 | | `RESOURCES_REMAIN` | Report what is left |
+| | `UNVERIFIED` | A lookup failed (often expired credentials); fix access and re-run `verify` before reporting anything |
 
 Rules that keep the run honest:
 
