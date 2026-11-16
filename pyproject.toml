@@ -36,6 +36,7 @@ dev = [
     "pytest>=9.2.0,<10.0.0",
     "pyyaml>=6.0.3,<7.0.0",
     "ruff>=0.12.7,<1.0.0",
+    "shellcheck-py>=0.11.0.1,<0.12.0.0",
     "testcontainers[postgres]>=4.15.0,<5.0.0",
     "types-grpcio>=1.0.0.20251009,<2.0.0.0",
     "types-pyyaml>=6.0.12.20260906,<7.0.0.0",
