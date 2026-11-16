@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file. This projec
 
 From v0.21.0, [release-please](https://github.com/googleapis/release-please) generates each entry from the squash-merge commit titles on `main`, grouped under [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) headings ([Release a Version](docs/releasing.md)). Earlier entries were written by hand in Keep a Changelog format.
 
+## [0.23.0](https://github.com/doughayden/agent-foundation/compare/v0.22.0...v0.23.0) (2026-11-16)
+
+
+### Added
+
+* **terraform:** auto-stop the bastion ([#402](https://github.com/doughayden/agent-foundation/issues/402)) ([0a8180a](https://github.com/doughayden/agent-foundation/commit/0a8180aec644e204712cbf24c933c27fac287a70)), closes [#195](https://github.com/doughayden/agent-foundation/issues/195)
+
 ## [0.22.0](https://github.com/doughayden/agent-foundation/compare/v0.21.2...v0.22.0) (2026-11-16)
 
 
