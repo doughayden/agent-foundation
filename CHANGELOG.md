@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file. This projec
 
 From v0.21.0, [release-please](https://github.com/googleapis/release-please) generates each entry from the squash-merge commit titles on `main`, grouped under [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) headings ([Release a Version](docs/releasing.md)). Earlier entries were written by hand in Keep a Changelog format.
 
+## [0.22.0](https://github.com/doughayden/agent-foundation/compare/v0.21.2...v0.22.0) (2026-11-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* **terraform:** runtime env vars moved to terraform/main/env.tf. Before merging, copy each environment's capture mode and any LOG_LEVEL, SERVE_WEB_INTERFACE or ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS values from gh variable list --env <env> into its entry in local.run_app_env_config. After an environment deploys this release (prod: after its promotion), remove otel_instrumentation_genai_capture_message_content from that bootstrap root's terraform.tfvars and re-apply it, which deletes the capture-mode GitHub variable; then delete the three hand-set GitHub variables.
+
+### Added
+
+* **terraform:** per-env Cloud Run env vars ([#400](https://github.com/doughayden/agent-foundation/issues/400)) ([fb090ae](https://github.com/doughayden/agent-foundation/commit/fb090aeaa75f490ae7d0ea5ff9c3466639d6fa2e)), closes [#371](https://github.com/doughayden/agent-foundation/issues/371)
+
 ## [0.21.2](https://github.com/doughayden/agent-foundation/compare/v0.21.1...v0.21.2) (2026-11-16)
 
 
