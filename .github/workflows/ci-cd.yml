@@ -221,7 +221,7 @@ jobs:
   promotion-summary:
     name: Promotion Summary
     if: needs.config.outputs.production_mode == 'true' && github.ref_type == 'branch' && github.event_name == 'push'
-    needs: [config, stage-smoke, judge-eval]
+    needs: [config, stage-apply, stage-smoke, judge-eval]
     runs-on: ubuntu-latest
     timeout-minutes: 5  # Typical run: <30s (sparse checkout and two GitHub API reads)
     permissions:

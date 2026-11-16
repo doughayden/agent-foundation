@@ -71,7 +71,7 @@ Jobs read these variables, and authenticate to GCP, only when they declare the m
 - `judge-eval` - LLM-judge behavioral gate on merge (blocking in production mode, signal only in dev-only mode; gated on `changes.outputs.eval == 'true'`)
 - `stage-promote` / `stage-plan` / `stage-apply` - Stage environment (merge in production mode)
 - `stage-smoke` - Post-deploy smoke against the live stage revision (after `stage-apply`, production mode only)
-- `promotion-summary` - Merge-time job summary once `stage-smoke` and `judge-eval` pass (production mode); see [promotion-summary.sh](#promotion-summarysh)
+- `promotion-summary` - Merge-time job summary once `stage-apply`, `stage-smoke` and `judge-eval` pass (production mode); see [promotion-summary.sh](#promotion-summarysh)
 - `require-stage-success` - Tag-time gate: requires the tagged SHA's merge run to have passed `Apply Stage`, `Smoke Stage`, and `Judge Eval` before promotion (production mode, upstream of `prod-promote`)
 - `prod-promote` / `prod-plan` / `prod-apply` - Prod environment (tags in production mode)
 - `prod-smoke` - Post-deploy smoke against the live prod revision (after `prod-apply`, production mode only)
@@ -155,7 +155,7 @@ changes, metadata-extract ─→ docker-build ┬─→ dev-plan → dev-apply �
                                           │
 config ───────────────────────────────────┴─→ stage-promote → stage-plan → stage-apply → stage-smoke
 
-stage-smoke, judge-eval ─→ promotion-summary
+stage-apply, stage-smoke, judge-eval ─→ promotion-summary
 ```
 
 **Result:** Dev deployed and smoked (always), stage deployed and smoked (production mode only), and the judge eval scored on every merge that touches the agent or its eval data. `judge-eval` runs from source rather than against a revision, so it starts as soon as `changes` and `config` resolve and never waits on a deploy. It blocks the merge run in production mode and is signal only in dev-only mode. The smoke lane detail lives in [Smoke Tests](smoke-tests.md); the eval lane's in [Agent Evals](agent-evals.md).
@@ -468,7 +468,7 @@ If the doc has no single closed block that pushes the promotion tag, the tagged-
 
 **Permissions:** the job declares `contents: read` (sparse checkout, commit files, tag lookup). No GCP credentials.
 
-**When it runs:** On merge runs in production mode, after `stage-smoke` and `judge-eval` pass, the same jobs `require-stage-success` checks at tag time.
+**When it runs:** On merge runs in production mode, after `stage-apply`, `stage-smoke` and `judge-eval` pass, the same jobs `require-stage-success` checks at tag time.
 
 ## Standalone CI Workflow
 
