@@ -18,6 +18,9 @@ GitHub Actions workflow architecture, mechanics, and customization.
 - **`require-stage-success.yml`** - Tag-time gate requiring the tagged SHA's stage run to have passed before prod promotion (production mode)
 - **`terraform-plan-apply.yml`** - Terraform deployment
 
+**Workflow scripts:**
+- **`scripts/promotion-summary.sh`** - Merge-run summary that prints the prod promotion block once a release commit is promotable (production mode); see [Workflow Scripts](#workflow-scripts)
+
 **Standalone CI Workflow:**
 - **`ci.yml`** - Code quality (ruff, mypy, pytest with coverage), Postgres integration lane, and deterministic agent eval gate
 
@@ -68,6 +71,7 @@ Jobs read these variables, and authenticate to GCP, only when they declare the m
 - `judge-eval` - LLM-judge behavioral gate on merge (blocking in production mode, signal only in dev-only mode; gated on `changes.outputs.eval == 'true'`)
 - `stage-promote` / `stage-plan` / `stage-apply` - Stage environment (merge in production mode)
 - `stage-smoke` - Post-deploy smoke against the live stage revision (after `stage-apply`, production mode only)
+- `promotion-summary` - Merge-time job summary once `stage-apply`, `stage-smoke` and `judge-eval` pass (production mode); see [promotion-summary.sh](#promotion-summarysh)
 - `require-stage-success` - Tag-time gate: requires the tagged SHA's merge run to have passed `Apply Stage`, `Smoke Stage`, and `Judge Eval` before promotion (production mode, upstream of `prod-promote`)
 - `prod-promote` / `prod-plan` / `prod-apply` - Prod environment (tags in production mode)
 - `prod-smoke` - Post-deploy smoke against the live prod revision (after `prod-apply`, production mode only)
@@ -150,6 +154,8 @@ changes, config ─→ judge-eval
 changes, metadata-extract ─→ docker-build ┬─→ dev-plan → dev-apply → dev-smoke
                                           │
 config ───────────────────────────────────┴─→ stage-promote → stage-plan → stage-apply → stage-smoke
+
+stage-apply, stage-smoke, judge-eval ─→ promotion-summary
 ```
 
 **Result:** Dev deployed and smoked (always), stage deployed and smoked (production mode only), and the judge eval scored on every merge that touches the agent or its eval data. `judge-eval` runs from source rather than against a revision, so it starts as soon as `changes` and `config` resolve and never waits on a deploy. It blocks the merge run in production mode and is signal only in dev-only mode. The smoke lane detail lives in [Smoke Tests](smoke-tests.md); the eval lane's in [Agent Evals](agent-evals.md).
@@ -441,6 +447,29 @@ Practically, a release belongs on a commit whose merge deployed and smoked stage
 
 **When it runs:** Called by `ci-cd.yml` on tag events in production mode, before `prod-promote`. Generic and agent-agnostic, so every consumer inherits it.
 
+## Workflow Scripts
+
+A workflow script lives in `.github/workflows/scripts/<name>.sh`. The workflow step sets the script's inputs as `env:` values, checks the script out (a sparse checkout of only what it reads), and runs it with `bash <path>`, so no executable bit is needed. A script starts with `set -euo pipefail` and a header comment giving its usage and inputs, and the step that runs it stays one line. Each script has unit tests in `tests/unit/` that run the real script with fake binaries (like `gh`, built by factory fixtures in `tests/unit/conftest.py`) first on `PATH`, one test per outcome, and the `shellcheck` pre-commit hook lints it, since actionlint only checks inline `run:` blocks ([Code Quality: Workflow Lint and Version Pins](code-quality.md#workflow-lint-and-version-pins)). `.github/workflows/scripts/**` is in the `changes` job's `deploy` filter, so a script change runs the pipeline it feeds.
+
+### promotion-summary.sh
+
+**Purpose:** Tells the admin, in the merge run's summary, whether the commit is ready for prod promotion, and hands over the command when it is. The `promotion-summary` job in `ci-cd.yml` sparse-checks out the doc, the release manifest and the script, then runs `.github/workflows/scripts/promotion-summary.sh`.
+
+**How it works:**
+1. Treats a commit that changes `.release-please-manifest.json` as a release commit (every release-please merge bumps it), reads its version from the manifest, and checks whether the `vX.Y.Z` tag resolves to this commit
+2. Copies from `docs/releasing.md` at the run's commit the one fenced block that pushes the promotion tag (`git push origin "prod-${VERSION}"`) in [Promote to Production](../releasing.md#promote-to-production-production-mode), so the doc stays the block's only source, and pins its `VERSION` lookup line to the release
+3. Writes exactly one message and exits 0, so the informational job never fails a green deploy run:
+   - **Tagged release:** the version, its tag page, and the pinned block in a `bash` code block, ready to copy
+   - **Release not tagged yet:** a warning annotation and a note to promote with the block in `docs/releasing.md`, section Promote to Production, once the tag exists (from the Release workflow run, or by hand without the App). No link, since the tag it would point to does not exist yet
+   - **Any other commit:** nothing to promote
+   - **GitHub API error:** a warning annotation and a note naming that docs section
+
+If the doc has no single closed block that pushes the promotion tag, the tagged-release message warns and links the docs section instead of printing a block. `tests/unit/test_promotion_summary.py` runs the real script: `--extract` against the real doc and crafted ones, and each message against a fake `gh` that pipes GitHub-shaped JSON through the script's own `--jq` filters. The block also gets `bash -n`, and `zsh -n` where zsh is installed (not on the CI runner). A doc edit that breaks the block, or a script change that drops a message, fails the unit lane first.
+
+**Permissions:** the job declares `contents: read` (sparse checkout, commit files, tag lookup). No GCP credentials.
+
+**When it runs:** On merge runs in production mode, after `stage-apply`, `stage-smoke` and `judge-eval` pass, the same jobs `require-stage-success` checks at tag time.
+
 ## Standalone CI Workflow
 
 ### ci.yml
@@ -449,7 +478,7 @@ Practically, a release belongs on a commit whose merge deployed and smoked stage
 
 **Pipeline (five jobs):**
 1. `changes` - dorny/paths-filter detects whether relevant files changed, and `release_pr` marks a release-please pull request: a bot author on a `release-please--` branch, updated by a bot. A human-named branch or a human push to the release branch runs every check
-2. `code-quality` - runs every pre-commit hook on all files (`uv run pre-commit run --all-files --show-diff-on-failure`: ruff, mypy, actionlint, `terraform fmt`, config-file checks), then pytest with coverage even when a hook fails. Installs Terraform from `.terraform-version` for the fmt hook and caches hook environments. Restores `.mypy_cache` on every run so mypy re-checks only what changed, and saves it only on pushes to main: pull requests read main's cache without adding entries to the repository's Actions cache quota. Runs on every push and pull request, since the hooks cover every file type. Checks out with `persist-credentials: false`, since the hooks run third-party code.
+2. `code-quality` - runs every pre-commit hook on all files (`uv run pre-commit run --all-files --show-diff-on-failure`, the hooks in `.pre-commit-config.yaml`), then pytest with coverage even when a hook fails. Installs Terraform from `.terraform-version` for the fmt hook and caches hook environments. Restores `.mypy_cache` on every run so mypy re-checks only what changed, and saves it only on pushes to main: pull requests read main's cache without adding entries to the repository's Actions cache quota. Runs on every push and pull request, since the hooks cover every file type. Checks out with `persist-credentials: false`, since the hooks run third-party code.
 3. `integration` - runs `pytest tests/integration`, which starts a throwaway `postgres:18` via `testcontainers` on the runner's Docker daemon (no coverage gate; the 100% gate is unit-lane-only). The `postgres:18` image matches the deployed Cloud SQL `POSTGRES_18` major. Gated on `changes.outputs.code == 'true'`, skipped on release-please pull requests.
 4. `agent-eval` - runs the deterministic agent eval (`uv run pytest tests/eval -m "deterministic"`) against Vertex AI, authenticating with the dev environment's WIF principal (no coverage gate). Gated on `changes.outputs.code == 'true'`, skipped on release-please pull requests.
 5. `status` - always-runs sentinel that aggregates results for branch protection
@@ -494,6 +523,11 @@ Workflows generate formatted summaries in GitHub Actions UI:
 - Build context (PR, main, tag, manual)
 - Branch/tag name and commit SHA
 - All image tags (bulleted list)
+
+**Promotion summary (production mode merge runs):**
+- Release commit with its `vX.Y.Z` tag: the version, the tag page and the promotion block to paste
+- Release commit not tagged yet: a warning that names the promotion section in `docs/releasing.md`
+- Any other commit: nothing to promote
 
 **Terraform deployment:**
 - Environment and action (plan/apply)

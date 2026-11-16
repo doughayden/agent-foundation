@@ -129,6 +129,7 @@ cmd_unprotect() {
     | ([$a | keys[] | select($b[.] != $a[.])] - ["deletion_protection", "force_destroy", "deletion_policy"]) as $extra
     | select($r.change.actions != ["update"] or ($extra | length) > 0)
     | "\($r.address) \($r.change.actions | join("+")) \($extra | join(","))"')
+  # shellcheck disable=SC2001  # sed prefixes every line of a multi-line value
   if [ -n "$bad" ]; then echo "$bad" | sed 's/^/  unexpected: /'; echo "VERDICT: UNEXPECTED_CHANGES (do not apply)"; return 1; fi
   if [ "$APPLY" -eq 1 ]; then
     tf apply -input=false -no-color "$WORKDIR/unprotect.tfplan" | grep -E 'Apply complete|Error'

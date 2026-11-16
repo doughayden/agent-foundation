@@ -15,6 +15,14 @@ Rules for editing `.github/workflows/`. **Template Internals:** this whole file 
 
 Tag-time gate upstream of `prod-promote` (halts before the `prod-apply` approval). Requires the tagged SHA's merge run to show `Apply Stage` + `Smoke Stage` + `Judge Eval` success; anything else, `skipped` included, fails closed. No digest comparison: fidelity comes from digest-for-digest promotion plus deploy-by-digest. Reasoning: `docs/references/cicd.md` require-stage-success.yml.
 
+## Promotion Summary
+
+`promotion-summary` runs `scripts/promotion-summary.sh` after the jobs `require-stage-success` checks: **keep its `needs` equal to the gate's jobs**. **Never silent, never red:** one message per run, exit 0 on every path. Block source: `docs/releasing.md` only (root `AGENTS.md` Documentation Strategy). Outcomes and lookups: `docs/references/cicd.md` promotion-summary.sh.
+
+## Workflow Scripts
+
+`scripts/<name>.sh`, run as `bash <path>`, inputs via `env:`, sparse checkout of only what it reads. Tests in `tests/unit/` run the real script with fakes on `PATH` (`create_mock_gh`). Pattern: `docs/references/cicd.md` Workflow Scripts.
+
 ## Release
 
 Standalone `release.yml` (not called by the orchestrator): release-please only, `permissions: {}`, every write through the App token. **Never switch it to `GITHUB_TOKEN`**: release PRs it opens start no workflows, so required checks never report. `claude.yml` skips PRs authored by bots (the review action refuses bot actors). `uv.lock` follows the version through `extra-files`, not a relock job; drop the entry once release-please ships googleapis/release-please#2693.
@@ -34,6 +42,6 @@ Standalone `ci.yml` (not called by the orchestrator). Branch protection requires
 
 ## Workflow Lint
 
-actionlint runs ONLY as a pre-commit hook (its `rev` is the single pin), no separate CI job. The hook includes the shellcheck pass over inline `run:` blocks (only where shellcheck is on `PATH`; the CI runner has it). **Every `run:` edit MUST stay actionlint-clean with shellcheck installed**: quote expansions, group consecutive appends; a `# shellcheck disable=` goes on one command with its reason, never file-wide. `zizmor` is a separate surface — do NOT bolt it onto the actionlint hook. Rationale: `docs/references/code-quality.md` Workflow Lint and Version Pins.
+actionlint runs ONLY as a pre-commit hook (its `rev` is the single pin), no separate CI job. Its shellcheck pass over inline `run:` uses `shellcheck-py` (on `PATH` under `uv run pre-commit`); the `shellcheck` hook lints `.sh` files. **Every `run:` edit MUST stay actionlint-clean with shellcheck installed**: quote expansions, group consecutive appends; a `# shellcheck disable=` goes on one command with its reason, never file-wide. `zizmor` is a separate surface — do NOT bolt it onto the actionlint hook. Rationale: `docs/references/code-quality.md` Workflow Lint and Version Pins.
 
 **NEVER set a Terraform or Python version literal in a workflow** (pins and parity tests: root `AGENTS.md` Code Quality and Dependencies).

@@ -7,6 +7,7 @@ credentials. Config tests stay off the real ``.env`` via ``isolated_environ``.
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 from collections.abc import Callable
 from pathlib import Path
@@ -897,3 +898,55 @@ def mock_telemetry_sdk(mocker: MockerFixture) -> dict[str, MockType]:
         telemetry.logging.getLogger(), "setLevel"
     )
     return mocks
+
+
+@pytest.fixture
+def create_mock_gh(tmp_path: Path) -> Callable[..., Path]:
+    """Build a fake ``gh`` for the promotion summary script's two API reads.
+
+    The fake serves GitHub-shaped JSON for ``repos/<repo>/commits/<ref>`` and pipes it
+    through ``jq`` with the caller's ``--jq`` filter, so the script's own filters run.
+    The factory returns a directory to put first on ``PATH``.
+
+    Args:
+        sha: The commit the files read answers for.
+        files: Filenames the commit changes.
+        tag_sha: Commit the version tag resolves to; ``None`` answers 404.
+        fail: ``"files"`` or ``"tag"`` makes that read fail with HTTP 502.
+    """
+
+    def _factory(
+        *,
+        sha: str,
+        files: list[str],
+        tag_sha: str | None,
+        fail: str | None = None,
+    ) -> Path:
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir(exist_ok=True)
+        (bin_dir / "files.json").write_text(
+            json.dumps({"sha": sha, "files": [{"filename": f} for f in files]})
+        )
+        (bin_dir / "tag.json").write_text(json.dumps({"sha": tag_sha}))
+        script = bin_dir / "gh"
+        script.write_text(
+            "#!/bin/sh\n"
+            f'dir="{bin_dir}"; fail="{fail}"; tag_sha="{tag_sha}"\n'
+            'path="$2"; filter="$4"\n'
+            'bad() { echo "HTTP 502: Bad Gateway" >&2; exit 1; }\n'
+            'missing() { echo "Not Found (HTTP 404)" >&2; exit 1; }\n'
+            'case "$path" in\n'
+            f"  */commits/{sha})\n"
+            '    [ "$fail" = files ] && bad\n'
+            '    jq -r "$filter" "$dir/files.json" ;;\n'
+            "  */commits/*)\n"
+            '    [ "$fail" = tag ] && bad\n'
+            '    [ "$tag_sha" = None ] && missing\n'
+            '    jq -r "$filter" "$dir/tag.json" ;;\n'
+            '  *) echo "unexpected gh call: $*" >&2; exit 2 ;;\n'
+            "esac\n"
+        )
+        script.chmod(0o755)
+        return bin_dir
+
+    return _factory

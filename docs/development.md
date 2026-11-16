@@ -60,13 +60,13 @@ Pre-commit runs lint, format, type, and spelling checks as a fix-in-place git ho
 
 CI runs the same hooks with `uv run pre-commit run --all-files --show-diff-on-failure`. Run `uv run pre-commit run --all-files` to check the whole tree the way CI does, like after changing a hook or pulling in upstream changes. In CI, any hook that would modify a file fails the job and prints the diff it would have applied.
 
-Coverage spans Python (ruff, mypy), Terraform (`terraform fmt`), GitHub Actions workflows (actionlint), the YAML/TOML/JSON config files, and spelling in every text file (codespell). codespell reads `[tool.codespell]` in `pyproject.toml`; add a word to `ignore-words-list` only for a confirmed false positive, with a comment saying why.
+Coverage spans Python (ruff, mypy), Terraform (`terraform fmt`), GitHub Actions workflows (actionlint), shell scripts (shellcheck), the YAML/TOML/JSON config files, and spelling in every text file (codespell). codespell reads `[tool.codespell]` in `pyproject.toml`; add a word to `ignore-words-list` only for a confirmed false positive, with a comment saying why.
 
 Ruff's linter runs before its formatter. `ruff check --fix` can change layout (removing an `else` de-indents a block), and the formatter has to see that result. The fix runs only where `--fix` is passed explicitly; `pyproject.toml` deliberately does not set `fix = true`, so a bare `ruff check` reports instead of rewriting.
 
 `terraform validate` is deliberately not a hook: it needs `terraform init` per root, which is too slow for a commit. CI validates instead.
 
-**Local tooling:** the Terraform hook calls the `terraform` binary that tenv provides (a [prerequisite](getting-started.md#prerequisites)). tenv reads `.terraform-version`, the same pin CI installs, so the hook formats exactly as CI does. After the pin changes, run `tenv terraform install` to fetch the new version. pre-commit builds actionlint itself, using the Go toolchain on `PATH` if there is one and otherwise downloading one into its own cache. Install [shellcheck](https://github.com/koalaman/shellcheck#installing) too: actionlint runs it over workflow `run:` scripts only when it is on `PATH`, so without it the hook skips that pass and its findings surface only in CI's `code-quality` job.
+**Local tooling:** the Terraform hook calls the `terraform` binary that tenv provides (a [prerequisite](getting-started.md#prerequisites)). tenv reads `.terraform-version`, the same pin CI installs, so the hook formats exactly as CI does. After the pin changes, run `tenv terraform install` to fetch the new version. pre-commit builds actionlint itself, using the Go toolchain on `PATH` if there is one and otherwise downloading one into its own cache. The `shellcheck` hook runs the `shellcheck-py` dev dependency. actionlint's own shellcheck pass over workflow `run:` scripts needs `shellcheck` on `PATH`: `uv run pre-commit run` provides it, but the git commit hook does not, so install [shellcheck](https://github.com/koalaman/shellcheck#installing) or that pass is skipped on each commit and its findings surface only in CI's `code-quality` job.
 
 **One-time setup** (writes `.git/hooks/pre-commit`):
 
@@ -86,7 +86,7 @@ Hooks are configured in `.pre-commit-config.yaml`. `pre-commit autoupdate` is a 
 
 | Hook | Version comes from | Update with |
 |---|---|---|
-| ruff, mypy, codespell | `uv.lock` | a Dependabot PR, or `uv lock --upgrade` |
+| ruff, mypy, codespell, shellcheck | `uv.lock` (shellcheck through `shellcheck-py`) | a Dependabot PR, or `uv lock --upgrade` |
 | terraform fmt | `.terraform-version`, installed by setup-terraform in CI and by tenv locally (tenv provides the `terraform` on `PATH`) | edit `.terraform-version`, then `tenv terraform install` |
 | uv-lock | your installed uv, held inside `required-version` (CI uses its pinned `setup-uv` uv) | [uv Version](#uv-version) |
 | everything else | the `rev` in `.pre-commit-config.yaml`, a commit SHA with a `# frozen: vX.Y.Z` comment | a Dependabot PR, or `uv run pre-commit autoupdate --freeze` |
