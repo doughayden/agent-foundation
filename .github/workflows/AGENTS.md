@@ -17,13 +17,11 @@ Tag-time gate upstream of `prod-promote` (halts before the `prod-apply` approval
 
 ## Promotion Summary
 
-`promotion-summary` (`ci-cd.yml`, merge runs, production mode) runs `scripts/promotion-summary.sh` on the same green jobs `require-stage-success` checks, so it appears exactly when a commit is promotable. **Whenever it runs, prints one of three messages**, never a silent exit: tagged release (the block plus links), untagged release (warning naming `docs/releasing.md` Promote to Production, no link), non-release. **The block's only source is `docs/releasing.md`** (the one fenced block that pushes `prod-${VERSION}`; rule in root `AGENTS.md` Documentation Strategy): never copy it into the script. Release commit = changes `.release-please-manifest.json`; version from the manifest; tag lookup is one `commits/vX.Y.Z` read. **Exits 0 on every path**, GitHub API errors included (a warning summary), so the job never reds a deploy run. The job declares `permissions: contents: read`. Links build from `github.server_url`/`github.repository`, never a literal owner/repo. Keep the job's `needs` in sync with the gate's required jobs.
+`promotion-summary` runs `scripts/promotion-summary.sh` after the jobs `require-stage-success` checks: **keep its `needs` equal to the gate's jobs**. **Never silent, never red:** one message per run, exit 0 on every path. Block source: `docs/releasing.md` only (root `AGENTS.md` Documentation Strategy). Outcomes and lookups: `docs/references/cicd.md` promotion-summary.sh.
 
 ## Workflow Scripts
 
-- **Extracted logic lives in `scripts/<name>.sh`**, run as `bash .github/workflows/scripts/<name>.sh` (no executable bit), inputs via the step's `env:`, `set -euo pipefail`, usage in the header comment. The step stays one line; the job checks out only what the script reads (sparse checkout)
-- **Every script ships unit tests** in `tests/unit/test_<name>.py` that run the real script: fake binaries first on `PATH` (factory fixtures in `tests/unit/conftest.py`, like `create_mock_gh`), assert on its outputs (summary file, stdout annotations), one test per outcome
-- **Lint:** the `shellcheck` hook covers `.sh` files (actionlint only sees inline `run:`). `scripts/**` is in the `deploy` filter
+`scripts/<name>.sh`, run as `bash <path>`, inputs via `env:`, sparse checkout of only what it reads. Tests in `tests/unit/` run the real script with fakes on `PATH` (`create_mock_gh`). Pattern: `docs/references/cicd.md` Workflow Scripts.
 
 ## Release
 
@@ -44,6 +42,6 @@ Standalone `ci.yml` (not called by the orchestrator). Branch protection requires
 
 ## Workflow Lint
 
-actionlint runs ONLY as a pre-commit hook (its `rev` is the single pin), no separate CI job. The hook includes the shellcheck pass over inline `run:` blocks, using the `shellcheck-py` dev dependency's binary on `PATH` under `uv run pre-commit`. The separate `shellcheck` hook (also `shellcheck-py`, pinned by `uv.lock`) lints `.sh` files. **Every `run:` edit MUST stay actionlint-clean with shellcheck installed**: quote expansions, group consecutive appends; a `# shellcheck disable=` goes on one command with its reason, never file-wide. `zizmor` is a separate surface — do NOT bolt it onto the actionlint hook. Rationale: `docs/references/code-quality.md` Workflow Lint and Version Pins.
+actionlint runs ONLY as a pre-commit hook (its `rev` is the single pin), no separate CI job. Its shellcheck pass over inline `run:` uses `shellcheck-py` (on `PATH` under `uv run pre-commit`); the `shellcheck` hook lints `.sh` files. **Every `run:` edit MUST stay actionlint-clean with shellcheck installed**: quote expansions, group consecutive appends; a `# shellcheck disable=` goes on one command with its reason, never file-wide. `zizmor` is a separate surface — do NOT bolt it onto the actionlint hook. Rationale: `docs/references/code-quality.md` Workflow Lint and Version Pins.
 
 **NEVER set a Terraform or Python version literal in a workflow** (pins and parity tests: root `AGENTS.md` Code Quality and Dependencies).

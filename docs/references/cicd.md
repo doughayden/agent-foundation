@@ -449,7 +449,7 @@ Practically, a release belongs on a commit whose merge deployed and smoked stage
 
 ## Workflow Scripts
 
-A workflow script lives in `.github/workflows/scripts/<name>.sh`. The workflow step sets the script's inputs as `env:` values, checks the script out (a sparse checkout of only what it reads), and runs it with `bash <path>`, so no executable bit is needed. Each script has unit tests in `tests/unit/` that run the real script with fake binaries (like `gh`) first on `PATH`, and the `shellcheck` pre-commit hook lints it, since actionlint only checks inline `run:` blocks ([Code Quality: Workflow Lint and Version Pins](code-quality.md#workflow-lint-and-version-pins)). `.github/workflows/scripts/**` is in the `changes` job's `deploy` filter, so a script change runs the pipeline it feeds.
+A workflow script lives in `.github/workflows/scripts/<name>.sh`. The workflow step sets the script's inputs as `env:` values, checks the script out (a sparse checkout of only what it reads), and runs it with `bash <path>`, so no executable bit is needed. A script starts with `set -euo pipefail` and a header comment giving its usage and inputs, and the step that runs it stays one line. Each script has unit tests in `tests/unit/` that run the real script with fake binaries (like `gh`, built by factory fixtures in `tests/unit/conftest.py`) first on `PATH`, one test per outcome, and the `shellcheck` pre-commit hook lints it, since actionlint only checks inline `run:` blocks ([Code Quality: Workflow Lint and Version Pins](code-quality.md#workflow-lint-and-version-pins)). `.github/workflows/scripts/**` is in the `changes` job's `deploy` filter, so a script change runs the pipeline it feeds.
 
 ### promotion-summary.sh
 

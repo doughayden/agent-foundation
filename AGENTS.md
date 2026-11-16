@@ -208,7 +208,7 @@ uv lock --upgrade               # Update all
 - Single source of truth: env vars only in `docs/environment-variables.md`
 - Never name the Python version in docs (prose or examples); point to `.python-version`, use `X.Y` in snippets. Literals drift on every bump
 - Committed docs name the symbol or section, never `file:line`: line numbers drift on every edit
-- **`docs/releasing.md` Promote to Production holds the promotion block CI copies** (`.github/workflows/scripts/promotion-summary.sh` extracts the one fenced block that pushes `prod-${VERSION}`): keep it a single closed block with that push line and the `VERSION=$(git describe ...) &&` lookup line; `tests/unit/test_promotion_summary.py` guards it
+- **The `docs/releasing.md` promotion block is CI input** (`promotion-summary.sh` copies it): keep one closed block with the `prod-${VERSION}` push and the `VERSION=$(git describe ...) &&` line; `test_promotion_summary.py` guards it
 - Update `docs/README.md` when adding docs
 - Keep guides digestible (<300 lines). Move details to `references/`.
 
