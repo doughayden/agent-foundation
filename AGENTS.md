@@ -155,7 +155,7 @@ Test-writing rules (lanes, eval gate, fixtures, mocks, organization): `tests/AGE
 
 | Lane | Needs | Deterministic | Local command |
 |---|---|---|---|
-| `tests/unit` | in-process only (mocks at boundaries) | yes | `uv run pytest` (default) |
+| `tests/unit` | in-process (mocks at boundaries), or a repo script run against fakes on `PATH` | yes | `uv run pytest` (default) |
 | `tests/integration` | real external resource (Postgres) | yes | `uv run pytest tests/integration` |
 | `tests/smoke` | live deployed URL | yes | `uv run pytest tests/smoke` |
 | `tests/eval` | real LLM + Vertex AI creds (costs money) | `deterministic` yes; `judge` no | `uv run pytest tests/eval -m "deterministic"` |
@@ -208,6 +208,7 @@ uv lock --upgrade               # Update all
 - Single source of truth: env vars only in `docs/environment-variables.md`
 - Never name the Python version in docs (prose or examples); point to `.python-version`, use `X.Y` in snippets. Literals drift on every bump
 - Committed docs name the symbol or section, never `file:line`: line numbers drift on every edit
+- **`docs/releasing.md` Promote to Production holds the promotion block CI copies** (`.github/workflows/scripts/promotion-summary.sh` extracts the one fenced block that pushes `prod-${VERSION}`): keep it a single closed block with that push line and the `VERSION=$(git describe ...) &&` lookup line; `tests/unit/test_promotion_summary.py` guards it
 - Update `docs/README.md` when adding docs
 - Keep guides digestible (<300 lines). Move details to `references/`.
 

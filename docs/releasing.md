@@ -33,7 +33,6 @@ The release commit's merge run builds the release candidate: prod receives exact
 
 1. Wait for the release commit's merge run to pass `Apply Stage`, `Smoke Stage` and `Judge Eval`. A promotion pushed earlier fails `Require Stage Success` and needs a re-run once stage is green
 2. Paste this block as one piece. It looks up the latest release on `main`, prints its version, commit and GitHub tag page (with the release notes when a GitHub Release exists), and waits for you to type `y` before it tags and pushes (`--force` replaces stale local tags, which `git fetch` otherwise never overwrites). To promote a different release, replace the `$(git describe ...)` value with `vX.Y.Z` and keep the line's trailing `&&`, so a failed step still stops the block:
-   <!-- prod-promotion:start -->
    ```bash
    {
      git fetch origin main --tags --force &&
@@ -51,8 +50,7 @@ The release commit's merge run builds the release candidate: prod receives exact
      fi
    }
    ```
-   <!-- prod-promotion:end -->
-   The braces make the shell read the whole block before running it, so the prompt waits for your answer instead of taking the next pasted line. Any answer other than `y` creates no tag. Push one promotion tag at a time: GitHub starts no workflow when more than three tags arrive in one push. The run fails at metadata extraction unless the tag has the form `prod-vX.Y.Z` and `vX.Y.Z` marks the same commit. Only commits that contain the `prod-v*` pipeline can be promoted; for an older build, use a Cloud Run traffic split ([Rollback](#rollback))
+   In production mode, the release commit's merge run shows this same block in its summary, pinned to that release. The braces make the shell read the whole block before running it, so the prompt waits for your answer instead of taking the next pasted line. Any answer other than `y` creates no tag. Push one promotion tag at a time: GitHub starts no workflow when more than three tags arrive in one push. The run fails at metadata extraction unless the tag has the form `prod-vX.Y.Z` and `vX.Y.Z` marks the same commit. Only commits that contain the `prod-v*` pipeline can be promoted; for an older build, use a Cloud Run traffic split ([Rollback](#rollback))
 3. Monitor the workflow: Actions tab → CI/CD Pipeline
 4. **Approved reviewer:** Actions → prod-apply job → Review deployments → Approve
 5. Verify the production deployment

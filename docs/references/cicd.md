@@ -449,23 +449,24 @@ Practically, a release belongs on a commit whose merge deployed and smoked stage
 
 ## Workflow Scripts
 
-Logic longer than a few lines lives in `.github/workflows/scripts/<name>.sh`, not inline in a `run:` block. The workflow step sets the script's inputs as `env:` values, checks the script out, and runs it with `bash <path>`, so no executable bit is needed. Each script has unit tests in `tests/unit/` that run the real script with fake binaries (like `gh`) first on `PATH`, and the `shellcheck` pre-commit hook lints it, since actionlint only checks inline blocks ([Code Quality: Workflow Lint and Version Pins](code-quality.md#workflow-lint-and-version-pins)). A path under `.github/workflows/scripts/` is in the `changes` job's `deploy` filter, so a script change runs the pipeline it feeds.
+A workflow script lives in `.github/workflows/scripts/<name>.sh`. The workflow step sets the script's inputs as `env:` values, checks the script out (a sparse checkout of only what it reads), and runs it with `bash <path>`, so no executable bit is needed. Each script has unit tests in `tests/unit/` that run the real script with fake binaries (like `gh`) first on `PATH`, and the `shellcheck` pre-commit hook lints it, since actionlint only checks inline `run:` blocks ([Code Quality: Workflow Lint and Version Pins](code-quality.md#workflow-lint-and-version-pins)). `.github/workflows/scripts/**` is in the `changes` job's `deploy` filter, so a script change runs the pipeline it feeds.
 
 ### promotion-summary.sh
 
-**Purpose:** Tells the admin, in the merge run's summary, whether the commit is ready for prod promotion, and hands over the command when it is. The `promotion-summary` job in `ci-cd.yml` sparse-checks out the doc and the script, then runs `.github/workflows/scripts/promotion-summary.sh`; all logic lives in the script.
+**Purpose:** Tells the admin, in the merge run's summary, whether the commit is ready for prod promotion, and hands over the command when it is. The `promotion-summary` job in `ci-cd.yml` sparse-checks out the doc, the release manifest and the script, then runs `.github/workflows/scripts/promotion-summary.sh`.
 
 **How it works:**
-1. Copies, from `docs/releasing.md` at the run's commit, the fenced block between the `<!-- prod-promotion:start -->` and `<!-- prod-promotion:end -->` markers in [Promote to Production](../releasing.md#promote-to-production-production-mode), so the doc stays the block's only source
-2. Treats a commit that changes `.release-please-manifest.json` as a release commit (every release-please merge bumps it), and looks for a `vX.Y.Z` tag on it
-3. Prints exactly one message, never exiting silently:
-   - **Tagged release:** the version, its tag page, and the block in a `bash` code block, ready to copy
-   - **Release not tagged yet:** a warning annotation and a note to promote with the block in `docs/releasing.md`, section Promote to Production, once the commit's Release workflow run finishes. No link, since the tag it would point to does not exist yet
+1. Treats a commit that changes `.release-please-manifest.json` as a release commit (every release-please merge bumps it), reads its version from the manifest, and checks whether the `vX.Y.Z` tag resolves to this commit
+2. Copies from `docs/releasing.md` at the run's commit the one fenced block that pushes the promotion tag (`git push origin "prod-${VERSION}"`) in [Promote to Production](../releasing.md#promote-to-production-production-mode), so the doc stays the block's only source, and pins its `VERSION` lookup line to the release
+3. Writes exactly one message and exits 0, so the informational job never fails a green deploy run:
+   - **Tagged release:** the version, its tag page, and the pinned block in a `bash` code block, ready to copy
+   - **Release not tagged yet:** a warning annotation and a note to promote with the block in `docs/releasing.md`, section Promote to Production, once the tag exists (from the Release workflow run, or by hand without the App). No link, since the tag it would point to does not exist yet
    - **Any other commit:** nothing to promote
+   - **GitHub API error:** a warning annotation and a note naming that docs section
 
-If the markers are missing, the tagged-release message warns and links the docs section instead of printing an empty block. `tests/unit/test_promotion_summary.py` runs the real script: `--extract` against the real doc (parsed with `bash -n` and `zsh -n`), and each summary message against a fake `gh` on `PATH`. A doc edit that breaks the block, or a script change that drops a message, fails the unit lane first.
+If the doc has no single closed block that pushes the promotion tag, the tagged-release message warns and links the docs section instead of printing a block. `tests/unit/test_promotion_summary.py` runs the real script: `--extract` against the real doc and crafted ones, and each message against a fake `gh` that pipes GitHub-shaped JSON through the script's own `--jq` filters. The block also gets `bash -n`, and `zsh -n` where zsh is installed (not on the CI runner). A doc edit that breaks the block, or a script change that drops a message, fails the unit lane first.
 
-**Permissions:** `contents: read` (sparse checkout, commit files, tags). No GCP credentials.
+**Permissions:** the job declares `contents: read` (sparse checkout, commit files, tag lookup). No GCP credentials.
 
 **When it runs:** On merge runs in production mode, after `stage-smoke` and `judge-eval` pass, the same jobs `require-stage-success` checks at tag time.
 
@@ -477,7 +478,7 @@ If the markers are missing, the tagged-release message warns and links the docs 
 
 **Pipeline (five jobs):**
 1. `changes` - dorny/paths-filter detects whether relevant files changed, and `release_pr` marks a release-please pull request: a bot author on a `release-please--` branch, updated by a bot. A human-named branch or a human push to the release branch runs every check
-2. `code-quality` - runs every pre-commit hook on all files (`uv run pre-commit run --all-files --show-diff-on-failure`: ruff, mypy, actionlint, `terraform fmt`, config-file checks), then pytest with coverage even when a hook fails. Installs Terraform from `.terraform-version` for the fmt hook and caches hook environments. Restores `.mypy_cache` on every run so mypy re-checks only what changed, and saves it only on pushes to main: pull requests read main's cache without adding entries to the repository's Actions cache quota. Runs on every push and pull request, since the hooks cover every file type. Checks out with `persist-credentials: false`, since the hooks run third-party code.
+2. `code-quality` - runs every pre-commit hook on all files (`uv run pre-commit run --all-files --show-diff-on-failure`, the hooks in `.pre-commit-config.yaml`), then pytest with coverage even when a hook fails. Installs Terraform from `.terraform-version` for the fmt hook and caches hook environments. Restores `.mypy_cache` on every run so mypy re-checks only what changed, and saves it only on pushes to main: pull requests read main's cache without adding entries to the repository's Actions cache quota. Runs on every push and pull request, since the hooks cover every file type. Checks out with `persist-credentials: false`, since the hooks run third-party code.
 3. `integration` - runs `pytest tests/integration`, which starts a throwaway `postgres:18` via `testcontainers` on the runner's Docker daemon (no coverage gate; the 100% gate is unit-lane-only). The `postgres:18` image matches the deployed Cloud SQL `POSTGRES_18` major. Gated on `changes.outputs.code == 'true'`, skipped on release-please pull requests.
 4. `agent-eval` - runs the deterministic agent eval (`uv run pytest tests/eval -m "deterministic"`) against Vertex AI, authenticating with the dev environment's WIF principal (no coverage gate). Gated on `changes.outputs.code == 'true'`, skipped on release-please pull requests.
 5. `status` - always-runs sentinel that aggregates results for branch protection

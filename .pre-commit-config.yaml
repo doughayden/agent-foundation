@@ -55,6 +55,7 @@ repos:
         entry: uv run shellcheck
         language: system
         types: [shell]
+        exclude_types: [zsh]  # shellcheck rejects zsh
         require_serial: true
       - id: terraform-fmt
         name: terraform fmt

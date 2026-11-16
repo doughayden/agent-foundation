@@ -8,7 +8,7 @@ A test's lane is decided by its runtime requirements and determinism, not by how
 
 | Lane | Needs | Deterministic | Cost | Local command |
 |---|---|---|---|---|
-| unit | in-process only (mocks at boundaries) | yes | free/fast | `uv run pytest` (default) |
+| unit | in-process (mocks at boundaries), or a repo script run against fakes on `PATH` | yes | free/fast | `uv run pytest` (default) |
 | integration | real external resource (Postgres) | yes | slower, no LLM/cloud | `uv run pytest tests/integration` |
 | smoke | a live deployed URL | yes | needs a deploy | `uv run pytest tests/smoke` |
 | eval | the real LLM | deterministic gate yes; judge gate no | costs money | `uv run pytest tests/eval` |
