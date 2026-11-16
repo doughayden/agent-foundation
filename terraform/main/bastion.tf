@@ -10,6 +10,9 @@ locals {
   sa_prefix_bastion = substr(var.agent_name, 0, 30 - length(local.sa_suffix_bastion))
   sa_id_bastion     = "${local.sa_prefix_bastion}${local.sa_suffix_bastion}"
 
+  bastion_stop_schedule = "0 6 * * *"
+
+  # Template syntax: https://developer.hashicorp.com/terraform/language/expressions/strings
   bastion_user_data = templatefile(
     "${path.module}/templates/bastion-cloud-init.yaml",
     {
@@ -75,7 +78,41 @@ resource "google_compute_instance" "bastion" {
     scopes = ["cloud-platform"]
   }
 
+  resource_policies = [google_compute_resource_policy.bastion_stop.id]
+
+  depends_on = [time_sleep.compute_agent_iam_propagation]
+
   lifecycle {
     replace_triggered_by = [terraform_data.bastion_user_data]
+  }
+}
+
+resource "google_compute_resource_policy" "bastion_stop" {
+  name        = "${local.resource_name}-bastion-stop"
+  region      = var.region
+  description = "Stops a developer-started ${local.resource_name} bastion (no start action)"
+
+  instance_schedule_policy {
+    vm_stop_schedule {
+      schedule = local.bastion_stop_schedule
+    }
+    time_zone = "UTC"
+  }
+}
+
+data "google_project" "main" {}
+
+# Instance schedules act as the Compute Engine service agent, which needs compute.instances.stop
+resource "google_project_iam_member" "compute_agent_instance_admin" {
+  project = var.project
+  role    = "roles/compute.instanceAdmin.v1"
+  member  = "serviceAccount:service-${data.google_project.main.number}@compute-system.iam.gserviceaccount.com"
+}
+
+resource "time_sleep" "compute_agent_iam_propagation" {
+  create_duration = "120s"
+
+  triggers = {
+    iam_member_id = google_project_iam_member.compute_agent_instance_admin.id
   }
 }

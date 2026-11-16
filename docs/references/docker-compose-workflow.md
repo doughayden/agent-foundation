@@ -110,6 +110,8 @@ What runs on the bastion, its firewall rules and the identity the tunnel uses in
 - **App container (`restart: no`):** Crash once, stay down. Keeps stack trace output clean for debugging — no restart noise to scroll past.
 - **IAP tunnel (`restart: unless-stopped`):** Auto-reconnect on network drops (laptop sleep, transient IAP failures). Infrastructure plumbing you don't want to babysit.
 
+**Bastion start container** (`bastion-start`, same image as the tunnel): the bastion is powered off between sessions, so this one-shot service runs `gcloud compute instances start --async` on every `docker compose up` (a no-op when the bastion is running) and exits. The tunnel waits for it to succeed (`depends_on` with `service_completed_successfully`), so a missing permission stops the stack with the gcloud error. It runs once per `up`, not on tunnel reconnects, so the daily stop schedule still stops a bastion left running ([Bastion and IAP Tunnel: Auto-Stop](bastion.md#auto-stop)).
+
 **IAP tunnel container** (`gcr.io/google.com/cloudsdktool/google-cloud-cli:stable`):
 - Uses `network_mode: "service:app"` to share the app container's network namespace — the tunnel binds to `0.0.0.0:5432` which appears as `localhost:5432` from the app's perspective
 - Runs `gcloud compute start-iap-tunnel` targeting the bastion host on port 5432
@@ -117,7 +119,7 @@ What runs on the bastion, its firewall rules and the identity the tunnel uses in
 
 **Credentials:** Mounts `~/.config/gcloud` to `/gcloud-config` with `CLOUDSDK_CONFIG=/gcloud-config` (decouples from container home directory). IAP tunnel requires full gcloud CLI config, not just Application Default Credentials.
 
-**Developer IAM prerequisite:** `roles/iap.tunnelResourceAccessor` on your Google account ([Bastion and IAP Tunnel: Developer Access](bastion.md#developer-access)).
+**Developer IAM prerequisite:** `roles/iap.tunnelResourceAccessor` and `compute.instances.start` on your Google account ([Bastion and IAP Tunnel: Developer Access](bastion.md#developer-access)).
 
 **Port:** `5432` on the app container's localhost. The app connects to `localhost:5432` identically to Cloud Run, where the Auth Proxy sidecar also listens on the same address.
 

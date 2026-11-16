@@ -104,11 +104,13 @@ The project enforces security at every layer of the stack, from network topology
 - **Default-deny firewall** — COS drops all incoming TCP/UDP connections except SSH on port 22. The cloud-init configuration explicitly opens only port 5432 for Auth Proxy traffic.
 - **Docker-native** — the Auth Proxy runs as a Docker container managed by systemd, not as a binary installed on the host. This provides process isolation and consistent versioning. The proxy image uses a floating major-version tag (`cloud-sql-proxy:2`) intentionally — this is a deliberate exception to the pinning principle, allowing automatic security patch pickup on container restart.
 
-The bastion's sole purpose is running the Auth Proxy for developer access to Cloud SQL. COS enforces that constraint at the OS level — there is almost nothing else the instance *can* do.
+The bastion's only jobs are running the Auth Proxy for developer access to Cloud SQL and bootstrapping the pg_cron cleanup job. COS enforces that constraint at the OS level — there is almost nothing else the instance *can* do.
+
+**Bastion powered off between sessions.** After its first bootstrap the bastion powers itself off in every environment, and a daily stop-only schedule stops one a developer started. The IAP-reachable host that can impersonate the app service account runs only between a start and the next scheduled stop: up to about a day for a developer start or a failed first boot, and indefinitely if the service agent's grant is revoked, since scheduled stops then fail silently ([Bastion and IAP Tunnel: Auto-Stop](bastion.md#auto-stop)).
 
 **Cloud Run Gen2 execution environment.** Gen2 uses a full Linux VM with hardware-level isolation (KVM), providing stronger syscall compatibility than Gen1's gVisor-based sandbox.
 
-- Source: `terraform/main/bastion.tf` (COS image, no public IP, metadata)
+- Source: `terraform/main/bastion.tf` (COS image, no public IP, metadata, stop schedule)
 - Source: `terraform/main/templates/bastion-cloud-init.yaml` (iptables, systemd proxy service)
 - Reference: [Bastion and IAP Tunnel](bastion.md)
 - GCP docs: [COS features and benefits](https://cloud.google.com/container-optimized-os/docs/concepts/features-and-benefits), [COS security overview](https://cloud.google.com/container-optimized-os/docs/concepts/security) (verified boot, read-only rootfs, default-deny firewall), [COS automatic updates](https://cloud.google.com/container-optimized-os/docs/concepts/auto-update) (active-passive partition scheme), [COS host firewall](https://cloud.google.com/container-optimized-os/docs/how-to/firewall), [Cloud Run execution environments](https://cloud.google.com/run/docs/about-execution-environments)

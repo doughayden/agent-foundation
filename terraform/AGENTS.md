@@ -4,7 +4,7 @@ Rules for editing `terraform/`. **Template Internals:** everything here except `
 
 ## Conventions
 
-- **Prefer `for_each` over `count`**, even for optional resources: key by a set or map that is empty when the resource is off (like `toset(var.patterns)`)
+- **`for_each` for collections, `count` for an on/off switch:** `count = local.flag ? 1 : 0` for a single optional resource; `for_each` keyed by a set or map (like `toset(var.patterns)`) when there can be several
 
 ## Pre-Bootstrap
 
@@ -19,6 +19,8 @@ One root per env (`dev/`, `stage/`, `prod/`) over shared modules (`gcp/`, `githu
 `terraform/main/`, resource list in `docs/references/deployment.md` Main Module. Inputs are `TF_VAR_*` from GitHub Environment Variables; requires `TF_VAR_environment`.
 
 - **Cloud Run env vars:** template wiring in `run_app_env` (`main.tf`), per-environment runtime config in `run_app_env_config` (`env.tf`), merged last so an entry wins. **Never add a Terraform variable or `TF_VAR_*` line for runtime config**: it goes in `env.tf`. The capture-mode precondition on `google_cloud_run_v2_service.app` checks every environment's entry
+- **Bastion `desired_status` stays unset:** setting it makes the provider read the live status back, so a bastion stopped by its schedule turns into drift and the next apply restarts it
+- **Bastion cloud-init template** (`templates/bastion-cloud-init.yaml`): any change to the rendered output, comments included, replaces every environment's bastion on its next apply (`replace_triggered_by`). Write a template directive indented into its YAML block as `%{~ … ~}` (a column-0 `%` fails `check-yaml`; the strip markers remove the directive lines)
 - Null `docker_image` reuses the previous image (`docs/references/deployment.md` Runtime Configuration)
 - Shared proxy args, IAM layering, naming: `docs/references/deployment.md` Main Module and Resource Naming; `time_sleep` propagation: `docs/references/bootstrap.md` Extending the Main Module
 - **Deletion protection stays on for stage/prod** (instance `deletion_protection`; no bucket `force_destroy`, no engine `FORCE`): a teardown flips them with uncommitted edits (`docs/references/environment-teardown.md`, run via the `teardown-environment` skill). `ABANDON` (SQL user owns pg_cron objects) and `REMOVE_PEERING` (Cloud SQL holds the connection after deletion) stay on: neither guards data

@@ -26,7 +26,7 @@ gcloud auth application-default login
 **IAP tunnel connection failures:**
 - Verify `roles/iap.tunnelResourceAccessor` is granted on your Google account
 - Check `BASTION_INSTANCE` and `BASTION_ZONE` in `.env` match deployment outputs
-- Confirm bastion VM is running: `gcloud compute instances describe $BASTION_INSTANCE --zone=$BASTION_ZONE`
+- Confirm bastion VM is running: `gcloud compute instances describe $BASTION_INSTANCE --zone=$BASTION_ZONE --format='value(status)'`. The bastion is stopped between sessions: Compose starts it, otherwise start it as in [Bastion and IAP Tunnel: Developer Access](references/bastion.md#developer-access)
 - Check IAP tunnel container logs: `docker compose logs iap-tunnel`
 - Verify gcloud config directory is readable: `ls -la ~/.config/gcloud/`
 
