@@ -4,7 +4,7 @@ Rules for editing `terraform/`. **Template Internals:** everything here except `
 
 ## Conventions
 
-- **Prefer `for_each` over `count`**, even for optional resources: key by a set or map that is empty when the resource is off (like `toset(var.patterns)`)
+- **`for_each` for collections, `count` for an on/off switch:** `count = local.flag ? 1 : 0` for a single optional resource; `for_each` keyed by a set or map (like `toset(var.patterns)`) when there can be several
 
 ## Pre-Bootstrap
 
