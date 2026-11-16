@@ -88,10 +88,12 @@ cmd_prepare() {
   [ ! -f "$TF_DIR/terraform.tfvars" ] || die "$TF_DIR/terraform.tfvars exists and would fill unset variables"
 
   tf init -input=false -no-color -reconfigure -backend-config="bucket=$bucket" >/dev/null
-  echo "state resources: $(tf state list | wc -l | tr -d ' ')"
+  # Grep a captured list: piped into grep -q, terraform fails on the closed pipe and pipefail reads a miss
+  local state; state=$(tf state list)
+  echo "state resources: $(grep -c . <<<"$state" || true)"
   # The image falls back to the deployed one; once Cloud Run is gone that fallback is empty
   local image_var=()
-  tf state list | grep -q '^google_cloud_run_v2_service\.app' || image_var=(-var "docker_image=$PLACEHOLDER")
+  grep -q '^google_cloud_run_v2_service\.app' <<<"$state" || image_var=(-var "docker_image=$PLACEHOLDER")
   tf plan -input=false -no-color -lock=false -var-file="$VAR_FILE" ${image_var[@]+"${image_var[@]}"} -out="$WORKDIR/drift.tfplan" >/dev/null
   echo "drift plan:"
   summarize_plan "$WORKDIR/drift.tfplan"
@@ -114,9 +116,10 @@ cmd_unprotect() {
   tf fmt >/dev/null
   echo "temporary edits:"; git -C "$WORKTREE" diff -U0 -- terraform/main | grep '^[+-] ' | sed 's/^/  /'
 
-  local targets=() t
+  local targets=() t state
+  state=$(tf state list)
   for t in $EDIT_TARGETS; do
-    tf state list | grep -qx "$t" && targets+=("-target=$t")
+    grep -qxF "$t" <<<"$state" && targets+=("-target=$t")
   done
   [ ${#targets[@]} -gt 0 ] || { echo "VERDICT: NOTHING_TO_UNPROTECT (no edit target left in state)"; return; }
   tf plan -input=false -no-color -var-file="$VAR_FILE" -var "docker_image=$PLACEHOLDER" "${targets[@]}" -out="$WORKDIR/unprotect.tfplan" >/dev/null
