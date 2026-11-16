@@ -1,0 +1,37 @@
+# Promotion Summary
+#
+# Merge-run summary of whether the commit is ready for prod promotion. The caller runs it
+# after the jobs `require-stage-success` checks at tag time; the logic, its outcomes and
+# the promotion block's single source are in `scripts/promotion-summary.sh`.
+name: Promotion Summary
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  promotion-summary:
+    name: Promotion Summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 5  # Typical run: <30s (sparse checkout and two GitHub API reads)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          sparse-checkout: |
+            docs/releasing.md
+            .release-please-manifest.json
+            .github/workflows/scripts/promotion-summary.sh
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Report the promotion step
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          DOCS_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/docs/releasing.md#promote-to-production-production-mode
+          DOC: docs/releasing.md
+          MANIFEST: .release-please-manifest.json
+        run: bash .github/workflows/scripts/promotion-summary.sh

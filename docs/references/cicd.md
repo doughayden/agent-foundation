@@ -15,6 +15,7 @@ GitHub Actions workflow architecture, mechanics, and customization.
 - **`resolve-image-digest.yml`** - Digest lookup by tag (production mode)
 - **`smoke.yml`** - Post-deploy smoke tests against the live deployed revision
 - **`judge-eval.yml`** - LLM-as-judge behavioral gate, run in-process against the checked-out agent
+- **`promotion-summary.yml`** - Merge-run promotion summary; runs `scripts/promotion-summary.sh` (production mode)
 - **`require-stage-success.yml`** - Tag-time gate requiring the tagged SHA's stage run to have passed before prod promotion (production mode)
 - **`terraform-plan-apply.yml`** - Terraform deployment
 
@@ -453,7 +454,7 @@ A workflow script lives in `.github/workflows/scripts/<name>.sh`. The workflow s
 
 ### promotion-summary.sh
 
-**Purpose:** Tells the admin, in the merge run's summary, whether the commit is ready for prod promotion, and hands over the command when it is. The `promotion-summary` job in `ci-cd.yml` sparse-checks out the doc, the release manifest and the script, then runs `.github/workflows/scripts/promotion-summary.sh`.
+**Purpose:** Tells the admin, in the merge run's summary, whether the commit is ready for prod promotion, and hands over the command when it is. `ci-cd.yml`'s `promotion-summary` job calls `promotion-summary.yml`, which sparse-checks out the doc, the release manifest and the script, then runs `.github/workflows/scripts/promotion-summary.sh`.
 
 **How it works:**
 1. Treats a commit that changes `.release-please-manifest.json` as a release commit (every release-please merge bumps it), reads its version from the manifest, and checks whether the `vX.Y.Z` tag resolves to this commit
