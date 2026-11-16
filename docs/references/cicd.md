@@ -47,7 +47,6 @@ Jobs read these variables, and authenticate to GCP, only when they declare the m
 | `ARTIFACT_REGISTRY_LOCATION` | Registry location |
 | `TERRAFORM_STATE_BUCKET` | GCS bucket for main module state |
 | `WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER` | WIF principal identifier for main module IAM bindings |
-| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | GenAI message content capture mode |
 
 **Note:** These are Variables (not Secrets) because they're resource identifiers, not credentials. Security comes from WIF IAM policies.
 
@@ -578,9 +577,9 @@ See [Deployment Modes](deployment.md) for complete instructions.
 ### Add Environment Variables
 
 **Runtime config** (LOG_LEVEL, SERVE_WEB_INTERFACE, etc.):
-1. Settings → Environments → {environment} → Environment variables
-2. Add or edit variable
-3. Re-run deployment or push new commit
+1. Edit the environment's entry in `terraform/main/env.tf`
+2. Create PR
+3. Merge PR → deploys via CI/CD (prod: on promotion)
 
 **Infrastructure config** (CORS origins, etc.):
 1. Edit `terraform/main/main.tf`

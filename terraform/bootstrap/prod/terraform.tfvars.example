@@ -31,9 +31,6 @@ prod_apply_reviewer_teams = [] # Team slugs (organization repositories only)
 # Recommended Defaults for the prod environment
 # ==============================================
 
-# OpenTelemetry Configuration (prod: no user content in telemetry)
-otel_instrumentation_genai_capture_message_content = "NO_CONTENT"
-
 # prod-apply protection (solo maintainer: allow self-review; team: prevent it and consider no admin bypass)
 prod_apply_prevent_self_review = false
 prod_apply_can_admins_bypass   = true

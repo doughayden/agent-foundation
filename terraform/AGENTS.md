@@ -1,6 +1,6 @@
 # AGENTS.md: Terraform
 
-Rules for editing `terraform/`. **Template Internals:** everything here except `terraform/main/services.tf`, `terraform/main/iam.tf` and the `terraform/main/monitoring.tf` locals (the consumer extension points, see root `AGENTS.md` Consumer Extension Points). Cross-cutting rules live in the root `AGENTS.md`.
+Rules for editing `terraform/`. **Template Internals:** everything here except `terraform/main/services.tf`, `terraform/main/iam.tf`, `terraform/main/env.tf` and the `terraform/main/monitoring.tf` locals (the consumer extension points, see root `AGENTS.md` Consumer Extension Points). Cross-cutting rules live in the root `AGENTS.md`.
 
 ## Conventions
 
@@ -18,7 +18,8 @@ One root per env (`dev/`, `stage/`, `prod/`) over shared modules (`gcp/`, `githu
 
 `terraform/main/`, resource list in `docs/references/deployment.md` Main Module. Inputs are `TF_VAR_*` from GitHub Environment Variables; requires `TF_VAR_environment`.
 
-- Overrides: `coalesce()` skips empty/null `TF_VAR_*`; null `docker_image` reuses the previous image; service URIs and CORS have no override (`docs/references/deployment.md` Runtime Configuration)
+- **Cloud Run env vars:** template wiring in `run_app_env` (`main.tf`), per-environment runtime config in `run_app_env_config` (`env.tf`), merged last so an entry wins. **Never add a Terraform variable or `TF_VAR_*` line for runtime config**: it goes in `env.tf`. The capture-mode precondition on `google_cloud_run_v2_service.app` checks every environment's entry
+- Null `docker_image` reuses the previous image (`docs/references/deployment.md` Runtime Configuration)
 - Shared proxy args, IAM layering, naming: `docs/references/deployment.md` Main Module and Resource Naming; `time_sleep` propagation: `docs/references/bootstrap.md` Extending the Main Module
 - **Deletion protection stays on for stage/prod** (instance `deletion_protection`; no bucket `force_destroy`, no engine `FORCE`): a teardown flips them with uncommitted edits (`docs/references/environment-teardown.md`, run via the `teardown-environment` skill). `ABANDON` (SQL user owns pg_cron objects) and `REMOVE_PEERING` (Cloud SQL holds the connection after deletion) stay on: neither guards data
 - `required_version` in each root stays a range; the exact pin is `.terraform-version` (root `AGENTS.md` Code Quality)

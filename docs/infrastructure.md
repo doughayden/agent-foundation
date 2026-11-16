@@ -189,6 +189,7 @@ See [Observability](observability.md) for query examples and trace analysis.
 - Application deployment: Cloud Run (Auth Proxy sidecar + direct VPC egress), app SA, Cloud SQL Postgres (private IP), Agent Engine, GCS bucket
 - Remote state (bucket created by bootstrap), runs automatically in CI/CD
 - Extend with custom GCP APIs (`services.tf`) and WIF IAM roles (`iam.tf`) via Pull Requests — see [Extending the Main Module](references/bootstrap.md#extending-the-main-module)
+- Set the Cloud Run service's runtime config per environment (log level, content capture mode, web interface, variables you add) in `env.tf` via Pull Requests — see [Environment Variables](environment-variables.md#deployed-values-cloud-run)
 
 See [Deployment Modes: Terraform Structure](references/deployment.md#terraform-structure) for resource details and naming conventions.
 

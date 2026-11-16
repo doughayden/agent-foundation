@@ -25,26 +25,25 @@ locals {
   # Prepare for future regional Cloud Run redundancy
   locations = toset([var.region])
 
-  # Cloud Run service environment variables
+  # Cloud Run service environment variables: template wiring, then the per-environment config in env.tf
+  run_app_env_selected = local.run_app_env_config[var.environment]
+  capture_modes        = ["NO_CONTENT", "EVENT_ONLY", "SPAN_ONLY", "SPAN_AND_EVENT"]
   run_app_env = merge({
-    ADK_EXPERIMENTAL_TELEMETRY                         = "TRUE"
-    ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS         = coalesce(var.adk_suppress_experimental_feature_warnings, "TRUE")
-    AGENT_NAME                                         = var.agent_name
-    ALLOW_ORIGINS                                      = jsonencode(["http://127.0.0.1:8000", "http://localhost:8000"]) # Localhost-only for gcloud proxy access (add client service origins when UI is deployed)
-    ARTIFACT_SERVICE_URI                               = google_storage_bucket.artifact_service.url
-    GOOGLE_CLOUD_LOCATION                              = var.google_cloud_location
-    GOOGLE_CLOUD_PROJECT                               = var.project
-    GOOGLE_GENAI_USE_ENTERPRISE                        = "TRUE"
-    LOG_LEVEL                                          = coalesce(var.log_level, "INFO")
-    MEMORY_SERVICE_URI                                 = "agentengine://${google_vertex_ai_reasoning_engine.session_and_memory.id}"
-    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT = var.otel_instrumentation_genai_capture_message_content
-    OTEL_RESOURCE_ATTRIBUTES                           = "service.namespace=${var.environment}"
-    RELOAD_AGENTS                                      = "FALSE"
-    SERVE_WEB_INTERFACE                                = coalesce(var.serve_web_interface, "FALSE")
-    SESSION_SERVICE_URI                                = "postgresql+asyncpg://${google_sql_user.app.name}:@localhost:5432/${google_sql_database.sessions.name}"
+    ADK_EXPERIMENTAL_TELEMETRY  = "TRUE"
+    AGENT_NAME                  = var.agent_name
+    ALLOW_ORIGINS               = jsonencode(["http://127.0.0.1:8000", "http://localhost:8000"]) # Localhost-only for gcloud proxy access (add client service origins when UI is deployed)
+    ARTIFACT_SERVICE_URI        = google_storage_bucket.artifact_service.url
+    GOOGLE_CLOUD_LOCATION       = var.google_cloud_location
+    GOOGLE_CLOUD_PROJECT        = var.project
+    GOOGLE_GENAI_USE_ENTERPRISE = "TRUE"
+    MEMORY_SERVICE_URI          = "agentengine://${google_vertex_ai_reasoning_engine.session_and_memory.id}"
+    OTEL_RESOURCE_ATTRIBUTES    = "service.namespace=${var.environment}"
+    RELOAD_AGENTS               = "FALSE"
+    SESSION_SERVICE_URI         = "postgresql+asyncpg://${google_sql_user.app.name}:@localhost:5432/${google_sql_database.sessions.name}"
     },
     # ADK's live streaming records content unless told not to, so NO_CONTENT turns that off too
-    var.otel_instrumentation_genai_capture_message_content == "NO_CONTENT" ? { ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS = "false" } : {},
+    lookup(local.run_app_env_selected, "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", null) == "NO_CONTENT" ? { ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS = "false" } : {},
+    local.run_app_env_selected,
   )
 
   # Cloud SQL Auth Proxy args — shared between bastion and Cloud Run sidecar
@@ -199,6 +198,18 @@ resource "google_cloud_run_v2_service" "app" {
 
     # Explicitly set the concurrency (defaults to 80 for CPU >= 1).
     max_instance_request_concurrency = 100
+  }
+
+  lifecycle {
+    # Checks every environment so a typo in one fails any environment's plan
+    precondition {
+      condition = alltrue([
+        for config in values(local.run_app_env_config) :
+        # == stays known for a null value, where contains() would return unknown and skip the check
+        anytrue([for mode in local.capture_modes : lookup(config, "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "") == mode])
+      ])
+      error_message = "Every environment in local.run_app_env_config (env.tf) must set OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT to one of ${join(", ", local.capture_modes)}."
+    }
   }
 }
 

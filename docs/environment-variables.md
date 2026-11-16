@@ -81,14 +81,14 @@ These must be set for the agent to function.
   - `SPAN_ONLY` - Put them on span attributes: `gen_ai.input.messages` and `gen_ai.output.messages` on model calls, `gen_ai.tool.call.arguments` and `gen_ai.tool.call.result` on tool calls
   - `SPAN_AND_EVENT` - Both
 - **Purpose:** Controls whether and where ADK records GenAI message content, including tool arguments and results. Live streaming content follows `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS` instead
-- **Where:** Set locally in `.env`, set before bootstrap
+- **Where:** Set locally in `.env`; per environment in `terraform/main/env.tf` for Cloud Run ([Deployed Values](#deployed-values-cloud-run)). Required in every environment there, and the plan rejects any other value
 - **Reference:** [Message Content Capture](observability.md#message-content-capture) (recommended values and why) and OpenTelemetry's [GenAI utilities](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/util/opentelemetry-util-genai)
 - **Security:** For sensitive data, set `NO_CONTENT` and `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false`
 
 **ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS**
 - **Default:** `true` when unset (ADK's default, independent of the capture mode); the Cloud Run service sets `false` whenever its capture mode is `NO_CONTENT`
 - **Purpose:** Read by ADK, not `ServerEnv`. Under ADK's default telemetry schema it only controls live streaming (`/run_live`): the content sent to the model, on the `gcp.vertex.agent.data` span attribute. It also controls content on ADK's deprecated legacy schema (`ADK_TELEMETRY_SCHEMA_VERSION_OPT_IN=otel_semconv_1_36`). `false` leaves them empty
-- **Where:** `.env` locally; derived from the capture mode in `terraform/main/main.tf` on Cloud Run
+- **Where:** `.env` locally; derived from the environment's capture mode in `terraform/main/main.tf` on Cloud Run (an entry in `terraform/main/env.tf` overrides it)
 - **Reference:** [Message Content Capture](observability.md#message-content-capture)
 
 ---
@@ -142,7 +142,7 @@ Deployed persistence for sessions, memory, and artifacts. Set locally to run aga
 - **Options:** `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
 - **Default:** `INFO`
 - **Purpose:** Controls logging verbosity
-- **Where:** Set locally via `.env` or command line, configure via GitHub Environment Variables for Cloud Run
+- **Where:** Set locally via `.env` or command line; per environment in `terraform/main/env.tf` for Cloud Run
 - **Usage:**
   ```bash
   LOG_LEVEL=DEBUG uv run server
@@ -158,7 +158,7 @@ Every signal exports to the Google Cloud Telemetry API with Application Default 
 **OTEL_RESOURCE_ATTRIBUTES**
 - **Default:** unset (no `service.namespace`)
 - **Purpose:** Override or add resource attributes on every signal. A key set here wins over the template's value (like `service.name`). Set `service.namespace` to a unique value, like your name, so teammates can filter to your local experiments
-- **Where:** `.env` or the shell; Terraform sets `service.namespace=<environment>` on the Cloud Run service
+- **Where:** `.env` or the shell; Terraform sets `service.namespace=<environment>` on the Cloud Run service, and an entry in `terraform/main/env.tf` replaces that value ([Deployed Values](#deployed-values-cloud-run))
 - **Format:** comma-separated `key=value` pairs, like `OTEL_RESOURCE_ATTRIBUTES=service.name=my-agent,service.namespace=alice-local`
 - **Metrics locally:** add `cloud.region=<region>` (like `cloud.region=us-central1`) to send metrics to Google from your machine; without a region, metrics are off
 - **Note:** The SDK also honors the standard `OTEL_SERVICE_NAME`, which wins over `service.name` in `OTEL_RESOURCE_ATTRIBUTES`; the template neither sets nor prints it
@@ -166,7 +166,7 @@ Every signal exports to the Google Cloud Telemetry API with Application Default 
 **OTEL_TRACES_SAMPLER**
 - **Default:** unset (the template's sampler records every span, including under Cloud Run's unsampled `traceparent`)
 - **Purpose:** Replace the template's trace sampler with a standard SDK one, read with `OTEL_TRACES_SAMPLER_ARG`. Pick one that ignores the parent's sampled flag, like `traceidratio`: a parent-based sampler drops most agent spans on Cloud Run. Why: [OpenTelemetry Architecture](references/opentelemetry-architecture.md#trace-context-and-sampling)
-- **Where:** `.env` or the shell; not set on the Cloud Run service
+- **Where:** `.env` or the shell; on Cloud Run, add it per environment in `terraform/main/env.tf` (example in [Deployed Values](#deployed-values-cloud-run))
 
 The SDK reads its other standard variables too; the template sets none of them on Cloud Run. See the OpenTelemetry [SDK environment variables](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/).
 
@@ -175,7 +175,7 @@ The SDK reads its other standard variables too; the template sets none of them o
 **SERVE_WEB_INTERFACE**
 - **Default:** `FALSE`
 - **Purpose:** Enables ADK web UI at http://127.0.0.1:8000
-- **Where:** Set locally via `.env`, configure via GitHub Environment Variables for Cloud Run
+- **Where:** Set locally via `.env`; per environment in `terraform/main/env.tf` for Cloud Run
 - **Options:**
   - `FALSE` - API-only mode
   - `TRUE` - Enable web interface
@@ -184,7 +184,7 @@ The SDK reads its other standard variables too; the template sets none of them o
 - **Default:** `FALSE`
 - **Purpose:** Enable agent hot-reloading on file changes (development only)
 - **Where:** Local development only
-- **WARNING:** Set to `FALSE` in production (Cloud Run forces `FALSE`)
+- **WARNING:** Set to `FALSE` in production (the template sets `FALSE` on Cloud Run in `terraform/main/main.tf`; an entry in `terraform/main/env.tf` overrides it)
 
 ### CORS
 
@@ -192,7 +192,7 @@ The SDK reads its other standard variables too; the template sets none of them o
 - **Default:** `'["http://127.0.0.1:8000", "http://localhost:8000"]'`
 - **Format:** JSON array string
 - **Purpose:** Configure CORS allowed origins
-- **Where:** Hard-coded in Terraform for Cloud Run, configurable locally via `.env`
+- **Where:** Set by the template in `terraform/main/main.tf` for Cloud Run (an entry in `terraform/main/env.tf` overrides it), configurable locally via `.env`
 - **Example:** `ALLOW_ORIGINS='["https://your-domain.com", "http://127.0.0.1:3000"]'`
 
 ### Advanced
@@ -218,11 +218,12 @@ The SDK reads its other standard variables too; the template sets none of them o
 **ADK_EXPERIMENTAL_TELEMETRY**
 - **Default:** `FALSE` when unset; `.env.example` and the Cloud Run service (`terraform/main/main.tf`) set `TRUE`
 - **Purpose:** Read by ADK, not `ServerEnv`. Adds ADK's `adk.experimental.*` metrics (token breakdowns, workflow call counts, skill loads, compactions) and experimental span data. ADK's seven default `gen_ai.*` metrics need no flag
-- **Where:** `.env` locally; fixed in the Terraform env map on Cloud Run
+- **Where:** `.env` locally; set by the template wiring in `terraform/main/main.tf` on Cloud Run
 
 **ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS**
 - **Default:** `FALSE`
 - **Purpose:** Suppress ADK experimental feature warnings
+- **Where:** `.env` locally; per environment in `terraform/main/env.tf` for Cloud Run
 - **Options:**
   - `FALSE` - Show warnings
   - `TRUE` - Suppress warnings
@@ -236,6 +237,33 @@ These variables are automatically set by Cloud Run. Do not set manually.
 - **Purpose:** Cloud Run configuration name. `telemetry.py` reads it for the `configuration_name` label that places OTLP logs on the `cloud_run_revision` resource; the GCP resource detector supplies the other labels
 - **Where:** Auto-set by Cloud Run
 - **Example:** `your-agent-dev`
+
+---
+
+## Deployed Values (Cloud Run)
+
+`terraform/main/env.tf` holds the Cloud Run service's environment variables per environment, in `local.run_app_env_config`. Terraform merges the deploying environment's entry over the template wiring in `terraform/main/main.tf` (service URIs, project, agent name, resource attributes and similar), so changes go through review. Pull requests plan dev only: a change to the dev entry shows in the PR's plan, while stage and prod changes first show in the merge run's plan (production mode) and the promotion's prod plan.
+
+- **Capture mode:** required in every environment's entry. The plan fails, in any environment, when one entry omits it or sets a value outside the four modes. Recommended values per environment: [Message Content Capture](observability.md#message-content-capture)
+- **Overrides:** an entry wins over a template-wired key of the same name, like `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS` or `ALLOW_ORIGINS`. Overriding a service URI points the service at a different backend. An `OTEL_RESOURCE_ATTRIBUTES` entry replaces the whole template value, so keep `service.namespace=<environment>` in it or telemetry loses its environment filter
+- **Plain values only:** keep secrets out of the map
+
+**Add a variable to one environment**, like a ratio trace sampler in prod only ([OTEL_TRACES_SAMPLER](#opentelemetry-export)):
+
+```hcl
+prod = {
+  # ...existing entries
+  OTEL_TRACES_SAMPLER     = "traceidratio"
+  OTEL_TRACES_SAMPLER_ARG = "0.1"
+}
+```
+
+The plan for that environment shows an in-place update of its Cloud Run service only; the merge (or, for prod, the promotion) deploys it.
+
+**Enable the web interface in dev:** set `SERVE_WEB_INTERFACE = "TRUE"` in the `dev` entry and merge. The interface is then at `http://localhost:8000` through `gcloud run services proxy`.
+
+> [!NOTE]
+> `env.tf` sits under the deploy path filter, so every change to it, a dev toggle included, runs the full merge pipeline: image build, the judge eval and, in production mode, the stage deploy. Batch toggles, or set the variable in `.env` to try it locally first.
 
 ---
 
@@ -271,12 +299,6 @@ GitHub Environment Variables are mapped to Terraform inputs via `TF_VAR_*` prefi
 - **Source:** `${{ vars.TERRAFORM_STATE_BUCKET }}` (GitHub Environment Variable)
 - **Purpose:** GCS bucket for Terraform state
 
-**TF_VAR_otel_instrumentation_genai_capture_message_content**
-- **Source:** `${{ vars.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT }}` (GitHub Environment Variable, written by bootstrap from `otel_instrumentation_genai_capture_message_content` in each bootstrap root's `terraform.tfvars`)
-- **Purpose:** Message content capture mode on the Cloud Run service. Required: Terraform validation accepts only the four capture modes, so deleting the GitHub variable fails the plan. With `NO_CONTENT`, Terraform also sets `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false`
-- **Recommended:** `SPAN_AND_EVENT` in dev to debug prompts, responses and tool calls; `NO_CONTENT` in stage and prod (the bootstrap `terraform.tfvars.example` files)
-- **Change:** set the bootstrap value and re-apply bootstrap, which rewrites the GitHub variable
-
 **TF_VAR_docker_image**
 - **Source:** `${{ inputs.docker_image }}` (workflow input)
 - **Purpose:** Immutable image digest for deployment
@@ -288,19 +310,6 @@ GitHub Environment Variables are mapped to Terraform inputs via `TF_VAR_*` prefi
 **TF_VAR_workload_identity_pool_principal_identifier**
 - **Source:** `${{ vars.WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER }}` (GitHub Environment Variable, auto-created by bootstrap)
 - **Purpose:** WIF principal identifier for binding additional IAM roles in `terraform/main/iam.tf`
-
-### Runtime Configuration Overrides
-
-Override runtime config via GitHub Environment Variables (mapped to `TF_VAR_*`):
-
-**TF_VAR_log_level**
-- **Source:** `${{ vars.LOG_LEVEL }}` (optional GitHub Environment Variable)
-- **Purpose:** Override LOG_LEVEL for Cloud Run deployment
-
-**TF_VAR_serve_web_interface**
-- **Source:** `${{ vars.SERVE_WEB_INTERFACE }}` (optional GitHub Environment Variable)
-- **Purpose:** Override SERVE_WEB_INTERFACE for Cloud Run deployment
-- **Set:** `gh variable set SERVE_WEB_INTERFACE --env dev --body "TRUE"` (or Settings → Environments), then re-run the latest CI/CD workflow to redeploy. The web interface is then at `http://localhost:8000` through `gcloud run services proxy`
 
 ### Test Lane Inputs
 
@@ -344,8 +353,7 @@ Set in GitHub Actions > Secrets and variables > Actions. Both select the model a
 - `compose.yml` (Docker Compose)
 
 **Cloud Run:**
-- Terraform `main` module (`terraform/main/main.tf`)
-- GitHub Environment Variables → `TF_VAR_*` → Terraform → Cloud Run environment
+- Template wiring in `terraform/main/main.tf`, merged with the per-environment entry in `terraform/main/env.tf` ([Deployed Values](#deployed-values-cloud-run))
 
 **CI/CD:**
 - GitHub Environment Variables (auto-created by bootstrap)

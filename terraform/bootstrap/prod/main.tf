@@ -22,45 +22,43 @@ module "github" {
   source      = "../module/github"
   environment = "prod"
 
-  project                                            = var.project
-  zone                                               = var.zone
-  region                                             = var.region
-  google_cloud_location                              = var.google_cloud_location
-  agent_name                                         = var.agent_name
-  repository_owner                                   = var.repository_owner
-  repository_name                                    = var.repository_name
-  otel_instrumentation_genai_capture_message_content = var.otel_instrumentation_genai_capture_message_content
-  artifact_registry_location                         = module.gcp.artifact_registry_location
-  artifact_registry_uri                              = module.gcp.artifact_registry_uri
-  workload_identity_provider_name                    = module.gcp.workload_identity_provider_name
-  workload_identity_pool_principal_identifier        = module.gcp.workload_identity_pool_principal_identifier
-  terraform_state_bucket                             = var.terraform_state_bucket
-  deployment_tag_patterns                            = [local.promotion_tag_pattern]
+  project                                     = var.project
+  zone                                        = var.zone
+  region                                      = var.region
+  google_cloud_location                       = var.google_cloud_location
+  agent_name                                  = var.agent_name
+  repository_owner                            = var.repository_owner
+  repository_name                             = var.repository_name
+  artifact_registry_location                  = module.gcp.artifact_registry_location
+  artifact_registry_uri                       = module.gcp.artifact_registry_uri
+  workload_identity_provider_name             = module.gcp.workload_identity_provider_name
+  workload_identity_pool_principal_identifier = module.gcp.workload_identity_pool_principal_identifier
+  terraform_state_bucket                      = var.terraform_state_bucket
+  deployment_tag_patterns                     = [local.promotion_tag_pattern]
 }
 
 module "github_protected" {
   source      = "../module/github"
   environment = "prod-apply"
 
-  project                                            = var.project
-  zone                                               = var.zone
-  region                                             = var.region
-  google_cloud_location                              = var.google_cloud_location
-  agent_name                                         = var.agent_name
-  repository_owner                                   = var.repository_owner
-  repository_name                                    = var.repository_name
-  otel_instrumentation_genai_capture_message_content = var.otel_instrumentation_genai_capture_message_content
-  artifact_registry_location                         = module.gcp.artifact_registry_location
-  artifact_registry_uri                              = module.gcp.artifact_registry_uri
-  workload_identity_provider_name                    = module.gcp.workload_identity_provider_name
-  workload_identity_pool_principal_identifier        = module.gcp.workload_identity_pool_principal_identifier
-  terraform_state_bucket                             = var.terraform_state_bucket
-  deployment_tag_patterns                            = [local.promotion_tag_pattern]
-  reviewer_users                                     = var.prod_apply_reviewer_users
-  reviewer_teams                                     = var.prod_apply_reviewer_teams
-  prevent_self_review                                = var.prod_apply_prevent_self_review
-  can_admins_bypass                                  = var.prod_apply_can_admins_bypass
-  wait_timer                                         = var.prod_apply_wait_timer
+  project                                     = var.project
+  zone                                        = var.zone
+  region                                      = var.region
+  google_cloud_location                       = var.google_cloud_location
+  agent_name                                  = var.agent_name
+  repository_owner                            = var.repository_owner
+  repository_name                             = var.repository_name
+  artifact_registry_location                  = module.gcp.artifact_registry_location
+  artifact_registry_uri                       = module.gcp.artifact_registry_uri
+  workload_identity_provider_name             = module.gcp.workload_identity_provider_name
+  workload_identity_pool_principal_identifier = module.gcp.workload_identity_pool_principal_identifier
+  terraform_state_bucket                      = var.terraform_state_bucket
+  deployment_tag_patterns                     = [local.promotion_tag_pattern]
+  reviewer_users                              = var.prod_apply_reviewer_users
+  reviewer_teams                              = var.prod_apply_reviewer_teams
+  prevent_self_review                         = var.prod_apply_prevent_self_review
+  can_admins_bypass                           = var.prod_apply_can_admins_bypass
+  wait_timer                                  = var.prod_apply_wait_timer
 }
 
 # Cross-project binding to allow docker image promotion

@@ -37,7 +37,7 @@ A change that removes, renames or changes the meaning of anything in this sectio
 **Terraform** (`terraform/main/` and the bootstrap roots):
 - Input variables and outputs
 - Resource addresses, so an existing deployment plans without replacing a stateful resource like Cloud SQL or a bucket
-- The documented landing spots for consumer additions: `services.tf` and `iam.tf` with their `time_sleep` propagation keys, and the `alert_thresholds` and `alert_notification_channels` locals in `monitoring.tf`
+- The documented landing spots for consumer additions: `services.tf` and `iam.tf` with their `time_sleep` propagation keys, the `alert_thresholds` and `alert_notification_channels` locals in `monitoring.tf`, and the `run_app_env_config` local in `env.tf`
 
 **GitHub configuration:**
 - Repository and environment variables, secrets, environments and their protection rules that a consumer provides or bootstrap writes

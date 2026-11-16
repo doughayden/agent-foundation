@@ -130,7 +130,7 @@ Two settings decide where user content (prompts, responses, tool arguments and r
 
 | Setting | Controls | Default |
 |---|---|---|
-| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | GenAI content: event log records, and the `gen_ai.input.messages` / `gen_ai.output.messages` and `gen_ai.tool.call.arguments` / `gen_ai.tool.call.result` span attributes | Required. Deployed, bootstrap writes it from each root's `terraform.tfvars` |
+| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | GenAI content: event log records, and the `gen_ai.input.messages` / `gen_ai.output.messages` and `gen_ai.tool.call.arguments` / `gen_ai.tool.call.result` span attributes | Required. Deployed, per environment in `terraform/main/env.tf` |
 | `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS` | Live streaming (`/run_live`) content on `gcp.vertex.agent.data`, and content on ADK's deprecated legacy telemetry schema | ADK default `true`, whatever the capture mode |
 
 The capture mode takes exactly one of these four values, defined by OpenTelemetry's [GenAI utilities](https://github.com/open-telemetry/opentelemetry-python-genai/tree/main/util/opentelemetry-util-genai):
@@ -145,7 +145,7 @@ The capture mode takes exactly one of these four values, defined by OpenTelemetr
 > [!IMPORTANT]
 > `NO_CONTENT` keeps content out of normal agent runs, but live streaming still records what it sends to the model on `gcp.vertex.agent.data` unless `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false`. Deployed, Terraform sets it whenever the capture mode is `NO_CONTENT`; locally, set both in `.env`.
 
-Captured content raises logging costs and stores user data. The bootstrap examples choose:
+Captured content raises logging costs and stores user data. Set the mode per environment in `terraform/main/env.tf` ([Environment Variables: Deployed Values](environment-variables.md#deployed-values-cloud-run)). Recommended:
 
 - Dev: `SPAN_AND_EVENT`. The events feed Cloud Trace's Input/Output view, which reads events, not span attributes. The span attributes put tool arguments and results on the tool spans, the only place they are recorded, and show content in the span attribute panels of Cloud Trace and the ADK web UI. Content is stored twice, and model-call spans grow with the conversation.
 - Stage and prod: `NO_CONTENT`, so Terraform also sets `ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=false` and no user content reaches telemetry.

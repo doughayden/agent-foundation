@@ -38,16 +38,6 @@ variable "repository_name" {
   type        = string
 }
 
-variable "otel_instrumentation_genai_capture_message_content" {
-  description = "ADK GenAI message content capture mode: NO_CONTENT, EVENT_ONLY, SPAN_ONLY or SPAN_AND_EVENT"
-  type        = string
-
-  validation {
-    condition     = contains(["NO_CONTENT", "EVENT_ONLY", "SPAN_ONLY", "SPAN_AND_EVENT"], var.otel_instrumentation_genai_capture_message_content)
-    error_message = "Must be one of NO_CONTENT, EVENT_ONLY, SPAN_ONLY or SPAN_AND_EVENT."
-  }
-}
-
 variable "registry_cleanup_general_retention_days" {
   description = "Days to retain images generally"
   type        = number

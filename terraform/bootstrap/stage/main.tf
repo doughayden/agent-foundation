@@ -17,19 +17,18 @@ module "github" {
   source      = "../module/github"
   environment = "stage"
 
-  project                                            = var.project
-  region                                             = var.region
-  zone                                               = var.zone
-  google_cloud_location                              = var.google_cloud_location
-  agent_name                                         = var.agent_name
-  repository_owner                                   = var.repository_owner
-  repository_name                                    = var.repository_name
-  otel_instrumentation_genai_capture_message_content = var.otel_instrumentation_genai_capture_message_content
-  artifact_registry_location                         = module.gcp.artifact_registry_location
-  artifact_registry_uri                              = module.gcp.artifact_registry_uri
-  workload_identity_provider_name                    = module.gcp.workload_identity_provider_name
-  workload_identity_pool_principal_identifier        = module.gcp.workload_identity_pool_principal_identifier
-  terraform_state_bucket                             = var.terraform_state_bucket
+  project                                     = var.project
+  region                                      = var.region
+  zone                                        = var.zone
+  google_cloud_location                       = var.google_cloud_location
+  agent_name                                  = var.agent_name
+  repository_owner                            = var.repository_owner
+  repository_name                             = var.repository_name
+  artifact_registry_location                  = module.gcp.artifact_registry_location
+  artifact_registry_uri                       = module.gcp.artifact_registry_uri
+  workload_identity_provider_name             = module.gcp.workload_identity_provider_name
+  workload_identity_pool_principal_identifier = module.gcp.workload_identity_pool_principal_identifier
+  terraform_state_bucket                      = var.terraform_state_bucket
   # Stage deploys on pushes to main; promotion tags (prod-vX.Y.Z) read the stage registry
   deployment_branch_patterns = ["main"]
   deployment_tag_patterns    = ["prod-v*.*.*"]

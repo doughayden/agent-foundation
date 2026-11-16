@@ -24,7 +24,7 @@ Read the matching file before working in its directory. Claude Code also loads i
 | File | Covers | Ownership |
 |---|---|---|
 | `.github/workflows/AGENTS.md` | Orchestration, path filters, stage-success gate, release automation, required checks, workflow patterns, actionlint | Template Internals |
-| `terraform/AGENTS.md` | Pre-bootstrap, bootstrap roots, main module, Cloud Run probes | Template Internals (except `services.tf`/`iam.tf`/`monitoring.tf` locals) |
+| `terraform/AGENTS.md` | Pre-bootstrap, bootstrap roots, main module, Cloud Run env vars, Cloud Run probes | Template Internals (except `services.tf`/`iam.tf`/`env.tf`/`monitoring.tf` locals) |
 | `tests/AGENTS.md` | Lanes, eval gate, smoke lane, conftests, fixtures, mocks, organization | Consumer-owned; eval-gate internals marked |
 
 ## Critical
@@ -88,14 +88,14 @@ Entry-point map for "I want to add X". Each row points to the file where the cha
 | Enable a GCP API | `terraform/main/services.tf` | `google_project_service`; downstream resources `depends_on = [time_sleep.service_enablement_propagation["api.googleapis.com"]]` |
 | Grant a WIF role | `terraform/main/iam.tf` | `google_project_iam_member`; downstream resources `depends_on = [time_sleep.wif_iam_propagation["roles/example"]]` |
 | Tune or activate alerts | `alert_thresholds` / `alert_notification_channels` in `terraform/main/monitoring.tf` | Dry-run by default (no channel). Conditions read native Cloud Run metrics only, each mirroring a Metrics-tab chart: `docs/observability.md` Alerting |
-| Override runtime config | GitHub Environment Variables → `TF_VAR_*` | See `coalesce()` call sites in `terraform/main/` for current overridable surface |
+| Override runtime config | `run_app_env_config` in `terraform/main/env.tf` | Cloud Run env vars per environment; merge and validation rules: `terraform/AGENTS.md` Main Module |
 | Add a CI lane for a subproject | new `.github/workflows/ci-<name>.yml` (copy `ci.yml`) | Unique top-level `name:`, scoped filters, new `<Name> / status` in branch protection: `docs/references/cicd.md` Subproject Builds |
 | Add a subproject Docker image to the deploy pipeline | new `build-<name>` job in `ci-cd.yml` calling `docker-build.yml` with `image_name`/`context`; mirror the promote/resolve calls and pass the digest to `terraform-plan-apply.yml` as a new `TF_VAR_*` | Add the context path to the `changes` job's `deploy` filter or the job never fires. `.dockerignore` is read from the context root, so add `<context>/.dockerignore` if needed. Pattern and registry constraint: `docs/references/cicd.md` Subproject Builds |
 
 **Template internals** (higher upstream-sync cost if customized — consumers may still modify, but expect merge complexity on future upstream syncs):
 - `terraform/bootstrap/` — bootstrap roots and shared modules
 - `.github/workflows/` — CI/CD orchestration
-- `terraform/main/` files other than `services.tf`, `iam.tf` and the `monitoring.tf` locals
+- `terraform/main/` files other than `services.tf`, `iam.tf`, `env.tf` and the `monitoring.tf` locals
 
 ## Architecture Overview
 
@@ -207,6 +207,7 @@ uv lock --upgrade               # Update all
 - No "See Also" sections - rely on index navigation instead
 - Single source of truth: env vars only in `docs/environment-variables.md`
 - Never name the Python version in docs (prose or examples); point to `.python-version`, use `X.Y` in snippets. Literals drift on every bump
+- Committed docs name the symbol or section, never `file:line`: line numbers drift on every edit
 - Update `docs/README.md` when adding docs
 - Keep guides digestible (<300 lines). Move details to `references/`.
 

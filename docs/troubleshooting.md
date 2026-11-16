@@ -346,8 +346,8 @@ Production issue detected?
 │
 ├─ Configuration regression (wrong env vars, feature flags)
 │  │
-│  ├─ Config in GitHub Environment variables?
-│  │  └─→ Manual GitHub UI edit + re-trigger deployment
+│  ├─ Config in terraform/main/env.tf?
+│  │  └─→ Strategy 1 (the previous revision keeps its env vars), then fix env.tf in a hotfix
 │  │
 │  └─ Config in application code?
 │     └─→ Strategy 2: Hotfix + Release
