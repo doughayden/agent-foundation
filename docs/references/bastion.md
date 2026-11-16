@@ -23,6 +23,7 @@ All of it lives in `terraform/main/`:
 | Cloud SQL Auth Proxy | `templates/bastion-cloud-init.yaml` | A systemd unit runs `gcr.io/cloud-sql-connectors/cloud-sql-proxy:2` with the flags shared with the Cloud Run sidecar (`local.cloud_sql_proxy_args` in `main.tf`: `--private-ip`, `--port=5432`, `--auto-iam-authn`), plus two bastion-only flags: `--address=0.0.0.0` and `--impersonate-service-account=<app SA>` |
 | Host firewall | `templates/bastion-cloud-init.yaml` | COS drops inbound traffic by default; `runcmd` adds an `iptables` rule that accepts port 5432 |
 | IAP firewall rules | `network.tf` | `iap-ssh` (22) and `iap-postgres` (5432), source `35.235.240.0/20` (Google's IAP range), target the bastion service account |
+| Stop schedule | `bastion.tf` | Stage and prod only: a stop-only instance schedule (`google_compute_resource_policy.bastion_stop`) and `roles/compute.instanceAdmin.v1` on the project for the Compute Engine service agent, which runs the schedule ([Auto-Stop in Stage and Prod](#auto-stop-in-stage-and-prod)) |
 | Cloud NAT | `network.tf` | Outbound access for the bastion, which has no public IP: pulls the proxy and Postgres images and reaches the Cloud SQL Admin API |
 
 The proxy binds `0.0.0.0` because tunneled connections arrive on the VM's network interface, not on loopback. The Cloud Run sidecar keeps the default loopback binding and runs as the app service account directly, so it needs neither bastion-only flag.
@@ -43,13 +44,21 @@ psql "host=127.0.0.1 port=5432 user=<app-sa-email-without-.gserviceaccount.com> 
 
 Opening the tunnel (`gcloud compute start-iap-tunnel <bastion> 5432 --zone=<zone>`, as Compose does) needs only `roles/iap.tunnelResourceAccessor`. A principal holding just that role opened the tunnel and queried `agent_sessions`, with no OS Login or Compute Engine role. Project Owners already hold it. Grant it to other developers with `gcloud projects add-iam-policy-binding` or in the Console.
 
+In stage and prod the bastion is usually stopped ([Auto-Stop in Stage and Prod](#auto-stop-in-stage-and-prod)). Starting it needs `compute.instances.start` on the instance (`roles/compute.instanceAdmin.v1`, which Project Owners hold through `roles/owner`). Start it before opening the tunnel:
+
+```bash
+gcloud compute instances start <bastion> --zone=<zone>
+```
+
+The proxy accepts connections about a minute after boot. The bastion keeps running until the daily stop schedule, or stop it yourself with `gcloud compute instances stop <bastion> --zone=<zone>`.
+
 ## pg_cron Bootstrap
 
 The bastion also provisions the session-cleanup job ([Cloud SQL Scaling and Reliability: Scheduled Session Cleanup](cloud-sql.md#scheduled-session-cleanup)), because it is the one host with a standing database connection outside Cloud Run.
 
 - **Script:** cloud-init writes `/etc/pg-cron-bootstrap.sh` and a oneshot systemd unit that runs it after the proxy starts. The script waits up to about 60 seconds for the proxy, then connects through it as the app's database user to the `postgres` database and runs `CREATE EXTENSION IF NOT EXISTS pg_cron` and `cron.schedule_in_database('session-cleanup', ...)`, which schedules the delete in `agent_sessions`
 - **Why `postgres`:** Cloud SQL runs pg_cron in the `postgres` database by default; the `cron.database_name` flag changes that ([Cloud SQL extensions](https://docs.cloud.google.com/sql/docs/postgres/extensions)). The template keeps the default
-- **Idempotent:** COS re-runs cloud-init on every boot. `CREATE EXTENSION IF NOT EXISTS` is a no-op and the named job upserts, so a reboot re-asserts exactly one job. The job lives in the database, so the bootstrap only has to succeed once per database lifetime
+- **Idempotent:** COS re-runs cloud-init on every boot, a developer start of a stopped bastion included. `CREATE EXTENSION IF NOT EXISTS` is a no-op and the named job upserts, so a reboot re-asserts exactly one job. The job lives in the database, so the bootstrap only has to succeed once per database lifetime
 - **Ordering:** the cloud-init template references `google_sql_user.app.name`, so Terraform creates the bastion after the database and the IAM database user exist
 - **Replacement on change:** `terraform_data.bastion_user_data` hashes the rendered cloud-init and the instance's `lifecycle.replace_triggered_by` points at it. Any edit to the template, retention or schedule included, recreates the bastion on the next apply, since COS reads cloud-init only at boot
 
@@ -77,11 +86,24 @@ WHERE refobjid = (SELECT oid FROM pg_roles WHERE rolname = current_user)
 ORDER BY 1;
 ```
 
+## Auto-Stop in Stage and Prod
+
+Outside dev, the bastion exists mainly to deliver the pg_cron bootstrap, and a running instance is an IAP-reachable host that can impersonate the app service account. Stage and prod therefore keep it powered off (`local.bastion_auto_stop` in `bastion.tf`, true for every environment except `dev`). Two mechanisms do it:
+
+- **Self-stop on first boot:** the bootstrap script records the boot disk's first boot in `/var/lib/pg-cron-bootstrap/first-boot-done` (`/var` persists across reboots on COS) and, on that boot only, powers the VM off once pg_cron is scheduled. A new or replaced bastion therefore boots, bootstraps and stops. A failed first bootstrap exits before the power-off and leaves the VM running to debug
+- **Stop schedule:** a stop-only instance schedule stops the bastion daily at 06:00 UTC (`local.bastion_auto_stop_schedule`), which catches a bastion a developer started and left running, and a failed first boot. It has no start action. The schedule runs as the Compute Engine service agent, so the module grants that agent `roles/compute.instanceAdmin.v1` on the project, the setup the schedule docs prescribe. Compute checks the permission when the schedule attaches, so the bastion waits for the grant to propagate (`time_sleep.compute_agent_iam_propagation`) before it is created. A grant revoked later makes scheduled stops fail, visible only in the project's audit logs. A scheduled stop can start up to 15 minutes after the set time ([Scheduling a VM instance to start and stop](https://docs.cloud.google.com/compute/docs/instances/schedule-instance-start-stop))
+
+Later boots, a developer start or a COS update reboot, re-assert the cleanup job but do not power off. A stopped bastion keeps its boot disk and costs only disk storage.
+
+The bastion resource leaves `desired_status` unset. The google provider then never reads the live status back into state, so a stopped bastion plans clean and an apply leaves it stopped.
+
+Dev renders the cloud-init without the auto-stop lines and gets no schedule: its bastion stays running for routine developer tunnels.
+
 ## Health and Recovery
 
 **Symptom:** the tunnel connects but queries fail or hang.
 
-1. Confirm the VM is running: `gcloud compute instances describe <bastion> --zone=<zone> --format='value(status)'`
+1. Confirm the VM is running: `gcloud compute instances describe <bastion> --zone=<zone> --format='value(status)'`. `TERMINATED` is the normal state in stage and prod: start it as in [Developer Access](#developer-access)
 2. Confirm the bastion service account still holds `roles/cloudsql.client`: `gcloud projects get-iam-policy <project> --flatten=bindings --filter='bindings.members:<bastion-sa-email>' --format='value(bindings.role)'` (the `bastion_service_account_email` output names the account)
 3. Confirm the Cloud SQL instance has a private IP on the environment's network: `gcloud sql instances describe <instance> --format='value(ipAddresses)'` lists a `PRIVATE` address, and `gcloud services vpc-peerings list --network=<network>` shows `services/servicenetworking.googleapis.com`
 4. SSH in: `gcloud compute ssh <bastion> --zone=<zone> --tunnel-through-iap`

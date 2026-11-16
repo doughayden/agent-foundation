@@ -104,7 +104,7 @@ Docker Compose uses an IAP tunnel container to reach the bastion host, which run
 App container (localhost:5432) ──► IAP tunnel container ──► IAP ──► Bastion VM (Auth Proxy) ──► Cloud SQL private IP
 ```
 
-What runs on the bastion, its firewall rules and the identity the tunnel uses in the database: [Bastion and IAP Tunnel](bastion.md).
+What runs on the bastion, its firewall rules and the identity the tunnel uses in the database: [Bastion and IAP Tunnel](bastion.md). Stage and prod bastions are stopped by default: start one before running Compose against that environment ([Bastion and IAP Tunnel: Developer Access](bastion.md#developer-access)).
 
 **Restart policies** differ by role:
 - **App container (`restart: no`):** Crash once, stay down. Keeps stack trace output clean for debugging — no restart noise to scroll past.
