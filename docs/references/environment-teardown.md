@@ -43,15 +43,14 @@ Cloud SQL keeps using the connection for a while after its instance is deleted. 
 2. Write a var file for the environment outside the repository. Values come from the GitHub Environment Variables, mapped as the deploy workflow maps them (`TF_VAR_*` in `.github/workflows/terraform-plan-apply.yml`). Pass it with `-var-file`: command-line variables beat a `terraform.tfvars` in the directory, while `TF_VAR_*` environment variables lose to it ([Terraform: Assign values to variables](https://developer.hashicorp.com/terraform/language/values/variables#assign-values-to-variables)).
 
     ```hcl
-    environment                                        = "stage"
-    project                                            = "<GOOGLE_CLOUD_PROJECT>"
-    region                                             = "<REGION>"
-    zone                                               = "<ZONE>"
-    google_cloud_location                              = "<GOOGLE_CLOUD_LOCATION>"
-    agent_name                                         = "<IMAGE_NAME>"
-    otel_instrumentation_genai_capture_message_content = "<OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT>"
-    terraform_state_bucket                             = "<TERRAFORM_STATE_BUCKET>"
-    workload_identity_pool_principal_identifier        = "<WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER>"
+    environment                                 = "stage"
+    project                                     = "<GOOGLE_CLOUD_PROJECT>"
+    region                                      = "<REGION>"
+    zone                                        = "<ZONE>"
+    google_cloud_location                       = "<GOOGLE_CLOUD_LOCATION>"
+    agent_name                                  = "<IMAGE_NAME>"
+    terraform_state_bucket                      = "<TERRAFORM_STATE_BUCKET>"
+    workload_identity_pool_principal_identifier = "<WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER>"
     ```
 
 3. Initialize against the environment's state and confirm the var file matches what is deployed. The plan should report no changes:

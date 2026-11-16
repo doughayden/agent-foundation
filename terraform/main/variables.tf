@@ -52,36 +52,3 @@ variable "docker_image" {
   nullable    = true
   default     = null
 }
-
-# Optional app runtime environment variables
-variable "log_level" {
-  description = "Agent app logging verbosity"
-  type        = string
-  nullable    = true
-  default     = null
-}
-
-variable "otel_instrumentation_genai_capture_message_content" {
-  description = "ADK GenAI message content capture mode: NO_CONTENT, EVENT_ONLY, SPAN_ONLY or SPAN_AND_EVENT"
-  type        = string
-  default     = "NO_CONTENT"
-
-  validation {
-    condition     = contains(["NO_CONTENT", "EVENT_ONLY", "SPAN_ONLY", "SPAN_AND_EVENT"], var.otel_instrumentation_genai_capture_message_content)
-    error_message = "Must be one of NO_CONTENT, EVENT_ONLY, SPAN_ONLY or SPAN_AND_EVENT."
-  }
-}
-
-variable "serve_web_interface" {
-  description = "Enable web UI"
-  type        = string
-  nullable    = true
-  default     = null
-}
-
-variable "adk_suppress_experimental_feature_warnings" {
-  description = "Suppress ADK experimental feature warnings"
-  type        = string
-  nullable    = true
-  default     = null
-}

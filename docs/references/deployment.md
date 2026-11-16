@@ -80,10 +80,10 @@ All environments use **identical infrastructure configuration**. Stage validates
 
 **Differences between environments:**
 - Resource names (via `environment` variable: dev/stage/prod)
-- Runtime app config (GitHub Environment variables: LOG_LEVEL, etc.)
+- Runtime app config (per environment in `terraform/main/env.tf`)
 - Cleanup policies (configured per environment in bootstrap)
 
-**Infrastructure config is hard-coded** in Terraform and identical across environments. This ensures infrastructure changes (for example, the Cloud Run service minimum instance count) require explicit file edits and PR review, not hidden variable overrides.
+**Infrastructure config is hard-coded** in Terraform and identical across environments, apart from the per-environment runtime config in `env.tf`. This ensures infrastructure changes (for example, the Cloud Run service minimum instance count) require explicit file edits and PR review, not hidden variable overrides.
 
 ### Deployment Flow
 
@@ -182,36 +182,28 @@ Production mode uses **image promotion** (pull from source, push to target) inst
 
 ### Runtime vs Infrastructure Config
 
-**Runtime app config** (configurable via GitHub Environment variables):
-- `LOG_LEVEL` - Logging verbosity
-- `SERVE_WEB_INTERFACE` - Enable web UI
-- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` - GenAI message content capture mode
+**Runtime app config** (per environment in `terraform/main/env.tf`): the log level, content capture mode, web interface and any variable a consumer adds for one environment. The variables and their values: [Environment Variables: Deployed Values](../environment-variables.md#deployed-values-cloud-run).
 
-GitHub Environment Variables pass overrides to Terraform as `TF_VAR_*` inputs. Default values managed in Terraform.
+Terraform merges the deploying environment's entry over the infrastructure config below; an entry wins over a template key of the same name.
 
-Terraform applies each override through `coalesce()`, so an empty or unset variable falls back to the default. `docker_image` is nullable: a run with no new image (an infrastructure-only apply) reuses the image from the previous deployment's state.
+`docker_image` is nullable: a run with no new image (an infrastructure-only apply) reuses the image from the previous deployment's state.
 
 **Infrastructure config** (managed exclusively in Terraform files):
 - `SESSION_SERVICE_URI` - Session persistence URI (auto-created, `postgresql+asyncpg://` protocol via Cloud SQL)
 - `MEMORY_SERVICE_URI` - Memory persistence URI (auto-created, `agentengine://` protocol)
 - `ARTIFACT_SERVICE_URI` - GCS bucket URL (auto-created)
 - `ALLOW_ORIGINS` - CORS origins for Cloud Run
-- Terraform-managed values only (no variable overrides)
+- Set in `terraform/main/main.tf`
 
 **Why separate them:**
-- Runtime config changes don't require Terraform rebuilds (fast iteration)
-- Infrastructure changes require explicit code review and PR (security)
-- CORS origins not overridable by GitHub variables (prevent bypass)
+- Runtime config varies per environment, so it lives in one reviewed map instead of being spread through `main.tf`
+- Both go through a PR, so every deployed value is in version control
 
 ### Changing Runtime Config
 
-Update GitHub Environment variables (no code changes):
-
-1. Settings → Environments → {environment} → Environment variables
-2. Edit or add unset variable (e.g., `LOG_LEVEL=DEBUG` or `SERVE_WEB_INTERFACE=TRUE`)
-3. Re-run latest workflow or push new commit
-
-Changes apply on next deployment.
+1. Edit the environment's entry in `terraform/main/env.tf` (like `LOG_LEVEL = "DEBUG"` in `dev`)
+2. Create a PR; a dev change shows in its plan, stage and prod changes in the merge and promotion plans
+3. Merge (prod: promote) to deploy
 
 ### Changing Infrastructure Config
 

@@ -169,7 +169,7 @@ gcloud run services proxy <service-name> --project <project-id> --region <region
 curl http://localhost:8000/health  # Expected: {"status": "ok"}
 ```
 
-The deployed service serves the web interface only when enabled; see `TF_VAR_serve_web_interface` in [Environment Variables](environment-variables.md#runtime-configuration-overrides).
+The deployed service serves the web interface only when `SERVE_WEB_INTERFACE` is `TRUE` in `terraform/main/env.tf`; see [Environment Variables](environment-variables.md#deployed-values-cloud-run).
 
 ## Next Steps
 

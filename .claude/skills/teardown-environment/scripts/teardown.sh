@@ -73,11 +73,8 @@ cmd_prepare() {
     | [["environment", $env],
        ["project", $v.GOOGLE_CLOUD_PROJECT], ["region", $v.REGION], ["zone", $v.ZONE],
        ["google_cloud_location", $v.GOOGLE_CLOUD_LOCATION], ["agent_name", $v.IMAGE_NAME],
-       ["otel_instrumentation_genai_capture_message_content", $v.OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT],
        ["terraform_state_bucket", $v.TERRAFORM_STATE_BUCKET],
-       ["workload_identity_pool_principal_identifier", $v.WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER],
-       ["adk_suppress_experimental_feature_warnings", $v.ADK_SUPPRESS_EXPERIMENTAL_FEATURE_WARNINGS],
-       ["log_level", $v.LOG_LEVEL], ["serve_web_interface", $v.SERVE_WEB_INTERFACE]]
+       ["workload_identity_pool_principal_identifier", $v.WORKLOAD_IDENTITY_POOL_PRINCIPAL_IDENTIFIER]]
     | .[] | select(.[1] != null and .[1] != "") | "\(.[0]) = \"\(.[1])\""' > "$VAR_FILE"
   echo "var file $VAR_FILE:"; sed 's/^/  /' "$VAR_FILE"
   local bucket; bucket=$(sed -n 's/^terraform_state_bucket *= *"\(.*\)"$/\1/p' "$VAR_FILE")
