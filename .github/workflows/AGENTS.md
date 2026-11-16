@@ -17,7 +17,7 @@ Tag-time gate upstream of `prod-promote` (halts before the `prod-apply` approval
 
 ## Promotion Summary
 
-`promotion-summary` runs `scripts/promotion-summary.sh` after the jobs `require-stage-success` checks: **keep its `needs` equal to the gate's jobs**. **Never silent, never red:** one message per run, exit 0 on every path. Block source: `docs/releasing.md` only (root `AGENTS.md` Documentation Strategy). Outcomes and lookups: `docs/references/cicd.md` promotion-summary.sh.
+`promotion-summary.yml` runs `scripts/promotion-summary.sh` after the jobs `require-stage-success` checks: **keep its caller's `needs` equal to the gate's jobs**. **Never silent, never red:** one message per run, exit 0 on every path. Block source: `docs/releasing.md` only (root `AGENTS.md` Documentation Strategy). Outcomes and lookups: `docs/references/cicd.md` promotion-summary.sh.
 
 ## Workflow Scripts
 

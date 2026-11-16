@@ -50,8 +50,7 @@ def _extract(doc: Path) -> str:
 def _run_report(
     bin_dir: Path, tmp_path: Path, doc: Path = RELEASING_DOC
 ) -> tuple[str, str]:
-    manifest = tmp_path / "manifest.json"
-    manifest.write_text(json.dumps({".": "1.2.3"}))
+    (tmp_path / MANIFEST_FILE).write_text(json.dumps({".": "1.2.3"}))
     summary = tmp_path / "summary.md"
     env = {
         **os.environ,
@@ -62,11 +61,16 @@ def _run_report(
         "REPO_URL": "https://github.example/owner/repo",
         "DOCS_URL": DOCS_URL,
         "DOC": str(doc),
-        "MANIFEST": str(manifest),
+        "MANIFEST": MANIFEST_FILE,
         "GITHUB_STEP_SUMMARY": str(summary),
     }
     result = subprocess.run(  # noqa: S603 - runs the repo's own script
-        ["/bin/bash", str(SCRIPT)], env=env, check=True, capture_output=True, text=True
+        ["/bin/bash", str(SCRIPT)],
+        cwd=tmp_path,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
     )
     return summary.read_text(), result.stdout
 
