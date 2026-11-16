@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file. This projec
 
 From v0.21.0, [release-please](https://github.com/googleapis/release-please) generates each entry from the squash-merge commit titles on `main`, grouped under [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) headings ([Release a Version](docs/releasing.md)). Earlier entries were written by hand in Keep a Changelog format.
 
+## [0.23.2](https://github.com/doughayden/agent-foundation/compare/v0.23.1...v0.23.2) (2026-11-16)
+
+
+### Changed
+
+* call promotion summary as a reusable workflow ([#408](https://github.com/doughayden/agent-foundation/issues/408)) ([78a0f8d](https://github.com/doughayden/agent-foundation/commit/78a0f8dd0a0d03983351c778a3ca0f3be0e34a94))
+
 ## [0.23.1](https://github.com/doughayden/agent-foundation/compare/v0.23.0...v0.23.1) (2026-11-16)
 
 
