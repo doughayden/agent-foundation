@@ -44,13 +44,13 @@ psql "host=127.0.0.1 port=5432 user=<app-sa-email-without-.gserviceaccount.com> 
 
 Opening the tunnel (`gcloud compute start-iap-tunnel <bastion> 5432 --zone=<zone>`, as Compose does) needs only `roles/iap.tunnelResourceAccessor`. A principal holding just that role opened the tunnel and queried `agent_sessions`, with no OS Login or Compute Engine role. Project Owners already hold it. Grant it to other developers with `gcloud projects add-iam-policy-binding` or in the Console.
 
-In stage and prod the bastion is usually stopped ([Auto-Stop in Stage and Prod](#auto-stop-in-stage-and-prod)). Starting it needs `compute.instances.start` on the instance (`roles/compute.instanceAdmin.v1`, which Project Owners hold through `roles/owner`). Start it before opening the tunnel:
+In stage and prod the bastion is usually stopped ([Auto-Stop in Stage and Prod](#auto-stop-in-stage-and-prod)). Starting it needs `compute.instances.start` on the instance (in `roles/compute.instanceAdmin.v1`; Project Owners already have it). Start it before opening the tunnel:
 
 ```bash
 gcloud compute instances start <bastion> --zone=<zone>
 ```
 
-The proxy accepts connections about a minute after boot. The bastion keeps running until the daily stop schedule, or stop it yourself with `gcloud compute instances stop <bastion> --zone=<zone>`.
+Open the tunnel once the instance reports `RUNNING`; if the first connection is refused, the proxy is still starting, so retry. The bastion keeps running until the daily stop schedule, or stop it yourself with `gcloud compute instances stop <bastion> --zone=<zone>`.
 
 ## pg_cron Bootstrap
 
@@ -90,12 +90,12 @@ ORDER BY 1;
 
 Outside dev, the bastion exists mainly to deliver the pg_cron bootstrap, and a running instance is an IAP-reachable host that can impersonate the app service account. Stage and prod therefore keep it powered off (`local.bastion_auto_stop` in `bastion.tf`, true for every environment except `dev`). Two mechanisms do it:
 
-- **Self-stop on first boot:** the bootstrap script records the boot disk's first boot in `/var/lib/pg-cron-bootstrap/first-boot-done` (`/var` persists across reboots on COS) and, on that boot only, powers the VM off once pg_cron is scheduled. A new or replaced bastion therefore boots, bootstraps and stops. A failed first bootstrap exits before the power-off and leaves the VM running to debug
+- **Self-stop after the first bootstrap run:** the bootstrap script records its first run on the boot disk in `/var/lib/pg-cron-bootstrap/first-boot-done` (`/var` persists across reboots on COS) and, on that run only, powers the VM off once pg_cron is scheduled. A new or replaced bastion therefore boots, bootstraps and stops. A failed first run exits before the power-off and leaves the VM running to debug. If the script never runs on the first boot (the proxy unit fails, or the schedule stops a brand-new bastion first), the next boot counts as the first run and powers off after bootstrapping
 - **Stop schedule:** a stop-only instance schedule stops the bastion daily at 06:00 UTC (`local.bastion_auto_stop_schedule`), which catches a bastion a developer started and left running, and a failed first boot. It has no start action. The schedule runs as the Compute Engine service agent, so the module grants that agent `roles/compute.instanceAdmin.v1` on the project, the setup the schedule docs prescribe. Compute checks the permission when the schedule attaches, so the bastion waits for the grant to propagate (`time_sleep.compute_agent_iam_propagation`) before it is created. A grant revoked later makes scheduled stops fail, visible only in the project's audit logs. A scheduled stop can start up to 15 minutes after the set time ([Scheduling a VM instance to start and stop](https://docs.cloud.google.com/compute/docs/instances/schedule-instance-start-stop))
 
-Later boots, a developer start or a COS update reboot, re-assert the cleanup job but do not power off. A stopped bastion keeps its boot disk and costs only disk storage.
+Later boots (a developer start or a manual reset) re-assert the cleanup job but do not power off. COS installs updates without rebooting, so a stopped bastion picks up an OS update only when someone starts it and it later reboots. A stopped bastion keeps its boot disk and costs only disk storage.
 
-The bastion resource leaves `desired_status` unset. The google provider then never reads the live status back into state, so a stopped bastion plans clean and an apply leaves it stopped.
+The bastion resource leaves `desired_status` unset. The google provider records the live status only in the computed `current_status` and never writes it into `desired_status`, so a stopped bastion plans clean and an apply leaves it stopped.
 
 Dev renders the cloud-init without the auto-stop lines and gets no schedule: its bastion stays running for routine developer tunnels.
 

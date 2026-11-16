@@ -81,7 +81,6 @@ resource "google_compute_instance" "bastion" {
     scopes = ["cloud-platform"]
   }
 
-  # desired_status stays unset: the provider then never reads a stopped bastion back as drift
   resource_policies = google_compute_resource_policy.bastion_stop[*].id
 
   depends_on = [time_sleep.compute_agent_iam_propagation]
@@ -105,14 +104,16 @@ resource "google_compute_resource_policy" "bastion_stop" {
   }
 }
 
-data "google_project" "main" {}
+data "google_project" "main" {
+  count = local.bastion_auto_stop ? 1 : 0
+}
 
 # Instance schedules act as the Compute Engine service agent, which needs compute.instances.stop
 resource "google_project_iam_member" "compute_agent_instance_admin" {
   count   = local.bastion_auto_stop ? 1 : 0
   project = var.project
   role    = "roles/compute.instanceAdmin.v1"
-  member  = "serviceAccount:service-${data.google_project.main.number}@compute-system.iam.gserviceaccount.com"
+  member  = "serviceAccount:service-${data.google_project.main[0].number}@compute-system.iam.gserviceaccount.com"
 }
 
 # Compute checks the agent's permission when the schedule attaches at instance creation

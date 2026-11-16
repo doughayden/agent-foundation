@@ -106,7 +106,7 @@ The project enforces security at every layer of the stack, from network topology
 
 The bastion's only jobs are running the Auth Proxy for developer access to Cloud SQL and bootstrapping the pg_cron cleanup job. COS enforces that constraint at the OS level — there is almost nothing else the instance *can* do.
 
-**Bastion powered off in stage and prod.** After its first-boot bootstrap the stage or prod bastion powers itself off, and a daily stop-only schedule stops one a developer started. The IAP-reachable host that can impersonate the app service account exists only while someone needs it ([Bastion and IAP Tunnel: Auto-Stop in Stage and Prod](bastion.md#auto-stop-in-stage-and-prod)).
+**Bastion powered off in stage and prod.** After its first-boot bootstrap the stage or prod bastion powers itself off, and a daily stop-only schedule stops one a developer started. The IAP-reachable host that can impersonate the app service account runs only between a start and the next scheduled stop: up to about a day for a developer start or a failed first boot, and indefinitely if the service agent's grant is revoked, since scheduled stops then fail silently ([Bastion and IAP Tunnel: Auto-Stop in Stage and Prod](bastion.md#auto-stop-in-stage-and-prod)).
 
 **Cloud Run Gen2 execution environment.** Gen2 uses a full Linux VM with hardware-level isolation (KVM), providing stronger syscall compatibility than Gen1's gVisor-based sandbox.
 
