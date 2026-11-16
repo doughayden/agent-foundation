@@ -432,6 +432,11 @@ Stage success is the whole prod gate for image fidelity. The promotion workflow 
 
 Practically, a release belongs on a commit whose merge deployed and smoked stage. If the last merge before a release changed only eval data, tag the commit before it, or land a deployable change first.
 
+**Adding environments.** An extra environment (test, perf and so on) joins the merge-run chain wherever its tier belongs, and the gate learns about it separately:
+
+- **Placement:** a tier below stage sits between dev and stage. It promotes the same dev-built digest, and `stage-promote` gains `needs:` on its smoke job, so stage waits for it
+- **Gate:** in `require-stage-success.yml`, add a `job_status "<Job Name>"` check for each job that must pass, next to the `Apply Stage`, `Smoke Stage` and `Judge Eval` checks, plus its `"no run"` default and its row in the summary table, so the prod tag fails closed until that environment is green
+
 **Permissions:** `actions: read` (read the merge run's job conclusions), `contents: read`. No GCP credentials.
 
 **When it runs:** Called by `ci-cd.yml` on tag events in production mode, before `prod-promote`. Generic and agent-agnostic, so every consumer inherits it.
