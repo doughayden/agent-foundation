@@ -26,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     timeout-minutes: 10  # Typical run: 2-3 min (deps + readiness wait + 4 live HTTP checks). 10 min prevents hanging
+    env:
+      PYTHONUNBUFFERED: "1"  # A piped stdout is block-buffered: tee would get the output only at exit
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1

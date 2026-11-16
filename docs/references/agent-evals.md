@@ -77,6 +77,12 @@ pytest captures output and shows it only when a test fails, so a passing eval ru
 uv run pytest tests/eval -m "deterministic" -s
 ```
 
+Python buffers stdout in blocks whenever it is not a terminal, so piped output, like `| tee run.log`, arrives in bursts or only at exit. Set `PYTHONUNBUFFERED=1` to keep it live (the CI eval and smoke jobs set it):
+
+```bash
+PYTHONUNBUFFERED=1 uv run pytest tests/eval -m "judge" -s 2>&1 | tee judge-eval.log
+```
+
 The eval set is synthetic test data, so streaming the agent's prompts and replies into CI logs exposes nothing a consumer would keep private. A consumer that evaluates against real user content should weigh that before keeping `-s` in CI.
 
 To also stream Python log records (callbacks, ADK internals), raise the live-log level:

@@ -44,6 +44,7 @@ jobs:
     timeout-minutes: 30
     env:
       GOOGLE_GENAI_USE_ENTERPRISE: "TRUE"
+      PYTHONUNBUFFERED: "1"  # A piped or CI stdout is block-buffered: -s output would reach the log only at exit
       GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT }}
       GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION }}
     steps:
