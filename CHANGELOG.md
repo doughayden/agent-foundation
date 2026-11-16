@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file. This projec
 
 From v0.21.0, [release-please](https://github.com/googleapis/release-please) generates each entry from the squash-merge commit titles on `main`, grouped under [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) headings ([Release a Version](docs/releasing.md)). Earlier entries were written by hand in Keep a Changelog format.
 
+## [0.21.2](https://github.com/doughayden/agent-foundation/compare/v0.21.1...v0.21.2) (2026-11-16)
+
+
+### Changed
+
+* set the pytest-asyncio fixture loop scope ([#392](https://github.com/doughayden/agent-foundation/issues/392)) ([14d7c4b](https://github.com/doughayden/agent-foundation/commit/14d7c4bedf23a0e90b93994fd1c6ea04552854ff))
+
+
+### Fixed
+
+* **ci:** stream eval and smoke output live ([#398](https://github.com/doughayden/agent-foundation/issues/398)) ([1464245](https://github.com/doughayden/agent-foundation/commit/1464245c29bfd161cc69522fc9b5b008247d6d3f))
+* **deps:** bump aiplatform to patch litellm ([#397](https://github.com/doughayden/agent-foundation/issues/397)) ([c5282a9](https://github.com/doughayden/agent-foundation/commit/c5282a96b3dcb068802c0bbbc04a582ffde3a751))
+
 ## [0.21.1](https://github.com/doughayden/agent-foundation/compare/v0.21.0...v0.21.1) (2026-11-15)
 
 
