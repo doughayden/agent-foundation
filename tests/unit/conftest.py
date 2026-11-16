@@ -897,3 +897,29 @@ def mock_telemetry_sdk(mocker: MockerFixture) -> dict[str, MockType]:
         telemetry.logging.getLogger(), "setLevel"
     )
     return mocks
+
+
+@pytest.fixture
+def create_mock_gh(tmp_path: Path) -> Callable[..., Path]:
+    """Build a fake ``gh`` executable that answers the promotion summary's two reads.
+
+    The factory returns a directory to put first on ``PATH``. The fake prints
+    ``release`` for the commit-files read and one tag name per line for the tags read.
+    """
+
+    def _factory(*, release: bool, tags: list[str]) -> Path:
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir(exist_ok=True)
+        tag_lines = "".join(f"{tag}\n" for tag in tags)
+        script = bin_dir / "gh"
+        script.write_text(
+            "#!/bin/sh\n"
+            'case "$*" in\n'
+            f'  *"/commits/"*) echo "{str(release).lower()}" ;;\n'
+            f"  *\"/tags\"*) printf '%s' '{tag_lines}' ;;\n"
+            "esac\n"
+        )
+        script.chmod(0o755)
+        return bin_dir
+
+    return _factory

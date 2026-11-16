@@ -18,6 +18,9 @@ GitHub Actions workflow architecture, mechanics, and customization.
 - **`require-stage-success.yml`** - Tag-time gate requiring the tagged SHA's stage run to have passed before prod promotion (production mode)
 - **`terraform-plan-apply.yml`** - Terraform deployment
 
+**Workflow scripts:**
+- **`scripts/promotion-summary.sh`** - Merge-run summary that prints the prod promotion block once a release commit is promotable (production mode); see [Workflow Scripts](#workflow-scripts)
+
 **Standalone CI Workflow:**
 - **`ci.yml`** - Code quality (ruff, mypy, pytest with coverage), Postgres integration lane, and deterministic agent eval gate
 
@@ -68,6 +71,7 @@ Jobs read these variables, and authenticate to GCP, only when they declare the m
 - `judge-eval` - LLM-judge behavioral gate on merge (blocking in production mode, signal only in dev-only mode; gated on `changes.outputs.eval == 'true'`)
 - `stage-promote` / `stage-plan` / `stage-apply` - Stage environment (merge in production mode)
 - `stage-smoke` - Post-deploy smoke against the live stage revision (after `stage-apply`, production mode only)
+- `promotion-summary` - Merge-time job summary once `stage-smoke` and `judge-eval` pass (production mode); see [promotion-summary.sh](#promotion-summarysh)
 - `require-stage-success` - Tag-time gate: requires the tagged SHA's merge run to have passed `Apply Stage`, `Smoke Stage`, and `Judge Eval` before promotion (production mode, upstream of `prod-promote`)
 - `prod-promote` / `prod-plan` / `prod-apply` - Prod environment (tags in production mode)
 - `prod-smoke` - Post-deploy smoke against the live prod revision (after `prod-apply`, production mode only)
@@ -150,6 +154,8 @@ changes, config ─→ judge-eval
 changes, metadata-extract ─→ docker-build ┬─→ dev-plan → dev-apply → dev-smoke
                                           │
 config ───────────────────────────────────┴─→ stage-promote → stage-plan → stage-apply → stage-smoke
+
+stage-smoke, judge-eval ─→ promotion-summary
 ```
 
 **Result:** Dev deployed and smoked (always), stage deployed and smoked (production mode only), and the judge eval scored on every merge that touches the agent or its eval data. `judge-eval` runs from source rather than against a revision, so it starts as soon as `changes` and `config` resolve and never waits on a deploy. It blocks the merge run in production mode and is signal only in dev-only mode. The smoke lane detail lives in [Smoke Tests](smoke-tests.md); the eval lane's in [Agent Evals](agent-evals.md).
@@ -441,6 +447,28 @@ Practically, a release belongs on a commit whose merge deployed and smoked stage
 
 **When it runs:** Called by `ci-cd.yml` on tag events in production mode, before `prod-promote`. Generic and agent-agnostic, so every consumer inherits it.
 
+## Workflow Scripts
+
+Logic longer than a few lines lives in `.github/workflows/scripts/<name>.sh`, not inline in a `run:` block. The workflow step sets the script's inputs as `env:` values, checks the script out, and runs it with `bash <path>`, so no executable bit is needed. Each script has unit tests in `tests/unit/` that run the real script with fake binaries (like `gh`) first on `PATH`, and the `shellcheck` pre-commit hook lints it, since actionlint only checks inline blocks ([Code Quality: Workflow Lint and Version Pins](code-quality.md#workflow-lint-and-version-pins)). A path under `.github/workflows/scripts/` is in the `changes` job's `deploy` filter, so a script change runs the pipeline it feeds.
+
+### promotion-summary.sh
+
+**Purpose:** Tells the admin, in the merge run's summary, whether the commit is ready for prod promotion, and hands over the command when it is. The `promotion-summary` job in `ci-cd.yml` sparse-checks out the doc and the script, then runs `.github/workflows/scripts/promotion-summary.sh`; all logic lives in the script.
+
+**How it works:**
+1. Copies, from `docs/releasing.md` at the run's commit, the fenced block between the `<!-- prod-promotion:start -->` and `<!-- prod-promotion:end -->` markers in [Promote to Production](../releasing.md#promote-to-production-production-mode), so the doc stays the block's only source
+2. Treats a commit that changes `.release-please-manifest.json` as a release commit (every release-please merge bumps it), and looks for a `vX.Y.Z` tag on it
+3. Prints exactly one message, never exiting silently:
+   - **Tagged release:** the version, its tag page, and the block in a `bash` code block, ready to copy
+   - **Release not tagged yet:** a warning annotation and a note to promote with the block in `docs/releasing.md`, section Promote to Production, once the commit's Release workflow run finishes. No link, since the tag it would point to does not exist yet
+   - **Any other commit:** nothing to promote
+
+If the markers are missing, the tagged-release message warns and links the docs section instead of printing an empty block. `tests/unit/test_promotion_summary.py` runs the real script: `--extract` against the real doc (parsed with `bash -n` and `zsh -n`), and each summary message against a fake `gh` on `PATH`. A doc edit that breaks the block, or a script change that drops a message, fails the unit lane first.
+
+**Permissions:** `contents: read` (sparse checkout, commit files, tags). No GCP credentials.
+
+**When it runs:** On merge runs in production mode, after `stage-smoke` and `judge-eval` pass, the same jobs `require-stage-success` checks at tag time.
+
 ## Standalone CI Workflow
 
 ### ci.yml
@@ -494,6 +522,11 @@ Workflows generate formatted summaries in GitHub Actions UI:
 - Build context (PR, main, tag, manual)
 - Branch/tag name and commit SHA
 - All image tags (bulleted list)
+
+**Promotion summary (production mode merge runs):**
+- Release commit with its `vX.Y.Z` tag: the version, the tag page and the promotion block to paste
+- Release commit not tagged yet: a warning that names the promotion section in `docs/releasing.md`
+- Any other commit: nothing to promote
 
 **Terraform deployment:**
 - Environment and action (plan/apply)

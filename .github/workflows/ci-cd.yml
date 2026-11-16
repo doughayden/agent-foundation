@@ -78,6 +78,7 @@ jobs:
               - '.github/workflows/require-stage-success.yml'
               - '.github/workflows/smoke.yml'
               - '.github/workflows/terraform-plan-apply.yml'
+              - '.github/workflows/scripts/**'
             eval:
               - *deploy
               - 'tests/eval/**'
@@ -215,6 +216,31 @@ jobs:
       service_url: ${{ needs.stage-apply.outputs.smoke_target_url }}
       invoker_service_account: ${{ needs.stage-apply.outputs.smoke_invoker_service_account_email }}
     secrets: inherit
+
+  # Runs after every job require-stage-success checks has passed, so it reports promotability
+  promotion-summary:
+    name: Promotion Summary
+    if: needs.config.outputs.production_mode == 'true' && github.ref_type == 'branch' && github.event_name == 'push'
+    needs: [config, stage-smoke, judge-eval]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5  # Typical run: <30s (sparse checkout and two GitHub API reads)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          sparse-checkout: |
+            docs/releasing.md
+            .github/workflows/scripts/promotion-summary.sh
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Report the promotion step
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          DOCS_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/docs/releasing.md#promote-to-production-production-mode
+          DOC: docs/releasing.md
+        run: bash .github/workflows/scripts/promotion-summary.sh
 
   # Production environment (tag events only)
   require-stage-success:
