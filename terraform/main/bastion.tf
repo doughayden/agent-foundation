@@ -10,7 +10,6 @@ locals {
   sa_prefix_bastion = substr(var.agent_name, 0, 30 - length(local.sa_suffix_bastion))
   sa_id_bastion     = "${local.sa_prefix_bastion}${local.sa_suffix_bastion}"
 
-  # The bastion stays powered off between developer sessions; the schedule stops a forgotten one
   bastion_stop_schedule = "0 6 * * *"
 
   # Template syntax: https://developer.hashicorp.com/terraform/language/expressions/strings
@@ -110,7 +109,6 @@ resource "google_project_iam_member" "compute_agent_instance_admin" {
   member  = "serviceAccount:service-${data.google_project.main.number}@compute-system.iam.gserviceaccount.com"
 }
 
-# Compute checks the agent's permission when the schedule attaches at instance creation
 resource "time_sleep" "compute_agent_iam_propagation" {
   create_duration = "120s"
 
