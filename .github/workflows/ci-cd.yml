@@ -95,7 +95,7 @@ jobs:
     uses: ./.github/workflows/config-summary.yml
     with:
       # Set production_mode: true to enable full production pipeline (dev → stage → prod), false for dev-only
-      production_mode: true
+      production_mode: false
     secrets: inherit
 
   build:
