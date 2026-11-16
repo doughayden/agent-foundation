@@ -29,22 +29,31 @@ In dev-only mode, that is the whole release. In production mode, promote it next
 
 A repository admin promotes a release by pushing `prod-vX.Y.Z` on the commit its `vX.Y.Z` tag marks.
 
+The release commit's merge run builds the release candidate: prod receives exactly the image digest that run built, deployed and smoked. Run acceptance testing (UAT) on that deployment after the release pull request merges and before you push the promotion tag, which serves as the sign-off. With the template's three environments, UAT runs against stage. If you add a test environment below stage, run UAT there instead and keep stage as a prod-like standby, with the test environment's jobs added to the prod gate ([CI/CD Workflows: require-stage-success.yml](references/cicd.md#require-stage-successyml)). Testing an earlier merge doesn't cover the release: the release commit rebuilds the image with the new version, and the floating base image tag in the `Dockerfile` can pull a newer OS layer.
+
 1. Wait for the release commit's merge run to pass `Apply Stage`, `Smoke Stage` and `Judge Eval`. A promotion pushed earlier fails `Require Stage Success` and needs a re-run once stage is green
-2. Look up the latest release on `main` and check the printed version and commit (`--force` replaces stale local tags, which `git fetch` otherwise never overwrites). To promote a different release, replace the `VERSION=$(git describe ...)` line with `VERSION=vX.Y.Z`:
+2. Paste this block as one piece. It looks up the latest release on `main`, prints its version, commit and GitHub tag page (with the release notes when a GitHub Release exists), and waits for you to type `y` before it tags and pushes (`--force` replaces stale local tags, which `git fetch` otherwise never overwrites). To promote a different release, replace the `$(git describe ...)` value with `vX.Y.Z` and keep the line's trailing `&&`, so a failed step still stops the block:
    ```bash
-   git fetch origin main --tags --force
-   VERSION=$(git describe --tags --abbrev=0 --match 'v[0-9]*' origin/main)
-   git log -1 --format="Promote ${VERSION} to prod: %h %s" "${VERSION}^{commit}"
+   {
+     git fetch origin main --tags --force &&
+     VERSION=$(git describe --tags --abbrev=0 --match 'v[0-9]*' origin/main) &&
+     REPO_URL=$(gh repo view --json url --jq .url) &&
+     git log -1 --format="Promote ${VERSION} to prod: %h %s" "${VERSION}^{commit}" &&
+     echo "Release: ${REPO_URL}/releases/tag/${VERSION}" &&
+     printf 'Push prod-%s? [y/N] ' "${VERSION}" &&
+     read -r REPLY </dev/tty &&
+     if [ "${REPLY}" = "y" ]; then
+       git tag -a "prod-${VERSION}" "${VERSION}^{commit}" -m "Promote ${VERSION} to prod" &&
+       git push origin "prod-${VERSION}"
+     else
+       echo "Aborted: no tag created"
+     fi
+   }
    ```
-3. Tag and push in the same shell:
-   ```bash
-   git tag -a "prod-${VERSION}" "${VERSION}^{commit}" -m "Promote ${VERSION} to prod"
-   git push origin "prod-${VERSION}"
-   ```
-   Push one promotion tag at a time: GitHub starts no workflow when more than three tags arrive in one push. The run fails at metadata extraction unless the tag has the form `prod-vX.Y.Z` and `vX.Y.Z` marks the same commit. Only commits that contain the `prod-v*` pipeline can be promoted; for an older build, use a Cloud Run traffic split ([Rollback](#rollback))
-4. Monitor the workflow: Actions tab → CI/CD Pipeline
-5. **Approved reviewer:** Actions → prod-apply job → Review deployments → Approve
-6. Verify the production deployment
+   The braces make the shell read the whole block before running it, so the prompt waits for your answer instead of taking the next pasted line. Any answer other than `y` creates no tag. Push one promotion tag at a time: GitHub starts no workflow when more than three tags arrive in one push. The run fails at metadata extraction unless the tag has the form `prod-vX.Y.Z` and `vX.Y.Z` marks the same commit. Only commits that contain the `prod-v*` pipeline can be promoted; for an older build, use a Cloud Run traffic split ([Rollback](#rollback))
+3. Monitor the workflow: Actions tab → CI/CD Pipeline
+4. **Approved reviewer:** Actions → prod-apply job → Review deployments → Approve
+5. Verify the production deployment
 
 ## Hotfixes and Rollback
 

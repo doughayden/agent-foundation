@@ -143,7 +143,7 @@ If the release pull request has not merged, the promotion tag went out before th
 
 **Fix when releasing without the App:** your release pull request has already merged, so skip the merge in step 2 of [Release Without the App](releasing.md#release-without-the-app) and run its lookup, then the tag commands in step 3. If the promotion tag marks that merge commit, use **Re-run failed jobs** on the failed run: the re-run checks out the repository again and finds the new tag. If it marks another commit, delete the promotion tag, then promote the release with step 4.
 
-**Fix when the release tag marks a different commit:** the promotion tag is on the wrong commit. Leave the release tag where it is, delete the promotion tag, and promote again with steps 2 and 3 of [Promote to Production](releasing.md#promote-to-production-production-mode), setting `VERSION=vX.Y.Z` in step 2 to the release you meant.
+**Fix when the release tag marks a different commit:** the promotion tag is on the wrong commit. Leave the release tag where it is, delete the promotion tag, and promote again with step 2 of [Promote to Production](releasing.md#promote-to-production-production-mode), setting `VERSION` there to the release you meant.
 
 ### Release Pull Request Has the Wrong Version or a Missing Entry
 
