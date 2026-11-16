@@ -128,7 +128,7 @@ gh api repos/:owner/:repo/branches/main/protection
 ```bash
 git fetch origin --tags --force
 PROMOTION=$(git for-each-ref --sort=-creatordate --count=1 --format='%(refname:short)' 'refs/tags/prod-v*')
-git log -1 --format="${PROMOTION} marks: %h %s" "${PROMOTION}^{commit}"
+git --no-pager log -1 --format="${PROMOTION} marks: %h %s" "${PROMOTION}^{commit}"
 ```
 
 Deleting the promotion tag needs a repository admin:
