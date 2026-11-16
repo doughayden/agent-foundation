@@ -35,11 +35,33 @@ services:
     # Crash once, stay down — clean stack trace output for debugging
     restart: no
 
+  # Start the bastion (powered off between sessions) once per `compose up`; a no-op when running.
+  # --async needs only compute.instances.start; the tunnel connects once the proxy is up.
+  bastion-start:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:stable
+    container_name: agent-foundation-bastion-start
+    env_file:
+      - .env
+    command: >
+      gcloud compute instances start ${BASTION_INSTANCE}
+      --zone=${BASTION_ZONE}
+      --project=${GOOGLE_CLOUD_PROJECT}
+      --async
+    volumes:
+      # Same gcloud config mount as iap-tunnel (see its notes)
+      - ${HOME}/.config/gcloud:/gcloud-config
+    environment:
+      CLOUDSDK_CONFIG: "/gcloud-config"
+    restart: no
+
   # IAP tunnel to bastion — shares app's localhost via network_mode
   iap-tunnel:
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:stable
     container_name: agent-foundation-iap-tunnel
     network_mode: "service:app"
+    depends_on:
+      bastion-start:
+        condition: service_completed_successfully
     env_file:
       - .env
     command: >

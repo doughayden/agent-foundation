@@ -41,7 +41,6 @@ write_files:
       # the proxy image above); re-pulled on every boot by the docker pull below.
       PG_IMAGE="mirror.gcr.io/library/postgres:18-alpine"
       CONN="host=127.0.0.1 port=5432 user=${app_sa_db_user} dbname=postgres sslmode=disable"
-      %{~ if auto_stop ~}
 
       # Power off after the first bootstrap run on each boot disk (/var persists across
       # reboots), so a developer-started bastion keeps running until the stop schedule.
@@ -52,7 +51,6 @@ write_files:
         mkdir -p /var/lib/pg-cron-bootstrap
         touch "$FIRST_BOOT_MARKER"
       fi
-      %{~ endif ~}
 
       # Pull the image once up front so the readiness loop below measures proxy
       # readiness, not first-pull download time (which can exceed the ~60s budget).
@@ -83,7 +81,6 @@ write_files:
         psql "$CONN" -v ON_ERROR_STOP=1 \
         -c "CREATE EXTENSION IF NOT EXISTS pg_cron;" \
         -c "SELECT cron.schedule_in_database('session-cleanup', '$CLEANUP_SCHEDULE', 'DELETE FROM sessions WHERE update_time < (now() AT TIME ZONE ''UTC'') - interval ''$RETENTION_INTERVAL''', 'agent_sessions');"
-      %{~ if auto_stop ~}
 
       # Reached only on a clean bootstrap (set -e): a failed first run stays up to debug.
       # A timer powers off after this unit finishes, so the shutdown never cancels its start job.
@@ -91,7 +88,6 @@ write_files:
         echo "pg-cron-bootstrap: first run complete, powering off in 10s"
         systemd-run --on-active=10 systemctl poweroff
       fi
-      %{~ endif ~}
   - path: /etc/systemd/system/pg-cron-bootstrap.service
     permissions: "0644"
     content: |

@@ -106,11 +106,11 @@ The project enforces security at every layer of the stack, from network topology
 
 The bastion's only jobs are running the Auth Proxy for developer access to Cloud SQL and bootstrapping the pg_cron cleanup job. COS enforces that constraint at the OS level — there is almost nothing else the instance *can* do.
 
-**Bastion powered off in stage and prod.** After its first-boot bootstrap the stage or prod bastion powers itself off, and a daily stop-only schedule stops one a developer started. The IAP-reachable host that can impersonate the app service account runs only between a start and the next scheduled stop: up to about a day for a developer start or a failed first boot, and indefinitely if the service agent's grant is revoked, since scheduled stops then fail silently ([Bastion and IAP Tunnel: Auto-Stop in Stage and Prod](bastion.md#auto-stop-in-stage-and-prod)).
+**Bastion powered off between sessions.** After its first bootstrap the bastion powers itself off in every environment, and a daily stop-only schedule stops one a developer started. The IAP-reachable host that can impersonate the app service account runs only between a start and the next scheduled stop: up to about a day for a developer start or a failed first boot, and indefinitely if the service agent's grant is revoked, since scheduled stops then fail silently ([Bastion and IAP Tunnel: Auto-Stop](bastion.md#auto-stop)).
 
 **Cloud Run Gen2 execution environment.** Gen2 uses a full Linux VM with hardware-level isolation (KVM), providing stronger syscall compatibility than Gen1's gVisor-based sandbox.
 
-- Source: `terraform/main/bastion.tf` (COS image, no public IP, metadata, stage and prod stop schedule)
+- Source: `terraform/main/bastion.tf` (COS image, no public IP, metadata, stop schedule)
 - Source: `terraform/main/templates/bastion-cloud-init.yaml` (iptables, systemd proxy service)
 - Reference: [Bastion and IAP Tunnel](bastion.md)
 - GCP docs: [COS features and benefits](https://cloud.google.com/container-optimized-os/docs/concepts/features-and-benefits), [COS security overview](https://cloud.google.com/container-optimized-os/docs/concepts/security) (verified boot, read-only rootfs, default-deny firewall), [COS automatic updates](https://cloud.google.com/container-optimized-os/docs/concepts/auto-update) (active-passive partition scheme), [COS host firewall](https://cloud.google.com/container-optimized-os/docs/how-to/firewall), [Cloud Run execution environments](https://cloud.google.com/run/docs/about-execution-environments)

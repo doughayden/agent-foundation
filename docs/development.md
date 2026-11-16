@@ -109,7 +109,7 @@ See [Testing Strategy](references/testing.md) and [Code Quality](references/code
 Run the local agent against the deployed dev session database (Cloud SQL), memory (Agent Engine) and artifact bucket. Docker Compose starts everything this needs: the app container and an IAP tunnel container that reaches Cloud SQL's private IP through the bastion host, so the app connects to `localhost:5432` as on Cloud Run.
 
 > [!IMPORTANT]
-> This path needs a completed [deploy](getting-started.md#deploy) and `roles/iap.tunnelResourceAccessor` on your Google account for the IAP tunnel. Grant it via `gcloud projects add-iam-policy-binding` or the GCP Console ([Bastion and IAP Tunnel: Developer Access](references/bastion.md#developer-access)).
+> This path needs a completed [deploy](getting-started.md#deploy), plus `roles/iap.tunnelResourceAccessor` (IAP tunnel) and `compute.instances.start` (Compose starts the stopped bastion) on your Google account. Grant them via `gcloud projects add-iam-policy-binding` or the GCP Console ([Bastion and IAP Tunnel: Developer Access](references/bastion.md#developer-access)).
 
 1. Open the deploy run's job summary (`gh run view <run-id> --web`). In the deployed-resource block of `.env`, uncomment and fill in `BASTION_INSTANCE`, `BASTION_ZONE`, `SESSION_SERVICE_URI`, `MEMORY_SERVICE_URI` and `ARTIFACT_SERVICE_URI`, plus any variables you added for your own resources. Set `SERVE_WEB_INTERFACE=TRUE` in `.env` too: Compose reads only `.env`, not your shell. [Environment Variables: Cloud Resources](environment-variables.md#cloud-resources) says where to find each value.
 2. Start the stack and leave it running:
