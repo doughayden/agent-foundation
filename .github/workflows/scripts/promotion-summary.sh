@@ -12,7 +12,8 @@
 #   promotion-summary.sh                  # report (CI); reads the environment below
 #   promotion-summary.sh --extract DOC    # print the promotion block from DOC
 #
-# Environment (report mode): GH_TOKEN, REPO, SHA, REPO_URL, DOCS_URL, DOC, MANIFEST,
+# Environment (report mode): GH_TOKEN, REPO, SHA, REPO_URL, DOCS_URL, DOC, MANIFEST (the
+# release-please manifest's repo-relative path, read from the working directory),
 # GITHUB_STEP_SUMMARY.
 set -euo pipefail
 
@@ -53,7 +54,7 @@ fi
 short_sha="${SHA:0:7}"
 
 # Every release-please merge commit bumps the manifest
-release=$(gh api "repos/${REPO}/commits/${SHA}" --jq 'any(.files[]; .filename == ".release-please-manifest.json")') \
+release=$(gh api "repos/${REPO}/commits/${SHA}" --jq "any(.files[]; .filename == \"${MANIFEST}\")") \
   || api_error "commit files"
 if [ "${release}" != "true" ]; then
   summary "## Promotion Summary" "\`${short_sha}\` is not a release commit: nothing to promote."
