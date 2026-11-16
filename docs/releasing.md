@@ -38,7 +38,7 @@ The release commit's merge run builds the release candidate: prod receives exact
      git fetch origin main --tags --force &&
      VERSION=$(git describe --tags --abbrev=0 --match 'v[0-9]*' origin/main) &&
      REPO_URL=$(gh repo view --json url --jq .url) &&
-     git log -1 --format="Promote ${VERSION} to prod: %h %s" "${VERSION}^{commit}" &&
+     git --no-pager log -1 --format="Promote ${VERSION} to prod: %h %s" "${VERSION}^{commit}" &&
      echo "Release: ${REPO_URL}/releases/tag/${VERSION}" &&
      printf 'Push prod-%s? [y/N] ' "${VERSION}" &&
      read -r REPLY </dev/tty &&
@@ -143,7 +143,7 @@ Without `RELEASE_APP_CLIENT_ID`, the release job is skipped: a consumer without 
    git fetch origin main
    VERSION=v$(git show origin/main:.release-please-manifest.json | jq -r '."."')
    COMMIT=$(git log -1 --format=%H origin/main -- .release-please-manifest.json)
-   git log -1 --format="Release ${VERSION}: %h %s" "${COMMIT}"
+   git --no-pager log -1 --format="Release ${VERSION}: %h %s" "${COMMIT}"
    ```
 3. Tag the commit and push the tag in the same shell:
    ```bash
