@@ -29,6 +29,7 @@ Cloud SQL keeps using the connection for a while after its instance is deleted. 
 - Permission to delete every resource in the environment's project (project Owner covers it) and Application Default Credentials (`gcloud auth application-default login`)
 - No deploy to that environment while the teardown runs: hold merges to `main` for dev and stage, and promotion tags for prod. A merge run against a half-destroyed environment recreates what is missing
 - The environment's values from its GitHub Environment Variables (`gh variable list --env <environment>`)
+- At least 20 minutes without traffic to the environment before the destroy. Cloud Run retains a scaled-down revision's IP addresses for up to 20 minutes ([Cloud Run: Direct VPC egress](https://docs.cloud.google.com/run/docs/configuring/vpc-direct-vpc)), and a destroy soon after traffic can stop on the subnetwork for 1-2 hours (step 7)
 
 ## Tear Down
 
