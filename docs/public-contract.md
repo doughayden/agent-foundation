@@ -12,7 +12,7 @@ The template follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html),
 - **Minor:** adds to a covered surface (a new optional setting, a new Terraform variable with a default, a new reusable workflow input with a default), or changes anything not covered
 - **Patch:** fixes a covered surface so it behaves as documented
 
-Before 1.0.0, a breaking change bumps the minor version. Every breaking change carries its migration steps in the release notes ([Release a Version: Changelog and Commit Types](releasing.md#changelog-and-commit-types)).
+Releases before 1.0.0 bumped the minor version for a breaking change. Every breaking change carries its migration steps in the release notes ([Release a Version: Changelog and Commit Types](releasing.md#changelog-and-commit-types)).
 
 ## Covered
 
