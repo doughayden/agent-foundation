@@ -161,6 +161,19 @@ If the release pull request has not merged, the promotion tag went out before th
 
 **Fix:** add `environment: <env>` to the job that authenticates. A job on a ref the environment rejects belongs on an allowed ref (`main` or a `prod-v*` tag); to allow another ref, add a pattern in the environment's bootstrap root and re-apply it.
 
+### Smoke Agent Turn Streams No Text
+
+**Symptom:** a `Smoke <environment>` job fails in `test_l2_agent_turn_streams_text` with `no text-bearing event in the /run_sse stream`, while the other smoke tests pass.
+
+**Cause:** the model call behind the agent turn failed. Read the service's recent errors:
+```bash
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="<agent_name>-<environment>" AND severity>=ERROR' \
+  --project <project> --freshness=1h --limit 20 --format='value(timestamp,textPayload)'
+```
+`429 RESOURCE_EXHAUSTED` means Vertex AI had no capacity for the model at that moment, which happens with no code change ([Vertex AI: Error code 429](https://cloud.google.com/vertex-ai/generative-ai/docs/error-code-429)).
+
+**Fix:** for a 429, re-run the failed job (the run's page → Re-run failed jobs). Any other error is a real failure of the new revision.
+
 ## Cloud Run
 
 ### Startup Failures
