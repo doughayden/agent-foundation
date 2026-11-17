@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file. This projec
 
 From v0.21.0, [release-please](https://github.com/googleapis/release-please) generates each entry from the squash-merge commit titles on `main`, grouped under [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) headings ([Release a Version](docs/releasing.md)). Earlier entries were written by hand in Keep a Changelog format.
 
+## [1.0.0](https://github.com/doughayden/agent-foundation/compare/v0.23.2...v1.0.0) (2026-11-17)
+
+
+### Changed
+
+* return to dev-only deployment mode ([#411](https://github.com/doughayden/agent-foundation/issues/411)) ([ed1cced](https://github.com/doughayden/agent-foundation/commit/ed1cced47da062627cba5614b18709184eb02058)), closes [#248](https://github.com/doughayden/agent-foundation/issues/248)
+
+
+### Fixed
+
+* **skills:** read teardown state list once ([#413](https://github.com/doughayden/agent-foundation/issues/413)) ([8e6ab97](https://github.com/doughayden/agent-foundation/commit/8e6ab97da8332d4d7dae56b05b04830047631024)), closes [#248](https://github.com/doughayden/agent-foundation/issues/248)
+
 ## [0.23.2](https://github.com/doughayden/agent-foundation/compare/v0.23.1...v0.23.2) (2026-11-16)
 
 
