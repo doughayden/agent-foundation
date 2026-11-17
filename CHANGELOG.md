@@ -7,11 +7,6 @@ From v0.21.0, [release-please](https://github.com/googleapis/release-please) gen
 ## [1.0.0](https://github.com/doughayden/agent-foundation/compare/v0.23.2...v1.0.0) (2026-11-17)
 
 
-### chore
-
-* release 1.0.0 ([#415](https://github.com/doughayden/agent-foundation/issues/415)) ([e12e3fe](https://github.com/doughayden/agent-foundation/commit/e12e3fe15a20ba331f6fdf3c70e5110c42482fda)), closes [#100](https://github.com/doughayden/agent-foundation/issues/100)
-
-
 ### Changed
 
 * return to dev-only deployment mode ([#411](https://github.com/doughayden/agent-foundation/issues/411)) ([ed1cced](https://github.com/doughayden/agent-foundation/commit/ed1cced47da062627cba5614b18709184eb02058)), closes [#248](https://github.com/doughayden/agent-foundation/issues/248)
